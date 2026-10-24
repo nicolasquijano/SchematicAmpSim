@@ -7,6 +7,7 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <memory>
 #include <string>
 #include <utility>
 #include <vector>
@@ -80,9 +81,16 @@ private:
     SrcId input_{0};
 };
 
+class TriodeTable;
+
 class Solver {
 public:
-    Solver(Circuit circuit, double fs);
+    // useTables: evaluate triodes through interpolation tables (aes/tables.h), cheaper and equal to
+    // the formulas within ~1e-6; the exact formulas stay the default (the Rust-parity modes).
+    Solver(Circuit circuit, double fs, bool useTables = false);
+    ~Solver();
+    Solver(Solver&&) noexcept;
+    Solver& operator=(Solver&&) noexcept;
 
     double sampleRate() const { return fs_; }
     std::size_t nodeCount() const { return n_; }
@@ -112,7 +120,7 @@ public:
 private:
     static constexpr std::size_t NONE = static_cast<std::size_t>(-1);
 
-    struct DevInst { Circuit::Dev dev; std::size_t base, np, derOff; };
+    struct DevInst { Circuit::Dev dev; std::size_t base, np, derOff; const TriodeTable* table = nullptr; };
     struct Coupled {
         std::vector<std::pair<std::size_t, std::size_t>> ends;
         std::vector<double> gl, vPrev, iPrev, h;
@@ -137,6 +145,7 @@ private:
 
     std::size_t n_, p_;
     double fs_;
+    std::vector<std::unique_ptr<TriodeTable>> tables_;  // one per distinct triode model
 
     std::vector<Circuit::Res> res_;
     std::vector<Circuit::Cap> caps_;

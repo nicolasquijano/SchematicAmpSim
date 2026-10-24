@@ -84,7 +84,7 @@ TEST_CASE("chain reports the oversampler latency and handles every quality") {
     chain.setSettings(s);
     CHECK(chain.latencySamples() == l2);
 
-    for (Quality q : {Quality::Normal, Quality::High, Quality::Lite, Quality::Normal}) {
+    for (Quality q : {Quality::Normal, Quality::High, Quality::Lite, Quality::Eco, Quality::Normal}) {
         s.quality = q;
         chain.setSettings(s);
         const auto out = run(chain, sine(110.0, 0.1, 4800));

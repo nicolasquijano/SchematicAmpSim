@@ -33,7 +33,7 @@ void Preamp::potValues(const Knob& k, double value, double minOhms, double& top,
     }
 }
 
-Preamp::Preamp(const AmpDef& def, double fs, double railVolts)
+Preamp::Preamp(const AmpDef& def, double fs, double railVolts, bool useTables)
     : potMinOhms_(def.preamp.potMinOhms), sourceOhmsMin_(def.preamp.sourceOhmsMin), sourceOhms_(def.preamp.sourceOhmsDefault) {
     const PreampDef& pd = def.preamp;
 
@@ -93,7 +93,7 @@ Preamp::Preamp(const AmpDef& def, double fs, double railVolts)
             linkFrom = nets[i - 1].node(sd.linkFrom);
             net.circuit.setSourceDc(link, stages_[i - 1].solver.voltage(linkFrom));
         }
-        stages_.push_back(Stage{Solver(std::move(net.circuit), fs), rail, link, linkFrom});
+        stages_.push_back(Stage{Solver(std::move(net.circuit), fs, useTables), rail, link, linkFrom});
         // Guitar signals are millivolts at the first grid, so Newton must converge tightly here.
         stages_.back().solver.tolerance = pd.tolerance;
         stages_.back().solver.refresh();

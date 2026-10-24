@@ -14,6 +14,7 @@ Chain::Chain(const AmpDef& def, double fs)
       amp2_(std::make_unique<FullAmp>(def, fs * 2.0)),
       amp4_(std::make_unique<FullAmp>(def, fs * 4.0)),
       lite_(std::make_unique<LiteAmp>(def, fs * 2.0)),
+      eco_(std::make_unique<LiteAmp>(def, fs * 2.0, true)),
       ts2_(fs * 2.0), ts4_(fs * 4.0), cab_(float(fs)) {
     ampTrim_ = float(dbToGain(def.outputDb));
     target_.knobs.resize(def.preamp.knobs.size());
@@ -120,6 +121,12 @@ void Chain::processAmp(const float* mono, float* out, std::size_t n) {
                     lite_->setSourceOhms(sourceOhms);
                     ts2_.setControls(ts);
                     break;
+                case Quality::Eco:
+                    eco_->setKnobs(knobScratch_, presence, powerScratch_);
+                    eco_->setJack(target_.jack);
+                    eco_->setSourceOhms(sourceOhms);
+                    ts2_.setControls(ts);
+                    break;
             }
             sinceUpdate = 0;
         }
@@ -141,7 +148,12 @@ void Chain::processAmp(const float* mono, float* out, std::size_t n) {
                     return float(amp4_->process((tsOn ? ts4_.process(double(s)) : double(s)) * comp));
                 });
                 break;
-            default:
+            case Quality::Eco:
+                volts = os2_.process(vin, [&](float s) {
+                    return float(eco_->process((tsOn ? ts2_.process(double(s)) : double(s)) * comp));
+                });
+                break;
+            default:  // Lite
                 volts = os2_.process(vin, [&](float s) {
                     return float(lite_->process((tsOn ? ts2_.process(double(s)) : double(s)) * comp));
                 });

@@ -72,7 +72,7 @@ TEST_CASE("processor makes finite audio in every quality and reports latency") {
     JuceInit init;
     AesProcessor p;
     p.prepareToPlay(48000.0, 512);
-    for (int q = 0; q < 3; ++q) {
+    for (int q = 0; q < 4; ++q) {
         setParam(p, ids::quality, float(q));
         const auto out = run(p, 12);
         for (int i = 0; i < out.getNumSamples(); ++i) REQUIRE(std::isfinite(out.getSample(0, i)));

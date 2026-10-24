@@ -16,8 +16,8 @@
 
 namespace aes {
 
-// Quality order is part of saved-project compatibility: Lite stays last.
-enum class Quality { Normal = 0, High = 1, Lite = 2 };
+// Quality order is part of saved-project compatibility: new qualities are only ever appended.
+enum class Quality { Normal = 0, High = 1, Lite = 2, Eco = 3 };
 
 // Knob values are normalised 0..1 here (the plugin shows 0..10).
 struct ChainSettings {
@@ -89,7 +89,7 @@ private:
     double fs_;
     ChainSettings target_;
     std::unique_ptr<FullAmp> amp2_, amp4_;
-    std::unique_ptr<LiteAmp> lite_;
+    std::unique_ptr<LiteAmp> lite_, eco_;  // eco_: Lite power amp + triode tables
     TubeScreamerFast ts2_, ts4_;
     Oversampler os2_{1}, os4_{2};
     CabFilter cab_;

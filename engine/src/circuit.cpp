@@ -1,7 +1,9 @@
 #include "aes/circuit.h"
 #include "aes/profile.h"
+#include "aes/tables.h"
 
 #include <algorithm>
+#include <cstring>
 #include <cmath>
 #include <limits>
 #include <stdexcept>
@@ -119,7 +121,11 @@ void Circuit::coupledInductors(const std::vector<std::pair<Node, Node>>& winding
 
 // ---------------------------------------------------------------- Solver
 
-Solver::Solver(Circuit circuit, double fs)
+Solver::~Solver() = default;
+Solver::Solver(Solver&&) noexcept = default;
+Solver& Solver::operator=(Solver&&) noexcept = default;
+
+Solver::Solver(Circuit circuit, double fs, bool useTables)
     : n_(circuit.nodeCount()), p_(0), fs_(fs), inverter_(circuit.nodeCount()) {
     const std::size_t n = n_;
     const double t = 1.0 / fs;
@@ -164,7 +170,16 @@ Solver::Solver(Circuit circuit, double fs)
                 const bool structuralZero = d.kind == Circuit::Kind::Triode && m == 0 && c == 1;
                 if (!structuralZero) dPattern_.push_back({brA_.size() + m, brA_.size() + c, derLen + m * np + c});
             }
-        devs_.push_back({d, brA_.size(), np, derLen});
+        const TriodeTable* table = nullptr;
+        if (useTables && d.kind == Circuit::Kind::Triode) {
+            for (const auto& tb : tables_)
+                if (std::memcmp(&tb->model(), &d.triode, sizeof(TriodeModel)) == 0) table = tb.get();
+            if (!table) {
+                tables_.push_back(std::make_unique<TriodeTable>(d.triode));
+                table = tables_.back().get();
+            }
+        }
+        devs_.push_back({d, brA_.size(), np, derLen, table});
         derLen += np * np;
         for (const auto& port : ports) {
             brA_.push_back(gx(port.a));
@@ -327,8 +342,8 @@ double Solver::eval(bool useTrial) {
         switch (d.dev.kind) {
             case Circuit::Kind::Triode: {
                 const double vgk = xs[b], vpk = xs[b + 1];
-                const auto g = d.dev.triode.grid(vgk);
-                const auto pl = d.dev.triode.plate(vgk, vpk);
+                const auto g = d.table ? d.table->grid(vgk) : d.dev.triode.grid(vgk);
+                const auto pl = d.table ? d.table->plate(vgk, vpk) : d.dev.triode.plate(vgk, vpk);
                 const double sc = d.dev.scale;
                 ivec_[b] = g.ig * sc;
                 ivec_[b + 1] = pl.ip * sc;

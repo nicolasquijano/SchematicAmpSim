@@ -88,11 +88,13 @@ int main() {
             aes::LiteAmp lite(def, fs);
             lite.setKnobs(knobs, def.power.presenceDefault);
             const double pl = percent([&] { for (double x : in) sink += lite.process(x); }, seconds);
+            aes::LiteAmp eco(def, fs, true);  // Lite power amp + triode tables
+            eco.setKnobs(knobs, def.power.presenceDefault);
+            const double pe = percent([&] { for (double x : in) sink += eco.process(x); }, seconds);
             const auto& ps = full.pre().solver(0);
-            const auto& ws = full.power().solver();
-            std::printf("  %-7s full %6.1f %%   lite %6.1f %%   | preamp(stage 1 of %zu) %zu nodes %zu ports %.1f it/sample %llu cont | power %zu nodes %zu ports %.1f it/sample\n",
-                        c.name, pf, pl, full.pre().stageCount(), ps.nodeCount(), ps.portCount(), double(ps.newtonIterations) / double(n),
-                        (unsigned long long)ps.continuationRuns, ws.nodeCount(), ws.portCount(), double(ws.newtonIterations) / double(n));
+            std::printf("  %-7s full %6.1f %%   lite %6.1f %%   eco %6.1f %%   | preamp: %zu stage(s), stage 1 = %zu nodes %zu ports, %.1f it/sample %llu cont\n",
+                        c.name, pf, pl, pe, full.pre().stageCount(), ps.nodeCount(), ps.portCount(), double(ps.newtonIterations) / double(n),
+                        (unsigned long long)ps.continuationRuns);
         }
     }
     {

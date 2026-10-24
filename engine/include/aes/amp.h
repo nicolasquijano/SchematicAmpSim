@@ -17,8 +17,9 @@ template <class Power>
 class AmpT {
 public:
     // `fs` is the (already oversampled) rate the circuits run at.
-    AmpT(const AmpDef& def, double fs)
-        : power_(def, fs), pre_(def, fs, power_.railX()) {}
+    // eco: triodes through tables (see aes/tables.h); the circuits are otherwise the same.
+    AmpT(const AmpDef& def, double fs, bool eco = false)
+        : power_(def, fs), pre_(def, fs, power_.railX(), eco) {}
 
     void setKnobs(const std::vector<double>& knobs, double presence, const std::vector<double>& powerKnobs = {}) {
         pre_.setKnobs(knobs);

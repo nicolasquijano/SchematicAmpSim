@@ -68,6 +68,35 @@ TEST_CASE("every ui knob of every amp points at a real preamp knob") {
     }
 }
 
+TEST_CASE("Eco (triode tables) sounds the same as Lite on every amp") {
+    for (const auto& id : embeddedAmpIds()) {
+        const AmpDef def = loadEmbeddedAmp(id);
+        for (double peak : {0.02, 0.1, 0.4}) {
+            LiteAmp lite(def, kFs), eco(def, kFs, true);
+            const auto k = defaultKnobs(def);
+            lite.setKnobs(k, def.power.presenceDefault);
+            eco.setKnobs(k, def.power.presenceDefault);
+            const std::size_t n = std::size_t(0.5 * kFs);
+            double accL = 0, accE = 0, accD = 0;
+            for (std::size_t i = 0; i < n; ++i) {
+                const double x = peak * std::sin(2 * kPi * 150.0 * double(i) / kFs);
+                const double a = lite.process(x), b = eco.process(x);
+                REQUIRE(std::isfinite(b));
+                if (i >= n / 2) {
+                    accL += a * a;
+                    accE += b * b;
+                    accD += (a - b) * (a - b);
+                }
+            }
+            const double levelDb = 10.0 * std::log10(accE / accL), diffDb = 10.0 * std::log10((accD + 1e-30) / accL);
+            INFO(id << " at " << peak << " V: level " << levelDb << " dB, sample difference " << diffDb << " dB");
+            CHECK(std::abs(levelDb) < 0.1);
+            CHECK(diffDb < -50.0);  // far below audibility even where saturation amplifies tiny differences
+            CHECK(eco.newtonFailures() == 0);
+        }
+    }
+}
+
 TEST_CASE("selector captions and labels come from each amp") {
     const AmpDef afd = loadEmbeddedAmp("afd100"), plexi = loadEmbeddedAmp("plexi_1959"), jcm = loadEmbeddedAmp("jcm800_2203");
     CHECK(afd.preamp.jackLabel == "MODE");

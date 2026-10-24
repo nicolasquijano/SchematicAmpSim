@@ -45,9 +45,9 @@ Layout AesProcessor::createLayout(const std::vector<aes::AmpDef>& defs) {
     l.add(knob(ids::power, "Power", 5.0f));
     l.add(dbParam(ids::input, "Input"));
     l.add(dbParam(ids::output, "Output"));
-    // Lite stays last so saved projects keep their quality (same rule as the Rust build).
+    // New qualities are only appended so saved projects keep theirs (same rule as the Rust build).
     l.add(std::make_unique<juce::AudioParameterChoice>(
-        juce::ParameterID{ids::quality, kVersion}, "Quality", juce::StringArray{"Normal (2x)", "High (4x)", "Lite (2x)"}, 0));
+        juce::ParameterID{ids::quality, kVersion}, "Quality", juce::StringArray{"Normal (2x)", "High (4x)", "Lite (2x)", "Eco (2x)"}, 0));
     l.add(std::make_unique<juce::AudioParameterChoice>(
         juce::ParameterID{ids::cab, kVersion}, "Cabinet", juce::StringArray{"Off", "Filter", "IR"}, 1));
     l.add(std::make_unique<juce::AudioParameterChoice>(
@@ -184,7 +184,7 @@ aes::ChainSettings AesProcessor::readSettings(bool irAvailable) {
     s.presence = double(ap.presence->load()) / 10.0;
     s.inputDb = raw(ids::input);
     s.outputDb = raw(ids::output);
-    s.quality = static_cast<aes::Quality>(juce::jlimit(0, 2, int(raw(ids::quality) + 0.5)));
+    s.quality = static_cast<aes::Quality>(juce::jlimit(0, 3, int(raw(ids::quality) + 0.5)));
     s.jack = std::size_t(juce::jlimit(0, int(def.preamp.jacks.size()) - 1, int(raw(ids::jack) + 0.5)));
     const auto cab = static_cast<CabMode>(juce::jlimit(0, 2, int(raw(ids::cab) + 0.5)));
     // With no IR loaded the IR mode falls back to the cab filter instead of the raw amp.

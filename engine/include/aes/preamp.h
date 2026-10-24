@@ -16,7 +16,8 @@ namespace aes {
 class Preamp {
 public:
     // railVolts overrides the rail supply's value in the netlists (the power amp drives it live).
-    Preamp(const AmpDef& def, double fs, double railVolts);
+    // useTables: evaluate the triodes through interpolation tables (the Eco modes).
+    Preamp(const AmpDef& def, double fs, double railVolts, bool useTables = false);
 
     std::size_t knobCount() const { return knobs_.size(); }
     const std::vector<double>& knobs() const { return values_; }
