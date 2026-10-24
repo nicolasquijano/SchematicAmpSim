@@ -27,6 +27,7 @@ struct ChainSettings {
     double inputDb = 0.0, outputDb = 0.0;
     Quality quality = Quality::Normal;
     std::size_t jack = 0;
+    bool jackLevelMatch = true;  // apply the jack's `level_db` at the amp input
     bool cabFilter = true;
     bool tsOn = false;
     double tsDrive = 0.5, tsTone = 0.5, tsLevel = 0.5;
@@ -94,7 +95,7 @@ private:
     CabFilter cab_;
     Quality active_ = Quality::Normal;
     std::vector<Smoother> knobs_, powerKnobs_;
-    Smoother presence_, tsDrive_, tsTone_, tsLevel_, inputDb_, outputDb_;
+    Smoother presence_, tsDrive_, tsTone_, tsLevel_, inputDb_, outputDb_, jackCompDb_;
     std::vector<double> knobScratch_, powerScratch_;
 };
 

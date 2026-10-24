@@ -56,7 +56,8 @@ private:
     std::unique_ptr<juce::AudioProcessorValueTreeState::ComboBoxAttachment> ampAtt_, qualityAtt_, cabAtt_;
     juce::Label ampCaption_, qualityCaption_, jackCaption_, cabCaption_, tsCaption_, irName_;
     juce::ToggleButton tsOn_{"On"};
-    std::unique_ptr<juce::AudioProcessorValueTreeState::ButtonAttachment> tsOnAtt_;
+    juce::ToggleButton levelMatch_{"Level match"};  // shown only for amps whose jacks differ in level
+    std::unique_ptr<juce::AudioProcessorValueTreeState::ButtonAttachment> tsOnAtt_, levelMatchAtt_;
     juce::TextButton loadIr_{"Load IR..."}, clearIr_{"Clear"};
     std::unique_ptr<juce::FileChooser> chooser_;
 

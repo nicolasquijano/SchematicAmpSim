@@ -94,6 +94,7 @@ PreampDef parsePreamp(const json& j, const FileReader& read) {
         JackDef jd;
         jd.name = str(jk, "name", "preamp.jacks");
         jd.label = jk.contains("label") ? str(jk, "label", "preamp.jacks." + jd.name) : jd.name;
+        jd.levelDb = numOr(jk, "level_db", 0.0);
         jd.drive = str(jk, "drive", "preamp.jacks." + jd.name);
         for (const auto& [name, ohms] : need(jk, "resistors", "preamp.jacks." + jd.name).items())
             jd.resistors.push_back({name, ohms.get<double>()});

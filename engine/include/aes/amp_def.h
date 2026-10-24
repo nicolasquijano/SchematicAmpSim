@@ -29,6 +29,9 @@ struct KnobDef {
 struct JackDef {
     std::string name;
     std::string label;                          // shown in the editor ("AFD"); defaults to `name`
+    // Gain applied at the amp's input while "level match" is on, to even out jacks of very different
+    // sensitivity (the JCM800's Low input skips a gain stage and is ~31 dB quieter than High).
+    double levelDb = 0.0;
     std::string drive;                          // source that carries the guitar for this jack
     std::vector<std::pair<std::string, double>> resistors;  // switch resistors to set
 };

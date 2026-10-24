@@ -35,6 +35,7 @@ Chain::Chain(const AmpDef& def, double fs)
     tsLevel_.reset(0.5, fs, 40.0);
     inputDb_.reset(0.0, fs, 20.0);
     outputDb_.reset(0.0, fs, 20.0);
+    jackCompDb_.reset(def.preamp.jacks.empty() ? 0.0 : def.preamp.jacks[0].levelDb, fs, 20.0);
 }
 
 void Chain::setSettings(const ChainSettings& s) {
@@ -52,6 +53,7 @@ void Chain::setSettings(const ChainSettings& s) {
     target_.jack = std::min(s.jack, def_.preamp.jacks.size() - 1);
     target_.cabFilter = s.cabFilter;
     target_.tsOn = s.tsOn;
+    jackCompDb_.setTarget(s.jackLevelMatch ? def_.preamp.jacks[target_.jack].levelDb : 0.0);
 }
 
 void Chain::snap(const ChainSettings& s) {
@@ -64,6 +66,7 @@ void Chain::snap(const ChainSettings& s) {
     tsLevel_.reset(std::clamp(s.tsLevel, 0.0, 1.0), fs_, 40.0);
     inputDb_.reset(s.inputDb, fs_, 20.0);
     outputDb_.reset(s.outputDb, fs_, 20.0);
+    jackCompDb_.reset(s.jackLevelMatch ? def_.preamp.jacks[std::min(s.jack, def_.preamp.jacks.size() - 1)].levelDb : 0.0, fs_, 20.0);
     setSettings(s);
 }
 
@@ -123,21 +126,23 @@ void Chain::processAmp(const float* mono, float* out, std::size_t n) {
 
         const float vin = float(double(mono[i]) * dbToGain(inputDb_.next()));
         // The pedal sits in front of the amp, inside the oversampled loop; it costs nothing while off.
+        // `comp` is the jack's level match: extra gain at the amp's input (after the pedal), 1 when off.
+        const double comp = dbToGain(jackCompDb_.next());
         float volts;
         switch (quality) {
             case Quality::Normal:
                 volts = os2_.process(vin, [&](float s) {
-                    return float(amp2_->process(tsOn ? ts2_.process(double(s)) : double(s)));
+                    return float(amp2_->process((tsOn ? ts2_.process(double(s)) : double(s)) * comp));
                 });
                 break;
             case Quality::High:
                 volts = os4_.process(vin, [&](float s) {
-                    return float(amp4_->process(tsOn ? ts4_.process(double(s)) : double(s)));
+                    return float(amp4_->process((tsOn ? ts4_.process(double(s)) : double(s)) * comp));
                 });
                 break;
             default:
                 volts = os2_.process(vin, [&](float s) {
-                    return float(lite_->process(tsOn ? ts2_.process(double(s)) : double(s)));
+                    return float(lite_->process((tsOn ? ts2_.process(double(s)) : double(s)) * comp));
                 });
                 break;
         }

@@ -27,6 +27,7 @@ inline constexpr const char* output = "output";
 inline constexpr const char* quality = "quality";
 inline constexpr const char* cab = "cab";
 inline constexpr const char* jack = "jack";
+inline constexpr const char* levelMatch = "level_match";
 inline constexpr const char* tsOn = "ts_on";
 inline constexpr const char* tsDrive = "ts_drive";
 inline constexpr const char* tsTone = "ts_tone";

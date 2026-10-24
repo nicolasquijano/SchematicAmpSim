@@ -101,7 +101,7 @@ TEST_CASE("jack, TS808 and cab filter change the sound in the expected direction
         return rms(run(chain, sine(220.0, 0.05, 12000)), 6000);
     };
     const double base = level([](ChainSettings&) {});
-    const double low = level([](ChainSettings& s) { s.jack = 1; });
+    const double low = level([](ChainSettings& s) { s.jack = 1; s.jackLevelMatch = false; });  // the raw circuit
     CHECK(low < base * 0.2);  // Low skips the first gain stage: much quieter
 
     const double ts = level([](ChainSettings& s) { s.tsOn = true; s.tsDrive = 0.8; });
@@ -109,6 +109,26 @@ TEST_CASE("jack, TS808 and cab filter change the sound in the expected direction
 
     const double noCab = level([](ChainSettings& s) { s.cabFilter = false; });
     CHECK(noCab > 0.0);
+}
+
+TEST_CASE("level match lifts the JCM800's quiet Low jack and leaves High alone") {
+    const auto& def = jcm800();
+    auto level = [&](std::size_t jack, bool match, double peak) {
+        Chain chain(def, kFs);
+        auto s = defaults(def);
+        s.jack = jack;
+        s.jackLevelMatch = match;
+        chain.snap(s);
+        return rms(run(chain, sine(220.0, peak, 14000)), 7000);
+    };
+    // Small signal: the Low jack is ~31 dB below High; with the match it lands within a few dB.
+    const double high = level(0, true, 0.003), lowRaw = level(1, false, 0.003), lowMatched = level(1, true, 0.003);
+    INFO("high " << high << ", low " << lowRaw << ", low matched " << lowMatched);
+    CHECK(20.0 * std::log10(high / lowRaw) > 25.0);
+    CHECK(std::abs(20.0 * std::log10(high / lowMatched)) < 4.0);
+    // High is untouched by the match, and the output stays finite and within full scale when driven hard.
+    CHECK(level(0, true, 0.003) == level(0, false, 0.003));
+    CHECK(level(1, true, 0.3) < 1.0);
 }
 
 TEST_CASE("output gain follows the dB setting and non-finite samples are zeroed") {

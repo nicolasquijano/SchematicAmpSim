@@ -52,6 +52,7 @@ Layout AesProcessor::createLayout(const std::vector<aes::AmpDef>& defs) {
         juce::ParameterID{ids::cab, kVersion}, "Cabinet", juce::StringArray{"Off", "Filter", "IR"}, 1));
     l.add(std::make_unique<juce::AudioParameterChoice>(
         juce::ParameterID{ids::jack, kVersion}, "Input jack", juce::StringArray{"Jack 1", "Jack 2", "Jack 3"}, 0));
+    l.add(std::make_unique<juce::AudioParameterBool>(juce::ParameterID{ids::levelMatch, kVersion}, "Level match", true));
     l.add(std::make_unique<juce::AudioParameterBool>(juce::ParameterID{ids::tsOn, kVersion}, "Tube Screamer", false));
     l.add(knob(ids::tsDrive, "TS Drive", 5.0f));
     l.add(knob(ids::tsTone, "TS Tone", 5.0f));
@@ -188,6 +189,7 @@ aes::ChainSettings AesProcessor::readSettings(bool irAvailable) {
     const auto cab = static_cast<CabMode>(juce::jlimit(0, 2, int(raw(ids::cab) + 0.5)));
     // With no IR loaded the IR mode falls back to the cab filter instead of the raw amp.
     s.cabFilter = cab == CabMode::Filter || (cab == CabMode::Ir && !irAvailable);
+    s.jackLevelMatch = raw(ids::levelMatch) > 0.5;
     s.tsOn = raw(ids::tsOn) > 0.5;
     s.tsDrive = raw(ids::tsDrive) / 10.0;
     s.tsTone = raw(ids::tsTone) / 10.0;

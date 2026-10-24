@@ -30,7 +30,7 @@
     "source_ohms": { "resistors": ["RSRC", "RSRC_LOW"], "default": 7000, "min": 10 },
     "jacks": [
       { "name": "high", "label": "High", "drive": "VIN",  "resistors": { "SW_C3": 1,    "SW_LOW": 1e12 } },
-      { "name": "low",  "label": "Low",  "drive": "VLOW", "resistors": { "SW_C3": 1e12, "SW_LOW": 1 } }
+      { "name": "low",  "label": "Low",  "level_db": 31.0, "drive": "VLOW", "resistors": { "SW_C3": 1e12, "SW_LOW": 1 } }
     ]
   },
 
