@@ -93,6 +93,7 @@ private:
     TubeScreamerFast ts2_, ts4_;
     Oversampler os2_{1}, os4_{2};
     CabFilter cab_;
+    float ampTrim_ = 1.0f;  // the amp's output_db as a gain
     Quality active_ = Quality::Normal;
     std::vector<Smoother> knobs_, powerKnobs_;
     Smoother presence_, tsDrive_, tsTone_, tsLevel_, inputDb_, outputDb_, jackCompDb_;

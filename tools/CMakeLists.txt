@@ -20,3 +20,6 @@ add_executable(aes_profile EXCLUDE_FROM_ALL bench.cpp
 target_compile_definitions(aes_profile PRIVATE AES_PROFILE)
 target_include_directories(aes_profile PRIVATE ${CMAKE_SOURCE_DIR}/engine/include ${CMAKE_SOURCE_DIR}/amps/include)
 target_link_libraries(aes_profile PRIVATE nlohmann_json::nlohmann_json)
+
+add_executable(aes_match_levels match_levels.cpp)
+target_link_libraries(aes_match_levels PRIVATE aes_engine aes_amps)

@@ -105,6 +105,9 @@ struct AmpDef {
     // Position in the plugin's amp list (then by id). Saved projects store the list index, so an
     // amp keeps its `order` forever and new amps take the next number.
     int order = 1000;
+    // Output trim in dB, set so that every amp plays at the same loudness at its default knobs
+    // (see tools/aes_match_levels). Applied by the chain, not part of the circuit.
+    double outputDb = 0.0;
     std::vector<UiKnob> ui;
     PreampDef preamp;
     PowerDef power;

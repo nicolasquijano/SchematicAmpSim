@@ -1,6 +1,7 @@
 {
   "id": "afd100",
   "order": 2,
+  "output_db": 5.3,
   "name": "Marshall AFD100",
 
   "ui": [
@@ -32,7 +33,7 @@
     "source_ohms": { "resistors": ["RSRC"], "default": 7000, "min": 10 },
     "jacks": [
       { "name": "normal", "label": "Normal", "drive": "VIN", "resistors": { "SW_RL3B": 1e12, "SW_RL1B_N": 1,    "SW_RL1B_A": 1e12, "SW_RL1C": 1e12 } },
-      { "name": "afd",    "label": "AFD",    "drive": "VIN", "resistors": { "SW_RL3B": 1,    "SW_RL1B_N": 1e12, "SW_RL1B_A": 1,    "SW_RL1C": 1 } }
+      { "name": "afd",    "label": "AFD",    "level_db": 2.0, "drive": "VIN", "resistors": { "SW_RL3B": 1,    "SW_RL1B_N": 1e12, "SW_RL1B_A": 1,    "SW_RL1C": 1 } }
     ]
   },
 

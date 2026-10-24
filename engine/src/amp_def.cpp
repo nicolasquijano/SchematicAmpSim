@@ -210,6 +210,7 @@ AmpDef loadAmpDef(const std::string& jsonText, const FileReader& read) {
     d.id = str(j, "id", "");
     d.name = str(j, "name", "");
     d.order = int(numOr(j, "order", 1000));
+    d.outputDb = numOr(j, "output_db", 0.0);
     if (j.contains("ui"))
         for (const auto& u : j.at("ui")) {
             UiKnob k;

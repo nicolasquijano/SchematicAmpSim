@@ -15,6 +15,7 @@ Chain::Chain(const AmpDef& def, double fs)
       amp4_(std::make_unique<FullAmp>(def, fs * 4.0)),
       lite_(std::make_unique<LiteAmp>(def, fs * 2.0)),
       ts2_(fs * 2.0), ts4_(fs * 4.0), cab_(float(fs)) {
+    ampTrim_ = float(dbToGain(def.outputDb));
     target_.knobs.resize(def.preamp.knobs.size());
     knobs_.resize(def.preamp.knobs.size());
     knobScratch_.resize(def.preamp.knobs.size());
@@ -146,7 +147,7 @@ void Chain::processAmp(const float* mono, float* out, std::size_t n) {
                 });
                 break;
         }
-        float y = volts / float(kOutputFullScaleVolts);
+        float y = volts / float(kOutputFullScaleVolts) * ampTrim_;
         if (cabOn) y = cab_.process(y);
         out[i] = y;
     }
