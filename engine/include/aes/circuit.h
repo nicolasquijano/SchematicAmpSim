@@ -146,6 +146,7 @@ private:
     std::size_t n_, p_;
     double fs_;
     std::vector<std::unique_ptr<TriodeTable>> tables_;  // one per distinct triode model
+    bool fast_ = false;  // the cheap modes: tables and the pivot-free Jacobian factorisation
 
     std::vector<Circuit::Res> res_;
     std::vector<Circuit::Cap> caps_;

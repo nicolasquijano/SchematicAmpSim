@@ -71,7 +71,7 @@ int main() {
 #ifdef AES_PROFILE
             // Lite runs only the preamp solver, so the counters isolate it.
             {
-                aes::LiteAmp l(def, fs);
+                aes::LiteAmp l(def, fs, true);
                 l.setKnobs(knobs, def.power.presenceDefault);
                 for (auto& v : aes::g_profile) v = 0;
                 for (double x : in) sink += l.process(x);

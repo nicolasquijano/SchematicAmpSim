@@ -126,7 +126,7 @@ Solver::Solver(Solver&&) noexcept = default;
 Solver& Solver::operator=(Solver&&) noexcept = default;
 
 Solver::Solver(Circuit circuit, double fs, bool useTables)
-    : n_(circuit.nodeCount()), p_(0), fs_(fs), inverter_(circuit.nodeCount()) {
+    : n_(circuit.nodeCount()), p_(0), fs_(fs), fast_(useTables), inverter_(circuit.nodeCount()) {
     const std::size_t n = n_;
     const double t = 1.0 / fs;
 
@@ -399,13 +399,22 @@ bool Solver::factorJacobian() {
     AES_PROF(ProfFactor);
     const std::size_t p = p_;
     ++jacobianFactorizations;
-    std::fill(lu_.begin(), lu_.end(), 0.0);
-    for (std::size_t r = 0; r < p; ++r) {
-        double* jrow = &lu_[r * p];
-        const double* krow = &k_[r * p];
-        jrow[r] = 1.0;
-        for (const auto& pt : dPattern_) jrow[pt.col] += krow[pt.row] * der_[pt.di];
+    auto buildJacobian = [&] {
+        std::fill(lu_.begin(), lu_.end(), 0.0);
+        for (std::size_t r = 0; r < p; ++r) {
+            double* jrow = &lu_[r * p];
+            const double* krow = &k_[r * p];
+            jrow[r] = 1.0;
+            for (const auto& pt : dPattern_) jrow[pt.col] += krow[pt.row] * der_[pt.di];
+        }
+    };
+    buildJacobian();
+    // Fast modes try the pivot-free factorisation first and fall back to partial pivoting.
+    if (fast_ && luFactorNoPivotFast(lu_.data(), piv_.data(), p)) {
+        luValid_ = true;
+        return true;
     }
+    if (fast_) buildJacobian();
     luValid_ = luFactorFast(lu_.data(), piv_.data(), p);
     return luValid_;
 }

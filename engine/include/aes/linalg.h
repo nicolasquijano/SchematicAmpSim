@@ -166,6 +166,41 @@ inline void luSolveFixed(const double* lu, const std::size_t* piv, double* b) {
     }
 }
 
+// LU without row exchanges, for matrices that are diagonally dominant in practice (the Newton
+// Jacobian I + K D of these circuits). Returns false if a pivot is tiny or a multiplier exceeds
+// `maxMultiplier` (growth), in which case the caller factors again with partial pivoting. The
+// pivot search is the branchy part of luFactor, so this is noticeably faster. piv[i] = i, so the
+// same luSolve works.
+template <std::size_t N>
+inline bool luFactorFixedNoPivot(double* a, std::size_t* piv, double maxMultiplier) {
+    for (std::size_t col = 0; col < N; ++col) {
+        const double pv = a[col * N + col];
+        if (!(std::abs(pv) > 1e-9)) return false;
+        piv[col] = col;
+        const double inv = 1.0 / pv;
+        for (std::size_t r = col + 1; r < N; ++r) {
+            const double f = a[r * N + col] * inv;
+            if (!(std::abs(f) <= maxMultiplier)) return false;
+            a[r * N + col] = f;
+            for (std::size_t c = col + 1; c < N; ++c) a[r * N + c] -= f * a[col * N + c];
+        }
+    }
+    return true;
+}
+
+inline bool luFactorNoPivotFast(double* a, std::size_t* piv, std::size_t n, double maxMultiplier = 50.0) {
+    switch (n) {
+        case 6: return luFactorFixedNoPivot<6>(a, piv, maxMultiplier);
+        case 8: return luFactorFixedNoPivot<8>(a, piv, maxMultiplier);
+        case 10: return luFactorFixedNoPivot<10>(a, piv, maxMultiplier);
+        case 12: return luFactorFixedNoPivot<12>(a, piv, maxMultiplier);
+        case 14: return luFactorFixedNoPivot<14>(a, piv, maxMultiplier);
+        case 16: return luFactorFixedNoPivot<16>(a, piv, maxMultiplier);
+        case 18: return luFactorFixedNoPivot<18>(a, piv, maxMultiplier);
+        default: return false;  // no specialised version: use the pivoting one
+    }
+}
+
 inline bool luFactorFast(double* a, std::size_t* piv, std::size_t n) {
     switch (n) {
         case 6: return luFactorFixed<6>(a, piv);
