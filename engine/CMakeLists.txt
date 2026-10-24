@@ -4,7 +4,8 @@ add_library(aes_engine STATIC
   src/netlist.cpp
   src/amp_def.cpp
   src/preamp.cpp
-  src/poweramp.cpp)
+  src/poweramp.cpp
+  src/chain.cpp)
 target_include_directories(aes_engine PUBLIC include)
 target_link_libraries(aes_engine PUBLIC nlohmann_json::nlohmann_json)
 set_target_properties(aes_engine PROPERTIES INTERPROCEDURAL_OPTIMIZATION ON)

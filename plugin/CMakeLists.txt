@@ -12,16 +12,20 @@ juce_add_plugin(AES
 
 target_sources(AES PRIVATE
   PluginProcessor.cpp
-  PluginProcessor.h)
+  PluginProcessor.h
+  PluginEditor.cpp
+  PluginEditor.h)
 
 target_compile_definitions(AES PUBLIC
   JUCE_WEB_BROWSER=0
   JUCE_USE_CURL=0
-  JUCE_VST3_CAN_REPLACE_VST2=0)
+  JUCE_VST3_CAN_REPLACE_VST2=0
+  JUCE_DISPLAY_SPLASH_SCREEN=0)
 
 target_link_libraries(AES
   PRIVATE
     aes_engine
+    aes_amps
     juce::juce_audio_utils
     juce::juce_dsp
   PUBLIC
