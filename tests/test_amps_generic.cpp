@@ -91,7 +91,9 @@ TEST_CASE("Eco (triode tables) sounds the same as Lite on every amp") {
             const double levelDb = 10.0 * std::log10(accE / accL), diffDb = 10.0 * std::log10((accD + 1e-30) / accL);
             INFO(id << " at " << peak << " V: level " << levelDb << " dB, sample difference " << diffDb << " dB");
             CHECK(std::abs(levelDb) < 0.1);
-            CHECK(diffDb < -50.0);  // far below audibility even where saturation amplifies tiny differences
+            // Tables alone are exact (-150 dB). An amp with its own finer-split Eco preamp differs by the
+            // split's loading error (tests/test_split.cpp bounds it per frequency): ~0.5 % of amplitude here.
+            CHECK(diffDb < (def.hasEcoPreamp ? -40.0 : -120.0));
             CHECK(eco.newtonFailures() == 0);
         }
     }
