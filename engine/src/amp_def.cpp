@@ -110,6 +110,7 @@ PowerDef parsePower(const json& j, const FileReader& read) {
     p.presenceScale = num(pr, "scale", "power.presence");
     p.presenceMinOhms = num(pr, "min_ohms", "power.presence");
     p.presenceDefault = num(pr, "default", "power.presence");
+    if (pr.contains("complement")) p.presenceComplement = str(pr, "complement", "power.presence");
     const json& s = need(j, "supply", "power");
     p.supply.mainsHz = num(s, "mains_hz", "power.supply");
     p.supply.vacPeak = num(s, "vac_peak", "power.supply");
@@ -179,6 +180,14 @@ AmpDef loadAmpDef(const std::string& jsonText, const FileReader& read) {
     AmpDef d;
     d.id = str(j, "id", "");
     d.name = str(j, "name", "");
+    if (j.contains("ui"))
+        for (const auto& u : j.at("ui")) {
+            UiKnob k;
+            k.param = str(u, "param", "ui");
+            k.label = str(u, "label", "ui." + k.param);
+            if (u.contains("knob")) k.knob = str(u, "knob", "ui." + k.param);
+            d.ui.push_back(std::move(k));
+        }
     d.preamp = parsePreamp(need(j, "preamp", ""), read);
     d.power = parsePower(need(j, "power", ""), read);
     d.lite = parseLite(need(j, "lite", ""));

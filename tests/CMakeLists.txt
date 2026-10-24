@@ -8,7 +8,8 @@ add_executable(aes_tests
   test_amp.cpp
   test_netlist.cpp
   test_embedded.cpp
-  test_chain.cpp)
+  test_chain.cpp
+  test_amps_generic.cpp)
 target_compile_definitions(aes_tests PRIVATE
   AES_GOLDEN_DIR="${CMAKE_SOURCE_DIR}/golden"
   AES_AMPS_DIR="${CMAKE_SOURCE_DIR}/amps")

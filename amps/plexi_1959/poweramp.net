@@ -1,0 +1,80 @@
+* Marshall 1959 100 W power amp (same drawing as preamp.net, page 3): long-tailed ECC83 phase
+* inverter with the NFB/presence network, four EL34 as two parallel pairs with their screens
+* on B+ through 1k each, fixed negative bias, the output transformer as five coupled windings,
+* and the 375 V rail. B+ (node a) is the rectifier/reservoir, integrated by the engine.
+*
+* Assumptions where the drawing is silent or ambiguous (change them here, not in code):
+*  - output transformer: same primary impedance and coupling as the JCM800's C2668 model;
+*  - NFB resistor: 47k (the drawing prints "47K (100K)"), taken from the 16 ohm terminal;
+*  - bias: winding + diode as a Thevenin source of -53 V behind 1k, 22k trim ("27K (22K)"),
+*    which puts the output-tube grids near -43 V;
+*  - the symbol at the top right of B+ is read as a wire hop, not a choke.
+
+.nodes pin ga kc f1 f2 gb pa pb dt db bias g45 g67 s45 s67 pt pbm npt npb a t16 t8 bk x x1 pr rv
+
+S VAUDIO pin 60k 0
+S VHT a 1 490
+S VBIAS x1 1k -53
+
+* Phase inverter V3: input on the first grid, feedback node f2 on the second grid's coupling cap.
+C C9 pin ga 22n
+R R17 ga f1 1M
+R R16 kc f1 470
+R R19 f1 gb 1M
+C C15 gb f2 0.1u
+R R20 f1 f2 10k
+T V3A ga pa kc ECC83
+T V3B gb pb kc ECC83
+R R18 x pa 82k
+R R21 x pb 100k
+C C14 pa dt 22n
+C C16 pb db 22n
+C C47 pa pb 47p
+
+* Presence: 5k pot from the NFB node to ground, wiper to ground through 0.1u. VR_PT/VR_PB are
+* the two sections (the engine keeps VR_PT + VR_PB = 5k).
+R VR_PT f2 pr 2.5k
+R VR_PB pr 0 2.5k
+C C_PRES pr 0 0.1u
+
+* Bias supply: 8u + 15k + 8u filter, 47k + trim to ground, 220k grid leaks.
+R R15K x1 bias 15k
+C C8A x1 0 8u
+C C8B bias 0 8u
+R R47K bias rv 47k
+R RTRIM rv 0 22k
+R R220A dt bias 220k
+R R220B bias db 220k
+
+* EL34s: each pair shares grid stoppers, screen resistors and plate load.
+R R5K6_45 dt g45 5.6k/2
+R R5K6_67 db g67 5.6k/2
+P V4 g45 pt s45 0 EL34 2
+P V5 g67 pbm s67 0 EL34 2
+R RS45 a s45 1k/2
+R RS67 a s67 1k/2
+
+* Output transformer: plate-to-plate 1.9k, 3.5 H per primary half; windings are the primary
+* halves, then the 16R, 8R and 4R sections of the secondary (turns relative to a half).
+R DCR_PT pt npt 40
+R DCR_PB pbm npb 40
+.param n16 = 2*1/sqrt(1900/16)
+.xfmr OT L=3.5
+  W npt a 1 pri
+  W a npb 1 pri
+  W t16 t8 0.2929*n16 sec
+  W t8 bk 0.2071*n16 sec
+  W bk 0 0.5*n16 sec
+  K pri pri 0.9998
+  K pri sec 0.9993
+  K sec sec 0.9998
+.end
+R RLOAD t16 0 16
+
+* Negative feedback from the 16 ohm terminal to the phase-inverter feedback node.
+R R_NFB t16 f2 47k
+
+* 375 V rail: 20k/1W from B+, 2 x 50u, and the rest of the preamp's current draw.
+R R20K a x 20k
+C C375 x 0 100u
+R RPREAMP x 0 78k

@@ -15,7 +15,8 @@ constexpr double kPi = 3.14159265358979323846;
 struct PowerAmp::Built {
     ParsedNetlist net;
     SrcId srcAudio{0}, srcHt{0};
-    ResId rPres{0}, rNfb{0}, rLoad{0};
+    ResId rPres{0}, rNfb{0}, rLoad{0}, rPresBottom{0};
+    bool hasPresBottom = false;
     Node x = 0, ht = 0, out = 0;
 };
 
@@ -26,6 +27,10 @@ PowerAmp::Built PowerAmp::build(const AmpDef& def) {
     b.srcAudio = b.net.source(pd.inputSource);
     b.srcHt = b.net.source(pd.htSource);
     b.rPres = b.net.resistor(pd.presenceResistor);
+    if (!pd.presenceComplement.empty()) {
+        b.rPresBottom = b.net.resistor(pd.presenceComplement);
+        b.hasPresBottom = true;
+    }
     b.rNfb = b.net.resistor(pd.nfbResistor);
     b.rLoad = b.net.resistor(pd.loadResistor);
     b.x = b.net.node(pd.railNode);
@@ -38,6 +43,7 @@ PowerAmp::PowerAmp(Built&& b, const AmpDef& def, double fs)
     : solver_(std::move(b.net.circuit), fs), supply_(def.power.supply), srcAudio_(b.srcAudio),
       srcHt_(b.srcHt), rPres_(b.rPres), rNfb_(b.rNfb), rLoad_(b.rLoad),
       presenceScale_(def.power.presenceScale), presenceMinOhms_(def.power.presenceMinOhms),
+      rPresBottom_(b.rPresBottom), hasPresBottom_(b.hasPresBottom),
       nodeX_(b.x), nodeHt_(b.ht), nodeOut_(b.out), vHt_(def.power.supply.htDcSource), dt_(1.0 / fs),
       dphase_(2.0 * kPi * def.power.supply.mainsHz / fs) {
     if (!solver_.dcConverged) throw std::runtime_error("power amp DC operating point did not converge");
@@ -52,7 +58,9 @@ PowerAmp::PowerAmp(const AmpDef& def, double fs) : PowerAmp(build(def), def, fs)
 
 void PowerAmp::setPresence(double p) {
     presence_ = std::clamp(p, 0.0, 1.0);
-    solver_.setResistor(rPres_, std::max(presenceScale_ * (1.0 - presence_), presenceMinOhms_));
+    const double top = std::max(presenceScale_ * (1.0 - presence_), presenceMinOhms_);
+    solver_.setResistor(rPres_, top);
+    if (hasPresBottom_) solver_.setResistor(rPresBottom_, std::max(presenceScale_ - top, presenceMinOhms_));
     solver_.refresh();
 }
 

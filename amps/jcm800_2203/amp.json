@@ -2,6 +2,15 @@
   "id": "jcm800_2203",
   "name": "Marshall JCM800 2203",
 
+  "ui": [
+    { "param": "volume",   "knob": "volume", "label": "PREAMP" },
+    { "param": "bass",     "knob": "bass",   "label": "BASS" },
+    { "param": "middle",   "knob": "middle", "label": "MIDDLE" },
+    { "param": "treble",   "knob": "treble", "label": "TREBLE" },
+    { "param": "presence",                    "label": "PRESENCE" },
+    { "param": "master",   "knob": "master", "label": "MASTER" }
+  ],
+
   "preamp": {
     "netlist": "preamp.net",
     "tolerance": 2e-6,

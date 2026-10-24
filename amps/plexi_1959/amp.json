@@ -1,0 +1,76 @@
+{
+  "id": "plexi_1959",
+  "name": "Marshall 1959 Plexi",
+
+  "preamp": {
+    "netlist": "preamp.net",
+    "tolerance": 2e-6,
+    "rail_source": "VRAIL",
+    "input_source": "VIN",
+    "output_node": "o",
+    "pot_min_ohms": 100,
+    "knobs": [
+      { "name": "bright_volume", "default": 0.5, "pot": { "type": "wiper", "top": "VR_BT", "bottom": "VR_BB", "total": 1e6,   "taper": "log" } },
+      { "name": "normal_volume", "default": 0.5, "pot": { "type": "wiper", "top": "VR_NT", "bottom": "VR_NB", "total": 1e6,   "taper": "log" } },
+      { "name": "bass",          "default": 0.5, "pot": { "type": "variable", "resistor": "VR_BASS",           "total": 1e6,   "taper": "log" } },
+      { "name": "middle",        "default": 0.6, "pot": { "type": "wiper", "top": "VR_MT", "bottom": "VR_MB", "total": 25e3,  "taper": "linear" } },
+      { "name": "treble",        "default": 0.6, "pot": { "type": "wiper", "top": "VR_TT", "bottom": "VR_TB", "total": 250e3, "taper": "linear" } }
+    ],
+    "source_ohms": { "resistors": ["RSRC"], "default": 7000, "min": 10 },
+    "jacks": [
+      { "name": "bright",   "drive": "VIN", "resistors": { "SW_BRIGHT": 1,    "SW_NORMAL": 1e12 } },
+      { "name": "normal",   "drive": "VIN", "resistors": { "SW_BRIGHT": 1e12, "SW_NORMAL": 1 } },
+      { "name": "jumpered", "drive": "VIN", "resistors": { "SW_BRIGHT": 1,    "SW_NORMAL": 1 } }
+    ]
+  },
+
+  "ui": [
+    { "param": "volume",  "knob": "bright_volume", "label": "BRIGHT" },
+    { "param": "volume2", "knob": "normal_volume", "label": "NORMAL" },
+    { "param": "bass",    "knob": "bass",          "label": "BASS" },
+    { "param": "middle",  "knob": "middle",        "label": "MIDDLE" },
+    { "param": "treble",  "knob": "treble",        "label": "TREBLE" },
+    { "param": "presence",                          "label": "PRESENCE" }
+  ],
+
+  "power": {
+    "netlist": "poweramp.net",
+    "tolerance": 1e-4,
+    "input_source": "VAUDIO",
+    "ht_source": "VHT",
+    "ht_node": "a",
+    "rail_node": "x",
+    "output_node": "t16",
+    "load_resistor": "RLOAD",
+    "nfb_resistor": "R_NFB",
+    "presence": { "resistor": "VR_PT", "complement": "VR_PB", "scale": 5e3, "min_ohms": 50, "default": 0.5 },
+    "supply": {
+      "mains_hz": 50,
+      "vac_peak": 520,
+      "rect_source_ohms": 60,
+      "ht_dc_source": 490,
+      "rect_drop": 1.4,
+      "reservoir_farads": 100e-6,
+      "tie_ohms": 1.0,
+      "settle_seconds": 0.15
+    }
+  },
+
+  "lite": {
+    "base_gain_db": 17.2276,
+    "high_pass_hz": 1.0,
+    "shelf_hz": 563.829,
+    "presence_db": [0.0, 1.64402, 3.83459, 6.91482, 11.7854],
+    "sag_table": [[0, 0], [2.54648, 0.382793], [5.09296, 1.51047], [9.5493, 5.06446], [15.9155, 12.5326],
+                  [22.2817, 21.0991], [28.6479, 29.323], [35.0141, 36.3171], [44.5634, 39.6208],
+                  [57.2958, 42.2274], [82.7606, 44.0156], [127.324, 44.8645]],
+    "rail_x_idle": 345.119,
+    "rail_sag_fraction": 0.58,
+    "ceiling_light": 60.1536,
+    "ceiling_heavy": 40.3464,
+    "ceiling_decay": 142.733,
+    "knee": 26.6561,
+    "sag_attack_s": 0.010,
+    "sag_release_s": 0.060
+  }
+}

@@ -1,6 +1,13 @@
 # Embeds every amp folder (amp.json + *.net) into a static library, so the plugin needs no files
-# next to it. Adding an amp = adding a folder here and listing it below.
-set(AES_AMP_FOLDERS jcm800_2203)
+# next to it. Adding an amp = adding a folder with an amp.json; nothing else to register.
+file(GLOB _amp_jsons RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}" CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/*/amp.json")
+set(AES_AMP_FOLDERS "")
+foreach(_j IN LISTS _amp_jsons)
+  get_filename_component(_dir "${_j}" DIRECTORY)
+  list(APPEND AES_AMP_FOLDERS "${_dir}")
+endforeach()
+list(SORT AES_AMP_FOLDERS)
+message(STATUS "AES amps: ${AES_AMP_FOLDERS}")
 
 set(_gen "${CMAKE_CURRENT_BINARY_DIR}/embedded_amp_files.cpp")
 set(_body "")

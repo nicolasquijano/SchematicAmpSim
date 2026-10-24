@@ -54,6 +54,8 @@ struct PowerDef {
     double tolerance = 1e-4;
     std::string inputSource, htSource, htNode, railNode, outputNode, loadResistor, nfbResistor;
     std::string presenceResistor;
+    // Optional second section of a presence pot: kept at (scale - top), so the pot total is constant.
+    std::string presenceComplement;
     double presenceScale = 22e3, presenceMinOhms = 50, presenceDefault = 0.5;
     SupplyDef supply;
 };
@@ -68,8 +70,16 @@ struct LiteParams {
     double sagAttackS = 0.010, sagReleaseS = 0.060;
 };
 
+// One knob on the plugin's panel. `param` is the plugin-level parameter slot that drives it
+// (volume, volume2, bass, middle, treble, presence, master); `knob` names the preamp knob it moves
+// (empty for presence, which belongs to the power amp).
+struct UiKnob {
+    std::string param, knob, label;
+};
+
 struct AmpDef {
     std::string id, name;
+    std::vector<UiKnob> ui;
     PreampDef preamp;
     PowerDef power;
     LiteParams lite;

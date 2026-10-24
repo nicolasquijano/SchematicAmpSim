@@ -1,0 +1,75 @@
+* Marshall 1959 "Super Lead" 100 W (Unicord drawing 70-6-11, July 1970, EL34 version) preamp:
+* V1 (two independent gain stages: bright and normal channel), their volume pots mixed through
+* 470k into V2a, V2b cathode follower, and the classic Marshall tone stack. Transcribed from
+* thetubestore.com/marshall-jmp-superlead-100w-1959-schematic (page 3).
+*
+* Reading notes: the bright channel (top two jacks) has the 2.7k/0.68u cathode, a 0.0022u coupling
+* cap and the 0.005u + 500p treble bypass on its volume pot; the normal channel has 820/250u and
+* a 0.022u coupling cap. Each jack pair is modelled as one input; "jumpered" feeds both channels.
+
+.nodes x nb na gin in jb jn g1b g1n pb pn kb kn cb cn wb wn g2 p2a k2a k2b m t o u v wm
+
+* 375 V rail (node x): driven from the power amp at run time; 375 V is the standalone default.
+V VRAIL x 100 375
+* The guitar behind a variable source resistance, then the jack switches.
+I VIN gin 1
+R RSRC gin in 7k
+
+* Supply filtering: 10k/1W + 50 uF per stage (x -> V2 rail -> V1 rail).
+R R_B x nb 10k
+C C_NB nb 0 50u
+R R_A nb na 10k
+C C_NA na 0 50u
+
+* Jacks. SW_* are the channel selector (closed 1 ohm / open 1e12), set by the jack modes.
+R SW_BRIGHT in jb 1
+R RLEAK_B jb 0 1M
+R R68_B jb g1b 68k
+R SW_NORMAL in jn 1e12
+R RLEAK_N jn 0 1M
+R R68_N jn g1n 68k
+
+* V1 right half: bright channel.
+T V1B g1b pb kb ECC83
+R R_PB na pb 100k
+R RK_B kb 0 2.7k
+C CK_B kb 0 0.68u
+C C_B pb cb 2.2n
+C C_BRIGHT cb wb 5n
+R VR_BT cb wb 1
+R VR_BB wb 0 1
+R R470_B wb g2 470k
+C C500 g2 wb 500p
+
+* V1 left half: normal channel.
+T V1A g1n pn kn ECC83
+R R_PN na pn 100k
+R RK_N kn 0 820
+C CK_N kn 0 250u
+C C_N pn cn 22n
+R VR_NT cn wn 1
+R VR_NB wn 0 1
+R R470_N wn g2 470k
+
+* V2a gain stage and V2b cathode follower (plate on the rail).
+T V2A g2 p2a k2a ECC83
+R R_P2A nb p2a 100k
+R RK2A k2a 0 820
+C CK2A k2a 0 0.68u
+T V2B p2a nb k2b ECC83
+R R13 k2b 0 100k
+
+* Tone stack: 500p + 33k from the follower, treble 250k pot (wiper = output), bass 1M rheostat,
+* middle 25k pot, two 0.022u caps (same topology as the JCM800's).
+R R33 k2b m 33k
+C C500T k2b t 500p
+R VR_TT t o 1
+R VR_TB o u 1
+C C022A m u 22n
+R VR_BASS u v 1
+R VR_MT v wm 1
+R VR_MB wm 0 1
+C C022B m wm 22n
+
+* Load of the phase-inverter input network.
+R RPI o 0 1M

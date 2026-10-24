@@ -32,6 +32,7 @@ public:
 private:
     struct Built;
     PowerAmp(Built&& b, const AmpDef& def, double fs);
+    // Dimensions ordered so the member initialisers below stay in declaration order.
     static Built build(const AmpDef& def);
 
     Solver solver_;
@@ -39,6 +40,8 @@ private:
     SrcId srcAudio_, srcHt_;
     ResId rPres_, rNfb_, rLoad_;
     double presenceScale_, presenceMinOhms_;
+    ResId rPresBottom_;
+    bool hasPresBottom_;
     Node nodeX_, nodeHt_, nodeOut_;
     double vHt_;  // reservoir voltage
     double dt_;
