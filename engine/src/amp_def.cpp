@@ -93,12 +93,14 @@ PreampDef parsePreamp(const json& j, const FileReader& read) {
     for (const auto& jk : need(j, "jacks", "preamp")) {
         JackDef jd;
         jd.name = str(jk, "name", "preamp.jacks");
+        jd.label = jk.contains("label") ? str(jk, "label", "preamp.jacks." + jd.name) : jd.name;
         jd.drive = str(jk, "drive", "preamp.jacks." + jd.name);
         for (const auto& [name, ohms] : need(jk, "resistors", "preamp.jacks." + jd.name).items())
             jd.resistors.push_back({name, ohms.get<double>()});
         p.jacks.push_back(std::move(jd));
     }
     if (p.jacks.empty()) bad("preamp.jacks", "at least one jack is required");
+    if (j.contains("jack_label")) p.jackLabel = str(j, "jack_label", "preamp");
     return p;
 }
 

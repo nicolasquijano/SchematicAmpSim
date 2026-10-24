@@ -10,6 +10,7 @@
     "input_source": "VIN",
     "output_node": "o",
     "pot_min_ohms": 100,
+    "jack_label": "CHANNEL",
     "knobs": [
       { "name": "bright_volume", "default": 0.5, "pot": { "type": "wiper", "top": "VR_BT", "bottom": "VR_BB", "total": 1e6,   "taper": "log" } },
       { "name": "normal_volume", "default": 0.5, "pot": { "type": "wiper", "top": "VR_NT", "bottom": "VR_NB", "total": 1e6,   "taper": "log" } },
@@ -19,9 +20,9 @@
     ],
     "source_ohms": { "resistors": ["RSRC"], "default": 7000, "min": 10 },
     "jacks": [
-      { "name": "bright",   "drive": "VIN", "resistors": { "SW_BRIGHT": 1,    "SW_NORMAL": 1e12 } },
-      { "name": "normal",   "drive": "VIN", "resistors": { "SW_BRIGHT": 1e12, "SW_NORMAL": 1 } },
-      { "name": "jumpered", "drive": "VIN", "resistors": { "SW_BRIGHT": 1,    "SW_NORMAL": 1 } }
+      { "name": "bright",   "label": "Bright",   "drive": "VIN", "resistors": { "SW_BRIGHT": 1,    "SW_NORMAL": 1e12 } },
+      { "name": "normal",   "label": "Normal",   "drive": "VIN", "resistors": { "SW_BRIGHT": 1e12, "SW_NORMAL": 1 } },
+      { "name": "jumpered", "label": "Jumpered", "drive": "VIN", "resistors": { "SW_BRIGHT": 1,    "SW_NORMAL": 1 } }
     ]
   },
 

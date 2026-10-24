@@ -68,6 +68,16 @@ TEST_CASE("every ui knob of every amp points at a real preamp knob") {
     }
 }
 
+TEST_CASE("selector captions and labels come from each amp") {
+    const AmpDef afd = loadEmbeddedAmp("afd100"), plexi = loadEmbeddedAmp("plexi_1959"), jcm = loadEmbeddedAmp("jcm800_2203");
+    CHECK(afd.preamp.jackLabel == "MODE");
+    CHECK(afd.preamp.jacks[0].label == "Normal");
+    CHECK(afd.preamp.jacks[1].label == "AFD");
+    CHECK(plexi.preamp.jackLabel == "CHANNEL");
+    CHECK(jcm.preamp.jackLabel == "INPUT JACK");
+    CHECK(jcm.preamp.jacks[1].label == "Low");
+}
+
 TEST_CASE("amp list order is stable: saved projects store the index") {
     const auto ids = embeddedAmpIds();
     REQUIRE(ids.size() >= 3);

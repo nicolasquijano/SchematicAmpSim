@@ -19,6 +19,7 @@
     "input_source": "VIN",
     "output_node": "y",
     "pot_min_ohms": 100,
+    "jack_label": "INPUT JACK",
     "knobs": [
       { "name": "volume", "default": 0.6, "pot": { "type": "wiper", "top": "VR1T", "bottom": "VR1B", "total": 1e6,   "taper": "log" } },
       { "name": "bass",   "default": 0.5, "pot": { "type": "variable", "resistor": "VR5",             "total": 1e6,   "taper": "log" } },
@@ -28,8 +29,8 @@
     ],
     "source_ohms": { "resistors": ["RSRC", "RSRC_LOW"], "default": 7000, "min": 10 },
     "jacks": [
-      { "name": "high", "drive": "VIN",  "resistors": { "SW_C3": 1,    "SW_LOW": 1e12 } },
-      { "name": "low",  "drive": "VLOW", "resistors": { "SW_C3": 1e12, "SW_LOW": 1 } }
+      { "name": "high", "label": "High", "drive": "VIN",  "resistors": { "SW_C3": 1,    "SW_LOW": 1e12 } },
+      { "name": "low",  "label": "Low",  "drive": "VLOW", "resistors": { "SW_C3": 1e12, "SW_LOW": 1 } }
     ]
   },
 

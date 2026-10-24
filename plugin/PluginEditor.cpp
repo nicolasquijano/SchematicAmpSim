@@ -150,10 +150,8 @@ void AesEditor::showAmp(int index) {
     }
 
     jack_.clear(juce::dontSendNotification);
-    for (std::size_t j = 0; j < def.preamp.jacks.size(); ++j) {
-        juce::String name(def.preamp.jacks[j].name);
-        jack_.addItem(name.substring(0, 1).toUpperCase() + name.substring(1), int(j) + 1);
-    }
+    for (std::size_t j = 0; j < def.preamp.jacks.size(); ++j) jack_.addItem(juce::String(def.preamp.jacks[j].label), int(j) + 1);
+    jackCaption_.setText(juce::String(def.preamp.jackLabel), juce::dontSendNotification);
     const int jackNow = int(processor_.apvts.getRawParameterValue(ids::jack)->load() + 0.5f);
     jack_.setSelectedItemIndex(juce::jlimit(0, int(def.preamp.jacks.size()) - 1, jackNow), juce::dontSendNotification);
     resized();

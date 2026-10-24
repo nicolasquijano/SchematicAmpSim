@@ -21,6 +21,7 @@
     "input_source": "VIN",
     "output_node": "mo",
     "pot_min_ohms": 100,
+    "jack_label": "MODE",
     "knobs": [
       { "name": "volume", "default": 0.6, "pot": { "type": "wiper", "top": "VR1_T", "bottom": "VR1_B", "total": 1e6,   "taper": "log" } },
       { "name": "bass",   "default": 0.5, "pot": { "type": "wiper", "top": "VR5_T", "bottom": "VR5_B", "total": 1e6,   "taper": "log" } },
@@ -30,8 +31,8 @@
     ],
     "source_ohms": { "resistors": ["RSRC"], "default": 7000, "min": 10 },
     "jacks": [
-      { "name": "normal", "drive": "VIN", "resistors": { "SW_RL3B": 1e12, "SW_RL1B_N": 1,    "SW_RL1B_A": 1e12, "SW_RL1C": 1e12 } },
-      { "name": "afd",    "drive": "VIN", "resistors": { "SW_RL3B": 1,    "SW_RL1B_N": 1e12, "SW_RL1B_A": 1,    "SW_RL1C": 1 } }
+      { "name": "normal", "label": "Normal", "drive": "VIN", "resistors": { "SW_RL3B": 1e12, "SW_RL1B_N": 1,    "SW_RL1B_A": 1e12, "SW_RL1C": 1e12 } },
+      { "name": "afd",    "label": "AFD",    "drive": "VIN", "resistors": { "SW_RL3B": 1,    "SW_RL1B_N": 1e12, "SW_RL1B_A": 1,    "SW_RL1C": 1 } }
     ]
   },
 

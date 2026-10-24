@@ -28,6 +28,7 @@ struct KnobDef {
 
 struct JackDef {
     std::string name;
+    std::string label;                          // shown in the editor ("AFD"); defaults to `name`
     std::string drive;                          // source that carries the guitar for this jack
     std::vector<std::pair<std::string, double>> resistors;  // switch resistors to set
 };
@@ -52,6 +53,7 @@ struct PreampDef {
     std::vector<std::string> sourceResistors;
     double sourceOhmsDefault = 7000, sourceOhmsMin = 10;
     std::vector<JackDef> jacks;
+    std::string jackLabel = "INPUT JACK";  // caption of the selector: "MODE", "CHANNEL", ...
 };
 
 struct SupplyDef {
