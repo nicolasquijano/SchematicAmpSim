@@ -1,0 +1,16 @@
+full_clean kind=full fs=96000 volume=0.2 bass=0.5 middle=0.5 treble=0.6 master=0.5 presence=0.5 jack=high n=9600
+lite_clean kind=lite fs=96000 volume=0.2 bass=0.5 middle=0.5 treble=0.6 master=0.5 presence=0.5 jack=high n=9600
+full_crunch kind=full fs=96000 volume=0.6 bass=0.5 middle=0.5 treble=0.6 master=0.5 presence=0.5 jack=high n=9600
+lite_crunch kind=lite fs=96000 volume=0.6 bass=0.5 middle=0.5 treble=0.6 master=0.5 presence=0.5 jack=high n=9600
+full_lead kind=full fs=96000 volume=1 bass=0.6 middle=0.4 treble=0.7 master=0.8 presence=0.7 jack=high n=9600
+lite_lead kind=lite fs=96000 volume=1 bass=0.6 middle=0.4 treble=0.7 master=0.8 presence=0.7 jack=high n=9600
+full_low_jack kind=full fs=96000 volume=0.6 bass=0.5 middle=0.5 treble=0.6 master=0.5 presence=0.5 jack=low n=9600
+lite_low_jack kind=lite fs=96000 volume=0.6 bass=0.5 middle=0.5 treble=0.6 master=0.5 presence=0.5 jack=low n=9600
+preamp_small kind=preamp fs=96000 volume=0.6 bass=0.5 middle=0.5 treble=0.6 master=0.5 rail=410 n=9600
+preamp_mid kind=preamp fs=96000 volume=0.6 bass=0.5 middle=0.5 treble=0.6 master=0.5 rail=410 n=9600
+ts_low kind=ts fs=96000 drive=0.2 tone=0.5 level=0.5 n=9600
+ts_mid kind=ts fs=96000 drive=0.5 tone=0.5 level=0.5 n=9600
+ts_hot kind=ts fs=96000 drive=1 tone=0.8 level=0.7 n=9600
+oversample_1 kind=oversample fs=48000 stages=1 n=9600
+oversample_2 kind=oversample fs=48000 stages=2 n=9600
+cab kind=cab fs=48000 n=9600
