@@ -1,17 +1,14 @@
 #include <catch2/catch_test_macros.hpp>
 #include <cmath>
 
-#include "aes/amp2203.h"
+#include "aes/amp.h"
 #include "aes/ts808_fast.h"
+#include "amp_fixture.h"
 #include "golden_io.h"
 
 using namespace aes;
 
 namespace {
-
-Controls controlsOf(const golden::Case& c) {
-    return {c.num("volume"), c.num("bass"), c.num("middle"), c.num("treble"), c.num("master")};
-}
 
 // Smooth cases must agree sample for sample; saturated ones are chaotic enough (continuation
 // fallback amplifies last-bit differences) that level, band energy and THD are compared instead.
@@ -50,9 +47,10 @@ double db(double a, double b) { return 10.0 * std::log10((a + 1e-300) / (b + 1e-
 template <class AmpT>
 void checkAmp(const char* name, bool smooth) {
     const auto c = golden::load(name);
-    AmpT amp(c.num("fs"));
-    amp.setControls(controlsOf(c), c.num("presence"));
-    amp.setInputMode(c.str("jack") == "high" ? InputMode::High : InputMode::Low);
+    const auto& def = jcm800();
+    AmpT amp(def, c.num("fs"));
+    amp.setKnobs(knobsOf(def, c), c.num("presence"));
+    amp.setJack(def.jackIndex(c.str("jack")));
     std::vector<double> y;
     for (double x : c.in) y.push_back(amp.process(x));
     const auto cmp = golden::compare(y, c.out);
@@ -73,7 +71,7 @@ void checkAmp(const char* name, bool smooth) {
 }  // namespace
 
 TEST_CASE("power amp DC state matches Rust") {
-    PowerAmp2203 pa(96000.0);
+    PowerAmp pa(jcm800(), 96000.0);
     const auto ref = golden::loadDc("dc_poweramp.txt");
     REQUIRE(ref.size() == pa.solver().nodeCount());
     // The dump is taken after the 0.15 s settle onto the rectified waveform, so allow the
@@ -85,17 +83,17 @@ TEST_CASE("power amp DC state matches Rust") {
 }
 
 TEST_CASE("full amp matches Rust") {
-    checkAmp<Amp2203>("full_clean", true);
-    checkAmp<Amp2203>("full_crunch", false);
-    checkAmp<Amp2203>("full_lead", false);
-    checkAmp<Amp2203>("full_low_jack", false);
+    checkAmp<FullAmp>("full_clean", true);
+    checkAmp<FullAmp>("full_crunch", false);
+    checkAmp<FullAmp>("full_lead", false);
+    checkAmp<FullAmp>("full_low_jack", false);
 }
 
 TEST_CASE("lite amp matches Rust") {
-    checkAmp<AmpLite2203>("lite_clean", true);
-    checkAmp<AmpLite2203>("lite_crunch", false);
-    checkAmp<AmpLite2203>("lite_lead", false);
-    checkAmp<AmpLite2203>("lite_low_jack", false);
+    checkAmp<LiteAmp>("lite_clean", true);
+    checkAmp<LiteAmp>("lite_crunch", false);
+    checkAmp<LiteAmp>("lite_lead", false);
+    checkAmp<LiteAmp>("lite_low_jack", false);
 }
 
 TEST_CASE("fast Tube Screamer matches Rust") {

@@ -19,11 +19,16 @@ FetchContent_Declare(Catch2
   GIT_REPOSITORY https://github.com/catchorg/Catch2.git
   GIT_TAG        v3.16.1
   GIT_SHALLOW    TRUE)
-FetchContent_MakeAvailable(JUCE Catch2)
+FetchContent_Declare(nlohmann_json
+  GIT_REPOSITORY https://github.com/nlohmann/json.git
+  GIT_TAG        v3.11.3
+  GIT_SHALLOW    TRUE)
+FetchContent_MakeAvailable(JUCE Catch2 nlohmann_json)
 
 include(CTest)
 
 add_subdirectory(engine)
+add_subdirectory(amps)
 add_subdirectory(plugin)
 add_subdirectory(tests)
 add_subdirectory(tools)

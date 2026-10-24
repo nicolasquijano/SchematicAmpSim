@@ -1,0 +1,65 @@
+{
+  "id": "jcm800_2203",
+  "name": "Marshall JCM800 2203",
+
+  "preamp": {
+    "netlist": "preamp.net",
+    "tolerance": 2e-6,
+    "rail_source": "VRAIL",
+    "input_source": "VIN",
+    "output_node": "y",
+    "pot_min_ohms": 100,
+    "knobs": [
+      { "name": "volume", "default": 0.6, "pot": { "type": "wiper", "top": "VR1T", "bottom": "VR1B", "total": 1e6,   "taper": "log" } },
+      { "name": "bass",   "default": 0.5, "pot": { "type": "variable", "resistor": "VR5",             "total": 1e6,   "taper": "log" } },
+      { "name": "middle", "default": 0.5, "pot": { "type": "wiper", "top": "VR4T", "bottom": "VR4B", "total": 22e3,  "taper": "linear" } },
+      { "name": "treble", "default": 0.6, "pot": { "type": "wiper", "top": "VR3T", "bottom": "VR3B", "total": 220e3, "taper": "linear" } },
+      { "name": "master", "default": 0.5, "pot": { "type": "wiper", "top": "VR2T", "bottom": "VR2B", "total": 1e6,   "taper": "log" } }
+    ],
+    "source_ohms": { "resistors": ["RSRC", "RSRC_LOW"], "default": 7000, "min": 10 },
+    "jacks": [
+      { "name": "high", "drive": "VIN",  "resistors": { "SW_C3": 1,    "SW_LOW": 1e12 } },
+      { "name": "low",  "drive": "VLOW", "resistors": { "SW_C3": 1e12, "SW_LOW": 1 } }
+    ]
+  },
+
+  "power": {
+    "netlist": "poweramp.net",
+    "tolerance": 1e-4,
+    "input_source": "VAUDIO",
+    "ht_source": "VHT",
+    "ht_node": "a",
+    "rail_node": "x",
+    "output_node": "t16",
+    "load_resistor": "RLOAD",
+    "nfb_resistor": "R22",
+    "presence": { "resistor": "VR6", "scale": 22e3, "min_ohms": 50, "default": 0.5 },
+    "supply": {
+      "mains_hz": 50,
+      "vac_peak": 538,
+      "rect_source_ohms": 42,
+      "ht_dc_source": 490,
+      "rect_drop": 1.4,
+      "reservoir_farads": 100e-6,
+      "tie_ohms": 1.0,
+      "settle_seconds": 0.15
+    }
+  },
+
+  "lite": {
+    "base_gain_db": 25.72,
+    "high_pass_hz": 21.9,
+    "shelf_hz": 564.0,
+    "presence_db": [0.0, 0.21, 0.58, 1.42, 5.06],
+    "sag_table": [[0, 0], [6, 0.8], [12.3, 5.6], [18.4, 12.6], [24.6, 20.7], [30.6, 29.2], [36.3, 37.4],
+                  [49, 47.8], [61, 50.7], [86, 55.6], [123, 58.5], [185, 59.8], [307, 60.1]],
+    "rail_x_idle": 391.0,
+    "rail_sag_fraction": 0.58,
+    "ceiling_light": 66.5,
+    "ceiling_heavy": 48.5,
+    "ceiling_decay": 119.7,
+    "knee": 6.44,
+    "sag_attack_s": 0.010,
+    "sag_release_s": 0.060
+  }
+}

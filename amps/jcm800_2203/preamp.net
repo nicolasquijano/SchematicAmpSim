@@ -1,0 +1,75 @@
+* Marshall JCM800 2203 preamp (V1a, V1b, V2a, V2b cathode follower, tone stack, master),
+* transcribed from the factory schematic. Element order is part of the contract: the solver's
+* floating-point sums follow it, and the parity tests compare against the original Rust build.
+*
+* Units: k M, m u n p. Node "0" is ground. See engine/include/aes/netlist.h for the format.
+
+* Node numbering (golden DC dumps list nodes in this order); the Low-jack nodes come last.
+.nodes x b1 in g1 p1 k1 vt vp w p1b k1b g2 g2a p2a k2a k2b m t w3 n1 n2 wm y c3n lowin gin lowsrc
+
+* Rail (node X): driven from the power amp at run time; 410 V is the standalone default.
+V VRAIL x 100 410
+* The guitar (or the pedal in front of the amp) behind a variable source resistance.
+I VIN gin 1
+R RSRC gin in 7k
+
+* Supply decoupling: R8 and the two 50 uF sections of C21.
+R R8 x b1 10k
+C C21B b1 0 50u
+C C21A x 0 50u
+
+* Input and V1a.
+R R2 in 0 1M
+R R3 in g1 68k
+T V1A g1 p1 k1 ECC83
+R R4 b1 p1 100k
+R R1 k1 0 2.7k
+C C1 k1 0 0.68u
+C C2 p1 k1 100p
+
+* Coupling to the volume network. SW_C3 is the Low jack's normally-closed contact; with the
+* guitar in the Low jack the guitar enters at the volume network and C3 is opened.
+C C3 p1 c3n 0.022u
+R SW_C3 c3n vt 1
+S VLOW lowsrc 1 0
+R RSRC_LOW lowsrc lowin 7k
+R SW_LOW lowin vt 1e12
+R R5 vt vp 470k
+C C4 vt vp 470p
+C C5 vp w 1n
+R VR1T vp w 1
+R VR1B w 0 1
+
+* V1b.
+T V1B w p1b k1b ECC83
+R R7 b1 p1b 100k
+R R6 k1b 0 10k
+
+* C7 into V2a's divider.
+C C7 p1b g2 0.022u
+R R10 g2 g2a 470k
+C C8 g2 g2a 470p
+R R11 g2a 0 470k
+
+* V2a and the V2b cathode follower (plate on the rail).
+T V2A g2a p2a k2a ECC83
+R R12 x p2a 100k
+R R9 k2a 0 820
+T V2B p2a x k2b ECC83
+R R13 k2b 0 100k
+
+* Tone stack.
+R R15 k2b m 33k
+C C10 k2b t 470p
+R VR3T t w3 1
+R VR3B w3 n1 1
+C C11 m n1 0.022u
+R VR5 n1 n2 1
+R VR4T n2 wm 1
+R VR4B wm 0 1
+C C12 m wm 0.022u
+
+* Master volume and the load it sees.
+R VR2T w3 y 1
+R VR2B y 0 1
+R RMASTERLOAD y 0 1M

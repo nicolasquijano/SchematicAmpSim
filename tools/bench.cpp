@@ -5,7 +5,8 @@
 #include <cstdio>
 #include <vector>
 
-#include "aes/amp2203.h"
+#include "aes/amp.h"
+#include "aes/embedded_amps.h"
 #include "aes/ts808_fast.h"
 
 namespace {
@@ -38,7 +39,9 @@ double percent(F&& run, double seconds) {
 int main() {
     constexpr double fs = 96000.0, seconds = 3.0;
     const std::size_t n = std::size_t(fs * seconds);
-    struct Case { const char* name; aes::Controls ctl; double presence, amp; };
+    const aes::AmpDef def = aes::loadEmbeddedAmp("jcm800_2203");
+    // Knob order of jcm800_2203: volume, bass, middle, treble, master.
+    struct Case { const char* name; std::vector<double> knobs; double presence, amp; };
     const Case cases[] = {
         {"clean", {0.2, 0.5, 0.5, 0.6, 0.5}, 0.5, 0.05},
         {"crunch", {0.6, 0.5, 0.5, 0.6, 0.5}, 0.5, 0.15},
@@ -47,11 +50,11 @@ int main() {
     double sink = 0;
     for (const auto& c : cases) {
         const auto in = signal(c.amp, n, fs);
-        aes::Amp2203 full(fs);
-        full.setControls(c.ctl, c.presence);
+        aes::FullAmp full(def, fs);
+        full.setKnobs(c.knobs, c.presence);
         const double pf = percent([&] { for (double x : in) sink += full.process(x); }, seconds);
-        aes::AmpLite2203 lite(fs);
-        lite.setControls(c.ctl, c.presence);
+        aes::LiteAmp lite(def, fs);
+        lite.setKnobs(c.knobs, c.presence);
         const double pl = percent([&] { for (double x : in) sink += lite.process(x); }, seconds);
         std::printf("%-7s full %5.1f %%   lite %5.1f %%\n", c.name, pf, pl);
     }

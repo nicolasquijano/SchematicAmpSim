@@ -1,13 +1,15 @@
 #include <catch2/catch_test_macros.hpp>
 #include <cmath>
 
-#include "aes/preamp2203.h"
+#include "aes/preamp.h"
+#include "amp_fixture.h"
 #include "golden_io.h"
 
 using namespace aes;
 
 TEST_CASE("preamp DC operating point matches Rust to 1e-6 V") {
-    Preamp2203 pre(96000.0, kDefaultRailVolts, TriodeModel::ecc83());
+    const auto& def = jcm800();
+    Preamp pre(def, 96000.0, 410.0);
     REQUIRE(pre.solver().dcConverged);
     const auto ref = golden::loadDc("dc_preamp.txt");
     REQUIRE(ref.size() == pre.solver().nodeCount());
@@ -19,10 +21,11 @@ TEST_CASE("preamp DC operating point matches Rust to 1e-6 V") {
 }
 
 TEST_CASE("preamp transient matches Rust") {
+    const auto& def = jcm800();
     for (const char* name : {"preamp_small", "preamp_mid"}) {
         const auto c = golden::load(name);
-        Preamp2203 pre(c.num("fs"), c.num("rail"), TriodeModel::ecc83());
-        pre.setControls({c.num("volume"), c.num("bass"), c.num("middle"), c.num("treble"), c.num("master")});
+        Preamp pre(def, c.num("fs"), c.num("rail"));
+        pre.setKnobs(knobsOf(def, c));
         std::vector<double> y;
         for (double x : c.in) y.push_back(pre.process(x));
         const auto cmp = golden::compare(y, c.out);
@@ -30,4 +33,14 @@ TEST_CASE("preamp transient matches Rust") {
         CHECK(pre.solver().newtonFailures == 0);
         CHECK(cmp.errDb() < -120.0);
     }
+}
+
+TEST_CASE("knob and jack names resolve, bad names are rejected") {
+    const auto& def = jcm800();
+    CHECK(def.knobIndex("volume") == 0);
+    CHECK(def.jackIndex("low") == 1);
+    CHECK_THROWS(def.knobIndex("gain"));
+    Preamp pre(def, 96000.0, 410.0);
+    CHECK(pre.knobCount() == 5);
+    CHECK_THROWS(pre.setKnobs({0.1, 0.2}));
 }

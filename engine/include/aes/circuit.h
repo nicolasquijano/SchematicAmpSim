@@ -58,6 +58,7 @@ public:
     void opamp(Node plus, Node minus, Node out, Node vref, const OpampModel& model);
     SrcId source(Node node, double ohms, double dc);
     SrcId supply(Node node, double volts, double ohms) { return source(node, ohms, volts); }
+    void setSourceDc(SrcId id, double dc) { sources_[id.i].dc = dc; }
     SrcId input(Node node, double ohms);
     // windings[i] = (from, to); l = full symmetric inductance matrix, row-major, henries.
     void coupledInductors(const std::vector<std::pair<Node, Node>>& windings, const std::vector<double>& l);

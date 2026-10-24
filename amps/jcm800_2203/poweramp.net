@@ -1,0 +1,74 @@
+* Marshall JCM800 2203 power amp, transcribed from the factory schematic (drawing 2203 STD,
+* output stage & PSU page): long-tailed ECC83 phase inverter with the NFB/presence network,
+* four EL34 as two parallel pairs, the output transformer as five coupled windings, and the HT
+* supply solved together with the audio.
+
+.nodes pin ga kc f1 f2 gb pa pb dt db bias g45 g67 s45 s67 sb pt pbm npt npb a t16 t8 bk x nb pr rv
+
+S VAUDIO pin 50k 0
+S VHT a 1 490
+S VBIAS nb 54k -93.6
+
+* Phase inverter V3: input on the first grid, feedback on the second.
+C C9 pin ga 0.022u
+R R17 ga f1 1M
+R R16 kc f1 470
+R R19 f1 gb 1M
+C C15 gb f2 0.1u
+R R20 f1 f2 10k
+R R23 f2 0 4.7k
+T V3A ga pa kc ECC83
+T V3B gb pb kc ECC83
+R R18 x pa 82k
+R R21 x pb 100k
+C C14 pa dt 0.022u
+C C16 pb db 0.022u
+C C18 dt db 47p
+
+* Presence: C17 in series with VR6 (variable resistor) to ground, on the feedback node.
+C C17 f2 pr 0.1u
+R VR6 pr 0 5k
+
+* Power-tube grid return and fixed bias.
+R R24 dt bias 220k
+R R25 bias db 220k
+C C19 bias 0 10u
+R R27 bias nb 15k
+R R26 bias rv 47k
+R RV1 rv 0 11k
+C C20 nb 0 10u
+
+* EL34s: each pair shares grid stoppers, screen resistors and plate load.
+R R31_33 dt g45 5.6k/2
+R R32_34 db g67 5.6k/2
+P V4 g45 pt s45 0 EL34 2
+P V5 g67 pbm s67 0 EL34 2
+R R35_37 sb s45 1k/2
+R R36_38 sb s67 1k/2
+
+* Output transformer (C2668): plate-to-plate 1.9k, 3.5 H per primary half; windings are
+* primary halves, then the 16R, 8R and 4R sections of the secondary (turns relative to a half).
+R DCR_PT pt npt 40
+R DCR_PB pbm npb 40
+.param n16 = 2*1/sqrt(1900/16)
+.xfmr OT L=3.5
+  W npt a 1 pri
+  W a npb 1 pri
+  W t16 t8 0.2929*n16 sec
+  W t8 bk 0.2071*n16 sec
+  W bk 0 0.5*n16 sec
+  K pri pri 0.9998
+  K pri sec 0.9993
+  K sec sec 0.9998
+.end
+R RLOAD t16 0 16
+
+* Negative feedback from the secondary tap to the phase-inverter feedback node.
+R R22 bk f2 100k
+
+* HT supply: choke, reservoir caps, screen and preamp rails.
+R T3 a sb 100
+C C22 sb 0 100u
+R R29 sb x 10k
+C C21X x 0 50u
+R RPREAMP x 0 56k
