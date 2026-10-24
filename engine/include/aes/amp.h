@@ -36,7 +36,7 @@ public:
     }
 
     std::uint64_t newtonFailures() const {
-        std::uint64_t n = pre_.solver().newtonFailures;
+        std::uint64_t n = pre_.newtonFailures();
         if constexpr (requires { power_.solver(); }) n += power_.solver().newtonFailures;
         return n;
     }

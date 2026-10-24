@@ -49,6 +49,15 @@ PreampDef parsePreamp(const json& j, const FileReader& read) {
     p.netlist = str(j, "netlist", "preamp");
     p.netlistText = read(p.netlist);
     p.tolerance = num(j, "tolerance", "preamp");
+    if (j.contains("stages"))
+        for (const auto& s : j.at("stages")) {
+            PreampStageDef sd;
+            sd.netlist = str(s, "netlist", "preamp.stages");
+            sd.netlistText = read(sd.netlist);
+            sd.linkFrom = str(s, "link_from", "preamp.stages." + sd.netlist);
+            sd.linkSource = str(s, "link_source", "preamp.stages." + sd.netlist);
+            p.stages.push_back(std::move(sd));
+        }
     p.railSource = str(j, "rail_source", "preamp");
     p.inputSource = str(j, "input_source", "preamp");
     p.outputNode = str(j, "output_node", "preamp");

@@ -15,6 +15,7 @@
 
   "preamp": {
     "netlist": "preamp.net",
+    "stages": [ { "netlist": "master.net", "link_from": "so", "link_source": "VLINK" } ],
     "tolerance": 2e-6,
     "rail_source": "VRAIL",
     "input_source": "VIN",

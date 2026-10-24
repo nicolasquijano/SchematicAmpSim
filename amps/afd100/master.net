@@ -1,0 +1,48 @@
+* Marshall AFD100 preamp, second part: V8A follower, V8B recovery stage and master. Solved separately
+* from preamp.net (see its header): node `so`, the tone stack's output, is a source driven from the
+* first part. Transcribed from the same sheet (AFD100-60-02).
+
+.nodes x h4 so g8 j8 k8 o8 s8 g8b p8 k8b f8 o58 mi mo
+
+* HT3 (node x) is driven from the power amp at run time; 400 V is the standalone default. Only HT4
+* is needed here: 10k + 47u, the same filter as in preamp.net.
+V VRAIL x 100 400
+R R61 x h4 10k
+C C50 h4 0 47u
+* What the rest of the chain (R60 and the HT5..HT7 stages of preamp.net) draws from HT4 in the whole
+* circuit: 393 V / 5.1 mA.
+R R_DOWN h4 0 76.9k
+
+* The tone stack's output voltage, from the first part (behind 1 ohm: the stack's loading by V8A is
+* already negligible there).
+S VLINK so 1 0
+
+* V8A cathode follower (grid leak bootstrapped to the cathode load) and the loop-send divider.
+C C63 so g8 22n
+T V8A g8 h4 k8 ECC83
+R R97 g8 j8 100k
+R R98 k8 j8 1k
+R R91 j8 0 100k
+C C76 k8 o8 330n
+R R108 o8 s8 15k
+R R109 s8 0 1k
+
+* V8B recovery stage: R111 into the grid, 1M leak, 22u-bypassed 1k5, and the RC feedback from its
+* plate (470n + 100k, 22p across the 100k, 4M7 leak).
+R R111 o8 g8b 100k
+R R94 g8b 0 1M
+T V8B g8b p8 k8b ECC83
+R R68 h4 p8 150k
+R R92 k8b 0 1.5k
+C C65 k8b 0 22u
+C C54 p8 f8 470n
+R R76 f8 g8b 100k
+C C52 f8 g8b 22p
+R R77 f8 0 4M7
+
+* Output: 150n and 120k into the master pot (A1M), loaded by the phase-inverter input network.
+C C58 p8 o58 150n
+R R95 o58 mi 120k
+R VR2_T mi mo 1
+R VR2_B mo 0 1
+R RPI mo 0 1M

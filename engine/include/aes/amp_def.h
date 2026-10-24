@@ -32,7 +32,17 @@ struct JackDef {
     std::vector<std::pair<std::string, double>> resistors;  // switch resistors to set
 };
 
+// A later part of the preamp, solved separately: its source `linkSource` is driven every sample
+// with the voltage of node `linkFrom` of the previous part (one-way coupling: the later part does
+// not load the earlier one, so the cut belongs at a low-impedance node such as a cathode follower).
+// The netlist's S element sets the Thevenin resistance of the link.
+struct PreampStageDef {
+    std::string netlist, netlistText;
+    std::string linkFrom, linkSource;
+};
+
 struct PreampDef {
+    std::vector<PreampStageDef> stages;  // after the first netlist, in signal order
     std::string netlist;       // file name
     std::string netlistText;   // its content
     double tolerance = 2e-6;

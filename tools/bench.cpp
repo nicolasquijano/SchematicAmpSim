@@ -3,6 +3,10 @@
 #include <chrono>
 #include <cmath>
 #include <cstdio>
+#include <cstdlib>
+#include <fstream>
+#include <sstream>
+#include <string>
 #include <vector>
 
 #include "aes/amp.h"
@@ -43,8 +47,19 @@ int main() {
     struct Case { const char* name; double volume, master, amp; };
     const Case cases[] = {{"clean", 0.2, 0.5, 0.05}, {"crunch", 0.6, 0.5, 0.15}, {"lead", 1.0, 0.8, 0.3}};
     double sink = 0;
-    for (const auto& id : aes::embeddedAmpIds()) {
-        const aes::AmpDef def = aes::loadEmbeddedAmp(id);
+    std::vector<std::pair<std::string, aes::AmpDef>> amps;
+    for (const auto& id : aes::embeddedAmpIds()) amps.push_back({id, aes::loadEmbeddedAmp(id)});
+    // AES_BENCH_MONO=<path to afd100_preamp_full.net> also runs the unsplit AFD100 preamp for comparison.
+    if (const char* mono = std::getenv("AES_BENCH_MONO")) {
+        aes::AmpDef d = aes::loadEmbeddedAmp("afd100");
+        std::ifstream f(mono);
+        std::stringstream ss;
+        ss << f.rdbuf();
+        d.preamp.netlistText = ss.str();
+        d.preamp.stages.clear();
+        amps.push_back({"afd100 (monolithic preamp)", d});
+    }
+    for (const auto& [id, def] : amps) {
         std::printf("== %s\n", id.c_str());
         for (const auto& c : cases) {
             std::vector<double> knobs;
@@ -73,10 +88,10 @@ int main() {
             aes::LiteAmp lite(def, fs);
             lite.setKnobs(knobs, def.power.presenceDefault);
             const double pl = percent([&] { for (double x : in) sink += lite.process(x); }, seconds);
-            const auto& ps = full.pre().solver();
+            const auto& ps = full.pre().solver(0);
             const auto& ws = full.power().solver();
-            std::printf("  %-7s full %6.1f %%   lite %6.1f %%   | preamp %zu nodes %zu ports %.1f it/sample %llu cont | power %zu nodes %zu ports %.1f it/sample\n",
-                        c.name, pf, pl, ps.nodeCount(), ps.portCount(), double(ps.newtonIterations) / double(n),
+            std::printf("  %-7s full %6.1f %%   lite %6.1f %%   | preamp(stage 1 of %zu) %zu nodes %zu ports %.1f it/sample %llu cont | power %zu nodes %zu ports %.1f it/sample\n",
+                        c.name, pf, pl, full.pre().stageCount(), ps.nodeCount(), ps.portCount(), double(ps.newtonIterations) / double(n),
                         (unsigned long long)ps.continuationRuns, ws.nodeCount(), ws.portCount(), double(ws.newtonIterations) / double(n));
         }
     }

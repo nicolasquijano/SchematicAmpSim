@@ -1,9 +1,11 @@
 #pragma once
-// Data-driven preamp: a netlist plus the knob/jack mapping from amp.json. The knobs are pots
-// whose sections are resistors of the netlist; jacks switch resistors and choose which source
-// carries the guitar.
+// Data-driven preamp: one or more netlists plus the knob/jack mapping from amp.json. The knobs are
+// pots whose sections are resistors of the netlists; jacks switch resistors and choose which source
+// carries the guitar. With several netlists ("stages") each is solved on its own and the next one
+// is fed from a node of the previous one, which is much cheaper than one big circuit.
 
 #include <cstddef>
+#include <cstdint>
 #include <vector>
 
 #include "aes/amp_def.h"
@@ -13,7 +15,7 @@ namespace aes {
 
 class Preamp {
 public:
-    // railVolts overrides the rail supply's value in the netlist (the power amp drives it live).
+    // railVolts overrides the rail supply's value in the netlists (the power amp drives it live).
     Preamp(const AmpDef& def, double fs, double railVolts);
 
     std::size_t knobCount() const { return knobs_.size(); }
@@ -24,7 +26,9 @@ public:
     void setKnobs(const std::vector<double>& values);
 
     // Driven every sample from the power amp so the preamp feels the supply sag.
-    void setRail(double volts) { solver_.setSource(railSrc_, volts); }
+    void setRail(double volts) {
+        for (auto& s : stages_) s.solver.setSource(s.rail, volts);
+    }
     // ~7 kohm for a guitar, far less behind a pedal.
     void setSourceOhms(double ohms);
     void setJack(std::size_t jack);
@@ -33,42 +37,63 @@ public:
     // One sample: guitar volts in, master-volume output (volts) out.
     double process(double vin) {
         const Jack& j = jacks_[jack_];
+        Stage& first = stages_.front();
         if (j.drivesInput) {
-            solver_.process(vin);
+            first.solver.process(vin);
         } else {
-            solver_.setSource(j.drive, vin);  // the unused jack is grounded by its own contact
-            solver_.process(0.0);
+            first.solver.setSource(j.drive, vin);  // the unused jack is grounded by its own contact
+            first.solver.process(0.0);
         }
-        return solver_.voltage(out_);
+        for (std::size_t k = 1; k < stages_.size(); ++k) {
+            Stage& s = stages_[k];
+            s.solver.setSource(s.link, stages_[k - 1].solver.voltage(s.linkFrom));
+            s.solver.step();
+        }
+        return stages_.back().solver.voltage(out_);
     }
 
-    Solver& solver() { return solver_; }
-    const Solver& solver() const { return solver_; }
+    std::size_t stageCount() const { return stages_.size(); }
+    Solver& solver(std::size_t stage = 0) { return stages_[stage].solver; }
+    const Solver& solver(std::size_t stage = 0) const { return stages_[stage].solver; }
+    // Failed Newton solves summed over all stages.
+    std::uint64_t newtonFailures() const {
+        std::uint64_t n = 0;
+        for (const auto& s : stages_) n += s.solver.newtonFailures;
+        return n;
+    }
 
 private:
+    // A resistor of some stage's netlist.
+    struct Ref { std::size_t stage = 0; ResId id{0}; };
     struct Knob {
         PotDef::Type type;
-        ResId top{0}, bottom{0};  // Variable pots use `top`
+        Ref top, bottom;  // Variable pots use `top`
         double total;
         Taper taper;
     };
     struct Jack {
         SrcId drive{0};
         bool drivesInput = false;
-        std::vector<std::pair<ResId, double>> resistors;
+        std::vector<std::pair<Ref, double>> resistors;
     };
-    struct Built;
-    Preamp(Built&& b, const AmpDef& def, double fs);
-    static Built build(const AmpDef& def, double railVolts);
+    struct Stage {
+        Solver solver;
+        SrcId rail{0};
+        SrcId link{0};     // stages after the first: the source fed from the previous stage
+        Node linkFrom = 0;  // node of the previous stage that drives it
+    };
 
     static void potValues(const Knob& k, double value, double minOhms, double& top, double& bottom);
+    void set(const Ref& r, double ohms) { stages_[r.stage].solver.setResistor(r.id, ohms); }
+    void refreshAll() {
+        for (auto& s : stages_) s.solver.refresh();
+    }
 
-    Solver solver_;
-    SrcId railSrc_;
-    Node out_;
+    std::vector<Stage> stages_;
+    Node out_ = 0;
     double potMinOhms_;
     double sourceOhmsMin_;
-    std::vector<ResId> sourceResistors_;
+    std::vector<Ref> sourceResistors_;
     double sourceOhms_;
     std::vector<Knob> knobs_;
     std::vector<double> values_;

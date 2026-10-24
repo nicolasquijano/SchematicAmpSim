@@ -9,10 +9,12 @@ add_executable(aes_tests
   test_netlist.cpp
   test_embedded.cpp
   test_chain.cpp
-  test_amps_generic.cpp)
+  test_amps_generic.cpp
+  test_split.cpp)
 target_compile_definitions(aes_tests PRIVATE
   AES_GOLDEN_DIR="${CMAKE_SOURCE_DIR}/golden"
-  AES_AMPS_DIR="${CMAKE_SOURCE_DIR}/amps")
+  AES_AMPS_DIR="${CMAKE_SOURCE_DIR}/amps"
+  AES_TEST_DATA_DIR="${CMAKE_SOURCE_DIR}/tests/data")
 target_link_libraries(aes_tests PRIVATE aes_engine aes_amps Catch2::Catch2WithMain)
 
 # Processor tests need the plugin's shared code (JUCE); kept as a separate executable so the

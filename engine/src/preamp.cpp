@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <stdexcept>
 
 #include "aes/netlist.h"
 
@@ -19,16 +20,6 @@ double applyTaper(Taper t, double w) { return t == Taper::Log ? logTaper(w) : w;
 
 }  // namespace
 
-struct Preamp::Built {
-    ParsedNetlist net;
-    SrcId railSrc{0};
-    Node out = 0;
-    std::vector<Knob> knobs;
-    std::vector<double> values;
-    std::vector<Jack> jacks;
-    std::vector<ResId> sourceResistors;
-};
-
 // A wiper pot is two resistors sharing the wiper; "variable" is one resistor (wiper tied to an end).
 void Preamp::potValues(const Knob& k, double value, double minOhms, double& top, double& bottom) {
     const double x = applyTaper(k.taper, value);
@@ -42,56 +33,73 @@ void Preamp::potValues(const Knob& k, double value, double minOhms, double& top,
     }
 }
 
-Preamp::Built Preamp::build(const AmpDef& def, double railVolts) {
+Preamp::Preamp(const AmpDef& def, double fs, double railVolts)
+    : potMinOhms_(def.preamp.potMinOhms), sourceOhmsMin_(def.preamp.sourceOhmsMin), sourceOhms_(def.preamp.sourceOhmsDefault) {
     const PreampDef& pd = def.preamp;
-    Built b;
-    b.net = parseNetlist(pd.netlistText, pd.netlist);
-    b.railSrc = b.net.source(pd.railSource);
-    b.net.circuit.setSourceDc(b.railSrc, railVolts);
-    b.out = b.net.node(pd.outputNode);
+
+    // Parse every stage's netlist.
+    std::vector<ParsedNetlist> nets;
+    nets.push_back(parseNetlist(pd.netlistText, pd.netlist));
+    for (const auto& s : pd.stages) nets.push_back(parseNetlist(s.netlistText, s.netlist));
+
+    // A resistor name is looked up in the stages in order.
+    auto find = [&](const std::string& name) {
+        for (std::size_t i = 0; i < nets.size(); ++i)
+            if (nets[i].resistors.count(name)) return Ref{i, nets[i].resistor(name)};
+        throw std::runtime_error("amp '" + def.id + "': no resistor named '" + name + "' in any preamp netlist");
+    };
 
     for (const auto& kd : pd.knobs) {
-        Knob k{kd.pot.type, ResId{0}, ResId{0}, kd.pot.total, kd.pot.taper};
+        Knob k{kd.pot.type, {}, {}, kd.pot.total, kd.pot.taper};
         if (kd.pot.type == PotDef::Type::Wiper) {
-            k.top = b.net.resistor(kd.pot.top);
-            k.bottom = b.net.resistor(kd.pot.bottom);
+            k.top = find(kd.pot.top);
+            k.bottom = find(kd.pot.bottom);
         } else {
-            k.top = b.net.resistor(kd.pot.resistor);
+            k.top = find(kd.pot.resistor);
         }
-        b.knobs.push_back(k);
-        b.values.push_back(kd.def);
+        knobs_.push_back(k);
+        values_.push_back(kd.def);
     }
     // Pots start at their default positions so the DC point is solved with them.
-    for (std::size_t i = 0; i < b.knobs.size(); ++i) {
+    for (std::size_t i = 0; i < knobs_.size(); ++i) {
         double top, bottom;
-        potValues(b.knobs[i], b.values[i], pd.potMinOhms, top, bottom);
-        b.net.circuit.setResistor(b.knobs[i].top, top);
-        if (b.knobs[i].type == PotDef::Type::Wiper) b.net.circuit.setResistor(b.knobs[i].bottom, bottom);
+        potValues(knobs_[i], values_[i], potMinOhms_, top, bottom);
+        nets[knobs_[i].top.stage].circuit.setResistor(knobs_[i].top.id, top);
+        if (knobs_[i].type == PotDef::Type::Wiper) nets[knobs_[i].bottom.stage].circuit.setResistor(knobs_[i].bottom.id, bottom);
     }
 
-    const SrcId input = b.net.source(pd.inputSource);
+    const SrcId input = nets[0].source(pd.inputSource);
     for (const auto& jd : pd.jacks) {
         Jack j;
-        j.drive = b.net.source(jd.drive);
+        j.drive = nets[0].source(jd.drive);
         j.drivesInput = j.drive.i == input.i;
-        for (const auto& [name, ohms] : jd.resistors) j.resistors.push_back({b.net.resistor(name), ohms});
-        b.jacks.push_back(std::move(j));
+        for (const auto& [name, ohms] : jd.resistors) j.resistors.push_back({find(name), ohms});
+        jacks_.push_back(std::move(j));
     }
-    for (const auto& name : pd.sourceResistors) b.sourceResistors.push_back(b.net.resistor(name));
-    return b;
-}
+    for (const auto& name : pd.sourceResistors) sourceResistors_.push_back(find(name));
 
-Preamp::Preamp(Built&& b, const AmpDef& def, double fs)
-    : solver_(std::move(b.net.circuit), fs), railSrc_(b.railSrc), out_(b.out),
-      potMinOhms_(def.preamp.potMinOhms), sourceOhmsMin_(def.preamp.sourceOhmsMin),
-      sourceResistors_(std::move(b.sourceResistors)), sourceOhms_(def.preamp.sourceOhmsDefault),
-      knobs_(std::move(b.knobs)), values_(std::move(b.values)), jacks_(std::move(b.jacks)) {
-    // Guitar signals are millivolts at the first grid, so Newton must converge tightly here.
-    solver_.tolerance = def.preamp.tolerance;
-    solver_.refresh();
+    // Build the solvers in signal order: each later stage's DC point starts from what the
+    // previous one settled to at the link node.
+    stages_.reserve(nets.size());
+    for (std::size_t i = 0; i < nets.size(); ++i) {
+        ParsedNetlist& net = nets[i];
+        const SrcId rail = net.source(pd.railSource);
+        net.circuit.setSourceDc(rail, railVolts);
+        SrcId link{0};
+        Node linkFrom = 0;
+        if (i > 0) {
+            const PreampStageDef& sd = pd.stages[i - 1];
+            link = net.source(sd.linkSource);
+            linkFrom = nets[i - 1].node(sd.linkFrom);
+            net.circuit.setSourceDc(link, stages_[i - 1].solver.voltage(linkFrom));
+        }
+        stages_.push_back(Stage{Solver(std::move(net.circuit), fs), rail, link, linkFrom});
+        // Guitar signals are millivolts at the first grid, so Newton must converge tightly here.
+        stages_.back().solver.tolerance = pd.tolerance;
+        stages_.back().solver.refresh();
+    }
+    out_ = nets.back().node(pd.outputNode);
 }
-
-Preamp::Preamp(const AmpDef& def, double fs, double railVolts) : Preamp(build(def, railVolts), def, fs) {}
 
 void Preamp::setKnobs(const std::vector<double>& values) {
     if (values.size() != knobs_.size()) throw std::invalid_argument("wrong number of knob values");
@@ -100,10 +108,10 @@ void Preamp::setKnobs(const std::vector<double>& values) {
     for (std::size_t i = 0; i < knobs_.size(); ++i) {
         double top, bottom;
         potValues(knobs_[i], values_[i], potMinOhms_, top, bottom);
-        solver_.setResistor(knobs_[i].top, top);
-        if (knobs_[i].type == PotDef::Type::Wiper) solver_.setResistor(knobs_[i].bottom, bottom);
+        set(knobs_[i].top, top);
+        if (knobs_[i].type == PotDef::Type::Wiper) set(knobs_[i].bottom, bottom);
     }
-    solver_.refresh();
+    refreshAll();
 }
 
 void Preamp::setKnob(std::size_t index, double value) {
@@ -116,15 +124,15 @@ void Preamp::setSourceOhms(double ohms) {
     ohms = std::max(ohms, sourceOhmsMin_);
     if (std::abs(ohms - sourceOhms_) < 1e-9) return;
     sourceOhms_ = ohms;
-    for (ResId r : sourceResistors_) solver_.setResistor(r, ohms);
-    solver_.refresh();
+    for (const Ref& r : sourceResistors_) set(r, ohms);
+    refreshAll();
 }
 
 void Preamp::setJack(std::size_t jack) {
     if (jack == jack_) return;
     jack_ = jack;
-    for (const auto& [id, ohms] : jacks_.at(jack).resistors) solver_.setResistor(id, ohms);
-    solver_.refresh();
+    for (const auto& [ref, ohms] : jacks_.at(jack).resistors) set(ref, ohms);
+    refreshAll();
 }
 
 }  // namespace aes
