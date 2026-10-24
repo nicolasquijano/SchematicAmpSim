@@ -17,6 +17,7 @@ struct PowerAmp::Built {
     SrcId srcAudio{0}, srcHt{0};
     ResId rPres{0}, rNfb{0}, rLoad{0}, rPresBottom{0};
     bool hasPresBottom = false;
+    std::vector<ResId> knobResistors;
     Node x = 0, ht = 0, out = 0;
 };
 
@@ -31,6 +32,11 @@ PowerAmp::Built PowerAmp::build(const AmpDef& def) {
         b.rPresBottom = b.net.resistor(pd.presenceComplement);
         b.hasPresBottom = true;
     }
+    for (const auto& k : pd.knobs) {
+        b.knobResistors.push_back(b.net.resistor(k.resistor));
+        // The solve for the DC point starts from the knob's default position.
+        b.net.circuit.setResistor(b.knobResistors.back(), std::max(k.scale * k.def, k.minOhms));
+    }
     b.rNfb = b.net.resistor(pd.nfbResistor);
     b.rLoad = b.net.resistor(pd.loadResistor);
     b.x = b.net.node(pd.railNode);
@@ -44,6 +50,17 @@ PowerAmp::PowerAmp(Built&& b, const AmpDef& def, double fs)
       srcHt_(b.srcHt), rPres_(b.rPres), rNfb_(b.rNfb), rLoad_(b.rLoad),
       presenceScale_(def.power.presenceScale), presenceMinOhms_(def.power.presenceMinOhms),
       rPresBottom_(b.rPresBottom), hasPresBottom_(b.hasPresBottom),
+      knobs_([&] {
+          std::vector<Knob> k;
+          for (std::size_t i = 0; i < def.power.knobs.size(); ++i)
+              k.push_back({b.knobResistors[i], def.power.knobs[i].scale, def.power.knobs[i].minOhms});
+          return k;
+      }()),
+      knobValues_([&] {
+          std::vector<double> v;
+          for (const auto& k : def.power.knobs) v.push_back(k.def);
+          return v;
+      }()),
       nodeX_(b.x), nodeHt_(b.ht), nodeOut_(b.out), vHt_(def.power.supply.htDcSource), dt_(1.0 / fs),
       dphase_(2.0 * kPi * def.power.supply.mainsHz / fs) {
     if (!solver_.dcConverged) throw std::runtime_error("power amp DC operating point did not converge");
@@ -55,6 +72,15 @@ PowerAmp::PowerAmp(Built&& b, const AmpDef& def, double fs)
 }
 
 PowerAmp::PowerAmp(const AmpDef& def, double fs) : PowerAmp(build(def), def, fs) {}
+
+void PowerAmp::setKnobs(const std::vector<double>& values) {
+    if (values.size() != knobs_.size()) throw std::invalid_argument("wrong number of power knob values");
+    if (values == knobValues_) return;
+    knobValues_ = values;
+    for (std::size_t i = 0; i < knobs_.size(); ++i)
+        solver_.setResistor(knobs_[i].resistor, std::max(knobs_[i].scale * std::clamp(values[i], 0.0, 1.0), knobs_[i].minOhms));
+    solver_.refresh();
+}
 
 void PowerAmp::setPresence(double p) {
     presence_ = std::clamp(p, 0.0, 1.0);

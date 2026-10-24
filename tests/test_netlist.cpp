@@ -12,6 +12,11 @@ TEST_CASE("expressions: SI suffixes parse like C++ literals") {
     CHECK(evalExpression("1M") == 1e6);
     CHECK(evalExpression("100e-12") == 100e-12);
     CHECK(evalExpression("5.6k/2") == 5.6e3 / 2.0);
+    CHECK(evalExpression("4k7") == 4.7e3);       // schematic notation: the suffix is the decimal point
+    CHECK(evalExpression("1M0") == 1e6);
+    CHECK(evalExpression("2n2") == 2.2e-9);
+    CHECK(evalExpression("1k33") == 1.33e3);
+    CHECK(evalExpression("4M7*2") == 4.7e6 * 2.0);
     CHECK(evalExpression("2*(3+4)-1") == 13.0);
     CHECK(evalExpression("-sqrt(16)+exp(0)") == -3.0);
     CHECK(evalExpression("a*2", {{"a", 21.0}}) == 42.0);

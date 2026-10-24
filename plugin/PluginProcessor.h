@@ -21,6 +21,7 @@ inline constexpr const char* middle = "middle";
 inline constexpr const char* treble = "treble";
 inline constexpr const char* presence = "presence";
 inline constexpr const char* master = "master";
+inline constexpr const char* power = "power";
 inline constexpr const char* input = "input";
 inline constexpr const char* output = "output";
 inline constexpr const char* quality = "quality";
@@ -89,6 +90,7 @@ private:
     // Per amp: the APVTS value behind each preamp knob (nullptr = the knob's default) and presence.
     struct AmpParams {
         std::vector<std::atomic<float>*> knobs;
+        std::vector<std::atomic<float>*> powerKnobs;
         std::atomic<float>* presence = nullptr;
     };
     std::vector<AmpParams> ampParams_;

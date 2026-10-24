@@ -15,6 +15,9 @@ public:
     // Presence knob, 0..1: more presence shunts more of the high-frequency feedback.
     void setPresence(double p);
     double presence() const { return presence_; }
+    // Power-amp controls from amp.json "power.knobs" (0..1 each), e.g. a feedback "power" pot.
+    std::size_t knobCount() const { return knobs_.size(); }
+    void setKnobs(const std::vector<double>& values);
     void setLoad(double ohms) { solver_.setResistor(rLoad_, ohms); solver_.refresh(); }
     // Feedback resistor (100k stock in the 2203): larger = less negative feedback.
     void setNfbOhms(double ohms) { solver_.setResistor(rNfb_, ohms); solver_.refresh(); }
@@ -42,6 +45,9 @@ private:
     double presenceScale_, presenceMinOhms_;
     ResId rPresBottom_;
     bool hasPresBottom_;
+    struct Knob { ResId resistor; double scale, minOhms; };
+    std::vector<Knob> knobs_;
+    std::vector<double> knobValues_;
     Node nodeX_, nodeHt_, nodeOut_;
     double vHt_;  // reservoir voltage
     double dt_;

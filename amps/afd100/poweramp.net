@@ -1,0 +1,84 @@
+* Marshall AFD100 power amp (same drawing as preamp.net): ECC83 long-tailed phase inverter with
+* its presence and negative-feedback network, four 6550 as two parallel pairs, the output
+* transformer, and the HT supply. B+ (node a) is the reservoir, integrated by the engine.
+*
+* Assumptions where the drawing is silent or not decidable (change them here, not in code):
+*  - screens: VS is a regulated rail (MOSFET M1, controlled by VCS, a value the sheet does not give):
+*    taken as a stiff 340 V supply;
+*  - bias: each 6550 has its own servo (TL072 + transistors) that sets its idle current from the
+*    1R0 cathode resistor; replaced here by one fixed negative supply (Thevenin source behind 1k), chosen
+*    for ~38 mA per tube;
+*  - output transformer: 1.9k plate-to-plate, copied from the JCM800's C2668 model;
+*  - "Power" (VR7A, B100k) is a variable resistor in the negative-feedback path from the 4 ohm
+*    tap; its direction is not marked, clockwise = more resistance = less feedback is assumed.
+
+.nodes pin ga kc f1 f2 gb pa pb dt db bias g12 g34 s12 s34 kt kb pt pbm npt npb a t16 t8 bk x vs pr nfb nfc
+
+S VAUDIO pin 100k 0
+S VHT a 1 520
+S VBIAS bias 1k -36
+V VSCR vs 10 340
+
+* Phase inverter V9: input on the first grid, feedback node f2 on the second grid's coupling cap.
+C C68 pin ga 22n
+R R101 ga f1 1M
+R R102 kc f1 470
+R R103 f1 gb 1M
+C C73 gb f2 100n
+R R100 f1 f2 22k
+R R104 f2 0 4.7k
+T V9A ga pa kc ECC83
+T V9B gb pb kc ECC83
+R R73 x pa 82k
+R R63 x pb 100k
+C C51 pa pb 470p
+
+* Presence: 100n in series with VR6A (B25k used as a variable resistor) on the feedback node.
+C C81 f2 pr 100n
+R VR6A pr 0 12.5k
+
+* Negative feedback from the 4 ohm tap: "Power" pot, R99, and the 10u that blocks DC.
+R NFB_VAR bk nfb 50k
+R R99 nfb nfc 10k
+C C72 nfc f2 10u
+
+* Output-tube grids: 22n per tube from the phase-inverter plates (two tubes share one node here),
+* 220k leaks to the bias supply, 5k6 grid stoppers.
+C C31_32 pa g12r 44n
+C C33_30 pb g34r 44n
+R R50_46 g12r bias 110k
+R R48_44 g34r bias 110k
+R R45_47 g12r g12 2.8k
+R R49_43 g34r g34 2.8k
+C CBIAS bias 0 10u
+
+* 6550s: pairs V1A+V2A and V3A+V4A. Screens on VS through 1k each, cathodes through 1R0 each.
+P V12 g12 pt s12 kt 6550 0.9
+P V34 g34 pbm s34 kb 6550 0.9
+R R39_40 vs s12 500
+R R41_42 vs s34 500
+R R25_26 kt 0 0.5
+R R27_28 kb 0 0.5
+
+* Output transformer: plate-to-plate 1.9k, 3.5 H per primary half; windings are the primary
+* halves, then the 16R, 8R and 4R sections of the secondary (turns relative to a half).
+R DCR_PT pt npt 40
+R DCR_PB pbm npb 40
+.param n16 = 2*1/sqrt(1900/16)
+.xfmr OT L=3.5
+  W npt a 1 pri
+  W a npb 1 pri
+  W t16 t8 0.2929*n16 sec
+  W t8 bk 0.2071*n16 sec
+  W bk 0 0.5*n16 sec
+  K pri pri 0.9998
+  K pri sec 0.9993
+  K sec sec 0.9998
+.end
+R RLOAD t16 0 16
+
+* HT3: 4k7 from B+ and 47u (R62, C45), then the preamp's own filter chain; the rest of its current
+* draw is the equivalent resistance below.
+R R62 a x 4.7k
+C C45 x 0 47u
+R RPREAMP x 0 80k

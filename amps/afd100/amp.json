@@ -1,0 +1,80 @@
+{
+  "id": "afd100",
+  "order": 2,
+  "name": "Marshall AFD100",
+
+  "ui": [
+    { "param": "volume",   "knob": "volume",      "label": "PREAMP" },
+    { "param": "bass",     "knob": "bass",        "label": "BASS" },
+    { "param": "middle",   "knob": "middle",      "label": "MIDDLE" },
+    { "param": "treble",   "knob": "treble",      "label": "TREBLE" },
+    { "param": "presence",                          "label": "PRESENCE" },
+    { "param": "master",   "knob": "master",      "label": "MASTER" },
+    { "param": "power",    "power_knob": "power",  "label": "POWER" }
+  ],
+
+  "preamp": {
+    "netlist": "preamp.net",
+    "tolerance": 2e-6,
+    "rail_source": "VRAIL",
+    "input_source": "VIN",
+    "output_node": "mo",
+    "pot_min_ohms": 100,
+    "knobs": [
+      { "name": "volume", "default": 0.6, "pot": { "type": "wiper", "top": "VR1_T", "bottom": "VR1_B", "total": 1e6,   "taper": "log" } },
+      { "name": "bass",   "default": 0.5, "pot": { "type": "wiper", "top": "VR5_T", "bottom": "VR5_B", "total": 1e6,   "taper": "log" } },
+      { "name": "middle", "default": 0.5, "pot": { "type": "wiper", "top": "VR4_T", "bottom": "VR4_B", "total": 25e3,  "taper": "linear" } },
+      { "name": "treble", "default": 0.6, "pot": { "type": "wiper", "top": "VR3_T", "bottom": "VR3_B", "total": 250e3, "taper": "linear" } },
+      { "name": "master", "default": 0.5, "pot": { "type": "wiper", "top": "VR2_T", "bottom": "VR2_B", "total": 1e6,   "taper": "log" } }
+    ],
+    "source_ohms": { "resistors": ["RSRC"], "default": 7000, "min": 10 },
+    "jacks": [
+      { "name": "normal", "drive": "VIN", "resistors": { "SW_RL3B": 1e12, "SW_RL1B_N": 1,    "SW_RL1B_A": 1e12, "SW_RL1C": 1e12 } },
+      { "name": "afd",    "drive": "VIN", "resistors": { "SW_RL3B": 1,    "SW_RL1B_N": 1e12, "SW_RL1B_A": 1,    "SW_RL1C": 1 } }
+    ]
+  },
+
+  "power": {
+    "netlist": "poweramp.net",
+    "tolerance": 1e-4,
+    "input_source": "VAUDIO",
+    "ht_source": "VHT",
+    "ht_node": "a",
+    "rail_node": "x",
+    "output_node": "t16",
+    "load_resistor": "RLOAD",
+    "nfb_resistor": "R99",
+    "presence": { "resistor": "VR6A", "scale": 25e3, "min_ohms": 50, "default": 0.5 },
+    "knobs": [
+      { "name": "power", "resistor": "NFB_VAR", "scale": 100e3, "min_ohms": 50, "default": 0.5 }
+    ],
+    "supply": {
+      "mains_hz": 50,
+      "vac_peak": 540,
+      "rect_source_ohms": 50,
+      "ht_dc_source": 520,
+      "rect_drop": 1.4,
+      "reservoir_farads": 100e-6,
+      "tie_ohms": 1.0,
+      "settle_seconds": 0.15
+    }
+  },
+
+  "lite": {
+    "base_gain_db": 21.1912,
+    "high_pass_hz": 17.626,
+    "shelf_hz": 177.0,
+    "presence_db": [0.0, 0.117996, 0.326971, 0.798134, 2.80715],
+    "sag_table": [[0, 0], [2.54648, 0.906987], [5.09296, 3.53686], [9.5493, 11.5079], [15.9155, 27.3961],
+                  [22.2817, 44.6179], [28.6479, 55.6443], [35.0141, 59.0846], [44.5634, 63.1741],
+                  [57.2958, 67.6619], [82.7606, 72.7515], [127.324, 76.5439]],
+    "rail_x_idle": 455.358,
+    "rail_sag_fraction": 0.58,
+    "ceiling_light": 44.4995,
+    "ceiling_heavy": 39.9326,
+    "ceiling_decay": 127.596,
+    "knee": 9.44663,
+    "sag_attack_s": 0.010,
+    "sag_release_s": 0.060
+  }
+}

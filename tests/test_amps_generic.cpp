@@ -63,7 +63,68 @@ TEST_CASE("every ui knob of every amp points at a real preamp knob") {
         for (const auto& u : def.ui) {
             INFO(id << " ui " << u.param);
             if (!u.knob.empty()) CHECK_NOTHROW(def.knobIndex(u.knob));
+            if (!u.powerKnob.empty()) CHECK_NOTHROW(def.powerKnobIndex(u.powerKnob));
         }
+    }
+}
+
+TEST_CASE("amp list order is stable: saved projects store the index") {
+    const auto ids = embeddedAmpIds();
+    REQUIRE(ids.size() >= 3);
+    CHECK(ids[0] == "jcm800_2203");
+    CHECK(ids[1] == "plexi_1959");
+    CHECK(ids[2] == "afd100");
+}
+
+TEST_CASE("AFD100: operating point, power and controls") {
+    const AmpDef def = loadEmbeddedAmp("afd100");
+    {
+        PowerAmp power(def, kFs);
+        const auto net = parseNetlist(def.power.netlistText, def.power.netlist);
+        auto v = [&](const char* n) { return power.solver().voltage(net.node(n)); };
+        CHECK(v("a") > 450.0);  // B+
+        CHECK(v("a") < 540.0);
+        CHECK(std::abs(v("s12") - 340.0) < 15.0);  // regulated screens
+        const double idleMa = (v("a") - v("pt")) / 40.0 / 2.0 * 1e3;
+        CHECK(idleMa > 25.0);
+        CHECK(idleMa < 45.0);
+    }
+    auto level = [&](double volume, double master, double power, std::size_t jack, double peak, double presence = 0.5) {
+        FullAmp amp(def, kFs);
+        auto k = defaultKnobs(def);
+        k[def.knobIndex("volume")] = volume;
+        k[def.knobIndex("master")] = master;
+        amp.setKnobs(k, presence, {power});
+        amp.setJack(jack);
+        return rmsAt(amp, 220.0, peak);
+    };
+    const std::size_t normal = def.jackIndex("normal"), afd = def.jackIndex("afd");
+    // A 100 W amp: wide open it delivers roughly 100 W into 16 ohms (40 V rms).
+    const double open = level(1.0, 1.0, 1.0, normal, 0.5);
+    const double watts = open * open / 16.0;
+    INFO("full power " << watts << " W");
+    CHECK(watts > 70.0);
+    CHECK(watts < 150.0);
+    // The master tames it, and AFD mode (V6B skipped) has less gain than the normal mode at low drive.
+    CHECK(level(0.6, 0.2, 0.5, normal, 0.05) < level(0.6, 0.8, 0.5, normal, 0.05));
+    CHECK(level(0.6, 0.5, 0.5, afd, 0.005) < 0.6 * level(0.6, 0.5, 0.5, normal, 0.005));
+    // Less negative feedback (a larger "power" resistor) means more gain.
+    CHECK(level(0.6, 0.5, 1.0, normal, 0.01) > 1.2 * level(0.6, 0.5, 0.0, normal, 0.01));
+}
+
+TEST_CASE("AFD100: the Lite power amp follows the full circuit") {
+    const AmpDef def = loadEmbeddedAmp("afd100");
+    for (double peak : {0.01, 0.05, 0.2, 0.5}) {
+        FullAmp full(def, kFs);
+        LiteAmp lite(def, kFs);
+        auto k = defaultKnobs(def);
+        k[def.knobIndex("master")] = 0.9;  // driven hard enough to reach the power stage's saturation
+        full.setKnobs(k, 0.5, {0.5});
+        lite.setKnobs(k, 0.5, {0.5});
+        const double f = rmsAt(full, 150.0, peak, 1.0), l = rmsAt(lite, 150.0, peak, 1.0);
+        const double errDb = 20.0 * std::log10(l / f);
+        INFO("peak " << peak << ": full " << f << " V, lite " << l << " V, " << errDb << " dB");
+        CHECK(std::abs(errDb) < 2.0);
     }
 }
 

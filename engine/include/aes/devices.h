@@ -81,6 +81,13 @@ struct PentodeModel {
         return {11.0, 1.35, 845.0, 2600.0, 60.0, 24.0, 1.5e-3, 8.0, 1.3, 15e-12, 1.0e-12, 8e-12};
     }
 
+    // 6550 / KT88 family: Koren's KT88 shape (kg1 730, kg2 4200, kp 32, kvb 16, mu 8.8). The
+    // current scale is set per amp by the `scale` argument of the netlist's P element, so this is
+    // the stock curve, not a fit to one amp.
+    static constexpr PentodeModel el6550() {
+        return {8.8, 1.35, 730.0, 4200.0, 32.0, 16.0, 1.5e-3, 8.0, 1.3, 14e-12, 0.8e-12, 12e-12};
+    }
+
     Eval eval(double vg1k, double vpk, double vg2k) const {
         Eval r{};
         const double x = cg * vg1k;

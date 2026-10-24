@@ -42,6 +42,7 @@ Layout AesProcessor::createLayout(const std::vector<aes::AmpDef>& defs) {
     l.add(knob(ids::treble, "Treble", 6.0f));
     l.add(knob(ids::presence, "Presence", 5.0f));
     l.add(knob(ids::master, "Master", 5.0f));
+    l.add(knob(ids::power, "Power", 5.0f));
     l.add(dbParam(ids::input, "Input"));
     l.add(dbParam(ids::output, "Output"));
     // Lite stays last so saved projects keep their quality (same rule as the Rust build).
@@ -125,14 +126,17 @@ AesProcessor::AesProcessor()
     for (const auto& def : defs_) {
         AmpParams ap;
         ap.knobs.assign(def.preamp.knobs.size(), nullptr);
+        ap.powerKnobs.assign(def.power.knobs.size(), nullptr);
         for (const auto& u : def.ui) {
             if (u.param == ids::presence) ap.presence = apvts.getRawParameterValue(u.param);
             if (!u.knob.empty()) ap.knobs[def.knobIndex(u.knob)] = apvts.getRawParameterValue(u.param);
+            if (!u.powerKnob.empty()) ap.powerKnobs[def.powerKnobIndex(u.powerKnob)] = apvts.getRawParameterValue(u.param);
         }
         if (!ap.presence) ap.presence = apvts.getRawParameterValue(ids::presence);
         ampParams_.push_back(std::move(ap));
     }
-    settings_.knobs.reserve(16);  // never reallocates on the audio thread
+    settings_.knobs.reserve(16);  // never reallocate on the audio thread
+    settings_.powerKnobs.reserve(16);
     mono_.resize(kMaxChunk);
     builder_ = std::make_unique<ChainBuilder>(*this);
 }
@@ -173,6 +177,9 @@ aes::ChainSettings AesProcessor::readSettings(bool irAvailable) {
     for (std::size_t i = 0; i < s.knobs.size(); ++i)
         s.knobs[i] = ap.knobs[i] ? double(ap.knobs[i]->load()) / 10.0 : def.preamp.knobs[i].def;
     auto raw = [this](const char* id) { return double(apvts.getRawParameterValue(id)->load()); };
+    s.powerKnobs.resize(def.power.knobs.size());
+    for (std::size_t i = 0; i < s.powerKnobs.size(); ++i)
+        s.powerKnobs[i] = ap.powerKnobs[i] ? double(ap.powerKnobs[i]->load()) / 10.0 : def.power.knobs[i].def;
     s.presence = double(ap.presence->load()) / 10.0;
     s.inputDb = raw(ids::input);
     s.outputDb = raw(ids::output);

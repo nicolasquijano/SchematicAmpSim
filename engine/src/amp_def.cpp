@@ -111,6 +111,17 @@ PowerDef parsePower(const json& j, const FileReader& read) {
     p.presenceMinOhms = num(pr, "min_ohms", "power.presence");
     p.presenceDefault = num(pr, "default", "power.presence");
     if (pr.contains("complement")) p.presenceComplement = str(pr, "complement", "power.presence");
+    if (j.contains("knobs"))
+        for (const auto& k : j.at("knobs")) {
+            PowerKnobDef kd;
+            kd.name = str(k, "name", "power.knobs");
+            const std::string path = "power.knobs." + kd.name;
+            kd.resistor = str(k, "resistor", path);
+            kd.scale = num(k, "scale", path);
+            kd.minOhms = numOr(k, "min_ohms", 50);
+            kd.def = num(k, "default", path);
+            p.knobs.push_back(std::move(kd));
+        }
     const json& s = need(j, "supply", "power");
     p.supply.mainsHz = num(s, "mains_hz", "power.supply");
     p.supply.vacPeak = num(s, "vac_peak", "power.supply");
@@ -164,6 +175,12 @@ std::size_t AmpDef::knobIndex(const std::string& n) const {
     throw std::runtime_error("amp '" + id + "' has no knob '" + n + "'");
 }
 
+std::size_t AmpDef::powerKnobIndex(const std::string& n) const {
+    for (std::size_t i = 0; i < power.knobs.size(); ++i)
+        if (power.knobs[i].name == n) return i;
+    throw std::runtime_error("amp '" + id + "' has no power knob '" + n + "'");
+}
+
 std::size_t AmpDef::jackIndex(const std::string& n) const {
     for (std::size_t i = 0; i < preamp.jacks.size(); ++i)
         if (preamp.jacks[i].name == n) return i;
@@ -180,12 +197,14 @@ AmpDef loadAmpDef(const std::string& jsonText, const FileReader& read) {
     AmpDef d;
     d.id = str(j, "id", "");
     d.name = str(j, "name", "");
+    d.order = int(numOr(j, "order", 1000));
     if (j.contains("ui"))
         for (const auto& u : j.at("ui")) {
             UiKnob k;
             k.param = str(u, "param", "ui");
             k.label = str(u, "label", "ui." + k.param);
             if (u.contains("knob")) k.knob = str(u, "knob", "ui." + k.param);
+            if (u.contains("power_knob")) k.powerKnob = str(u, "power_knob", "ui." + k.param);
             d.ui.push_back(std::move(k));
         }
     d.preamp = parsePreamp(need(j, "preamp", ""), read);

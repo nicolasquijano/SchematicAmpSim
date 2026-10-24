@@ -41,6 +41,9 @@ public:
         shelfB_.retune(shelf(ratio));
     }
     double presence() const { return presence_; }
+    // The Lite fit is made at the power knobs' defaults; they do not change it.
+    std::size_t knobCount() const { return 0; }
+    void setKnobs(const std::vector<double>&) {}
 
     // One sample: phase-inverter input volts in, speaker volts out.
     double process(double vin) {

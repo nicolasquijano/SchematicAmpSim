@@ -22,6 +22,13 @@ Chain::Chain(const AmpDef& def, double fs)
         target_.knobs[i] = def.preamp.knobs[i].def;
         knobs_[i].reset(def.preamp.knobs[i].def, fs, 40.0);
     }
+    target_.powerKnobs.resize(def.power.knobs.size());
+    powerKnobs_.resize(def.power.knobs.size());
+    powerScratch_.resize(def.power.knobs.size());
+    for (std::size_t i = 0; i < powerKnobs_.size(); ++i) {
+        target_.powerKnobs[i] = def.power.knobs[i].def;
+        powerKnobs_[i].reset(def.power.knobs[i].def, fs, 40.0);
+    }
     presence_.reset(def.power.presenceDefault, fs, 40.0);
     tsDrive_.reset(0.5, fs, 40.0);
     tsTone_.reset(0.5, fs, 40.0);
@@ -33,6 +40,8 @@ Chain::Chain(const AmpDef& def, double fs)
 void Chain::setSettings(const ChainSettings& s) {
     for (std::size_t i = 0; i < knobs_.size() && i < s.knobs.size(); ++i)
         knobs_[i].setTarget(std::clamp(s.knobs[i], 0.0, 1.0));
+    for (std::size_t i = 0; i < powerKnobs_.size() && i < s.powerKnobs.size(); ++i)
+        powerKnobs_[i].setTarget(std::clamp(s.powerKnobs[i], 0.0, 1.0));
     presence_.setTarget(std::clamp(s.presence, 0.0, 1.0));
     tsDrive_.setTarget(std::clamp(s.tsDrive, 0.0, 1.0));
     tsTone_.setTarget(std::clamp(s.tsTone, 0.0, 1.0));
@@ -47,6 +56,8 @@ void Chain::setSettings(const ChainSettings& s) {
 
 void Chain::snap(const ChainSettings& s) {
     for (std::size_t i = 0; i < knobs_.size() && i < s.knobs.size(); ++i) knobs_[i].reset(std::clamp(s.knobs[i], 0.0, 1.0), fs_, 40.0);
+    for (std::size_t i = 0; i < powerKnobs_.size() && i < s.powerKnobs.size(); ++i)
+        powerKnobs_[i].reset(std::clamp(s.powerKnobs[i], 0.0, 1.0), fs_, 40.0);
     presence_.reset(std::clamp(s.presence, 0.0, 1.0), fs_, 40.0);
     tsDrive_.reset(std::clamp(s.tsDrive, 0.0, 1.0), fs_, 40.0);
     tsTone_.reset(std::clamp(s.tsTone, 0.0, 1.0), fs_, 40.0);
@@ -82,24 +93,25 @@ void Chain::processAmp(const float* mono, float* out, std::size_t n) {
         if (sinceUpdate >= kControlEvery) {
             const double steps = double(sinceUpdate);
             for (std::size_t k = 0; k < knobs_.size(); ++k) knobScratch_[k] = std::clamp(knobs_[k].nextStep(steps), 0.0, 1.0);
+            for (std::size_t k = 0; k < powerKnobs_.size(); ++k) powerScratch_[k] = std::clamp(powerKnobs_[k].nextStep(steps), 0.0, 1.0);
             const double presence = std::clamp(presence_.nextStep(steps), 0.0, 1.0);
             const TsControls ts{std::clamp(tsDrive_.nextStep(steps), 0.0, 1.0), std::clamp(tsTone_.nextStep(steps), 0.0, 1.0),
                                 std::clamp(tsLevel_.nextStep(steps), 0.0, 1.0)};
             switch (quality) {
                 case Quality::Normal:
-                    amp2_->setKnobs(knobScratch_, presence);
+                    amp2_->setKnobs(knobScratch_, presence, powerScratch_);
                     amp2_->setJack(target_.jack);
                     amp2_->setSourceOhms(sourceOhms);
                     ts2_.setControls(ts);
                     break;
                 case Quality::High:
-                    amp4_->setKnobs(knobScratch_, presence);
+                    amp4_->setKnobs(knobScratch_, presence, powerScratch_);
                     amp4_->setJack(target_.jack);
                     amp4_->setSourceOhms(sourceOhms);
                     ts4_.setControls(ts);
                     break;
                 case Quality::Lite:
-                    lite_->setKnobs(knobScratch_, presence);
+                    lite_->setKnobs(knobScratch_, presence, powerScratch_);
                     lite_->setJack(target_.jack);
                     lite_->setSourceOhms(sourceOhms);
                     ts2_.setControls(ts);

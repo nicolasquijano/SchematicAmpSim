@@ -17,8 +17,8 @@
 //                         coupled windings; L_ij = L * turns_i * turns_j * k(group_i, group_j)
 //
 // Node "0" or "gnd" is ground. A value is an expression without spaces: numbers with an SI suffix
-// (k M G m u n p f; M is mega, m is milli), parameters, + - * / ( ) and sqrt exp ln abs.
-// MODEL is a built-in name: ECC83, EL34, SIGNAL, RECTIFIER_BRIDGE, C1815, RC4558.
+// (k M G m u n p f; M is mega, m is milli; the schematic form 4k7 = 4.7k, 1M0 = 1M also works), parameters, + - * / ( ) and sqrt exp ln abs.
+// MODEL is a built-in name: ECC83, EL34, 6550, SIGNAL, RECTIFIER_BRIDGE, C1815, RC4558.
 
 #include <map>
 #include <stdexcept>

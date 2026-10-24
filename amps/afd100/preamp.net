@@ -1,0 +1,139 @@
+* Marshall AFD100 (Slash signature, 100 W) preamp, transcribed from the "AFD100 Main PCB" sheet
+* (Marshall Amplification drawing AFD100-60-02, issue 1, 06/04/2011).
+*
+* Signal path: V5 (two ECC83 halves in parallel) -> volume -> V6A -> V6B -> V7A + V7B follower ->
+* tone stack -> V8A follower -> V8B recovery stage -> master.
+*
+* Relays are modelled as two modes (see amp.json): "normal" = the contacts as drawn (released), "afd" =
+* RL1 and RL3 energised (CTL1). RL3B grounds the bottom of R80 so V6A gets a cathode bypass and a
+* 150k load; RL1B skips V6B (V7A is fed from V6A's divider) and RL1C grounds the unused V6B output
+* divider through 47R. RL2 (CTL2, effects loop) is left released: its V8B-grid contact RL2B takes the
+* loop-return branch, its RL2C contact ties both throws to the same net on the drawing, so R96 is
+* shorted and left out.
+*
+* Not modelled: the panel pots' second wafers (drawn as plain circles), the effects loop, the
+* hi/lo jack switching (both jacks are the same 68k into the same node on the drawing).
+
+.nodes x h4 h5 h6 h7 in g5 p5 k5 c61 v1t v1w n6a p6a k6a o6a t6 p6b k6b c90 o6b t7 r107 g7 p7a k7a k7b m ts_t ts_w3 ts_b ts_w5 ts_c ts_w4 so g8 j8 k8 o8 s8 g8b p8 k8b f8 o58 mi mo
+
+* HT3 (node x) is driven from the power amp at run time; 400 V is the standalone default.
+V VRAIL x 100 400
+* Supply filter chain: 10k + 47u per stage (HT3 -> HT4 -> HT5 -> HT6 -> HT7).
+R R61 x h4 10k
+C C50 h4 0 47u
+R R60 h4 h5 10k
+C C44 h5 0 47u
+R R59 h5 h6 10k
+C C47 h6 0 47u
+R R58 h6 h7 10k
+C C42 h7 0 47u
+
+* Input: the guitar behind a variable source resistance, 1M leak, 68k, 4M7 grid leak.
+I VIN gin 1
+R RSRC gin in 7k
+R R121 in 0 1M
+R R119 in g5 68k
+R R88 g5 0 4M7
+
+* V5: two triodes with grids, plates and cathodes tied.
+T V5A g5 p5 k5 ECC83
+T V5B g5 p5 k5 ECC83
+R R72 h7 p5 51k
+R R113 k5 0 1.33k
+C C74 k5 0 680n
+C C75 k5 0 680n
+C C46 p5 k5 220p
+
+* Coupling and volume: 22n, 470k || 2n2, pot with the 1n bright cap across its top section.
+C C61 p5 c61 22n
+R R89 c61 v1t 470k
+C C70 c61 v1t 2.2n
+R VR1_T v1t v1w 1
+R VR1_B v1w 0 1
+C C80 v1t v1w 1n
+
+* V6A. RL3B (SW_RL3B) grounds the bottom of R80 in AFD mode: 150k load and 100n cathode bypass.
+T V6A v1w p6a k6a ECC83
+R R71 h6 p6a 100k
+R R74 k6a 0 10k
+C C57 n6a k6a 100n
+R R80 v1w n6a 150k
+R SW_RL3B n6a 0 1e12
+
+* V6A -> V6B: 22n, then 470k || 470p over 470k.
+C C62 p6a o6a 22n
+R R86 o6a t6 470k
+C C59 o6a t6 470p
+R R87 t6 0 470k
+
+* V6B with a partly bypassed cathode (10k, plus 100n in series with 10k).
+T V6B t6 p6b k6b ECC83
+R R67 h6 p6b 100k
+R R85 k6b 0 10k
+C C90 k6b c90 100n
+R R122 c90 0 10k
+
+* V6B output divider and RL1B: V7A takes V6B's output (normal) or V6A's divider (AFD).
+C C48 p6b o6b 22n
+R R69 o6b t7 470k
+R R84 t7 0 470k
+R R107 t7 r107 47
+R SW_RL1C r107 0 1e12
+R SW_RL1B_N t7 g7 1
+R SW_RL1B_A t6 g7 1e12
+
+* V7A gain stage (with 1n across its plate load) and the V7B cathode follower.
+R R83 g7 0 4M7
+T V7A g7 p7a k7a ECC83
+R R70 h5 p7a 100k
+C C43 h5 p7a 1n
+R R75 k7a 0 820
+C C60 k7a 0 680n
+T V7B p7a h5 k7b ECC83
+R R90 k7b 0 100k
+
+* Tone stack (same topology as the JCM800's): treble, bass and mid are plain pots; the bass and mid
+* wipers take the 22n caps from the 33k node.
+R R117 k7b m 33k
+C C79 k7b ts_t 470p
+R VR3_T ts_t ts_w3 1
+R VR3_B ts_w3 ts_b 1
+R VR5_T ts_b ts_w5 1
+R VR5_B ts_w5 ts_c 1
+R VR4_T ts_c ts_w4 1
+R VR4_B ts_w4 0 1
+C C83 m ts_w5 22n
+C C84 m ts_w4 22n
+R R118 ts_w3 so 300k
+R R116 so 0 560k
+C C82 so 0 100p
+
+* V8A cathode follower (grid leak bootstrapped to the cathode load) and the loop-send divider.
+C C63 so g8 22n
+T V8A g8 h4 k8 ECC83
+R R97 g8 j8 100k
+R R98 k8 j8 1k
+R R91 j8 0 100k
+C C76 k8 o8 330n
+R R108 o8 s8 15k
+R R109 s8 0 1k
+
+* V8B recovery stage: R111 into the grid, 1M leak, 22u-bypassed 1k5, and the RC feedback from its
+* plate (470n + 100k, 22p across the 100k, 4M7 leak).
+R R111 o8 g8b 100k
+R R94 g8b 0 1M
+T V8B g8b p8 k8b ECC83
+R R68 h4 p8 150k
+R R92 k8b 0 1.5k
+C C65 k8b 0 22u
+C C54 p8 f8 470n
+R R76 f8 g8b 100k
+C C52 f8 g8b 22p
+R R77 f8 0 4M7
+
+* Output: 150n and 120k into the master pot (A1M), loaded by the phase-inverter input network.
+C C58 p8 o58 150n
+R R95 o58 mi 120k
+R VR2_T mi mo 1
+R VR2_B mo 0 1
+R RPI mo 0 1M

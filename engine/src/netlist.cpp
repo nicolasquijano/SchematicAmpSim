@@ -98,8 +98,13 @@ private:
                 default: break;
             }
             if (exp) {
-                lit += exp;
                 ++pos_;
+                // Schematic notation: the suffix stands in for the decimal point (4k7 = 4.7k, 1M0 = 1M).
+                if (lit.find('.') == std::string::npos && pos_ < s_.size() && std::isdigit(static_cast<unsigned char>(s_[pos_]))) {
+                    lit += '.';
+                    while (pos_ < s_.size() && std::isdigit(static_cast<unsigned char>(s_[pos_]))) lit += s_[pos_++];
+                }
+                lit += exp;
             }
         }
         if (pos_ < s_.size() && (std::isalnum(static_cast<unsigned char>(s_[pos_])) || s_[pos_] == '_'))
@@ -193,7 +198,11 @@ struct Parser {
         if (t.size() < 2) fail("element needs a name");
         const std::string& id = t[1];
         auto triodeModel = [](const std::string& n, TriodeModel& m) { if (n == "ECC83") { m = TriodeModel::ecc83(); return true; } return false; };
-        auto pentodeModel = [](const std::string& n, PentodeModel& m) { if (n == "EL34") { m = PentodeModel::el34(); return true; } return false; };
+        auto pentodeModel = [](const std::string& n, PentodeModel& m) {
+            if (n == "EL34") { m = PentodeModel::el34(); return true; }
+            if (n == "6550") { m = PentodeModel::el6550(); return true; }
+            return false;
+        };
         auto diodeModel = [](const std::string& n, DiodeModel& m) {
             if (n == "SIGNAL") { m = DiodeModel::signal(); return true; }
             if (n == "RECTIFIER_BRIDGE") { m = DiodeModel::rectifierBridge(); return true; }

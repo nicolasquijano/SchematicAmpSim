@@ -20,9 +20,10 @@ public:
     AmpT(const AmpDef& def, double fs)
         : power_(def, fs), pre_(def, fs, power_.railX()) {}
 
-    void setKnobs(const std::vector<double>& knobs, double presence) {
+    void setKnobs(const std::vector<double>& knobs, double presence, const std::vector<double>& powerKnobs = {}) {
         pre_.setKnobs(knobs);
         if (std::abs(power_.presence() - presence) > 1e-9) power_.setPresence(presence);
+        if (!powerKnobs.empty() && powerKnobs.size() == power_.knobCount()) power_.setKnobs(powerKnobs);
     }
     void setJack(std::size_t jack) { pre_.setJack(jack); }
     // Guitar ~7 kohm, a pedal's output far lower.

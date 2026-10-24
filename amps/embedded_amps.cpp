@@ -1,12 +1,16 @@
 #include "aes/embedded_amps.h"
 
+#include <algorithm>
 #include <stdexcept>
 
 namespace aes {
 
 std::vector<std::string> embeddedAmpIds() {
+    std::vector<std::pair<std::pair<int, std::string>, std::string>> keyed;
+    for (const auto& [id, files] : embeddedAmpFiles()) keyed.push_back({{loadEmbeddedAmp(id).order, id}, id});
+    std::sort(keyed.begin(), keyed.end());
     std::vector<std::string> ids;
-    for (const auto& [id, files] : embeddedAmpFiles()) ids.push_back(id);
+    for (const auto& k : keyed) ids.push_back(k.second);
     return ids;
 }
 

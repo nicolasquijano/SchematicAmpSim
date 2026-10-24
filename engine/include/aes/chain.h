@@ -21,7 +21,8 @@ enum class Quality { Normal = 0, High = 1, Lite = 2 };
 
 // Knob values are normalised 0..1 here (the plugin shows 0..10).
 struct ChainSettings {
-    std::vector<double> knobs;  // in AmpDef::preamp.knobs order
+    std::vector<double> knobs;       // in AmpDef::preamp.knobs order
+    std::vector<double> powerKnobs;  // in AmpDef::power.knobs order
     double presence = 0.5;
     double inputDb = 0.0, outputDb = 0.0;
     Quality quality = Quality::Normal;
@@ -92,9 +93,9 @@ private:
     Oversampler os2_{1}, os4_{2};
     CabFilter cab_;
     Quality active_ = Quality::Normal;
-    std::vector<Smoother> knobs_;
+    std::vector<Smoother> knobs_, powerKnobs_;
     Smoother presence_, tsDrive_, tsTone_, tsLevel_, inputDb_, outputDb_;
-    std::vector<double> knobScratch_;
+    std::vector<double> knobScratch_, powerScratch_;
 };
 
 }  // namespace aes

@@ -49,7 +49,15 @@ struct SupplyDef {
            reservoirFarads = 100e-6, tieOhms = 1.0, settleSeconds = 0.15;
 };
 
+// A control that lives in the power amp: one resistor of its netlist set to scale * value
+// (value 0..1), e.g. a negative-feedback "power" pot used as a variable resistor.
+struct PowerKnobDef {
+    std::string name, resistor;
+    double scale = 100e3, minOhms = 50, def = 0.5;
+};
+
 struct PowerDef {
+    std::vector<PowerKnobDef> knobs;
     std::string netlist, netlistText;
     double tolerance = 1e-4;
     std::string inputSource, htSource, htNode, railNode, outputNode, loadResistor, nfbResistor;
@@ -74,17 +82,21 @@ struct LiteParams {
 // (volume, volume2, bass, middle, treble, presence, master); `knob` names the preamp knob it moves
 // (empty for presence, which belongs to the power amp).
 struct UiKnob {
-    std::string param, knob, label;
+    std::string param, knob, powerKnob, label;  // `knob` (preamp) or `powerKnob` (power amp), or neither (presence)
 };
 
 struct AmpDef {
     std::string id, name;
+    // Position in the plugin's amp list (then by id). Saved projects store the list index, so an
+    // amp keeps its `order` forever and new amps take the next number.
+    int order = 1000;
     std::vector<UiKnob> ui;
     PreampDef preamp;
     PowerDef power;
     LiteParams lite;
 
     std::size_t knobIndex(const std::string& name) const;  // throws if unknown
+    std::size_t powerKnobIndex(const std::string& name) const;
     std::size_t jackIndex(const std::string& name) const;
 };
 
