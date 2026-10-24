@@ -221,6 +221,12 @@ AmpDef loadAmpDef(const std::string& jsonText, const FileReader& read) {
             d.ui.push_back(std::move(k));
         }
     d.preamp = parsePreamp(need(j, "preamp", ""), read);
+    if (j.contains("eco_preamp")) {
+        json merged = j.at("preamp");
+        for (const auto& [key, value] : j.at("eco_preamp").items()) merged[key] = value;
+        d.ecoPreamp = parsePreamp(merged, read);
+        d.hasEcoPreamp = true;
+    }
     d.power = parsePower(need(j, "power", ""), read);
     d.lite = parseLite(need(j, "lite", ""));
     return d;

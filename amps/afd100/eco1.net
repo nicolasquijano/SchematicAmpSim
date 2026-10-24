@@ -1,0 +1,46 @@
+* Marshall AFD100, Eco preamp, part 1 of 3: V5 and its coupling / volume network. Same circuit as
+* preamp.net (see its header), cut where V5's plate drives the volume pot. The next part repeats the
+* coupling network, so V6A's grid conduction acts through the real source impedance there; this part
+* sees V6A's grid as open (apart from its 150k load in AFD mode).
+*
+* The rails of the parts that are not here are replaced by equivalent loads from the whole circuit's
+* DC solution (tests/data/afd100_preamp_full.net, rail 467.4 V): V8 on HT4, V7 on HT5, V6 on HT6.
+
+.nodes x h4 h5 h6 h7 in g5 p5 k5 c61 v1t v1w n6a
+
+V VRAIL x 100 400
+R R61 x h4 10k
+C C50 h4 0 47u
+R R_V8 h4 0 170.5k
+R R60 h4 h5 10k
+C C44 h5 0 47u
+R R_V7 h5 0 105k
+R R59 h5 h6 10k
+C C47 h6 0 47u
+R R_V6 h6 0 579.7k
+R R58 h6 h7 10k
+C C42 h7 0 47u
+
+I VIN gin 1
+R RSRC gin in 7k
+R R121 in 0 1M
+R R119 in g5 68k
+R R88 g5 0 4M7
+
+T V5 g5 p5 k5 ECC83 2
+R R72 h7 p5 51k
+R R113 k5 0 1.33k
+C C74 k5 0 680n
+C C75 k5 0 680n
+C C46 p5 k5 220p
+
+C C61 p5 c61 22n
+R R89 c61 v1t 470k
+C C70 c61 v1t 2.2n
+R VR1_T v1t v1w 1
+R VR1_B v1w 0 1
+C C80 v1t v1w 1n
+
+* V6A's grid leak in AFD mode (RL3B closed): the 150k load on the volume wiper.
+R R80 v1w n6a 150k
+R SW_RL3B n6a 0 1e12

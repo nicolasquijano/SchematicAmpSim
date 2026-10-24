@@ -1,0 +1,93 @@
+* Marshall AFD100, Eco preamp, part 2 of 3: V6A, V6B, V7A, V7B and the tone stack. Same circuit as
+* preamp.net, driven from part 1 at V5's plate (node p5); the coupling and volume network is repeated
+* here (it is V5's load in part 1 and V6A's source impedance here). V5's rail draw is an equivalent
+* load on HT7.
+
+.nodes x h4 h5 h6 h7 p5 c61 v1t v1w n6a p6a k6a o6a t6 p6b k6b c90 o6b t7 r107 g7 p7a k7a k7b m ts_t ts_w3 ts_b ts_w5 ts_c ts_w4 so lnk
+
+V VRAIL x 100 400
+R R61 x h4 10k
+C C50 h4 0 47u
+R R60 h4 h5 10k
+C C44 h5 0 47u
+R R59 h5 h6 10k
+C C47 h6 0 47u
+R R58 h6 h7 10k
+C C42 h7 0 47u
+R R_V5 h7 0 239k
+
+* V5's plate, from part 1.
+S VLINK p5 1 0
+
+C C61 p5 c61 22n
+R R89 c61 v1t 470k
+C C70 c61 v1t 2.2n
+R VR1_T v1t v1w 1
+R VR1_B v1w 0 1
+C C80 v1t v1w 1n
+
+* V6A. RL3B (SW_RL3B) grounds the bottom of R80 in AFD mode: 150k load and 100n cathode bypass.
+T V6A v1w p6a k6a ECC83
+R R71 h6 p6a 100k
+R R74 k6a 0 10k
+C C57 n6a k6a 100n
+R R80 v1w n6a 150k
+R SW_RL3B n6a 0 1e12
+
+* V6A -> V6B: 22n, then 470k || 470p over 470k.
+C C62 p6a o6a 22n
+R R86 o6a t6 470k
+C C59 o6a t6 470p
+R R87 t6 0 470k
+
+* V6B with a partly bypassed cathode (10k, plus 100n in series with 10k).
+T V6B t6 p6b k6b ECC83
+R R67 h6 p6b 100k
+R R85 k6b 0 10k
+C C90 k6b c90 100n
+R R122 c90 0 10k
+
+* V6B output divider and RL1B: V7A takes V6B's output (normal) or V6A's divider (AFD).
+C C48 p6b o6b 22n
+R R69 o6b t7 470k
+R R84 t7 0 470k
+R R107 t7 r107 47
+R SW_RL1C r107 0 1e12
+R SW_RL1B_N t7 g7 1
+R SW_RL1B_A t6 g7 1e12
+
+* V7A gain stage (with 1n across its plate load) and the V7B cathode follower.
+R R83 g7 0 4M7
+T V7A g7 p7a k7a ECC83
+R R70 h5 p7a 100k
+C C43 h5 p7a 1n
+R R75 k7a 0 820
+C C60 k7a 0 680n
+T V7B p7a h5 k7b ECC83
+R R90 k7b 0 100k
+
+
+* Tone stack (same topology as the JCM800's): treble, bass and mid are plain pots; the bass and mid
+* wipers take the 22n caps from the 33k node.
+R R117 k7b m 33k
+C C79 k7b ts_t 470p
+R VR3_T ts_t ts_w3 1
+R VR3_B ts_w3 ts_b 1
+R VR5_T ts_b ts_w5 1
+R VR5_B ts_w5 ts_c 1
+R VR4_T ts_c ts_w4 1
+R VR4_B ts_w4 0 1
+C C83 m ts_w5 22n
+C C84 m ts_w4 22n
+R R118 ts_w3 so 300k
+R R116 so 0 560k
+C C82 so 0 100p
+
+* Everything after the tone stack (V8A, V8B, master) is solved separately (master.net), driven from
+* node `so`. Its only effect on this part is V8A's input: C63 into a grid leak that is bootstrapped
+* to the follower's cathode, ~1M effective (fitted against tests/data/afd100_preamp_full.net, since the
+* stack's output impedance is high enough for it to matter: ~1.5 dB). V8's current draw on HT4 is
+* replaced by an equivalent resistor, so this part settles to the same operating point as the whole circuit.
+C C63_LOAD so lnk 22n
+R R_IN8 lnk 0 1.3M
+R R_V8 h4 0 170.5k

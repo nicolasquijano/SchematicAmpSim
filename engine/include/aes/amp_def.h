@@ -110,6 +110,10 @@ struct AmpDef {
     double outputDb = 0.0;
     std::vector<UiKnob> ui;
     PreampDef preamp;
+    // Optional finer-split preamp for the Eco modes ("eco_preamp" in amp.json: it overrides the
+    // netlist and stages of `preamp` and inherits everything else).
+    bool hasEcoPreamp = false;
+    PreampDef ecoPreamp;
     PowerDef power;
     LiteParams lite;
 

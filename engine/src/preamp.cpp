@@ -35,18 +35,21 @@ void Preamp::potValues(const Knob& k, double value, double minOhms, double& top,
 
 Preamp::Preamp(const AmpDef& def, double fs, double railVolts, bool useTables)
     : potMinOhms_(def.preamp.potMinOhms), sourceOhmsMin_(def.preamp.sourceOhmsMin), sourceOhms_(def.preamp.sourceOhmsDefault) {
-    const PreampDef& pd = def.preamp;
+    // The Eco modes use the amp's finer-split preamp when it defines one.
+    const PreampDef& pd = (useTables && def.hasEcoPreamp) ? def.ecoPreamp : def.preamp;
 
     // Parse every stage's netlist.
     std::vector<ParsedNetlist> nets;
     nets.push_back(parseNetlist(pd.netlistText, pd.netlist));
     for (const auto& s : pd.stages) nets.push_back(parseNetlist(s.netlistText, s.netlist));
 
-    // A resistor name is looked up in the stages in order.
+    // A resistor name finds every copy of it, in whichever stages it appears.
     auto find = [&](const std::string& name) {
+        Refs refs;
         for (std::size_t i = 0; i < nets.size(); ++i)
-            if (nets[i].resistors.count(name)) return Ref{i, nets[i].resistor(name)};
-        throw std::runtime_error("amp '" + def.id + "': no resistor named '" + name + "' in any preamp netlist");
+            if (nets[i].resistors.count(name)) refs.push_back({i, nets[i].resistor(name)});
+        if (refs.empty()) throw std::runtime_error("amp '" + def.id + "': no resistor named '" + name + "' in any preamp netlist");
+        return refs;
     };
 
     for (const auto& kd : pd.knobs) {
@@ -64,8 +67,9 @@ Preamp::Preamp(const AmpDef& def, double fs, double railVolts, bool useTables)
     for (std::size_t i = 0; i < knobs_.size(); ++i) {
         double top, bottom;
         potValues(knobs_[i], values_[i], potMinOhms_, top, bottom);
-        nets[knobs_[i].top.stage].circuit.setResistor(knobs_[i].top.id, top);
-        if (knobs_[i].type == PotDef::Type::Wiper) nets[knobs_[i].bottom.stage].circuit.setResistor(knobs_[i].bottom.id, bottom);
+        for (const Ref& r : knobs_[i].top) nets[r.stage].circuit.setResistor(r.id, top);
+        if (knobs_[i].type == PotDef::Type::Wiper)
+            for (const Ref& r : knobs_[i].bottom) nets[r.stage].circuit.setResistor(r.id, bottom);
     }
 
     const SrcId input = nets[0].source(pd.inputSource);
@@ -124,7 +128,7 @@ void Preamp::setSourceOhms(double ohms) {
     ohms = std::max(ohms, sourceOhmsMin_);
     if (std::abs(ohms - sourceOhms_) < 1e-9) return;
     sourceOhms_ = ohms;
-    for (const Ref& r : sourceResistors_) set(r, ohms);
+    for (const Refs& r : sourceResistors_) set(r, ohms);
     refreshAll();
 }
 

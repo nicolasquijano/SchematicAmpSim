@@ -64,18 +64,20 @@ public:
     }
 
 private:
-    // A resistor of some stage's netlist.
+    // A resistor of some stage's netlist, and every copy of it: when stages are split, the network
+    // between two tubes is repeated in both (the downstream one is its load) and must move together.
     struct Ref { std::size_t stage = 0; ResId id{0}; };
+    using Refs = std::vector<Ref>;
     struct Knob {
         PotDef::Type type;
-        Ref top, bottom;  // Variable pots use `top`
+        Refs top, bottom;  // Variable pots use `top`
         double total;
         Taper taper;
     };
     struct Jack {
         SrcId drive{0};
         bool drivesInput = false;
-        std::vector<std::pair<Ref, double>> resistors;
+        std::vector<std::pair<Refs, double>> resistors;
     };
     struct Stage {
         Solver solver;
@@ -85,7 +87,9 @@ private:
     };
 
     static void potValues(const Knob& k, double value, double minOhms, double& top, double& bottom);
-    void set(const Ref& r, double ohms) { stages_[r.stage].solver.setResistor(r.id, ohms); }
+    void set(const Refs& rs, double ohms) {
+        for (const Ref& r : rs) stages_[r.stage].solver.setResistor(r.id, ohms);
+    }
     void refreshAll() {
         for (auto& s : stages_) s.solver.refresh();
     }
@@ -94,7 +98,7 @@ private:
     Node out_ = 0;
     double potMinOhms_;
     double sourceOhmsMin_;
-    std::vector<Ref> sourceResistors_;
+    std::vector<Refs> sourceResistors_;
     double sourceOhms_;
     std::vector<Knob> knobs_;
     std::vector<double> values_;

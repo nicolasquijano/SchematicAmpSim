@@ -30,8 +30,8 @@ AmpDef monolithic() {
     return def;
 }
 
-double outputRms(const AmpDef& def, std::size_t jack, const std::vector<double>& knobs, double hz, double peak) {
-    Preamp pre(def, kFs, kRail);
+double outputRms(const AmpDef& def, std::size_t jack, const std::vector<double>& knobs, double hz, double peak, bool eco = false) {
+    Preamp pre(def, kFs, kRail, eco);
     pre.setKnobs(knobs);
     pre.setJack(jack);
     const std::size_t n = std::size_t(0.6 * kFs), from = n / 2;
@@ -100,4 +100,39 @@ TEST_CASE("AFD100 split preamp matches the monolithic circuit") {
             CHECK(std::abs(20.0 * std::log10(a / b)) < 0.7);
         }
     }
+}
+
+TEST_CASE("AFD100 Eco preamp (three parts, tables) matches the monolithic circuit") {
+    const AmpDef eco = loadEmbeddedAmp("afd100"), full = monolithic();
+    REQUIRE(eco.hasEcoPreamp);
+    {
+        Preamp pre(eco, kFs, kRail, true);
+        REQUIRE(pre.stageCount() == 3);
+        CHECK(pre.solver(0).portCount() == 2);   // V5
+        CHECK(pre.solver(1).portCount() == 8);   // V6A, V6B, V7A, V7B
+        CHECK(pre.solver(2).portCount() == 4);   // V8A, V8B
+        // DC: V5's plate and V7B's cathode agree with the whole circuit.
+        Preamp ref(full, kFs, kRail);
+        const auto fnet = parseNetlist(full.preamp.netlistText, "full");
+        const auto n1 = parseNetlist(eco.ecoPreamp.netlistText, "eco1");
+        const auto n2 = parseNetlist(eco.ecoPreamp.stages[0].netlistText, "eco2");
+        CHECK(std::abs(pre.solver(0).voltage(n1.node("p5")) - ref.solver(0).voltage(fnet.node("p5"))) < 0.3);
+        for (const char* node : {"h4", "h5", "h6", "p6a", "p7a", "k7b"})
+            CHECK(std::abs(pre.solver(1).voltage(n2.node(node)) - ref.solver(0).voltage(fnet.node(node))) < 0.5);
+    }
+    std::vector<double> knobs;
+    for (const auto& k : eco.preamp.knobs) knobs.push_back(k.def);
+    double worstSmall = 0, worstLarge = 0;
+    for (std::size_t jack = 0; jack < 2; ++jack)
+        for (double hz : {100.0, 400.0, 1000.0, 3000.0, 8000.0})
+            for (double peak : {0.005, 0.1}) {
+                const double a = outputRms(eco, jack, knobs, hz, peak, true), b = outputRms(full, jack, knobs, hz, peak);
+                const double errDb = 20.0 * std::log10(a / b);
+                if (std::getenv("AES_SPLIT_VERBOSE"))
+                    std::printf("eco jack %zu %6.0f Hz %5.3f V: eco %9.5f full %9.5f  %+6.2f dB\n", jack, hz, peak, a, b, errDb);
+                (peak < 0.05 ? worstSmall : worstLarge) = std::max(peak < 0.05 ? worstSmall : worstLarge, std::abs(errDb));
+            }
+    INFO("worst error: small signal " << worstSmall << " dB, large " << worstLarge << " dB");
+    CHECK(worstSmall < 0.7);
+    CHECK(worstLarge < 1.0);
 }

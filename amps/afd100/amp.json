@@ -14,6 +14,14 @@
     { "param": "power",    "power_knob": "power",  "label": "POWER" }
   ],
 
+  "eco_preamp": {
+    "netlist": "eco1.net",
+    "stages": [
+      { "netlist": "eco2.net",   "link_from": "p5", "link_source": "VLINK" },
+      { "netlist": "master.net", "link_from": "so", "link_source": "VLINK" }
+    ]
+  },
+
   "preamp": {
     "netlist": "preamp.net",
     "stages": [ { "netlist": "master.net", "link_from": "so", "link_source": "VLINK" } ],
