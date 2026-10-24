@@ -173,6 +173,8 @@ inline bool luFactorFast(double* a, std::size_t* piv, std::size_t n) {
         case 10: return luFactorFixed<10>(a, piv);
         case 12: return luFactorFixed<12>(a, piv);
         case 14: return luFactorFixed<14>(a, piv);
+        case 16: return luFactorFixed<16>(a, piv);
+        case 18: return luFactorFixed<18>(a, piv);
         default: return luFactor(a, piv, n);
     }
 }
@@ -184,6 +186,8 @@ inline void luSolveFast(const double* lu, const std::size_t* piv, double* b, std
         case 10: luSolveFixed<10>(lu, piv, b); break;
         case 12: luSolveFixed<12>(lu, piv, b); break;
         case 14: luSolveFixed<14>(lu, piv, b); break;
+        case 16: luSolveFixed<16>(lu, piv, b); break;
+        case 18: luSolveFixed<18>(lu, piv, b); break;
         default: luSolve(lu, piv, b, n); break;
     }
 }

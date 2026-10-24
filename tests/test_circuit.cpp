@@ -42,6 +42,38 @@ TEST_CASE("coupled inductors act as a transformer") {
     REQUIRE(std::abs(peakOut / peakIn - 2.0) < 0.08);
 }
 
+TEST_CASE("a triode of scale 2 behaves as two triodes in parallel") {
+    auto build = [](bool twoDevices) {
+        Circuit c;
+        const Node vcc = c.node("vcc"), g = c.node("g"), p = c.node("p"), k = c.node("k");
+        c.supply(vcc, 300.0, 1.0);
+        c.input(g, 10e3);
+        c.resistor(vcc, p, 100e3);
+        c.resistor(k, GND, 1.5e3);
+        c.capacitor(k, GND, 22e-6);
+        c.resistor(g, GND, 1e6);
+        if (twoDevices) {
+            c.triode(g, p, k, TriodeModel::ecc83());
+            c.triode(g, p, k, TriodeModel::ecc83());
+        } else {
+            c.triode(g, p, k, TriodeModel::ecc83(), 2.0);
+        }
+        return std::pair{Solver(std::move(c), 96000.0), p};
+    };
+    auto [two, p2] = build(true);
+    auto [one, p1] = build(false);
+    REQUIRE(one.dcConverged);
+    CHECK(std::abs(one.voltage(p1) - two.voltage(p2)) < 1e-6);
+    double worst = 0;
+    for (int n = 0; n < 4800; ++n) {
+        const double x = 0.5 * std::sin(2.0 * 3.14159265358979 * 440.0 * n / 96000.0);
+        one.process(x);
+        two.process(x);
+        worst = std::max(worst, std::abs(one.voltage(p1) - two.voltage(p2)));
+    }
+    CHECK(worst < 1e-4);
+}
+
 TEST_CASE("common-cathode DC point satisfies KCL with the tube model") {
     const auto model = TriodeModel::ecc83();
     Circuit c;

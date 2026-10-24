@@ -1,4 +1,5 @@
 #include "aes/circuit.h"
+#include "aes/profile.h"
 
 #include <algorithm>
 #include <cmath>
@@ -54,12 +55,12 @@ ResId Circuit::resistor(Node a, Node b, double ohms) {
 
 void Circuit::capacitor(Node a, Node b, double farads) { caps_.push_back({a, b, farads}); }
 
-void Circuit::triode(Node g, Node p, Node k, const TriodeModel& model) {
-    capacitor(g, k, model.cgk);
-    capacitor(g, p, model.cgp);
-    capacitor(p, k, model.cpk);
+void Circuit::triode(Node g, Node p, Node k, const TriodeModel& model, double scale) {
+    capacitor(g, k, model.cgk * scale);
+    capacitor(g, p, model.cgp * scale);
+    capacitor(p, k, model.cpk * scale);
     Dev d{Kind::Triode};
-    d.a = g; d.b = p; d.c = k; d.triode = model;
+    d.a = g; d.b = p; d.c = k; d.triode = model; d.scale = scale;
     devices_.push_back(d);
 }
 
@@ -317,6 +318,7 @@ double Solver::residualCached() {
 }
 
 double Solver::eval(bool useTrial) {
+    AES_PROF(ProfEval);
     const std::size_t p = p_;
     if (p == 0) { fmax_ = 0.0; return 0.0; }
     const std::vector<double>& xs = useTrial ? xt_ : x_;
@@ -327,12 +329,13 @@ double Solver::eval(bool useTrial) {
                 const double vgk = xs[b], vpk = xs[b + 1];
                 const auto g = d.dev.triode.grid(vgk);
                 const auto pl = d.dev.triode.plate(vgk, vpk);
-                ivec_[b] = g.ig;
-                ivec_[b + 1] = pl.ip;
-                der_[d.derOff] = g.dvgk;
+                const double sc = d.dev.scale;
+                ivec_[b] = g.ig * sc;
+                ivec_[b + 1] = pl.ip * sc;
+                der_[d.derOff] = g.dvgk * sc;
                 der_[d.derOff + 1] = 0.0;
-                der_[d.derOff + 2] = pl.dvgk;
-                der_[d.derOff + 3] = pl.dvpk;
+                der_[d.derOff + 2] = pl.dvgk * sc;
+                der_[d.derOff + 3] = pl.dvpk * sc;
                 break;
             }
             case Circuit::Kind::Pentode: {
@@ -378,6 +381,7 @@ double Solver::eval(bool useTrial) {
 }
 
 bool Solver::factorJacobian() {
+    AES_PROF(ProfFactor);
     const std::size_t p = p_;
     ++jacobianFactorizations;
     std::fill(lu_.begin(), lu_.end(), 0.0);
@@ -392,6 +396,7 @@ bool Solver::factorJacobian() {
 }
 
 bool Solver::newtonDirection() {
+    AES_PROF(ProfSolve);
     if (!luValid_ && !factorJacobian()) return false;
     for (std::size_t i = 0; i < p_; ++i) dx_[i] = -f_[i];
     luSolveFast(lu_.data(), piv_.data(), dx_.data(), p_);
@@ -504,6 +509,7 @@ void Solver::dcOperatingPoint() {
 }
 
 void Solver::computeSrAndP() {
+    AES_PROF(ProfMatvec);
     const std::size_t n = n_;
     r_[n] = 0.0;
     for (std::size_t i = 0; i < n; ++i) {
@@ -517,6 +523,7 @@ void Solver::computeSrAndP() {
 }
 
 void Solver::reconstructVoltages() {
+    AES_PROF(ProfReconstruct);
     const std::size_t p = p_, n = n_;
     if (p == 0) {
         std::copy(sr_.begin(), sr_.begin() + n, v_.begin());
@@ -531,6 +538,7 @@ void Solver::reconstructVoltages() {
 }
 
 void Solver::step() {
+    AES_PROF(ProfStep);
     std::fill(r_.begin(), r_.end(), 0.0);
     for (std::size_t i = 0; i < sources_.size(); ++i) r_[sources_[i].node] += srcVal_[i] * sources_[i].g;
     for (std::size_t c = 0; c < capIx_.size(); ++c) {

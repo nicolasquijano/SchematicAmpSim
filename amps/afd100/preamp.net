@@ -35,9 +35,8 @@ R R121 in 0 1M
 R R119 in g5 68k
 R R88 g5 0 4M7
 
-* V5: two triodes with grids, plates and cathodes tied.
-T V5A g5 p5 k5 ECC83
-T V5B g5 p5 k5 ECC83
+* V5: two triodes with grids, plates and cathodes tied = one triode of double current (V5A + V5B).
+T V5 g5 p5 k5 ECC83 2
 R R72 h7 p5 51k
 R R113 k5 0 1.33k
 C C74 k5 0 680n

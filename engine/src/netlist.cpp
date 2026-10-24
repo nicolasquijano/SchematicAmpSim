@@ -229,8 +229,8 @@ struct Parser {
                 c.capacitor(node(t[2]), node(t[3]), value(t[4]));
                 break;
             case 'T':
-                need(t, 6, "T name g p k MODEL");
-                c.triode(node(t[2]), node(t[3]), node(t[4]), model<TriodeModel>(t[5], triodeModel));
+                if (t.size() != 6 && t.size() != 7) fail("expected: T name g p k MODEL [scale]");
+                c.triode(node(t[2]), node(t[3]), node(t[4]), model<TriodeModel>(t[5], triodeModel), t.size() == 7 ? value(t[6]) : 1.0);
                 break;
             case 'P':
                 need(t, 8, "P name g1 p g2 k MODEL scale");

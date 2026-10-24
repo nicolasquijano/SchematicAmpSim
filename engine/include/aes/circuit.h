@@ -48,7 +48,9 @@ public:
     ResId resistor(Node a, Node b, double ohms);
     void setResistor(ResId id, double ohms) { res_[id.i].ohms = ohms; }
     void capacitor(Node a, Node b, double farads);
-    void triode(Node g, Node p, Node k, const TriodeModel& model);
+    // `scale` identical triodes in parallel (grids, plates and cathodes tied): currents and
+    // interelectrode capacitances scale, the Newton problem stays the size of one triode.
+    void triode(Node g, Node p, Node k, const TriodeModel& model, double scale = 1.0);
     void pentode(Node g1, Node p, Node g2, Node k, const PentodeModel& model, double scale);
     void diode(Node anode, Node cathode, const DiodeModel& model);
     void bjt(Node b, Node c, Node e, const BjtModel& model);

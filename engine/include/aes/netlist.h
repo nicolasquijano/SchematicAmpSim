@@ -5,7 +5,7 @@
 //   .param name = expr   named value usable in later expressions
 //   .nodes n1 n2 ...     creates nodes in this order (node numbering is part of an amp's contract)
 //   R name a b value     resistor            C name a b value   capacitor
-//   T name g p k MODEL   triode (+ its interelectrode caps)
+//   T name g p k MODEL [scale]   triode (+ its interelectrode caps); `scale` identical triodes in parallel
 //   P name g1 p g2 k MODEL scale   pentode, `scale` identical tubes in parallel
 //   D name anode cathode MODEL     diode    Q name b c e MODEL   NPN (forward-active)
 //   O name plus minus out vref MODEL        op-amp biased around vref

@@ -7,6 +7,7 @@
 
 #include "aes/amp.h"
 #include "aes/embedded_amps.h"
+#include "aes/profile.h"
 #include "aes/ts808_fast.h"
 
 namespace {
@@ -39,24 +40,45 @@ double percent(F&& run, double seconds) {
 int main() {
     constexpr double fs = 96000.0, seconds = 3.0;
     const std::size_t n = std::size_t(fs * seconds);
-    const aes::AmpDef def = aes::loadEmbeddedAmp("jcm800_2203");
-    // Knob order of jcm800_2203: volume, bass, middle, treble, master.
-    struct Case { const char* name; std::vector<double> knobs; double presence, amp; };
-    const Case cases[] = {
-        {"clean", {0.2, 0.5, 0.5, 0.6, 0.5}, 0.5, 0.05},
-        {"crunch", {0.6, 0.5, 0.5, 0.6, 0.5}, 0.5, 0.15},
-        {"lead", {1.0, 0.6, 0.4, 0.7, 0.8}, 0.7, 0.3},
-    };
+    struct Case { const char* name; double volume, master, amp; };
+    const Case cases[] = {{"clean", 0.2, 0.5, 0.05}, {"crunch", 0.6, 0.5, 0.15}, {"lead", 1.0, 0.8, 0.3}};
     double sink = 0;
-    for (const auto& c : cases) {
-        const auto in = signal(c.amp, n, fs);
-        aes::FullAmp full(def, fs);
-        full.setKnobs(c.knobs, c.presence);
-        const double pf = percent([&] { for (double x : in) sink += full.process(x); }, seconds);
-        aes::LiteAmp lite(def, fs);
-        lite.setKnobs(c.knobs, c.presence);
-        const double pl = percent([&] { for (double x : in) sink += lite.process(x); }, seconds);
-        std::printf("%-7s full %5.1f %%   lite %5.1f %%\n", c.name, pf, pl);
+    for (const auto& id : aes::embeddedAmpIds()) {
+        const aes::AmpDef def = aes::loadEmbeddedAmp(id);
+        std::printf("== %s\n", id.c_str());
+        for (const auto& c : cases) {
+            std::vector<double> knobs;
+            for (const auto& k : def.preamp.knobs) knobs.push_back(k.def);
+            knobs[0] = c.volume;  // the first knob is the (first) volume in every amp
+            for (std::size_t i = 0; i < knobs.size(); ++i)
+                if (def.preamp.knobs[i].name == "master") knobs[i] = c.master;
+            const auto in = signal(c.amp, n, fs);
+#ifdef AES_PROFILE
+            // Lite runs only the preamp solver, so the counters isolate it.
+            {
+                aes::LiteAmp l(def, fs);
+                l.setKnobs(knobs, def.power.presenceDefault);
+                for (auto& v : aes::g_profile) v = 0;
+                for (double x : in) sink += l.process(x);
+                const double total = double(aes::g_profile[aes::ProfStep]);
+                std::printf("  %-7s preamp cycles/sample %.0f: eval %2.0f%%  factor %2.0f%%  lu-solve %2.0f%%  S*r %2.0f%%  v=S*r-K*i %2.0f%%\n", c.name,
+                            total / double(n), 100 * double(aes::g_profile[aes::ProfEval]) / total, 100 * double(aes::g_profile[aes::ProfFactor]) / total,
+                            100 * double(aes::g_profile[aes::ProfSolve]) / total, 100 * double(aes::g_profile[aes::ProfMatvec]) / total,
+                            100 * double(aes::g_profile[aes::ProfReconstruct]) / total);
+            }
+#endif
+            aes::FullAmp full(def, fs);
+            full.setKnobs(knobs, def.power.presenceDefault);
+            const double pf = percent([&] { for (double x : in) sink += full.process(x); }, seconds);
+            aes::LiteAmp lite(def, fs);
+            lite.setKnobs(knobs, def.power.presenceDefault);
+            const double pl = percent([&] { for (double x : in) sink += lite.process(x); }, seconds);
+            const auto& ps = full.pre().solver();
+            const auto& ws = full.power().solver();
+            std::printf("  %-7s full %6.1f %%   lite %6.1f %%   | preamp %zu nodes %zu ports %.1f it/sample %llu cont | power %zu nodes %zu ports %.1f it/sample\n",
+                        c.name, pf, pl, ps.nodeCount(), ps.portCount(), double(ps.newtonIterations) / double(n),
+                        (unsigned long long)ps.continuationRuns, ws.nodeCount(), ws.portCount(), double(ws.newtonIterations) / double(n));
+        }
     }
     {
         const auto in = signal(0.1, n, fs);
