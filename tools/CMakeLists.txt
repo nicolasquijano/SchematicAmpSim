@@ -1,0 +1,3 @@
+add_executable(aes_bench bench.cpp)
+target_link_libraries(aes_bench PRIVATE aes_engine)
+set_target_properties(aes_bench PROPERTIES INTERPROCEDURAL_OPTIMIZATION ON)
