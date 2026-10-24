@@ -4,6 +4,7 @@
 #include <juce_audio_processors/juce_audio_processors.h>
 #include <juce_dsp/juce_dsp.h>
 
+#include <atomic>
 #include <memory>
 #include <vector>
 
@@ -11,7 +12,10 @@
 #include "aes/chain.h"
 
 namespace ids {
+inline constexpr const char* amp = "amp";
+// Knob slots: each amp's amp.json "ui" block says which slot drives which of its knobs.
 inline constexpr const char* volume = "volume";
+inline constexpr const char* volume2 = "volume2";
 inline constexpr const char* bass = "bass";
 inline constexpr const char* middle = "middle";
 inline constexpr const char* treble = "treble";
@@ -34,6 +38,7 @@ enum class CabMode { Off = 0, Filter = 1, Ir = 2 };
 class AesProcessor final : public juce::AudioProcessor {
 public:
     AesProcessor();
+    ~AesProcessor() override;
 
     void prepareToPlay(double sampleRate, int samplesPerBlock) override;
     void releaseResources() override {}
@@ -62,18 +67,43 @@ public:
     void clearImpulseResponse();
     juce::String impulseResponseName() const;
 
+    // Amps available in this build (sorted by id) and the one the "amp" parameter selects.
+    const std::vector<aes::AmpDef>& amps() const { return defs_; }
+    int selectedAmpIndex() const;
+    // The amp whose circuits are processing audio right now (differs from the selection while a
+    // new amp is being built).
+    int runningAmpIndex() const { return activeAmp_.load(); }
+
     juce::AudioProcessorValueTreeState apvts;
-    const aes::AmpDef& ampDef() const { return def_; }
 
 private:
-    static juce::AudioProcessorValueTreeState::ParameterLayout createLayout();
+    class ChainBuilder;
+
+    static juce::AudioProcessorValueTreeState::ParameterLayout createLayout(const std::vector<aes::AmpDef>& defs);
     void loadImpulseResponseFromMemory(const void* data, std::size_t size, const juce::String& name);
     aes::ChainSettings readSettings(bool irAvailable);
+    void swapInBuiltChain();
 
-    aes::AmpDef def_;
+    std::vector<aes::AmpDef> defs_;
+
+    // Per amp: the APVTS value behind each preamp knob (nullptr = the knob's default) and presence.
+    struct AmpParams {
+        std::vector<std::atomic<float>*> knobs;
+        std::atomic<float>* presence = nullptr;
+    };
+    std::vector<AmpParams> ampParams_;
+
     std::unique_ptr<aes::Chain> chain_;
+    std::atomic<int> activeAmp_{0};  // the amp chain_ was built for (written by the audio thread)
     double sampleRate_ = 0.0;
     int latencyReported_ = -1;
+
+    // A chain for another amp is built off the audio thread and swapped in between blocks.
+    std::unique_ptr<ChainBuilder> builder_;
+    std::atomic<aes::Chain*> ready_{nullptr};
+    std::atomic<int> readyAmp_{-1};
+    std::atomic<aes::Chain*> retired_{nullptr};
+    std::atomic<int> requestedAmp_{-1};
 
     juce::dsp::Convolution convolution_{juce::dsp::Convolution::NonUniform{512}};
     std::atomic<bool> irLoaded_{false};
@@ -84,7 +114,6 @@ private:
 
     std::vector<float> mono_;
     aes::ChainSettings settings_;
-    std::vector<std::atomic<float>*> knobParams_;  // in def_.preamp.knobs order (nullptr = use default)
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(AesProcessor)
 };

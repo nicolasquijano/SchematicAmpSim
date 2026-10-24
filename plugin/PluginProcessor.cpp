@@ -1,5 +1,7 @@
 #include "PluginProcessor.h"
 
+#include <algorithm>
+
 #include "PluginEditor.h"
 #include "aes/embedded_amps.h"
 
@@ -28,9 +30,13 @@ constexpr std::size_t kMaxStoredIrBytes = 4 * 1024 * 1024;
 
 }  // namespace
 
-Layout AesProcessor::createLayout() {
+Layout AesProcessor::createLayout(const std::vector<aes::AmpDef>& defs) {
     Layout l;
+    juce::StringArray ampNames;
+    for (const auto& d : defs) ampNames.add(d.name);
+    l.add(std::make_unique<juce::AudioParameterChoice>(juce::ParameterID{ids::amp, kVersion}, "Amp", ampNames, 0));
     l.add(knob(ids::volume, "Preamp Volume", 6.0f));
+    l.add(knob(ids::volume2, "Preamp Volume II", 5.0f));
     l.add(knob(ids::bass, "Bass", 5.0f));
     l.add(knob(ids::middle, "Middle", 5.0f));
     l.add(knob(ids::treble, "Treble", 6.0f));
@@ -44,7 +50,7 @@ Layout AesProcessor::createLayout() {
     l.add(std::make_unique<juce::AudioParameterChoice>(
         juce::ParameterID{ids::cab, kVersion}, "Cabinet", juce::StringArray{"Off", "Filter", "IR"}, 1));
     l.add(std::make_unique<juce::AudioParameterChoice>(
-        juce::ParameterID{ids::jack, kVersion}, "Input jack", juce::StringArray{"High", "Low"}, 0));
+        juce::ParameterID{ids::jack, kVersion}, "Input jack", juce::StringArray{"Jack 1", "Jack 2", "Jack 3"}, 0));
     l.add(std::make_unique<juce::AudioParameterBool>(juce::ParameterID{ids::tsOn, kVersion}, "Tube Screamer", false));
     l.add(knob(ids::tsDrive, "TS Drive", 5.0f));
     l.add(knob(ids::tsTone, "TS Tone", 5.0f));
@@ -52,16 +58,89 @@ Layout AesProcessor::createLayout() {
     return l;
 }
 
+// ------------------------------------------------------------------ amp switching
+
+// Builds the circuits for another amp off the audio thread. At most one build runs at a time and
+// a newer request replaces an older one that has not started yet.
+class AesProcessor::ChainBuilder final : public juce::Thread {
+public:
+    explicit ChainBuilder(AesProcessor& p) : juce::Thread("AES chain builder"), owner_(p) { startThread(juce::Thread::Priority::low); }
+    ~ChainBuilder() override { stopThread(5000); }
+
+    void wake() { notify(); }
+
+    void run() override {
+        while (!threadShouldExit()) {
+            wait(-1);
+            if (threadShouldExit()) break;
+            delete owner_.retired_.exchange(nullptr);  // chains the audio thread has swapped out
+            const int amp = owner_.requestedAmp_.exchange(-1);
+            if (amp < 0 || amp >= int(owner_.defs_.size()) || owner_.sampleRate_ <= 0.0) continue;
+            try {
+                auto* built = new aes::Chain(owner_.defs_[std::size_t(amp)], owner_.sampleRate_);
+                owner_.readyAmp_.store(amp);
+                delete owner_.ready_.exchange(built);  // replaces a build nobody picked up
+            } catch (const std::exception&) {
+                // A broken amp definition leaves the current amp running.
+            }
+        }
+    }
+
+private:
+    AesProcessor& owner_;
+};
+
+int AesProcessor::selectedAmpIndex() const {
+    return juce::jlimit(0, int(defs_.size()) - 1, int(apvts.getRawParameterValue(ids::amp)->load() + 0.5f));
+}
+
+void AesProcessor::swapInBuiltChain() {
+    aes::Chain* built = ready_.exchange(nullptr);
+    if (!built) return;
+    const int amp = readyAmp_.load();
+    // Start the new circuits at the current knob positions instead of ramping from their defaults.
+    activeAmp_ = amp;
+    built->snap(readSettings(irLoaded_.load()));
+    aes::Chain* old = chain_.release();
+    chain_.reset(built);
+    // The builder frees it; if it has not yet freed the previous one, do it here (rare).
+    delete retired_.exchange(old);
+    latencyReported_ = -1;
+}
+
+// ------------------------------------------------------------------ lifecycle
+
 AesProcessor::AesProcessor()
     : AudioProcessor(BusesProperties()
                          .withInput("Input", juce::AudioChannelSet::stereo(), true)
                          .withOutput("Output", juce::AudioChannelSet::stereo(), true)),
-      apvts(*this, nullptr, "AES", createLayout()),
-      def_(aes::loadEmbeddedAmp("jcm800_2203")) {
-    // Knob parameters are looked up by the amp's knob names (the ids above are those names).
-    for (const auto& k : def_.preamp.knobs) knobParams_.push_back(apvts.getRawParameterValue(k.name));
-    settings_.knobs.resize(def_.preamp.knobs.size());
+      apvts(*this, nullptr, "AES", createLayout([] {
+                std::vector<aes::AmpDef> defs;
+                for (const auto& id : aes::embeddedAmpIds()) defs.push_back(aes::loadEmbeddedAmp(id));
+                return defs;
+            }())) {
+    for (const auto& id : aes::embeddedAmpIds()) defs_.push_back(aes::loadEmbeddedAmp(id));
+
+    // Resolve, per amp, which parameter drives each of its knobs (via its "ui" block).
+    for (const auto& def : defs_) {
+        AmpParams ap;
+        ap.knobs.assign(def.preamp.knobs.size(), nullptr);
+        for (const auto& u : def.ui) {
+            if (u.param == ids::presence) ap.presence = apvts.getRawParameterValue(u.param);
+            if (!u.knob.empty()) ap.knobs[def.knobIndex(u.knob)] = apvts.getRawParameterValue(u.param);
+        }
+        if (!ap.presence) ap.presence = apvts.getRawParameterValue(ids::presence);
+        ampParams_.push_back(std::move(ap));
+    }
+    settings_.knobs.reserve(16);  // never reallocates on the audio thread
     mono_.resize(kMaxChunk);
+    builder_ = std::make_unique<ChainBuilder>(*this);
+}
+
+AesProcessor::~AesProcessor() {
+    builder_.reset();  // joins the thread before the chains it may own go away
+    delete ready_.exchange(nullptr);
+    delete retired_.exchange(nullptr);
 }
 
 bool AesProcessor::isBusesLayoutSupported(const BusesLayout& layouts) const {
@@ -71,9 +150,12 @@ bool AesProcessor::isBusesLayoutSupported(const BusesLayout& layouts) const {
 }
 
 void AesProcessor::prepareToPlay(double sampleRate, int samplesPerBlock) {
-    if (!chain_ || sampleRate != sampleRate_) {
-        chain_ = std::make_unique<aes::Chain>(def_, sampleRate);  // heavy: solves the DC points
+    const int wanted = selectedAmpIndex();
+    if (!chain_ || sampleRate != sampleRate_ || wanted != activeAmp_) {
         sampleRate_ = sampleRate;
+        delete ready_.exchange(nullptr);
+        chain_ = std::make_unique<aes::Chain>(defs_[std::size_t(wanted)], sampleRate);  // heavy: solves the DC points
+        activeAmp_ = wanted;
     } else {
         chain_->reset();
     }
@@ -85,14 +167,17 @@ void AesProcessor::prepareToPlay(double sampleRate, int samplesPerBlock) {
 
 aes::ChainSettings AesProcessor::readSettings(bool irAvailable) {
     auto& s = settings_;
-    for (std::size_t i = 0; i < knobParams_.size(); ++i)
-        s.knobs[i] = knobParams_[i] ? double(knobParams_[i]->load()) / 10.0 : def_.preamp.knobs[i].def;
+    const auto& def = defs_[std::size_t(activeAmp_)];
+    const auto& ap = ampParams_[std::size_t(activeAmp_)];
+    s.knobs.resize(def.preamp.knobs.size());
+    for (std::size_t i = 0; i < s.knobs.size(); ++i)
+        s.knobs[i] = ap.knobs[i] ? double(ap.knobs[i]->load()) / 10.0 : def.preamp.knobs[i].def;
     auto raw = [this](const char* id) { return double(apvts.getRawParameterValue(id)->load()); };
-    s.presence = raw(ids::presence) / 10.0;
+    s.presence = double(ap.presence->load()) / 10.0;
     s.inputDb = raw(ids::input);
     s.outputDb = raw(ids::output);
     s.quality = static_cast<aes::Quality>(juce::jlimit(0, 2, int(raw(ids::quality) + 0.5)));
-    s.jack = std::size_t(juce::jlimit(0, int(def_.preamp.jacks.size()) - 1, int(raw(ids::jack) + 0.5)));
+    s.jack = std::size_t(juce::jlimit(0, int(def.preamp.jacks.size()) - 1, int(raw(ids::jack) + 0.5)));
     const auto cab = static_cast<CabMode>(juce::jlimit(0, 2, int(raw(ids::cab) + 0.5)));
     // With no IR loaded the IR mode falls back to the cab filter instead of the raw amp.
     s.cabFilter = cab == CabMode::Filter || (cab == CabMode::Ir && !irAvailable);
@@ -108,6 +193,15 @@ void AesProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::MidiBuff
     const int numCh = buffer.getNumChannels();
     const int numSamples = buffer.getNumSamples();
     if (!chain_ || numCh == 0) return;
+
+    // Another amp was chosen: ask the builder, and swap in its circuits once they are ready. The
+    // old amp keeps playing meanwhile.
+    swapInBuiltChain();
+    const int wanted = selectedAmpIndex();
+    if (wanted != activeAmp_ && requestedAmp_.load() != wanted && ready_.load() == nullptr) {
+        requestedAmp_.store(wanted);
+        builder_->wake();
+    }
 
     const bool irLoaded = irLoaded_.load();
     const auto cabParam = static_cast<CabMode>(juce::jlimit(0, 2, int(apvts.getRawParameterValue(ids::cab)->load() + 0.5f)));

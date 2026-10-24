@@ -62,6 +62,9 @@ public:
     Chain(const AmpDef& def, double fs);
 
     void setSettings(const ChainSettings& s);
+    // Like setSettings, but the knobs start at these values instead of ramping from their defaults
+    // (for a chain that is about to replace a running one).
+    void snap(const ChainSettings& s);
 
     // Round-trip latency in host samples for the active quality.
     double latencySamples() const;

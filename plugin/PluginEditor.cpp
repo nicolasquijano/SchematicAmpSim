@@ -74,17 +74,26 @@ void KnobWithLabel::resized() {
 
 AesEditor::AesEditor(AesProcessor& p)
     : AudioProcessorEditor(&p), processor_(p),
-      volume_(p.apvts, ids::volume, "PREAMP"), bass_(p.apvts, ids::bass, "BASS"), middle_(p.apvts, ids::middle, "MIDDLE"),
-      treble_(p.apvts, ids::treble, "TREBLE"), presence_(p.apvts, ids::presence, "PRESENCE"),
-      master_(p.apvts, ids::master, "MASTER"), input_(p.apvts, ids::input, "INPUT dB"), output_(p.apvts, ids::output, "OUTPUT dB"),
+      input_(p.apvts, ids::input, "INPUT dB"), output_(p.apvts, ids::output, "OUTPUT dB"),
       tsDrive_(p.apvts, ids::tsDrive, "DRIVE"), tsTone_(p.apvts, ids::tsTone, "TONE"), tsLevel_(p.apvts, ids::tsLevel, "LEVEL") {
     setLookAndFeel(&look_);
-    for (auto* k : {&volume_, &bass_, &middle_, &treble_, &presence_, &master_, &input_, &output_, &tsDrive_, &tsTone_, &tsLevel_})
-        addAndMakeVisible(*k);
+    for (auto* k : {&input_, &output_, &tsDrive_, &tsTone_, &tsLevel_}) addAndMakeVisible(*k);
 
+    styleCombo(amp_, ids::amp, ampAtt_);
     styleCombo(quality_, ids::quality, qualityAtt_);
-    styleCombo(jack_, ids::jack, jackAtt_);
     styleCombo(cab_, ids::cab, cabAtt_);
+    // The jack list depends on the amp, so it is filled by showAmp() and wired by hand.
+    addAndMakeVisible(jack_);
+    jack_.onChange = [this] {
+        if (auto* param = processor_.apvts.getParameter(ids::jack)) {
+            const int index = jack_.getSelectedItemIndex();
+            if (index < 0) return;
+            param->beginChangeGesture();
+            param->setValueNotifyingHost(param->convertTo0to1(float(index)));
+            param->endChangeGesture();
+        }
+    };
+    styleCaption(ampCaption_, "AMP");
     styleCaption(qualityCaption_, "QUALITY");
     styleCaption(jackCaption_, "INPUT JACK");
     styleCaption(cabCaption_, "CABINET");
@@ -100,9 +109,10 @@ AesEditor::AesEditor(AesProcessor& p)
     loadIr_.onClick = [this] { chooseImpulseResponse(); };
     clearIr_.onClick = [this] { processor_.clearImpulseResponse(); };
 
+    showAmp(processor_.selectedAmpIndex());
     setResizable(true, true);
     setResizeLimits(560, 480, 1100, 900);
-    setSize(660, 520);
+    setSize(660, 540);
     startTimerHz(4);
     timerCallback();
 }
@@ -125,7 +135,38 @@ void AesEditor::styleCaption(juce::Label& l, const juce::String& text) {
     addAndMakeVisible(l);
 }
 
+void AesEditor::showAmp(int index) {
+    const auto& defs = processor_.amps();
+    if (index < 0 || index >= int(defs.size())) return;
+    shownAmp_ = index;
+    const auto& def = defs[std::size_t(index)];
+    title_ = juce::String(def.name).toUpperCase();
+
+    ampKnobs_.clear();
+    for (const auto& u : def.ui) {
+        auto k = std::make_unique<KnobWithLabel>(processor_.apvts, u.param.c_str(), u.label);
+        addAndMakeVisible(*k);
+        ampKnobs_.push_back(std::move(k));
+    }
+
+    jack_.clear(juce::dontSendNotification);
+    for (std::size_t j = 0; j < def.preamp.jacks.size(); ++j) {
+        juce::String name(def.preamp.jacks[j].name);
+        jack_.addItem(name.substring(0, 1).toUpperCase() + name.substring(1), int(j) + 1);
+    }
+    const int jackNow = int(processor_.apvts.getRawParameterValue(ids::jack)->load() + 0.5f);
+    jack_.setSelectedItemIndex(juce::jlimit(0, int(def.preamp.jacks.size()) - 1, jackNow), juce::dontSendNotification);
+    resized();
+    repaint();
+}
+
 void AesEditor::timerCallback() {
+    // Follows the amp parameter when the host or a restored state changes it.
+    if (processor_.selectedAmpIndex() != shownAmp_) showAmp(processor_.selectedAmpIndex());
+    const int jackNow = int(processor_.apvts.getRawParameterValue(ids::jack)->load() + 0.5f);
+    if (jackNow < jack_.getNumItems() && jack_.getSelectedItemIndex() != jackNow)
+        jack_.setSelectedItemIndex(jackNow, juce::dontSendNotification);
+
     const auto name = processor_.impulseResponseName();
     irName_.setText(name.isEmpty() ? "no IR loaded (the cab filter is used)" : name, juce::dontSendNotification);
 }
@@ -150,7 +191,7 @@ void AesEditor::paint(juce::Graphics& g) {
     g.fillAll(kBackground);
     g.setColour(AmpLookAndFeel::gold());
     g.setFont(juce::FontOptions(28.0f, juce::Font::bold));
-    g.drawText("JCM800  2203", getLocalBounds().removeFromTop(48), juce::Justification::centred);
+    g.drawText(title_, getLocalBounds().removeFromTop(48), juce::Justification::centred);
     g.setColour(juce::Colours::grey);
     g.setFont(juce::FontOptions(12.0f));
     g.drawText("AES - amp schematic simulator", getLocalBounds().removeFromTop(66).removeFromBottom(18), juce::Justification::centred);
@@ -168,11 +209,12 @@ void AesEditor::resized() {
     area.removeFromTop(70);
     const int rowH = area.getHeight() / 3;
 
-    // Row 1: the six amp knobs.
+    // Row 1: the amp's own knobs.
     {
         auto row = area.removeFromTop(rowH);
-        const int w = row.getWidth() / 6;
-        for (auto* k : {&volume_, &bass_, &middle_, &treble_, &presence_, &master_}) k->setBounds(row.removeFromLeft(w).reduced(2));
+        const int n = std::max<int>(1, int(ampKnobs_.size()));
+        const int w = row.getWidth() / n;
+        for (auto& k : ampKnobs_) k->setBounds(row.removeFromLeft(w).reduced(2));
     }
     // Row 2: input/output trims and the selectors.
     {
@@ -181,13 +223,14 @@ void AesEditor::resized() {
         input_.setBounds(row.removeFromLeft(w).reduced(2));
         output_.setBounds(row.removeFromLeft(w).reduced(2));
         row.removeFromLeft(w / 3);
-        auto col = row.reduced(4, 8);
-        const int h = col.getHeight() / 3;
+        auto col = row.reduced(4, 4);
+        const int h = col.getHeight() / 4;
         auto line = [&](juce::Label& cap, juce::ComboBox& box) {
             auto r = col.removeFromTop(h);
-            cap.setBounds(r.removeFromTop(18));
-            box.setBounds(r.removeFromTop(26).removeFromLeft(std::min(220, r.getWidth())));
+            cap.setBounds(r.removeFromTop(16));
+            box.setBounds(r.removeFromTop(24).removeFromLeft(std::min(220, r.getWidth())));
         };
+        line(ampCaption_, amp_);
         line(qualityCaption_, quality_);
         line(jackCaption_, jack_);
         line(cabCaption_, cab_);

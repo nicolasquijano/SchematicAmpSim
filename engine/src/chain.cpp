@@ -45,6 +45,17 @@ void Chain::setSettings(const ChainSettings& s) {
     target_.tsOn = s.tsOn;
 }
 
+void Chain::snap(const ChainSettings& s) {
+    for (std::size_t i = 0; i < knobs_.size() && i < s.knobs.size(); ++i) knobs_[i].reset(std::clamp(s.knobs[i], 0.0, 1.0), fs_, 40.0);
+    presence_.reset(std::clamp(s.presence, 0.0, 1.0), fs_, 40.0);
+    tsDrive_.reset(std::clamp(s.tsDrive, 0.0, 1.0), fs_, 40.0);
+    tsTone_.reset(std::clamp(s.tsTone, 0.0, 1.0), fs_, 40.0);
+    tsLevel_.reset(std::clamp(s.tsLevel, 0.0, 1.0), fs_, 40.0);
+    inputDb_.reset(s.inputDb, fs_, 20.0);
+    outputDb_.reset(s.outputDb, fs_, 20.0);
+    setSettings(s);
+}
+
 double Chain::latencySamples() const {
     return std::ceil(target_.quality == Quality::High ? os4_.latencySamples() : os2_.latencySamples());
 }

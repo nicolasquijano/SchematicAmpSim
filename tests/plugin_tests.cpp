@@ -1,4 +1,5 @@
 // Headless tests of the JUCE processor: parameters, audio, state round trip and the IR loader.
+#include <catch2/catch_approx.hpp>
 #include <catch2/catch_test_macros.hpp>
 #include <cmath>
 
@@ -58,7 +59,7 @@ juce::File writeImpulse(const juce::String& name) {
 TEST_CASE("processor exposes the expected parameters") {
     JuceInit init;
     AesProcessor p;
-    for (const char* id : {ids::volume, ids::bass, ids::middle, ids::treble, ids::presence, ids::master, ids::input, ids::output,
+    for (const char* id : {ids::amp, ids::volume2, ids::volume, ids::bass, ids::middle, ids::treble, ids::presence, ids::master, ids::input, ids::output,
                            ids::quality, ids::cab, ids::jack, ids::tsOn, ids::tsDrive, ids::tsTone, ids::tsLevel})
         CHECK(p.apvts.getParameter(id) != nullptr);
     CHECK(p.apvts.getParameter(ids::volume)->getText(p.apvts.getParameter(ids::volume)->getDefaultValue(), 10) == "6.0");
@@ -84,6 +85,45 @@ TEST_CASE("processor makes finite audio in every quality and reports latency") {
     setParam(p, ids::quality, 1.0f);
     run(p, 2);
     CHECK(p.getLatencySamples() > latency2x);
+}
+
+TEST_CASE("switching amp keeps audio flowing and swaps in the new circuits") {
+    JuceInit init;
+    AesProcessor p;
+    p.prepareToPlay(48000.0, 512);
+    REQUIRE(p.amps().size() >= 2);
+    CHECK(p.amps()[0].id == "jcm800_2203");
+    CHECK(p.amps()[1].id == "plexi_1959");
+    setParam(p, ids::quality, 2.0f);  // Lite: cheaper to build and run
+    const double before = rms(run(p, 12));
+    REQUIRE(before > 1e-4);
+
+    setParam(p, ids::amp, 1.0f);
+    CHECK(p.selectedAmpIndex() == 1);
+    CHECK(p.runningAmpIndex() == 0);
+    // Blocks keep coming (finite and audible) until the builder hands over the Plexi.
+    bool swapped = false;
+    for (int i = 0; i < 600 && !swapped; ++i) {
+        const auto out = run(p, 2);
+        for (int s = 0; s < out.getNumSamples(); ++s) REQUIRE(std::isfinite(out.getSample(0, s)));
+        CHECK(rms(out) > 1e-5);  // the old amp keeps playing while the new one is built
+        swapped = p.runningAmpIndex() == 1;
+        juce::Thread::sleep(15);
+    }
+    CHECK(swapped);
+    const double plexi = rms(run(p, 12));
+    CHECK(plexi > 1e-4);
+
+    // And back again, to the original circuit and level.
+    setParam(p, ids::amp, 0.0f);
+    bool back = false;
+    for (int i = 0; i < 600 && !back; ++i) {
+        run(p, 2);
+        back = p.runningAmpIndex() == 0;
+        juce::Thread::sleep(15);
+    }
+    CHECK(back);
+    CHECK(rms(run(p, 12)) == Catch::Approx(before).epsilon(0.1));
 }
 
 TEST_CASE("state round trip restores parameters") {
