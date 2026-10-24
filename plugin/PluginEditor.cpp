@@ -183,7 +183,7 @@ void AesEditor::chooseImpulseResponse() {
                                   // Switch the cabinet to IR so the load is audible right away.
                                   if (auto* cab = processor_.apvts.getParameter(ids::cab)) cab->setValueNotifyingHost(cab->convertTo0to1(2.0f));
                               } else {
-                                  juce::AlertWindow::showMessageBoxAsync(juce::MessageBoxIconType::WarningIcon, "AES",
+                                  juce::AlertWindow::showMessageBoxAsync(juce::MessageBoxIconType::WarningIcon, "Schematic Amp Sim",
                                                                          "Could not read that file as an impulse response.");
                               }
                           });
@@ -196,7 +196,7 @@ void AesEditor::paint(juce::Graphics& g) {
     g.drawText(title_, getLocalBounds().removeFromTop(48), juce::Justification::centred);
     g.setColour(juce::Colours::grey);
     g.setFont(juce::FontOptions(12.0f));
-    g.drawText("AES - amp schematic simulator", getLocalBounds().removeFromTop(66).removeFromBottom(18), juce::Justification::centred);
+    g.drawText("Schematic Amp Sim", getLocalBounds().removeFromTop(66).removeFromBottom(18), juce::Justification::centred);
 
     // Section dividers.
     g.setColour(AmpLookAndFeel::gold().withAlpha(0.25f));

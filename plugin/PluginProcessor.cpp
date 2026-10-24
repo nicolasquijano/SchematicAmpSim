@@ -116,7 +116,7 @@ AesProcessor::AesProcessor()
     : AudioProcessor(BusesProperties()
                          .withInput("Input", juce::AudioChannelSet::stereo(), true)
                          .withOutput("Output", juce::AudioChannelSet::stereo(), true)),
-      apvts(*this, nullptr, "AES", createLayout([] {
+      apvts(*this, nullptr, "AES" /* state tag: part of saved projects, do not rename */, createLayout([] {
                 std::vector<aes::AmpDef> defs;
                 for (const auto& id : aes::embeddedAmpIds()) defs.push_back(aes::loadEmbeddedAmp(id));
                 return defs;

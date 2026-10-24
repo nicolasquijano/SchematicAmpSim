@@ -3,7 +3,11 @@ juce_add_plugin(AES
   PLUGIN_MANUFACTURER_CODE Nico
   PLUGIN_CODE Aes1
   FORMATS VST3
-  PRODUCT_NAME "AES"
+  # Visible name (bundle file and name in the DAW). The VST3 class id comes from the manufacturer code
+  # and PLUGIN_CODE above, not from this name, so renaming it keeps saved projects working; the
+  # CMake target stays `AES`.
+  PRODUCT_NAME "Schematic Amp Sim"
+  PLUGIN_NAME "Schematic Amp Sim"
   IS_SYNTH FALSE
   NEEDS_MIDI_INPUT FALSE
   NEEDS_MIDI_OUTPUT FALSE
