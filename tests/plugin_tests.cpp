@@ -2,6 +2,7 @@
 #include <catch2/catch_approx.hpp>
 #include <catch2/catch_test_macros.hpp>
 #include <cmath>
+#include <cstdlib>
 
 #include <juce_audio_formats/juce_audio_formats.h>
 
@@ -167,4 +168,30 @@ TEST_CASE("an impulse response loads, survives the state, and shapes the sound")
     p.clearImpulseResponse();
     CHECK(p.impulseResponseName().isEmpty());
     file.deleteFile();
+}
+
+TEST_CASE("the editor builds for every amp and can be rendered") {
+    JuceInit juceInit;
+    SasProcessor p;
+    const char* dir = std::getenv("SAS_EDITOR_PNG_DIR");  // set it to also write a picture of every amp's editor
+    for (int amp = 0; amp < p.apvts.getParameter("amp")->getNumSteps(); ++amp) {
+        setParam(p, "amp", float(amp));
+        std::unique_ptr<juce::AudioProcessorEditor> ed(p.createEditor());
+        REQUIRE(ed != nullptr);
+        ed->setSize(800, 410);
+        CHECK(ed->getWidth() > 0);
+        if (dir) {
+            const auto img = ed->createComponentSnapshot(ed->getLocalBounds());
+            juce::PNGImageFormat png;
+            juce::FileOutputStream out(juce::File(dir).getChildFile("amp" + juce::String(amp) + ".png"));
+            if (out.openedOk()) { out.setPosition(0); out.truncate(); png.writeImageToStream(img, out); }
+            if (amp == 0) {  // the effects page
+                for (auto* c : ed->getChildren())
+                    if (auto* b = dynamic_cast<juce::TextButton*>(c); b && b->getButtonText() == "Effects") { b->setToggleState(true, juce::dontSendNotification); b->onClick(); }
+                const auto fx = ed->createComponentSnapshot(ed->getLocalBounds());
+                juce::FileOutputStream o2(juce::File(dir).getChildFile("fx.png"));
+                if (o2.openedOk()) { o2.setPosition(0); o2.truncate(); png.writeImageToStream(fx, o2); }
+            }
+        }
+    }
 }
