@@ -70,6 +70,32 @@ struct VibratoDef {
     std::size_t controlSamples = 64;
 };
 
+// Spring reverb: the driver tube and transformer, the pan and the recovery tube. The tubes are a small
+// circuit of their own (`netlist`), solved every sample beside the preamp: its source `gridSource` is
+// driven from the preamp node `gridNode` (one-way: the driver only taps the signal), and the plate
+// signal of `outNode` drives the preamp source `mainSource`. The pan between them is a behavioural
+// tank: the voltage of `tankInNode` (drive transformer secondary) goes in, the result drives the
+// source `tankOutSource` (recovery tube grid). Each spring is a feedback loop of delay, dispersion
+// (all-pass chain) and loss; both are summed.
+struct SpringDef {
+    double delayMs = 35.0;     // one trip along the spring
+    std::size_t sections = 80; // all-pass sections of the dispersion chain
+    double coefficient = -0.5; // their coefficient (negative: lows are delayed more than highs)
+    double loopGain = 0.85;    // gain of one round trip at low frequencies
+    double lossHz = 3000.0;    // low-pass in the loop (the spring loses highs each trip)
+};
+
+struct ReverbDef {
+    bool present = false;
+    std::string netlist, netlistText, railSource;
+    std::string gridSource, gridNode, outNode, mainSource;
+    std::string tankInNode, tankOutSource;
+    double gain = 1.0;         // volts out per volt in, averaged around 1 kHz
+    double inputLowHz = 80.0, inputHighHz = 4200.0, outputHighHz = 3500.0;
+    double tankRateHz = 16000.0;
+    std::vector<SpringDef> springs;
+};
+
 struct PreampDef {
     std::vector<PreampStageDef> stages;  // after the first netlist, in signal order
     std::string netlist;       // file name
@@ -83,6 +109,7 @@ struct PreampDef {
     std::vector<JackDef> jacks;
     std::string jackLabel = "INPUT JACK";  // caption of the selector: "MODE", "CHANNEL", ...
     VibratoDef vibrato;
+    ReverbDef reverb;
 };
 
 struct SupplyDef {

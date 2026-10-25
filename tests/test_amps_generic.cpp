@@ -1,5 +1,6 @@
 // Tests that every embedded amp must pass, plus checks specific to the Plexi transcription.
 #include <catch2/catch_test_macros.hpp>
+#include <array>
 #include <cmath>
 
 #include "sas/amp.h"
@@ -309,4 +310,45 @@ TEST_CASE("Twin: the optical vibrato chops the signal only when it is on and the
     CHECK(depthDb(true, 1.0, 0.5) > 6.0);    // full intensity: a clear chop
     CHECK(depthDb(true, 0.5, 0.5) > 3.0);
     CHECK(depthDb(true, 0.5, 0.5) < depthDb(true, 1.0, 0.5));
+}
+
+TEST_CASE("Twin: the spring reverb leaves a decaying tail only with the Reverb knob up") {
+    const AmpDef def = loadEmbeddedAmp("twin_65");
+    REQUIRE(def.preamp.reverb.present);
+    const std::size_t rev = def.knobIndex("reverb");
+    // Two identical amps, reverb at `level` and at 0: the difference of their outputs is the reverb alone
+    // (the supply hum is the same in both). Its rms in windows [0.3, 0.5], [1.5, 1.7] and [2.5, 2.7] s
+    // after a 0.1 s burst.
+    auto tail = [&](double level) {
+        FullAmp a(def, kFs), b(def, kFs);
+        auto k = defaultKnobs(def);
+        k[rev] = level;
+        a.setKnobs(k, 0.5);
+        k[rev] = 0.0;
+        b.setKnobs(k, 0.5);
+        a.setJack(def.jackIndex("vibrato1"));
+        b.setJack(def.jackIndex("vibrato1"));
+        const double burst = 0.1;
+        std::array<double, 3> start{0.3, 1.5, 2.5}, acc{}, out{};
+        std::array<std::size_t, 3> cnt{};
+        const std::size_t total = std::size_t((burst + 2.8) * kFs);
+        for (std::size_t i = 0; i < total; ++i) {
+            const double t = double(i) / kFs;
+            const double x = t < burst ? 0.02 * std::sin(2 * kPi * 330.0 * t) : 0.0;
+            const double d = a.process(x) - b.process(x);
+            REQUIRE(std::isfinite(d));
+            for (std::size_t w = 0; w < 3; ++w)
+                if (t >= burst + start[w] && t < burst + start[w] + 0.2) { acc[w] += d * d; ++cnt[w]; }
+        }
+        for (std::size_t w = 0; w < 3; ++w) out[w] = std::sqrt(acc[w] / double(cnt[w]));
+        return out;
+    };
+    const auto none = tail(0.0), full = tail(1.0), mid = tail(0.4);
+    INFO("reverb 0: " << none[0] << "; reverb 1: " << full[0] << " " << full[1] << " " << full[2] << "; 0.4: " << mid[0]);
+    CHECK(none[0] < 1e-9);          // knob down: no reverb at all
+    CHECK(full[0] > 1e-3);          // a clear tail
+    CHECK(full[0] > full[1]);       // that decays
+    CHECK(full[1] > full[2]);
+    CHECK(full[1] > 1e-4);          // and lasts for seconds
+    CHECK(mid[0] < full[0]);        // less with the knob lower
 }

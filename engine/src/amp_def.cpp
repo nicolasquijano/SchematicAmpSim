@@ -109,6 +109,35 @@ PreampDef parsePreamp(const json& j, const FileReader& read) {
     }
     if (p.jacks.empty()) bad("preamp.jacks", "at least one jack is required");
     if (j.contains("jack_label")) p.jackLabel = str(j, "jack_label", "preamp");
+    if (j.contains("reverb")) {
+        const json& r = j.at("reverb");
+        ReverbDef& d = p.reverb;
+        d.present = true;
+        d.netlist = str(r, "netlist", "preamp.reverb");
+        d.netlistText = read(d.netlist);
+        d.railSource = str(r, "rail_source", "preamp.reverb");
+        d.gridSource = str(r, "grid_source", "preamp.reverb");
+        d.gridNode = str(r, "grid_node", "preamp.reverb");
+        d.outNode = str(r, "out_node", "preamp.reverb");
+        d.mainSource = str(r, "main_source", "preamp.reverb");
+        d.tankInNode = str(r, "tank_in_node", "preamp.reverb");
+        d.tankOutSource = str(r, "tank_out_source", "preamp.reverb");
+        d.gain = num(r, "gain", "preamp.reverb");
+        d.inputLowHz = numOr(r, "input_low_hz", d.inputLowHz);
+        d.inputHighHz = numOr(r, "input_high_hz", d.inputHighHz);
+        d.outputHighHz = numOr(r, "output_high_hz", d.outputHighHz);
+        d.tankRateHz = numOr(r, "tank_rate_hz", d.tankRateHz);
+        for (const auto& s : need(r, "springs", "preamp.reverb")) {
+            SpringDef sp;
+            sp.delayMs = num(s, "delay_ms", "preamp.reverb.springs");
+            sp.sections = std::size_t(num(s, "sections", "preamp.reverb.springs"));
+            sp.coefficient = num(s, "coefficient", "preamp.reverb.springs");
+            sp.loopGain = num(s, "loop_gain", "preamp.reverb.springs");
+            sp.lossHz = num(s, "loss_hz", "preamp.reverb.springs");
+            d.springs.push_back(sp);
+        }
+        if (d.springs.empty()) bad("preamp.reverb.springs", "at least one spring is required");
+    }
     if (j.contains("vibrato")) {
         const json& v = j.at("vibrato");
         VibratoDef& d = p.vibrato;

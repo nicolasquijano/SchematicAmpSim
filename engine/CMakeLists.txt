@@ -5,6 +5,8 @@ add_library(sas_engine STATIC
   src/amp_def.cpp
   src/preamp.cpp
   src/vibrato.cpp
+  src/spring.cpp
+  src/reverb.cpp
   src/poweramp.cpp
   src/chain.cpp)
 target_include_directories(sas_engine PUBLIC include)

@@ -11,6 +11,7 @@
 
 #include "sas/amp_def.h"
 #include "sas/circuit.h"
+#include "sas/reverb.h"
 #include "sas/vibrato.h"
 
 namespace sas {
@@ -35,6 +36,7 @@ public:
     void setRail(double volts) {
         for (auto& s : stages_) s.solver.setSource(s.rail, volts);
         if (vib_) vib_->setRail(volts);
+        if (rev_) rev_->setRail(volts);
     }
     // ~7 kohm for a guitar, far less behind a pedal.
     void setSourceOhms(double ohms);
@@ -50,6 +52,7 @@ public:
     double process(double vin) {
         const Jack& j = jacks_[jack_];
         Stage& first = stages_.front();
+        if (rev_) first.solver.setSource(revSrc_, rev_->process(first.solver.voltage(revGrid_)));
         if (j.drivesInput) {
             first.solver.process(vin);
         } else {
@@ -118,6 +121,9 @@ private:
     std::vector<Jack> jacks_;
     std::size_t jack_ = 0;
     std::unique_ptr<Vibrato> vib_;
+    std::unique_ptr<Reverb> rev_;  // spring reverb: tapped from a node of stage 0, injected at a source of it
+    SrcId revSrc_{0};
+    Node revGrid_ = 0;
     Refs cellRefs_;
     std::size_t vibCount_ = 0, vibEvery_ = 64;
     double lastCellOhms_ = 1.0;

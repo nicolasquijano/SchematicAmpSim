@@ -21,8 +21,24 @@
                                                  "also": [ { "resistor": "VR_MID_N" } ] } },
       { "name": "treble", "default": 0.6, "pot": { "type": "wiper", "top": "VR_TT_V", "bottom": "VR_TB_V", "total": 250e3, "taper": "log30",
                                                  "also": [ { "top": "VR_TT_N", "bottom": "VR_TB_N" } ] } },
-      { "name": "intensity", "default": 0.5, "pot": { "type": "wiper", "top": "VR_INT_T", "bottom": "VR_INT_B", "total": 50e3, "taper": "revlog" } }
+      { "name": "intensity", "default": 0.5, "pot": { "type": "wiper", "top": "VR_INT_T", "bottom": "VR_INT_B", "total": 50e3, "taper": "revlog" } },
+      { "name": "reverb", "default": 0.3, "pot": { "type": "wiper", "top": "VR_REV_T", "bottom": "VR_REV_B", "total": 100e3, "taper": "linear" } }
     ],
+    "reverb": {
+      "netlist": "reverb.net",
+      "rail_source": "VRAIL",
+      "grid_source": "VG3",
+      "grid_node": "gv3",
+      "out_node": "pv4",
+      "main_source": "VREVOUT",
+      "tank_in_node": "ts",
+      "tank_out_source": "VREV",
+      "gain": 0.00147,
+      "springs": [
+        { "delay_ms": 33, "sections": 80, "coefficient": -0.5, "loop_gain": 0.92, "loss_hz": 3500 },
+        { "delay_ms": 41, "sections": 80, "coefficient": -0.5, "loop_gain": 0.92, "loss_hz": 3500 }
+      ]
+    },
     "vibrato": {
       "netlist": "vibrato.net",
       "rail_source": "VRAIL",
@@ -52,7 +68,8 @@
     { "param": "middle",  "knob": "middle",         "label": "MIDDLE" },
     { "param": "treble",  "knob": "treble",         "label": "TREBLE" },
     { "param": "vib_speed",     "label": "SPEED" },
-    { "param": "vib_intensity", "knob": "intensity", "label": "INTENSITY" }
+    { "param": "vib_intensity", "knob": "intensity", "label": "INTENSITY" },
+    { "param": "reverb",        "knob": "reverb",    "label": "REVERB" }
   ],
 
   "power": {

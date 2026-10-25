@@ -10,6 +10,7 @@
 #include "sas/amp.h"
 #include "sas/embedded_amps.h"
 #include "sas/netlist.h"
+#include "sas/spring.h"
 #include "sas/vibrato.h"
 
 namespace {
@@ -111,6 +112,65 @@ static int run(int argc, char** argv) {
                 for (std::size_t i = rms.size() / 2; i < rms.size(); ++i) { lo = std::min(lo, rms[i]); hi = std::max(hi, rms[i]); }
                 std::printf("  intensity %.1f speed %.1f: output %.2f .. %.2f V rms (depth %.1f dB)\n", inten, speed, lo, hi, 20.0 * std::log10(hi / std::max(lo, 1e-9)));
             }
+        }
+    }
+
+    if (def.preamp.reverb.present) {
+        // The schematic's test point levels: 1 kHz, 37 mV rms at the Vibrato input, controls full clockwise.
+        std::printf("\nreverb test points (1 kHz, 37 mV rms in, vibrato channel full, reverb full):\n");
+        sas::Preamp p(def, kFs, power.railX());
+        std::vector<double> full(def.preamp.knobs.size(), 1.0);
+        full[def.knobIndex("vibrato_volume")] = 0.35;  // the schematic does not say; chosen so that V2B plate is near TP6 (3.1 V)
+        p.setKnobs(full);
+        p.setJack(def.jackIndex("vibrato1"));
+        std::map<std::string, double> acc, mean;
+        const char* names[] = {"qa", "gv3", "pv4m", "rt", "q"};
+        const std::size_t n = std::size_t(1.5 * kFs);
+        std::size_t cnt = 0;
+        std::map<std::string, std::vector<double>> tr;
+        for (std::size_t i = 0; i < n; ++i) {
+            p.process(0.0523 * std::sin(2 * kPi * 1000.0 * double(i) / kFs));
+            if (i < n / 2) continue;
+            ++cnt;
+            for (const char* nm : names) tr[nm].push_back(p.solver().voltage(pnet.node(nm)));
+        }
+        for (const char* nm : names) {
+            double m = 0; for (double x : tr[nm]) m += x; m /= double(cnt);
+            double s = 0; for (double x : tr[nm]) s += (x - m) * (x - m);
+            std::printf("  %-4s %8.4f V rms\n", nm, std::sqrt(s / double(cnt)));
+        }
+        {
+            // Average magnitude of the tank around 1 kHz (sine sweep), relative to the configured gain.
+            double sum = 0; int cnt = 0;
+            for (double f = 800.0; f <= 1250.0; f += 12.5) {
+                sas::SpringTank t(def.preamp.reverb, kFs);
+                double acc2 = 0; std::size_t m = 0;
+                const std::size_t total = std::size_t(4.0 * kFs);
+                for (std::size_t i = 0; i < total; ++i) {
+                    const double y = t.process(std::sin(2 * kPi * f * double(i) / kFs));
+                    if (i > total / 2) { acc2 += y * y; ++m; }
+                }
+                sum += std::sqrt(acc2 / double(m)) * std::sqrt(2.0);
+                ++cnt;
+            }
+            std::printf("  tank gain around 1 kHz (mean magnitude): %.5f (target 0.00173)\n", sum / cnt);
+        }
+        {
+            // Decay of the tank alone: energy of 50 ms windows after an impulse, time to fall 30 dB, doubled.
+            sas::SpringTank t(def.preamp.reverb, kFs);
+            const std::size_t win = std::size_t(0.05 * kFs), nwin = 120;
+            std::vector<double> e(nwin, 0.0);
+            for (std::size_t i = 0; i < win * nwin; ++i) {
+                const double y = t.process(i == 0 ? 1.0 : 0.0);
+                e[i / win] += y * y;
+            }
+            double peak = 0; for (double v : e) peak = std::max(peak, v);
+            double rt = -1;
+            for (std::size_t w = 0; w < nwin; ++w) if (e[w] < peak * 1e-3 && w > 4) { rt = 2.0 * double(w) * 0.05; break; }
+            std::printf("  tank decay: RT60 ~ %.2f s (-30 dB at window %.2f s)\n", rt, rt / 2);
+            std::printf("  energy per 50 ms (dB re peak):");
+            for (std::size_t w = 0; w < 24; ++w) std::printf(" %.0f", 10.0 * std::log10(std::max(e[w], 1e-30) / peak));
+            std::printf("\n");
         }
     }
 

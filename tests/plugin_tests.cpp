@@ -60,7 +60,7 @@ TEST_CASE("processor exposes the expected parameters") {
     JuceInit init;
     SasProcessor p;
     for (const char* id : {ids::amp, ids::volume2, ids::volume, ids::bass, ids::middle, ids::treble, ids::presence, ids::master, ids::input, ids::output,
-                           ids::quality, ids::cab, ids::jack, ids::tsOn, ids::tsDrive, ids::tsTone, ids::tsLevel, ids::vibOn, ids::vibSpeed, ids::vibIntensity})
+                           ids::quality, ids::cab, ids::jack, ids::tsOn, ids::tsDrive, ids::tsTone, ids::tsLevel, ids::vibOn, ids::vibSpeed, ids::vibIntensity, ids::reverb})
         CHECK(p.apvts.getParameter(id) != nullptr);
     CHECK(p.apvts.getParameter(ids::volume)->getText(p.apvts.getParameter(ids::volume)->getDefaultValue(), 10) == "6.0");
     auto* quality = dynamic_cast<juce::AudioParameterChoice*>(p.apvts.getParameter(ids::quality));

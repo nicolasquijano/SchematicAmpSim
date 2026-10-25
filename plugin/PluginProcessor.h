@@ -25,6 +25,7 @@ inline constexpr const char* power = "power";
 inline constexpr const char* vibSpeed = "vib_speed";          // optical tremolo (amps that have one)
 inline constexpr const char* vibIntensity = "vib_intensity";
 inline constexpr const char* vibOn = "vib_on";
+inline constexpr const char* reverb = "reverb";  // spring reverb level (amps that have one)
 inline constexpr const char* input = "input";
 inline constexpr const char* output = "output";
 inline constexpr const char* quality = "quality";

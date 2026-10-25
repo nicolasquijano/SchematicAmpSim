@@ -74,6 +74,11 @@ Preamp::Preamp(const AmpDef& def, double fs, double railVolts, bool useTables)
         knobs_.push_back(k);
         values_.push_back(kd.def);
     }
+    if (pd.reverb.present) {
+        rev_ = std::make_unique<Reverb>(pd.reverb, fs, railVolts, useTables);
+        revSrc_ = nets[0].source(pd.reverb.mainSource);
+        revGrid_ = nets[0].node(pd.reverb.gridNode);
+    }
     if (pd.vibrato.present) {
         vib_ = std::make_unique<Vibrato>(pd.vibrato, fs, railVolts, useTables);
         cellRefs_ = find(pd.vibrato.cellResistor);

@@ -1,0 +1,35 @@
+* Fender '65 Twin Reverb reissue reverb (drawing 037627 rev E), the tubes and the transformer: V3 (both
+* 12AT7 halves in parallel) drives the primary of T1 from the 440 V Z rail; the secondary drives the pan's
+* input coil (8 ohm). The spring tank itself is behavioural (see "reverb" in amp.json): it turns the
+* voltage on `ts` into the output coil's, which drives V4A's grid through 2.6k with 220k to ground.
+* V4A's plate signal goes back to the preamp (preamp.net), where the 3.3n coupling cap and the Reverb
+* pot follow.
+*
+* Assumptions (the drawing gives no values for T1 or the pan): T1 is 10 H, 200 ohm, 61:1 so that the
+* 67 V on V3's plates (TP9) gives the 1.1 V of TP10. V4A shares its cathode with V4B in the amp; here it
+* has its own 1k5 / 22u that give it the same ~1.8 V bias.
+
+V VRAIL x 100 393
+V VZ z 50 440
+
+* V3 grid: driven from the preamp (the 500p and 1M of the tap are in preamp.net, which they load).
+S VG3 gv3 1 0
+T V3 gv3 pv3 kv3 ECC81 2
+R R25 kv3 0 2k2
+C C14 kv3 0 22u
+R DCR_T1 z zp 200
+.param nt1 = 1/61
+.xfmr T1 L=10
+  W pv3 zp 1 pri
+  W ts 0 nt1 sec
+  K pri sec 0.995
+.end
+R R_PAN ts 0 8
+
+* Recovery tube.
+S VREV gv4 2k6 0
+R R26 gv4 0 220k
+T V4A gv4 pv4 k4a ECC83
+R R28 x pv4 100k
+R RK4A k4a 0 1k5
+C C15A k4a 0 22u

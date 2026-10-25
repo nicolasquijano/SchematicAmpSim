@@ -2,10 +2,8 @@
 * and Vibrato channel (V2A, tone stack, V2B), the V4B mixer stage that follows the Vibrato channel, and
 * the Normal/Vibrato mixing network that feeds the phase inverter. Transcribed from the schematic.
 *
-* Not modelled (the signal path is complete without them):
-*  - reverb: V3 driver, spring pan and V4A recovery. With the Reverb knob at 0 the return network is
-*    just R30 + R74 to ground; V4A only shares V4B's cathode, so its idle current is a resistor;
-*  - the two Bright switches (C5, C10 120p across the volume pots), left open.
+* Not modelled: the two Bright switches (C5, C10 120p across the volume pots, left open) and the
+* reverb footswitch. The vibrato oscillator is in vibrato.net; only its photocell is here (R_CELL).
 *
 * Reading notes:
 *  - jacks: Input 1 puts the signal on N1 (1M to ground) and, because the unused Input 2 switch ties T1
@@ -82,19 +80,29 @@ R R22 x pb2 100k
 R R23 kb 0 820
 C C11 kb 0 22u
 
-* Vibrato channel into V4B: 0.022u, then 3.3M (10p across it) against 220k and the Reverb-off return
-* (390k + 82k) to ground.
+* Vibrato channel into V4B: 0.022u, then 3.3M (10p across it) against 220k and the reverb return
+* (82k + 390k from the Reverb pot's wiper).
 C C12 pb2 qa 22n
 R R32 qa q 3M3
 C C17 qa q 10p
 R R31 q 0 220k
-R R30 q rv 390k
-R R74 rv 0 82k
+R R30 rv q 390k
+R R74 rw rv 82k
 T V4B q p4 k4 ECC83
 R R33 x p4 100k
 R R27 k4 0 820
 C C15 k4 0 22u
-* V4A shares V4B's cathode network: its idle current (about 1.2 mA at grid 0 V) is a resistor to the rail, fitted to the schematic's DC.
+
+* Reverb, the part that loads and joins this circuit (the tubes and the transformer are in reverb.net):
+* the 500p / 1M tap that feeds V3's grid, and V4A's plate signal, behind its ~38k output impedance
+* (100k plate load in parallel with the tube), through 3.3n into the 100k Reverb pot. V4A's idle current
+* in the cathode shared with V4B is a resistor to the rail.
+C C13 qa gv3 500p
+R R24 gv3 0 1M
+S VREVOUT pv4m 38k 0
+C C16 pv4m rt 3n3
+R VR_REV_T rt rw 1
+R VR_REV_B rw 0 1
 R RV4A x k4 330k
 * Mixer: V4B plate through 0.1u into m2; the Normal channel through 220k + 0.047u into m1; 220k between.
 C C19 p4 m2 0.1u
