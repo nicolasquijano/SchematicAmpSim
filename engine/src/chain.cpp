@@ -106,24 +106,28 @@ void Chain::processAmp(const float* mono, float* out, std::size_t n) {
                 case Quality::Normal:
                     amp2_->setKnobs(knobScratch_, presence, powerScratch_);
                     amp2_->setJack(target_.jack);
+                    amp2_->setVibrato(target_.vibratoOn, target_.vibratoSpeed);
                     amp2_->setSourceOhms(sourceOhms);
                     ts2_.setControls(ts);
                     break;
                 case Quality::High:
                     amp4_->setKnobs(knobScratch_, presence, powerScratch_);
                     amp4_->setJack(target_.jack);
+                    amp4_->setVibrato(target_.vibratoOn, target_.vibratoSpeed);
                     amp4_->setSourceOhms(sourceOhms);
                     ts4_.setControls(ts);
                     break;
                 case Quality::Lite:
                     lite_->setKnobs(knobScratch_, presence, powerScratch_);
                     lite_->setJack(target_.jack);
+                    lite_->setVibrato(target_.vibratoOn, target_.vibratoSpeed);
                     lite_->setSourceOhms(sourceOhms);
                     ts2_.setControls(ts);
                     break;
                 case Quality::Eco:
                     eco_->setKnobs(knobScratch_, presence, powerScratch_);
                     eco_->setJack(target_.jack);
+                    eco_->setVibrato(target_.vibratoOn, target_.vibratoSpeed);
                     eco_->setSourceOhms(sourceOhms);
                     ts2_.setControls(ts);
                     break;

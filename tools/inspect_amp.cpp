@@ -10,6 +10,7 @@
 #include "sas/amp.h"
 #include "sas/embedded_amps.h"
 #include "sas/netlist.h"
+#include "sas/vibrato.h"
 
 namespace {
 
@@ -64,6 +65,54 @@ static int run(int argc, char** argv) {
     const auto pnet = sas::parseNetlist(def.preamp.netlistText, def.preamp.netlist);
     std::printf("preamp node voltages:\n");
     for (const auto& [name, node] : pnet.nodes) std::printf("  %-6s %8.2f V\n", name.c_str(), pre.solver().voltage(node));
+
+    if (def.preamp.vibrato.present) {
+        std::printf("\nvibrato (photocell ohms, footswitch on, 12 s):\n");
+        for (double speed : {0.1, 0.3, 0.5, 0.8, 1.0}) {
+            sas::Vibrato v(def.preamp.vibrato, kFs, power.railX(), false);
+            v.setSpeed(speed, 100.0);
+            v.setOn(true);
+            const double stepHz = kFs / double(v.controlSamples());
+            std::vector<double> r;
+            for (std::size_t i = 0; i < std::size_t(12.0 * stepHz); ++i) r.push_back(v.step());
+            const std::size_t from = r.size() / 2;
+            double lo = 1e18, hi = 0, mean = 0;
+            for (std::size_t i = from; i < r.size(); ++i) { lo = std::min(lo, r[i]); hi = std::max(hi, r[i]); mean += std::log(r[i]); }
+            mean = std::exp(mean / double(r.size() - from));
+            int cross = 0;
+            for (std::size_t i = from + 1; i < r.size(); ++i) if (r[i - 1] < mean && r[i] >= mean) ++cross;
+            std::printf("  speed %.1f: %7.0f .. %7.0f ohms, %.2f Hz, failures %llu\n", speed, lo, hi, cross / (double(r.size() - from) / stepHz), (unsigned long long)v.newtonFailures());
+            if (speed == 0.5) {
+                std::printf("    start-up (0.25 s steps):");
+                for (std::size_t i = 0; i < r.size() && i < std::size_t(6.0 * stepHz); i += std::size_t(0.25 * stepHz)) std::printf(" %.0f", r[i]);
+                std::printf("\n");
+            }
+        }
+        // Depth of the effect in the audio: 20 ms windows of the output rms for a steady 220 Hz tone.
+        const std::size_t ik = def.knobIndex("intensity");
+        for (double inten : {0.0, 0.5, 1.0}) {
+            for (double speed : {0.2, 0.5}) {
+                sas::FullAmp a(def, kFs);
+                std::vector<double> k;
+                for (const auto& kd : def.preamp.knobs) k.push_back(kd.def);
+                k[ik] = inten;
+                a.setKnobs(k, 0.5);
+                a.setJack(def.jackIndex("vibrato1"));
+                a.pre().setVibrato(true, speed);
+                const std::size_t win = std::size_t(0.02 * kFs), total = std::size_t(8.0 * kFs);
+                std::vector<double> rms;
+                double acc = 0;
+                for (std::size_t i = 0; i < total; ++i) {
+                    const double y = a.process(0.02 * std::sin(2 * kPi * 220.0 * double(i) / kFs));
+                    acc += y * y;
+                    if ((i + 1) % win == 0) { rms.push_back(std::sqrt(acc / double(win))); acc = 0; }
+                }
+                double lo = 1e9, hi = 0;
+                for (std::size_t i = rms.size() / 2; i < rms.size(); ++i) { lo = std::min(lo, rms[i]); hi = std::max(hi, rms[i]); }
+                std::printf("  intensity %.1f speed %.1f: output %.2f .. %.2f V rms (depth %.1f dB)\n", inten, speed, lo, hi, 20.0 * std::log10(hi / std::max(lo, 1e-9)));
+            }
+        }
+    }
 
     // Level through the whole amp at a few drive levels, 220 Hz, each jack, default knobs.
     std::printf("\nfull amp output (rms volts at 16 ohm) for 220 Hz at peak input:\n");

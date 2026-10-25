@@ -278,3 +278,35 @@ TEST_CASE("Twin: jacks, channels and the ganged tone controls behave like the am
         CHECK(level(jack, 1.0, 0.5, 100.0) > 1.5 * level(jack, 0.0, 0.5, 100.0));  // bass knob
     }
 }
+
+TEST_CASE("Twin: the optical vibrato chops the signal only when it is on and the intensity is up") {
+    const AmpDef def = loadEmbeddedAmp("twin_65");
+    REQUIRE(def.preamp.vibrato.present);
+    const std::size_t intensity = def.knobIndex("intensity");
+    // Depth in dB of the 20 ms output rms of a steady tone over the second half of `seconds`.
+    auto depthDb = [&](bool on, double inten, double speed) {
+        FullAmp amp(def, kFs);
+        auto k = defaultKnobs(def);
+        k[intensity] = inten;
+        amp.setKnobs(k, 0.5);
+        amp.setJack(def.jackIndex("vibrato1"));
+        amp.pre().setVibrato(on, speed);
+        const std::size_t win = std::size_t(0.02 * kFs), total = std::size_t(6.0 * kFs);
+        std::vector<double> rms;
+        double acc = 0;
+        for (std::size_t i = 0; i < total; ++i) {
+            const double y = amp.process(0.02 * std::sin(2 * kPi * 220.0 * double(i) / kFs));
+            REQUIRE(std::isfinite(y));
+            acc += y * y;
+            if ((i + 1) % win == 0) { rms.push_back(std::sqrt(acc / double(win))); acc = 0; }
+        }
+        double lo = 1e9, hi = 0;
+        for (std::size_t i = rms.size() / 2; i < rms.size(); ++i) { lo = std::min(lo, rms[i]); hi = std::max(hi, rms[i]); }
+        return 20.0 * std::log10(hi / lo);
+    };
+    CHECK(depthDb(false, 1.0, 0.5) < 0.5);   // footswitch off: steady
+    CHECK(depthDb(true, 0.0, 0.5) < 0.5);    // intensity 0: no effect
+    CHECK(depthDb(true, 1.0, 0.5) > 6.0);    // full intensity: a clear chop
+    CHECK(depthDb(true, 0.5, 0.5) > 3.0);
+    CHECK(depthDb(true, 0.5, 0.5) < depthDb(true, 1.0, 0.5));
+}

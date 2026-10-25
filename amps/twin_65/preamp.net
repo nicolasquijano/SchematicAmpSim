@@ -4,8 +4,7 @@
 *
 * Not modelled (the signal path is complete without them):
 *  - reverb: V3 driver, spring pan and V4A recovery. With the Reverb knob at 0 the return network is
-*    just R30 + R74 to ground; V4A only shares V4B's cathode, so its idle current is a fixed source;
-*  - vibrato: V5A/V5B oscillator and the optocoupler, which is dark (open) when the effect is off;
+*    just R30 + R74 to ground; V4A only shares V4B's cathode, so its idle current is a resistor;
 *  - the two Bright switches (C5, C10 120p across the volume pots), left open.
 *
 * Reading notes:
@@ -104,6 +103,11 @@ C C18 a1 m1 0.047u
 R R35 m2 m1 220k
 * DC reference for the floating mixing nodes (the real one is the phase inverter's grid network).
 R RDC m1 0 100M
+* Intensity pot (50k, wiper to the OP1 photocell, which the vibrato circuit sets) shunting the mixing
+* node m2. With the vibrato off the cell is dark and the 50k remains as a load.
+R VR_INT_T m2 wi 1
+R VR_INT_B wi 0 1
+R R_CELL wi 0 2M
 * Load of the phase inverter input: 1n coupling cap and the 1M grid network.
 C C20L m1 pl 1n
 R RPI pl 0 1M

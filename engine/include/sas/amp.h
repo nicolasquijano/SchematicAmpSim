@@ -27,6 +27,7 @@ public:
         if (!powerKnobs.empty() && powerKnobs.size() == power_.knobCount()) power_.setKnobs(powerKnobs);
     }
     void setJack(std::size_t jack) { pre_.setJack(jack); }
+    void setVibrato(bool on, double speed) { pre_.setVibrato(on, speed); }
     // Guitar ~7 kohm, a pedal's output far lower.
     void setSourceOhms(double ohms) { pre_.setSourceOhms(ohms); }
 

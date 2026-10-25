@@ -28,6 +28,8 @@ struct ChainSettings {
     Quality quality = Quality::Normal;
     std::size_t jack = 0;
     bool jackLevelMatch = true;  // apply the jack's `level_db` at the amp input
+    bool vibratoOn = false;      // optical tremolo of amps that have one
+    double vibratoSpeed = 0.5;
     bool cabFilter = true;
     bool tsOn = false;
     double tsDrive = 0.5, tsTone = 0.5, tsLevel = 0.5;

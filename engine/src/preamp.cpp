@@ -19,6 +19,7 @@ double applyTaper(Taper t, double w) {
         case Taper::Log: return logTaper(w);
         case Taper::Log10: return expTaper(w, 4.394);  // 2 ln(1/0.10 - 1)
         case Taper::Log30: return expTaper(w, 1.695);  // 2 ln(1/0.30 - 1)
+        case Taper::RevLog: return 1.0 - logTaper(1.0 - w);
         default: return w;
     }
 }
@@ -73,6 +74,13 @@ Preamp::Preamp(const AmpDef& def, double fs, double railVolts, bool useTables)
         knobs_.push_back(k);
         values_.push_back(kd.def);
     }
+    if (pd.vibrato.present) {
+        vib_ = std::make_unique<Vibrato>(pd.vibrato, fs, railVolts, useTables);
+        cellRefs_ = find(pd.vibrato.cellResistor);
+        vibEvery_ = vib_->controlSamples();
+        lastCellOhms_ = vib_->cellOhms();
+        for (const Ref& r : cellRefs_) nets[r.stage].circuit.setResistor(r.id, vib_->cellOhms());
+    }
     // Pots start at their default positions so the DC point is solved with them.
     for (std::size_t i = 0; i < knobs_.size(); ++i) {
         double top, bottom;
@@ -113,6 +121,18 @@ Preamp::Preamp(const AmpDef& def, double fs, double railVolts, bool useTables)
         stages_.back().solver.refresh();
     }
     out_ = nets.back().node(pd.outputNode);
+}
+
+double potTaper(Taper t, double w) { return applyTaper(t, w); }
+
+void Preamp::advanceVibrato() {
+    vibCount_ = 0;
+    // Re-inverting the circuit is the costly part: only when the cell has really moved.
+    const double ohms = vib_->step();
+    if (std::abs(ohms - lastCellOhms_) < 0.004 * lastCellOhms_) return;
+    lastCellOhms_ = ohms;
+    set(cellRefs_, ohms);
+    stages_[cellRefs_.front().stage].solver.refresh();
 }
 
 void Preamp::setKnobs(const std::vector<double>& values) {

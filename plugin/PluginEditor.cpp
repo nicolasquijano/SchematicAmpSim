@@ -100,6 +100,8 @@ SasEditor::SasEditor(SasProcessor& p)
     styleCaption(tsCaption_, "TUBE SCREAMER");
     addAndMakeVisible(tsOn_);
     tsOnAtt_ = std::make_unique<juce::AudioProcessorValueTreeState::ButtonAttachment>(p.apvts, ids::tsOn, tsOn_);
+    addAndMakeVisible(vibrato_);
+    vibratoAtt_ = std::make_unique<juce::AudioProcessorValueTreeState::ButtonAttachment>(p.apvts, ids::vibOn, vibrato_);
     addAndMakeVisible(levelMatch_);
     levelMatch_.setTooltip("Raises the quieter jack so both play at a similar level");
     levelMatchAtt_ = std::make_unique<juce::AudioProcessorValueTreeState::ButtonAttachment>(p.apvts, ids::levelMatch, levelMatch_);
@@ -155,6 +157,7 @@ void SasEditor::showAmp(int index) {
     jack_.clear(juce::dontSendNotification);
     for (std::size_t j = 0; j < def.preamp.jacks.size(); ++j) jack_.addItem(juce::String(def.preamp.jacks[j].label), int(j) + 1);
     jackCaption_.setText(juce::String(def.preamp.jackLabel), juce::dontSendNotification);
+    vibrato_.setVisible(def.preamp.vibrato.present);
     levelMatch_.setVisible(std::any_of(def.preamp.jacks.begin(), def.preamp.jacks.end(), [](const sas::JackDef& j) { return j.levelDb != 0.0; }));
     const int jackNow = int(processor_.apvts.getRawParameterValue(ids::jack)->load() + 0.5f);
     jack_.setSelectedItemIndex(juce::jlimit(0, int(def.preamp.jacks.size()) - 1, jackNow), juce::dontSendNotification);
@@ -237,6 +240,7 @@ void SasEditor::resized() {
         line(jackCaption_, jack_);
         levelMatch_.setBounds(jack_.getRight() + 10, jack_.getY(), 120, 24);
         line(cabCaption_, cab_);
+        vibrato_.setBounds(cab_.getRight() + 10, cab_.getY(), 120, 24);
     }
     // Row 3: Tube Screamer and the IR loader.
     {

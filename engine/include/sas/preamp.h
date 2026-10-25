@@ -6,12 +6,17 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <memory>
 #include <vector>
 
 #include "sas/amp_def.h"
 #include "sas/circuit.h"
+#include "sas/vibrato.h"
 
 namespace sas {
+
+// Resistance fraction of a pot at rotation `w` (0..1) for the given taper.
+double potTaper(Taper t, double w);
 
 class Preamp {
 public:
@@ -29,9 +34,15 @@ public:
     // Driven every sample from the power amp so the preamp feels the supply sag.
     void setRail(double volts) {
         for (auto& s : stages_) s.solver.setSource(s.rail, volts);
+        if (vib_) vib_->setRail(volts);
     }
     // ~7 kohm for a guitar, far less behind a pedal.
     void setSourceOhms(double ohms);
+    // Optical tremolo (amps that have one): footswitch and speed knob, 0..1.
+    bool hasVibrato() const { return bool(vib_); }
+    void setVibrato(bool on, double speed) {
+        if (vib_) { vib_->setOn(on); vib_->setSpeed(speed, potMinOhms_); }
+    }
     void setJack(std::size_t jack);
     std::size_t jack() const { return jack_; }
 
@@ -50,6 +61,7 @@ public:
             s.solver.setSource(s.link, stages_[k - 1].solver.voltage(s.linkFrom));
             s.solver.step();
         }
+        if (vib_ && ++vibCount_ >= vibEvery_) advanceVibrato();
         return stages_.back().solver.voltage(out_);
     }
 
@@ -87,6 +99,7 @@ private:
     };
 
     static void potValues(const Knob& k, double value, double minOhms, double& top, double& bottom);
+    void advanceVibrato();
     void set(const Refs& rs, double ohms) {
         for (const Ref& r : rs) stages_[r.stage].solver.setResistor(r.id, ohms);
     }
@@ -104,6 +117,10 @@ private:
     std::vector<double> values_;
     std::vector<Jack> jacks_;
     std::size_t jack_ = 0;
+    std::unique_ptr<Vibrato> vib_;
+    Refs cellRefs_;
+    std::size_t vibCount_ = 0, vibEvery_ = 64;
+    double lastCellOhms_ = 1.0;
 };
 
 }  // namespace sas

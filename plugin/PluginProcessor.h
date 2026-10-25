@@ -22,6 +22,9 @@ inline constexpr const char* treble = "treble";
 inline constexpr const char* presence = "presence";
 inline constexpr const char* master = "master";
 inline constexpr const char* power = "power";
+inline constexpr const char* vibSpeed = "vib_speed";          // optical tremolo (amps that have one)
+inline constexpr const char* vibIntensity = "vib_intensity";
+inline constexpr const char* vibOn = "vib_on";
 inline constexpr const char* input = "input";
 inline constexpr const char* output = "output";
 inline constexpr const char* quality = "quality";
@@ -93,6 +96,7 @@ private:
         std::vector<std::atomic<float>*> knobs;
         std::vector<std::atomic<float>*> powerKnobs;
         std::atomic<float>* presence = nullptr;
+        std::atomic<float>* vibSpeed = nullptr;
     };
     std::vector<AmpParams> ampParams_;
 

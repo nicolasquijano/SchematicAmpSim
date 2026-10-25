@@ -1,7 +1,7 @@
 {
   "id": "twin_65",
   "order": 3,
-  "output_db": 5.5,
+  "output_db": 9.2,
   "name": "American Twin",
 
   "preamp": {
@@ -20,27 +20,39 @@
       { "name": "middle", "default": 0.5, "pot": { "type": "variable", "resistor": "VR_MID_V",  "total": 10e3,  "taper": "log10",
                                                  "also": [ { "resistor": "VR_MID_N" } ] } },
       { "name": "treble", "default": 0.6, "pot": { "type": "wiper", "top": "VR_TT_V", "bottom": "VR_TB_V", "total": 250e3, "taper": "log30",
-                                                 "also": [ { "top": "VR_TT_N", "bottom": "VR_TB_N" } ] } }
+                                                 "also": [ { "top": "VR_TT_N", "bottom": "VR_TB_N" } ] } },
+      { "name": "intensity", "default": 0.5, "pot": { "type": "wiper", "top": "VR_INT_T", "bottom": "VR_INT_B", "total": 50e3, "taper": "revlog" } }
     ],
+    "vibrato": {
+      "netlist": "vibrato.net",
+      "rail_source": "VRAIL",
+      "led": { "from": "x", "to": "ln", "ohms": 100e3 },
+      "switch": { "resistor": "SW_VIB", "on_ohms": 10e3, "off_ohms": 1e12 },
+      "speed": { "resistor": "R_SPEED", "total": 3e6, "taper": "log10", "invert": true, "default": 0.5 },
+      "cell": { "resistor": "R_CELL", "dark_ohms": 2e6, "ohms_at_1ma": 4e3, "exponent": 0.8, "attack_s": 0.004, "release_s": 0.03 },
+      "control_samples": 64
+    },
     "source_ohms": { "resistors": ["RSRC"], "default": 7000, "min": 10 },
     "jacks": [
       { "name": "vibrato1", "label": "Vibrato 1", "drive": "VIN", "resistors": {
           "SW_V1": 1, "SW_V2": 1e12, "SW_VTN": 1,    "SW_VNG": 1e12, "SW_N1": 1e12, "SW_N2": 1e12, "SW_NTN": 1, "SW_NNG": 1 } },
-      { "name": "vibrato2", "label": "Vibrato 2", "level_db": 5.3, "drive": "VIN", "resistors": {
+      { "name": "vibrato2", "label": "Vibrato 2", "level_db": 6.4, "drive": "VIN", "resistors": {
           "SW_V1": 1e12, "SW_V2": 1, "SW_VTN": 1e12, "SW_VNG": 1,    "SW_N1": 1e12, "SW_N2": 1e12, "SW_NTN": 1, "SW_NNG": 1 } },
-      { "name": "normal1",  "label": "Normal 1",  "level_db": 5.8, "drive": "VIN", "resistors": {
+      { "name": "normal1",  "label": "Normal 1",  "level_db": 2.0, "drive": "VIN", "resistors": {
           "SW_N1": 1, "SW_N2": 1e12, "SW_NTN": 1,    "SW_NNG": 1e12, "SW_V1": 1e12, "SW_V2": 1e12, "SW_VTN": 1, "SW_VNG": 1 } },
-      { "name": "normal2",  "label": "Normal 2",  "level_db": 12.1, "drive": "VIN", "resistors": {
+      { "name": "normal2",  "label": "Normal 2",  "level_db": 8.3, "drive": "VIN", "resistors": {
           "SW_N1": 1e12, "SW_N2": 1, "SW_NTN": 1e12, "SW_NNG": 1,    "SW_V1": 1e12, "SW_V2": 1e12, "SW_VTN": 1, "SW_VNG": 1 } }
     ]
   },
 
   "ui": [
-    { "param": "volume",  "knob": "vibrato_volume", "label": "VIBRATO" },
-    { "param": "volume2", "knob": "normal_volume",  "label": "NORMAL" },
+    { "param": "volume",  "knob": "vibrato_volume", "label": "VIB CHANNEL" },
+    { "param": "volume2", "knob": "normal_volume",  "label": "NORM CHANNEL" },
     { "param": "bass",    "knob": "bass",           "label": "BASS" },
     { "param": "middle",  "knob": "middle",         "label": "MIDDLE" },
-    { "param": "treble",  "knob": "treble",         "label": "TREBLE" }
+    { "param": "treble",  "knob": "treble",         "label": "TREBLE" },
+    { "param": "vib_speed",     "label": "SPEED" },
+    { "param": "vib_intensity", "knob": "intensity", "label": "INTENSITY" }
   ],
 
   "power": {

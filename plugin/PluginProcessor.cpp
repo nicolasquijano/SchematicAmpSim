@@ -43,6 +43,9 @@ Layout SasProcessor::createLayout(const std::vector<sas::AmpDef>& defs) {
     l.add(knob(ids::presence, "Presence", 5.0f));
     l.add(knob(ids::master, "Master", 5.0f));
     l.add(knob(ids::power, "Power", 5.0f));
+    l.add(knob(ids::vibSpeed, "Vibrato Speed", 5.0f));
+    l.add(knob(ids::vibIntensity, "Vibrato Intensity", 5.0f));
+    l.add(std::make_unique<juce::AudioParameterBool>(juce::ParameterID{ids::vibOn, kVersion}, "Vibrato", false));
     l.add(dbParam(ids::input, "Input"));
     l.add(dbParam(ids::output, "Output"));
     // New qualities are only appended so saved projects keep theirs (same rule as the Rust build).
@@ -130,10 +133,12 @@ SasProcessor::SasProcessor()
         ap.powerKnobs.assign(def.power.knobs.size(), nullptr);
         for (const auto& u : def.ui) {
             if (u.param == ids::presence) ap.presence = apvts.getRawParameterValue(u.param);
+            if (u.param == ids::vibSpeed) ap.vibSpeed = apvts.getRawParameterValue(u.param);
             if (!u.knob.empty()) ap.knobs[def.knobIndex(u.knob)] = apvts.getRawParameterValue(u.param);
             if (!u.powerKnob.empty()) ap.powerKnobs[def.powerKnobIndex(u.powerKnob)] = apvts.getRawParameterValue(u.param);
         }
         if (!ap.presence) ap.presence = apvts.getRawParameterValue(ids::presence);
+        if (!ap.vibSpeed) ap.vibSpeed = apvts.getRawParameterValue(ids::vibSpeed);
         ampParams_.push_back(std::move(ap));
     }
     settings_.knobs.reserve(16);  // never reallocate on the audio thread
@@ -190,6 +195,8 @@ sas::ChainSettings SasProcessor::readSettings(bool irAvailable) {
     // With no IR loaded the IR mode falls back to the cab filter instead of the raw amp.
     s.cabFilter = cab == CabMode::Filter || (cab == CabMode::Ir && !irAvailable);
     s.jackLevelMatch = raw(ids::levelMatch) > 0.5;
+    s.vibratoOn = raw(ids::vibOn) > 0.5;
+    s.vibratoSpeed = double(ap.vibSpeed->load()) / 10.0;
     s.tsOn = raw(ids::tsOn) > 0.5;
     s.tsDrive = raw(ids::tsDrive) / 10.0;
     s.tsTone = raw(ids::tsTone) / 10.0;

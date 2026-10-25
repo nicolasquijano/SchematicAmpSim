@@ -1,0 +1,40 @@
+* Fender '65 Twin Reverb reissue vibrato (optical tremolo), drawing 037627 rev E: V5A is a three-section
+* RC phase-shift oscillator (speed pot in the first section), V5B a pulse driver whose plate current
+* lights the LED of the optocoupler OP1 through R62. The photocell side (OP1 pins 3/4) is part of
+* preamp.net: it shunts the mixing node through the Intensity pot, and the engine sets its resistance
+* from the LED current. This circuit is solved at a low rate of its own (see "vibrato" in amp.json).
+*
+* The footswitch / Vibrato-off state is the bias reference node t31: -8.5 V (V5A cut off) when off,
+* about -0.35 V when the footswitch brings it to ground through ~10k. C38 (220p) is left out: its
+* time constant is far below the low solve rate.
+
+V VRAIL x 100 393
+
+* V5A oscillator.
+R R54 x p5a 220k
+T V5A n3 p5a k5a ECC83
+R R60 k5a 0 2k7
+C C27 k5a 0 22u
+C C24 p5a n1 22n
+C C25 n1 n2 10n
+C C26 n2 n3 10n
+R R55 n1 ns 91k
+R R_SPEED ns 0 1.5M
+R R57 n2 t31 1M
+R R58 n3 t31 1M
+
+* Bias reference: -65 V behind 10k + 1.8M, 270k to ground, 10u; the footswitch shorts it to ground.
+V VBIAS bs 10k -65
+R R59 bs t31 1.8M
+R R76 t31 0 270k
+C C37 t31 0 10u
+R SW_VIB t31 0 1e12
+
+* V5B driver and the LED: 100k from the rail, the LED (pins 2 -> 1) in series with the plate, 10M across.
+T V5B n2 p5b k5b ECC83
+R R61 k5b 0 100k
+C C28 k5b 0 22u
+R R62 x ln 100k
+D LED ln p5b SIGNAL
+R R63 ln p5b 10M
+C C40 p5b 0 22n

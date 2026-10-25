@@ -43,7 +43,8 @@ Taper taper(const json& j, const std::string& path) {
     if (t == "linear") return Taper::Linear;
     if (t == "log10") return Taper::Log10;
     if (t == "log30") return Taper::Log30;
-    bad(path + ".taper", "expected 'log', 'log10', 'log30' or 'linear', got '" + t + "'");
+    if (t == "revlog") return Taper::RevLog;
+    bad(path + ".taper", "expected 'log', 'log10', 'log30', 'revlog' or 'linear', got '" + t + "'");
 }
 
 PreampDef parsePreamp(const json& j, const FileReader& read) {
@@ -108,6 +109,36 @@ PreampDef parsePreamp(const json& j, const FileReader& read) {
     }
     if (p.jacks.empty()) bad("preamp.jacks", "at least one jack is required");
     if (j.contains("jack_label")) p.jackLabel = str(j, "jack_label", "preamp");
+    if (j.contains("vibrato")) {
+        const json& v = j.at("vibrato");
+        VibratoDef& d = p.vibrato;
+        d.present = true;
+        d.netlist = str(v, "netlist", "preamp.vibrato");
+        d.netlistText = read(d.netlist);
+        d.railSource = str(v, "rail_source", "preamp.vibrato");
+        const json& led = need(v, "led", "preamp.vibrato");
+        d.ledFrom = str(led, "from", "preamp.vibrato.led");
+        d.ledTo = str(led, "to", "preamp.vibrato.led");
+        d.ledOhms = num(led, "ohms", "preamp.vibrato.led");
+        const json& sw = need(v, "switch", "preamp.vibrato");
+        d.switchResistor = str(sw, "resistor", "preamp.vibrato.switch");
+        d.switchOnOhms = num(sw, "on_ohms", "preamp.vibrato.switch");
+        d.switchOffOhms = num(sw, "off_ohms", "preamp.vibrato.switch");
+        const json& sp = need(v, "speed", "preamp.vibrato");
+        d.speedResistor = str(sp, "resistor", "preamp.vibrato.speed");
+        d.speedTotal = num(sp, "total", "preamp.vibrato.speed");
+        d.speedTaper = taper(sp, "preamp.vibrato.speed");
+        d.speedInvert = sp.contains("invert") && sp.at("invert").get<bool>();
+        d.speedDefault = num(sp, "default", "preamp.vibrato.speed");
+        const json& c = need(v, "cell", "preamp.vibrato");
+        d.cellResistor = str(c, "resistor", "preamp.vibrato.cell");
+        d.cellDarkOhms = num(c, "dark_ohms", "preamp.vibrato.cell");
+        d.cellOhmsAt1mA = num(c, "ohms_at_1ma", "preamp.vibrato.cell");
+        d.cellExponent = num(c, "exponent", "preamp.vibrato.cell");
+        d.cellAttackS = num(c, "attack_s", "preamp.vibrato.cell");
+        d.cellReleaseS = num(c, "release_s", "preamp.vibrato.cell");
+        d.controlSamples = std::size_t(numOr(v, "control_samples", 64));
+    }
     return p;
 }
 

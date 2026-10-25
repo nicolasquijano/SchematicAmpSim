@@ -57,7 +57,8 @@ private:
     juce::Label ampCaption_, qualityCaption_, jackCaption_, cabCaption_, tsCaption_, irName_;
     juce::ToggleButton tsOn_{"On"};
     juce::ToggleButton levelMatch_{"Level match"};  // shown only for amps whose jacks differ in level
-    std::unique_ptr<juce::AudioProcessorValueTreeState::ButtonAttachment> tsOnAtt_, levelMatchAtt_;
+    juce::ToggleButton vibrato_{"Vibrato"};  // shown only for amps that have an optical tremolo
+    std::unique_ptr<juce::AudioProcessorValueTreeState::ButtonAttachment> tsOnAtt_, levelMatchAtt_, vibratoAtt_;
     juce::TextButton loadIr_{"Load IR..."}, clearIr_{"Clear"};
     std::unique_ptr<juce::FileChooser> chooser_;
 

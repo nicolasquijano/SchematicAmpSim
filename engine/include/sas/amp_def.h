@@ -11,7 +11,7 @@
 namespace sas {
 
 // Log is the ~15%-at-mid audio taper; Log10 and Log30 are the Fender "10A" and "30A" tapers (10% / 30% at mid).
-enum class Taper { Linear, Log, Log10, Log30 };
+enum class Taper { Linear, Log, Log10, Log30, RevLog };  // RevLog: the mirror image of Log (a reverse-audio "C" taper)
 
 struct PotDef {
     enum class Type { Wiper, Variable } type = Type::Wiper;
@@ -49,6 +49,27 @@ struct PreampStageDef {
     std::string linkFrom, linkSource;
 };
 
+// Optical tremolo (the Fender "vibrato"): a small oscillator circuit of its own, solved at a low rate
+// (one step per `controlSamples` audio samples), whose LED current drives a photocell. The photocell
+// is a resistor of the preamp netlist, set from the LED current through a one-pole attack/release.
+struct VibratoDef {
+    bool present = false;
+    std::string netlist, netlistText;
+    std::string railSource;
+    std::string ledFrom, ledTo;  // LED current = (V(ledFrom) - V(ledTo)) / ledOhms
+    double ledOhms = 100e3;
+    std::string switchResistor;  // footswitch: on_ohms / off_ohms
+    double switchOnOhms = 1.0, switchOffOhms = 1e12;
+    std::string speedResistor;   // speed pot (a rheostat in the oscillator)
+    double speedTotal = 1e6, speedDefault = 0.5;
+    Taper speedTaper = Taper::Linear;
+    bool speedInvert = false;    // turning the knob up lowers the resistance
+    std::string cellResistor;    // photocell, in the preamp netlist
+    double cellDarkOhms = 2e6, cellOhmsAt1mA = 4e3, cellExponent = 0.8;
+    double cellAttackS = 0.004, cellReleaseS = 0.08;
+    std::size_t controlSamples = 64;
+};
+
 struct PreampDef {
     std::vector<PreampStageDef> stages;  // after the first netlist, in signal order
     std::string netlist;       // file name
@@ -61,6 +82,7 @@ struct PreampDef {
     double sourceOhmsDefault = 7000, sourceOhmsMin = 10;
     std::vector<JackDef> jacks;
     std::string jackLabel = "INPUT JACK";  // caption of the selector: "MODE", "CHANNEL", ...
+    VibratoDef vibrato;
 };
 
 struct SupplyDef {
