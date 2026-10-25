@@ -79,7 +79,7 @@ golden/    reference output from the original Rust implementation
 
 ## Status
 
-Windows VST3 only. Planned: Neural Amp Modeler support, AU and AAX. The Eco mode and the level
+Windows VST3 only. Planned: AU and AAX. The Eco mode and the level
 matching have been verified with tests, not yet extensively by ear.
 
 ## License and trademarks
