@@ -82,11 +82,12 @@ golden/    reference output from the original Rust implementation
 Windows VST3 only. Planned: Neural Amp Modeler support, AU and AAX. The Eco mode and the level
 matching have been verified with tests, not yet extensively by ear.
 
-## Trademarks and license
+## License and trademarks
 
 All product names, trademarks and brands belong to their respective owners. This project is not
 affiliated with or endorsed by any amplifier manufacturer; the circuits are independent
 transcriptions made for educational and research purposes, and the amp names are generic.
 
-No license has been chosen for this repository yet. Note that JUCE is dual-licensed (AGPLv3 or
-commercial), which applies to any distributed build of the plugin.
+Free software, licensed under the [GNU Affero General Public License v3.0](LICENSE). Contributions
+are welcome under the same license. The plugin is built on JUCE (used under AGPLv3), Catch2 (BSL-1.0)
+and nlohmann/json (MIT).
