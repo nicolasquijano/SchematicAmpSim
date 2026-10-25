@@ -4,14 +4,20 @@
 #include "sas/preamp.h"
 #include "amp_fixture.h"
 
+// The embedded copy is a C++ raw string, which the compiler stores with LF; a Windows checkout can have CRLF on disk.
+static std::string lf(std::string s) {
+    s.erase(std::remove(s.begin(), s.end(), '\r'), s.end());
+    return s;
+}
+
 TEST_CASE("embedded amps are the files on disk") {
     const auto ids = sas::embeddedAmpIds();
     REQUIRE(!ids.empty());
     const auto embedded = sas::loadEmbeddedAmp("jcm800_2203");
     const auto disk = sas::loadAmpDefFromFolder(std::string(SAS_AMPS_DIR) + "/jcm800_2203");  // not the parity fixture, which swaps the tube model
     CHECK(embedded.id == disk.id);
-    CHECK(embedded.preamp.netlistText == disk.preamp.netlistText);
-    CHECK(embedded.power.netlistText == disk.power.netlistText);
+    CHECK(lf(embedded.preamp.netlistText) == lf(disk.preamp.netlistText));
+    CHECK(lf(embedded.power.netlistText) == lf(disk.power.netlistText));
     CHECK(embedded.preamp.knobs.size() == disk.preamp.knobs.size());
     CHECK_THROWS(sas::loadEmbeddedAmp("nope"));
 }

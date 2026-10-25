@@ -14,7 +14,7 @@ V VZ z 50 440
 
 * V3 grid: driven from the preamp (the 500p and 1M of the tap are in preamp.net, which they load).
 S VG3 gv3 1 0
-T V3 gv3 pv3 kv3 ECC81 2
+T V3 gv3 pv3 kv3 12AT7 2
 R R25 kv3 0 2k2
 C C14 kv3 0 22u
 R DCR_T1 z zp 200

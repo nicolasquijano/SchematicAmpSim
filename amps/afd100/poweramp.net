@@ -53,8 +53,8 @@ R R49_43 g34r g34 2.8k
 C CBIAS bias 0 10u
 
 * 6550s: pairs V1A+V2A and V3A+V4A. Screens on VS through 1k each, cathodes through 1R0 each.
-P V12 g12 pt s12 kt 6550 0.9
-P V34 g34 pbm s34 kb 6550 0.9
+P V12 g12 pt s12 kt 6550DS 1.03
+P V34 g34 pbm s34 kb 6550DS 1.03
 R R39_40 vs s12 500
 R R41_42 vs s34 500
 R R25_26 kt 0 0.5

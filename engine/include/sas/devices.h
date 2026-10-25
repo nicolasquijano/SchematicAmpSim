@@ -44,6 +44,12 @@ struct TriodeModel {
         return {104.7, 1.3, 474.0, 745.0, 13963.0, 6.177e-4, 9.901, 1.314, 1.6e-12, 1.7e-12, 0.46e-12};
     }
 
+    // 12AT7 fitted to the Mullard ECC81 average plate characteristics (tools/tubefit): 8.1 mA, gm 4.4 mA/V, ra 12.5k
+    // at 250 V / -2 V (the data sheet gives 7 to 14 mA and 4.5 to 6.5 mA/V), 8% rms against the curves.
+    static constexpr TriodeModel ecc81Fit() {
+        return {69.4, 1.4, 318.0, 189.0, 1981.0, 6.177e-4, 9.901, 1.314, 1.6e-12, 1.7e-12, 0.46e-12};
+    }
+
     // ECC81 / 12AT7 with the Koren parameters: the medium-mu twin triode of the Fender phase inverter.
     static constexpr TriodeModel ecc81() {
         return {60.0, 1.35, 460.0, 300.0, 300.0, 6.177e-4, 9.901, 1.314, 1.6e-12, 1.7e-12, 0.46e-12};
@@ -88,9 +94,17 @@ struct PentodeModel {
         std::array<std::array<double, 3>, 3> d;     // d[row][col], col = [vg1k, vpk, vg2k]
     };
 
-    // EL34 with kg1/kg2 scaled 1.3x so four of them make ~110 W.
+    // EL34 with kg1/kg2 scaled 1.3x so four of them make ~110 W. Checked against the JJ data sheet: at Ug2 375 / 425 V (where
+    // the amps run) its transfer curves are within 6% rms; a fit to the Ug2 = 250 V plate curves alone fits those worse (8 to 10%)
+    // and makes a JCM800 give 170 W, so it was kept.
     static constexpr PentodeModel el34() {
         return {11.0, 1.35, 845.0, 2600.0, 60.0, 24.0, 1.5e-3, 8.0, 1.3, 15e-12, 1.0e-12, 8e-12};
+    }
+
+    // KT88 / 6550 fitted to the JJ plate curves at Ug2 300 V and the typical point (mu 8, 140 mA, 11.5 mA/V at 250 / 250 /
+    // -15 V; about 5.5 mA of screen current, the data sheet says at most 7): 8% rms, the stock one 17%.
+    static constexpr PentodeModel el6550Fit() {
+        return {8.0, 1.35, 977.0, 8500.0, 37.3, 19.8, 1.5e-3, 8.0, 1.3, 14e-12, 0.8e-12, 12e-12};
     }
 
     // 6550 / KT88 family: Koren's KT88 shape (kg1 730, kg2 4200, kp 32, kvb 16, mu 8.8). The

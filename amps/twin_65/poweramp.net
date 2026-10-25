@@ -26,8 +26,8 @@ R R41 cc k 470
 R R36 cc f 22k
 R R40 f 0 100
 C C21 f gn 0.1u
-T V6A gp pa k ECC81
-T V6B gn pb k ECC81
+T V6A gp pa k 12AT7
+T V6B gn pb k 12AT7
 R R42 y pa 82k
 R R43 y pb 100k
 
