@@ -388,7 +388,7 @@ void SasEditor::resized() {
             gateThreshold_.setBounds(gin.removeFromLeft(gin.getWidth() / 2));
             gateRelease_.setBounds(gin);
         }
-        panels_.push_back({tsPanel, "OVERDRIVE"});
+        panels_.push_back({tsPanel, "OVERDRIVE - TS808 STYLE"});
         auto in = tsPanel.reduced(6, 4);
         auto head = in.removeFromTop(20);
         tsOn_.setBounds(head.removeFromRight(56));
