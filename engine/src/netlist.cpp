@@ -203,6 +203,7 @@ struct Parser {
             if (n == "6550") { m = PentodeModel::el6550(); return true; }
             if (n == "6550DS") { m = PentodeModel::el6550Fit(); return true; }
             if (n == "6L6GC") { m = PentodeModel::el6l6gc(); return true; }
+            if (n == "EL84") { m = PentodeModel::el84(); return true; }
             return false;
         };
         auto diodeModel = [](const std::string& n, DiodeModel& m) {

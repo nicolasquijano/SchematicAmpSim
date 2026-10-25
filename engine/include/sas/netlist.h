@@ -18,7 +18,7 @@
 //
 // Node "0" or "gnd" is ground. A value is an expression without spaces: numbers with an SI suffix
 // (k M G m u n p f; M is mega, m is milli; the schematic form 4k7 = 4.7k, 1M0 = 1M also works), parameters, + - * / ( ) and sqrt exp ln abs.
-// MODEL is a built-in name: 12AX7, 12AT7, 6550DS (data sheet fits), ECC83, ECC81, EL34, 6550 (stock Koren), 6L6GC, SIGNAL, RECTIFIER_BRIDGE, C1815, RC4558.
+// MODEL is a built-in name: 12AX7, 12AT7, 6550DS (data sheet fits), ECC83, ECC81, EL34, 6550 (stock Koren), 6L6GC, EL84, SIGNAL, RECTIFIER_BRIDGE, C1815, RC4558.
 
 #include <map>
 #include <stdexcept>

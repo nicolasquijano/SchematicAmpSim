@@ -1,0 +1,92 @@
+* Class A 30 W combo, Normal / Brilliant channels (drawing "AC30 Standard Issue", 22/11/90): V4 (one
+* 12AX7 triode per channel, shared cathode), the two volume pots, V5a gain stage, V5b cathode follower,
+* the Treble / Bass tone network, and V6a (unbypassed cathode) driving the phase inverter.
+* The Vib/Trem channel (V1..V3), the reverb (V6b, V7) and the footswitch are not modelled.
+*
+* Reading notes (the drawing is a hand-drawn low-resolution scan; change these here, not in code):
+*  - V4's left triode is the Normal channel and the right one the Brilliant channel: separate grids behind
+*    68k stoppers, separate 220k plate loads, one 1k5 / 22u cathode;
+*  - Normal Vol takes 47n from its plate; Brilliant Vol takes 560p with a 100p bright cap across the pot;
+*    both wipers meet at V5a's grid (through 100 ohm so the node names stay distinct);
+*  - V5b's grid is V5a's plate; its cathode (68k) feeds the Treble / Bass network: 56p to the treble pot,
+*    100k to the two 22n caps, bass pot between the treble pot's bottom and the 10k leg to ground;
+*  - the Hi / Lo input pairs are modelled as the Hi input;
+*  - supply: the preamp rail x is the power amp's HT3 (about 250 V); 10k + 33u steps to HT4 (180 V),
+*    HT5 (160 V) and 4k7 + 33u to HT6 (135 V).
+
+.nodes x n4 n5 n6 gin in jn jb g4a g4b p4a p4b k4 cn1 wn cb1 wb g5 p5a k5a k5b tt wt tu ta tb w2 g6 p6 k6 o
+
+* HT3 (node x): driven from the power amp at run time; 250 V is the standalone default.
+V VRAIL x 100 250
+I VIN gin 1
+R RSRC gin in 7k
+
+* HT dropper chain.
+R R_H4 x n4 10k
+C C_H4 n4 0 33u
+R R_H5 n4 n5 10k
+C C_H5 n5 0 33u
+R R_H6 n5 n6 4k7
+C C_H6 n6 0 33u
+* Stand-ins for the stages that are not modelled (Vib/Trem, reverb): they set the drawing's HT4 / HT5 / HT6 voltages.
+R RL_H4 n4 0 120k
+R RL_H5 n5 0 330k
+R RL_H6 n6 0 120k
+
+* Jacks. SW_* select the channel (closed 1 ohm / open 1e12), set by the jack modes.
+R SW_N in jn 1
+R R68_N jn g4a 68k
+R RG_N g4a 0 1M
+R SW_B in jb 1e12
+R R68_B jb g4b 68k
+R RG_B g4b 0 1M
+
+* V4: Normal (A) and Brilliant (B) share the cathode network.
+T V4A g4a p4a k4 12AX7
+R R_P4A n6 p4a 220k
+T V4B g4b p4b k4 12AX7
+R R_P4B n6 p4b 220k
+R RK4 k4 0 1k5
+C CK4 k4 0 22u
+
+* Volume pots (wiper = output).
+C C47N p4a cn1 47n
+R VR_NT cn1 wn 1
+R VR_NB wn 0 1
+C C560 p4b cb1 560p
+R VR_BT cb1 wb 1
+R VR_BB wb 0 1
+C C100 cb1 wb 100p
+R R_JN wn g5 100
+R R_JB wb g5 100
+
+* V5a gain stage and V5b cathode follower (grid on V5a's plate).
+T V5A g5 p5a k5a 12AX7
+R R_P5A n4 p5a 100k
+R RK5 k5a 0 1k5
+C CK5 k5a 0 22u
+T V5B p5a n4 k5b 12AX7
+R R68 k5b 0 68k
+
+* Treble / Bass network.
+C C56P k5b tt 56p
+R VR_TT tt wt 1
+R VR_TB wt tu 1
+R R100K k5b ta 100k
+C C22A ta tu 22n
+C C22B ta tb 22n
+R R10K tb 0 10k
+R VR_KT tu tb 1
+R VR_KB tb 0 1
+
+* V6a: 220k + 10n from the treble wiper, 1M leak, 2k2 unbypassed cathode, 100k plate load on HT5.
+R R220 wt w2 220k
+C C10N w2 g6 10n
+R R1M g6 0 1M
+T V6A g6 p6 k6 12AX7
+R R_P6 n5 p6 100k
+R RK6 k6 0 2k2
+
+* AC coupling to the phase inverter.
+C C_OUT p6 o 100n
+R R_O o 0 470k

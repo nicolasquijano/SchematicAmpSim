@@ -413,3 +413,41 @@ TEST_CASE("5150: Lead has more gain than Crunch, which has more than Rhythm; the
     CHECK(level("rhythm", "high", 1.0, 4000.0) > 1.3 * level("rhythm", "high", 0.0, 4000.0));
     CHECK(level("rhythm", "low", 1.0, 80.0) > 1.3 * level("rhythm", "low", 0.0, 80.0));
 }
+
+TEST_CASE("British Class A: HT chain, cathode bias and idle current are in the range of the amp; Cut and the tone controls act") {
+    const AmpDef def = loadEmbeddedAmp("ac30_normal");
+    {
+        PowerAmp power(def, kFs);
+        const auto net = parseNetlist(def.power.netlistText, def.power.netlist);
+        CHECK(power.solver().dcConverged);
+        auto v = [&](const char* n) { return power.solver().voltage(net.node(n)); };
+        CHECK(std::abs(v("a") - 340.0) < 25.0);      // HT1 around 350 V
+        CHECK(std::abs(v("x") - 250.0) < 20.0);      // HT3
+        CHECK(v("kc") > 6.0);                        // shared 47 ohm cathode bias
+        CHECK(v("kc") < 13.0);
+        const double idleMa = (v("a") - v("pt")) / 45.0 / 2.0 * 1e3;  // per tube
+        CHECK(idleMa > 30.0);
+        CHECK(idleMa < 60.0);
+    }
+    // Cut turns the highs down and leaves the lows.
+    auto outRms = [&](double cut, double hz, double peak) {
+        PowerAmp p(def, kFs);
+        p.setPresence(cut);
+        return rmsAt(p, hz, peak);
+    };
+    CHECK(outRms(1.0, 6000.0, 0.05) < 0.5 * outRms(0.0, 6000.0, 0.05));
+    CHECK(std::abs(20.0 * std::log10(outRms(1.0, 100.0, 0.05) / outRms(0.0, 100.0, 0.05))) < 1.5);
+    // The channel pots and the tone controls.
+    auto level = [&](const char* jack, const char* knob, double v, double hz, double peak = 0.0005) {
+        FullAmp amp(def, kFs);
+        auto k = defaultKnobs(def);
+        if (knob) k[def.knobIndex(knob)] = v;
+        amp.setKnobs(k, 0.0);
+        amp.setJack(def.jackIndex(jack));
+        return rmsAt(amp, hz, peak);
+    };
+    CHECK(level("normal", "normal_volume", 0.4, 500.0) > 1.5 * level("normal", "normal_volume", 0.1, 500.0));
+    CHECK(level("brilliant", "brilliant_volume", 0.4, 500.0) > 1.5 * level("brilliant", "brilliant_volume", 0.1, 500.0));
+    CHECK(level("normal", "treble", 1.0, 4000.0) > 1.3 * level("normal", "treble", 0.0, 4000.0));
+    CHECK(level("normal", "bass", 1.0, 80.0) > 1.2 * level("normal", "bass", 0.0, 80.0));
+}

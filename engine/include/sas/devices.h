@@ -120,6 +120,12 @@ struct PentodeModel {
         return {8.7, 1.35, 1460.0, 4500.0, 48.0, 12.0, 1.5e-3, 8.0, 1.3, 11e-12, 0.9e-12, 6e-12};
     }
 
+    // EL84 fitted to the Philips/Mullard class A point (Ua = Ug2 = 250 V, Ug1 = -7.3 V: 48 mA, gm 11.3 mS, ra 38 k, Ig2 5.5 mA);
+    // mu and kp are the usual Koren values, kg1/kvb/kg2 solve the three data points.
+    static constexpr PentodeModel el84() {
+        return {19.56, 1.35, 578.6, 1833.0, 152.4, 49.0, 1.5e-3, 8.0, 1.3, 10.8e-12, 0.5e-12, 7e-12};
+    }
+
     Eval eval(double vg1k, double vpk, double vg2k) const {
         Eval r{};
         const double x = cg * vg1k;
