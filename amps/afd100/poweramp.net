@@ -27,8 +27,8 @@ R R103 f1 gb 1M
 C C73 gb f2 100n
 R R100 f1 f2 22k
 R R104 f2 0 4.7k
-T V9A ga pa kc ECC83
-T V9B gb pb kc ECC83
+T V9A ga pa kc 12AX7
+T V9B gb pb kc 12AX7
 R R73 x pa 82k
 R R63 x pb 100k
 C C51 pa pb 470p

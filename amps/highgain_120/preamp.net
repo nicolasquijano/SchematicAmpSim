@@ -26,7 +26,7 @@ R R25 g1 0 1M
 R R22 g1 gv1a 68k
 
 * V1A.
-T V1A gv1a p1a k1a ECC83
+T V1A gv1a p1a k1a 12AX7
 R R2 x1 p1a 220k
 R R12 k1a 0 1k82
 C C3 k1a 0 1u
@@ -65,7 +65,7 @@ R SW_K2A4 w2 k2 1e12
 R R82 k2 gv1b 470k
 
 * V1B with the K1A bass bypass (22u, 47k).
-T V1B gv1b p1b k1b ECC83
+T V1B gv1b p1b k1b 12AX7
 R R3 x1 p1b 100k
 R R17 k1b 0 1k82
 C C4 k1b 0 1u

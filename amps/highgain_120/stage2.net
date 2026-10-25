@@ -14,14 +14,14 @@ R R20 g2a n20 220k
 R SW_K1B n20 0 1
 
 * V2A (39k cathode, unbypassed) and V2B.
-T V2A g2a p2a k2a ECC83
+T V2A g2a p2a k2a 12AX7
 R R1 x1 p2a 100k
 R R15 k2a 0 39k
 C C1 p2a xa 22n
 C C48 xa 0 1n
 R R11 xa 0 330k
 R R7 xa g2b 220k
-T V2B g2b p2b k2b ECC83
+T V2B g2b p2b k2b 12AX7
 R R4 x2 p2b 220k
 R R13 k2b 0 1k82
 C C5 k2b 0 1u
@@ -30,13 +30,13 @@ C C5 k2b 0 1u
 R R32 p2b n32 1M
 C C57 n32 g5b 22n
 R R101 g5b 0 100k
-T V5B g5b p5b k5b ECC83
+T V5B g5b p5b k5b 12AX7
 R R96 x2 p5b 220k
 R R102 k5b 0 2k2
 R R87 p5b n87 1M
 C C56 n87 g5a 22n
 R R91 g5a 0 1M
-T V5A g5a p5a k5a ECC83
+T V5A g5a p5a k5a 12AX7
 R R86 x2 p5a 100k
 R R93 k5a 0 2k2
 C C58 p5a o5a 22n

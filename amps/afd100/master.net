@@ -10,8 +10,8 @@ V VRAIL x 100 400
 R R61 x h4 10k
 C C50 h4 0 47u
 * What the rest of the chain (R60 and the HT5..HT7 stages of preamp.net) draws from HT4 in the whole
-* circuit: 393 V / 5.1 mA.
-R R_DOWN h4 0 76.9k
+* circuit: 386 V / 5.4 mA (with the fitted 12AX7).
+R R_DOWN h4 0 71.5k
 
 * The tone stack's output voltage, from the first part (behind 1 ohm: the stack's loading by V8A is
 * already negligible there).
@@ -19,7 +19,7 @@ S VLINK so 1 0
 
 * V8A cathode follower (grid leak bootstrapped to the cathode load) and the loop-send divider.
 C C63 so g8 22n
-T V8A g8 h4 k8 ECC83
+T V8A g8 h4 k8 12AX7
 R R97 g8 j8 100k
 R R98 k8 j8 1k
 R R91 j8 0 100k
@@ -31,7 +31,7 @@ R R109 s8 0 1k
 * plate (470n + 100k, 22p across the 100k, 4M7 leak).
 R R111 o8 g8b 100k
 R R94 g8b 0 1M
-T V8B g8b p8 k8b ECC83
+T V8B g8b p8 k8b 12AX7
 R R68 h4 p8 150k
 R R92 k8b 0 1.5k
 C C65 k8b 0 22u

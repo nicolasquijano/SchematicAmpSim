@@ -1,7 +1,7 @@
 {
   "id": "twin_65",
   "order": 3,
-  "output_db": 9.2,
+  "output_db": 8.4,
   "name": "American Twin",
 
   "preamp": {
@@ -54,9 +54,9 @@
           "SW_V1": 1, "SW_V2": 1e12, "SW_VTN": 1,    "SW_VNG": 1e12, "SW_N1": 1e12, "SW_N2": 1e12, "SW_NTN": 1, "SW_NNG": 1 } },
       { "name": "vibrato2", "label": "Vibrato 2", "level_db": 6.4, "drive": "VIN", "resistors": {
           "SW_V1": 1e12, "SW_V2": 1, "SW_VTN": 1e12, "SW_VNG": 1,    "SW_N1": 1e12, "SW_N2": 1e12, "SW_NTN": 1, "SW_NNG": 1 } },
-      { "name": "normal1",  "label": "Normal 1",  "level_db": 2.0, "drive": "VIN", "resistors": {
+      { "name": "normal1",  "label": "Normal 1",  "level_db": 2.3, "drive": "VIN", "resistors": {
           "SW_N1": 1, "SW_N2": 1e12, "SW_NTN": 1,    "SW_NNG": 1e12, "SW_V1": 1e12, "SW_V2": 1e12, "SW_VTN": 1, "SW_VNG": 1 } },
-      { "name": "normal2",  "label": "Normal 2",  "level_db": 8.3, "drive": "VIN", "resistors": {
+      { "name": "normal2",  "label": "Normal 2",  "level_db": 8.6, "drive": "VIN", "resistors": {
           "SW_N1": 1e12, "SW_N2": 1, "SW_NTN": 1e12, "SW_NNG": 1,    "SW_V1": 1e12, "SW_V2": 1e12, "SW_VTN": 1, "SW_VNG": 1 } }
     ]
   },
@@ -94,18 +94,18 @@
   },
 
   "lite": {
-    "base_gain_db": 13.7493,
-    "high_pass_hz": 30.0822,
-    "shelf_hz": 150,
-    "presence_db": [0, 0, 0, 0, 0],
-    "sag_table": [[0, 0], [2.54648, 1.93024], [5.09296, 7.43248], [9.5493, 22.8797], [15.9155, 48.6862], [22.2817, 55.0997], [28.6479, 57.5379], [35.0141, 59.7579], [44.5634, 62.9977], [57.2958, 66.2392], [82.7606, 70.0492], [127.324, 73.2518]],
-    "rail_x_idle": 392.409,
-    "rail_sag_fraction": 0.58,
-    "ceiling_light": 22.4109,
-    "ceiling_heavy": 22.3983,
-    "ceiling_decay": 40.4012,
-    "knee": 11.483,
-    "sag_attack_s": 0.01,
-    "sag_release_s": 0.06
-  }
+  "base_gain_db": 13.7075,
+  "high_pass_hz": 30.4348,
+  "shelf_hz": 150,
+  "presence_db": [0, 0, 0, 0, 0],
+  "sag_table": [[0, 0], [2.54648, 1.92881], [5.09296, 7.42583], [9.5493, 22.8534], [15.9155, 48.6213], [22.2817, 55.1589], [28.6479, 57.6162], [35.0141, 59.8413], [44.5634, 63.0658], [57.2958, 66.2821], [82.7606, 70.0642], [127.324, 73.2465]],
+  "rail_x_idle": 392.453,
+  "rail_sag_fraction": 0.58,
+  "ceiling_light": 23.1388,
+  "ceiling_heavy": 22.2779,
+  "ceiling_decay": 8.10015,
+  "knee": 34.1248,
+  "sag_attack_s": 0.01,
+  "sag_release_s": 0.06
+}
 }

@@ -1,6 +1,12 @@
 #pragma once
 // Loads the JCM800 definition once and maps golden-case parameters onto its knobs by name.
+//
+// The golden data comes from the Rust implementation, which used the stock Koren 12AX7 and a Lite power
+// amp fitted to it. The shipped amp now uses the 12AX7 fitted to the GE data sheet and a Lite fit made with
+// it, so the parity tests run the JCM800 as it was: "12AX7" in its netlists becomes the stock "ECC83" and
+// the Lite parameters are the original ones.
 
+#include <string>
 #include <vector>
 
 #include "sas/amp_def.h"
@@ -10,8 +16,32 @@
 #error "SAS_AMPS_DIR must point at the amps/ folder"
 #endif
 
+inline void useStockTriodes(std::string& text) {
+    for (std::size_t at = text.find(" 12AX7"); at != std::string::npos; at = text.find(" 12AX7", at + 6)) text.replace(at + 1, 5, "ECC83");
+}
+
 inline const sas::AmpDef& jcm800() {
-    static const sas::AmpDef def = sas::loadAmpDefFromFolder(std::string(SAS_AMPS_DIR) + "/jcm800_2203");
+    static const sas::AmpDef def = [] {
+        sas::AmpDef d = sas::loadAmpDefFromFolder(std::string(SAS_AMPS_DIR) + "/jcm800_2203");
+        useStockTriodes(d.preamp.netlistText);
+        for (auto& s : d.preamp.stages) useStockTriodes(s.netlistText);
+        useStockTriodes(d.power.netlistText);
+        d.lite.baseGainDb = 25.72;
+        d.lite.highPassHz = 21.9;
+        d.lite.shelfHz = 564.0;
+        d.lite.presenceDb = {0.0, 0.21, 0.58, 1.42, 5.06};
+        d.lite.sagTable = {{0, 0},     {6, 0.8},    {12.3, 5.6}, {18.4, 12.6}, {24.6, 20.7}, {30.6, 29.2}, {36.3, 37.4},
+                           {49, 47.8}, {61, 50.7},  {86, 55.6},  {123, 58.5},  {185, 59.8},  {307, 60.1}};
+        d.lite.railXIdle = 391.0;
+        d.lite.railSagFraction = 0.58;
+        d.lite.ceilingLight = 66.5;
+        d.lite.ceilingHeavy = 48.5;
+        d.lite.ceilingDecay = 119.7;
+        d.lite.knee = 6.44;
+        d.lite.sagAttackS = 0.010;
+        d.lite.sagReleaseS = 0.060;
+        return d;
+    }();
     return def;
 }
 

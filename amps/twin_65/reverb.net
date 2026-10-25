@@ -29,7 +29,7 @@ R R_PAN ts 0 8
 * Recovery tube.
 S VREV gv4 2k6 0
 R R26 gv4 0 220k
-T V4A gv4 pv4 k4a ECC83
+T V4A gv4 pv4 k4a 12AX7
 R R28 x pv4 100k
 R RK4A k4a 0 1k5
 C C15A k4a 0 22u

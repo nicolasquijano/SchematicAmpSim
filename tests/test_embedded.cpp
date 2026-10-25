@@ -8,7 +8,7 @@ TEST_CASE("embedded amps are the files on disk") {
     const auto ids = sas::embeddedAmpIds();
     REQUIRE(!ids.empty());
     const auto embedded = sas::loadEmbeddedAmp("jcm800_2203");
-    const auto& disk = jcm800();
+    const auto disk = sas::loadAmpDefFromFolder(std::string(SAS_AMPS_DIR) + "/jcm800_2203");  // not the parity fixture, which swaps the tube model
     CHECK(embedded.id == disk.id);
     CHECK(embedded.preamp.netlistText == disk.preamp.netlistText);
     CHECK(embedded.power.netlistText == disk.power.netlistText);

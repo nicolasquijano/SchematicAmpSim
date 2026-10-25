@@ -37,7 +37,7 @@ R R119 in g5 68k
 R R88 g5 0 4M7
 
 * V5: two triodes with grids, plates and cathodes tied = one triode of double current (V5A + V5B).
-T V5 g5 p5 k5 ECC83 2
+T V5 g5 p5 k5 12AX7 2
 R R72 h7 p5 51k
 R R113 k5 0 1.33k
 C C74 k5 0 680n
@@ -53,7 +53,7 @@ R VR1_B v1w 0 1
 C C80 v1t v1w 1n
 
 * V6A. RL3B (SW_RL3B) grounds the bottom of R80 in AFD mode: 150k load and 100n cathode bypass.
-T V6A v1w p6a k6a ECC83
+T V6A v1w p6a k6a 12AX7
 R R71 h6 p6a 100k
 R R74 k6a 0 10k
 C C57 n6a k6a 100n
@@ -67,7 +67,7 @@ C C59 o6a t6 470p
 R R87 t6 0 470k
 
 * V6B with a partly bypassed cathode (10k, plus 100n in series with 10k).
-T V6B t6 p6b k6b ECC83
+T V6B t6 p6b k6b 12AX7
 R R67 h6 p6b 100k
 R R85 k6b 0 10k
 C C90 k6b c90 100n
@@ -84,12 +84,12 @@ R SW_RL1B_A t6 g7 1e12
 
 * V7A gain stage (with 1n across its plate load) and the V7B cathode follower.
 R R83 g7 0 4M7
-T V7A g7 p7a k7a ECC83
+T V7A g7 p7a k7a 12AX7
 R R70 h5 p7a 100k
 C C43 h5 p7a 1n
 R R75 k7a 0 820
 C C60 k7a 0 680n
-T V7B p7a h5 k7b ECC83
+T V7B p7a h5 k7b 12AX7
 R R90 k7b 0 100k
 
 
@@ -115,5 +115,5 @@ C C82 so 0 100p
 * stack's output impedance is high enough for it to matter: ~1.5 dB). V8's current draw on HT4 is
 * replaced by an equivalent resistor, so this part settles to the same operating point as the whole circuit.
 C C63_LOAD so lnk 22n
-R R_IN8 lnk 0 1.3M
-R R_V8 h4 0 170.5k
+R R_IN8 lnk 0 1.8M
+R R_V8 h4 0 143.1k

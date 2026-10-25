@@ -42,7 +42,7 @@ R R12 vt vg 68k
 R R13 vg vn 68k
 
 * Normal channel: V1A with its tone stack and V1B.
-T V1A ng pa1 ka1 ECC83
+T V1A ng pa1 ka1 12AX7
 R R4 x pa1 100k
 R R5 ka1 0 1k5
 C C1 ka1 0 22u
@@ -56,11 +56,11 @@ R VR_BASS_N nu1 nm1 1
 R VR_MID_N nm1 0 1
 R VR_VT_N no1 gb1 1
 R VR_VB_N gb1 0 1
-T V1B gb1 pb1 kb ECC83
+T V1B gb1 pb1 kb 12AX7
 R R11 x pb1 100k
 
 * Vibrato channel: V2A with its tone stack and V2B.
-T V2A vg pa2 ka2 ECC83
+T V2A vg pa2 ka2 12AX7
 R R15 x pa2 100k
 R R16 ka2 0 1k5
 C C6 ka2 0 22u
@@ -74,7 +74,7 @@ R VR_BASS_V nu2 nm2 1
 R VR_MID_V nm2 0 1
 R VR_VT_V no2 gb2 1
 R VR_VB_V gb2 0 1
-T V2B gb2 pb2 kb ECC83
+T V2B gb2 pb2 kb 12AX7
 R R22 x pb2 100k
 * Cathode of V1B and V2B.
 R R23 kb 0 820
@@ -88,7 +88,7 @@ C C17 qa q 10p
 R R31 q 0 220k
 R R30 rv q 390k
 R R74 rw rv 82k
-T V4B q p4 k4 ECC83
+T V4B q p4 k4 12AX7
 R R33 x p4 100k
 R R27 k4 0 820
 C C15 k4 0 22u

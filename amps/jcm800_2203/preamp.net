@@ -21,7 +21,7 @@ C C21A x 0 50u
 * Input and V1a.
 R R2 in 0 1M
 R R3 in g1 68k
-T V1A g1 p1 k1 ECC83
+T V1A g1 p1 k1 12AX7
 R R4 b1 p1 100k
 R R1 k1 0 2.7k
 C C1 k1 0 0.68u
@@ -41,7 +41,7 @@ R VR1T vp w 1
 R VR1B w 0 1
 
 * V1b.
-T V1B w p1b k1b ECC83
+T V1B w p1b k1b 12AX7
 R R7 b1 p1b 100k
 R R6 k1b 0 10k
 
@@ -52,10 +52,10 @@ C C8 g2 g2a 470p
 R R11 g2a 0 470k
 
 * V2a and the V2b cathode follower (plate on the rail).
-T V2A g2a p2a k2a ECC83
+T V2A g2a p2a k2a 12AX7
 R R12 x p2a 100k
 R R9 k2a 0 820
-T V2B p2a x k2b ECC83
+T V2B p2a x k2b 12AX7
 R R13 k2b 0 100k
 
 * Tone stack.

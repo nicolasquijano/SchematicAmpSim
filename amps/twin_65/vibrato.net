@@ -12,7 +12,7 @@ V VRAIL x 100 393
 
 * V5A oscillator.
 R R54 x p5a 220k
-T V5A n3 p5a k5a ECC83
+T V5A n3 p5a k5a 12AX7
 R R60 k5a 0 2k7
 C C27 k5a 0 22u
 C C24 p5a n1 22n
@@ -31,7 +31,7 @@ C C37 t31 0 10u
 R SW_VIB t31 0 1e12
 
 * V5B driver and the LED: 100k from the rail, the LED (pins 2 -> 1) in series with the plate, 10M across.
-T V5B n2 p5b k5b ECC83
+T V5B n2 p5b k5b 12AX7
 R R61 k5b 0 100k
 C C28 k5b 0 22u
 R R62 x ln 100k

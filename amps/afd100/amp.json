@@ -1,7 +1,7 @@
 {
   "id": "afd100",
   "order": 2,
-  "output_db": 5.3,
+  "output_db": 3.9,
   "name": "SLSH 100W",
 
   "ui": [
@@ -41,7 +41,7 @@
     "source_ohms": { "resistors": ["RSRC"], "default": 7000, "min": 10 },
     "jacks": [
       { "name": "normal", "label": "Normal", "drive": "VIN", "resistors": { "SW_RL3B": 1e12, "SW_RL1B_N": 1,    "SW_RL1B_A": 1e12, "SW_RL1C": 1e12 } },
-      { "name": "afd",    "label": "Alt",    "level_db": 2.0, "drive": "VIN", "resistors": { "SW_RL3B": 1,    "SW_RL1B_N": 1e12, "SW_RL1B_A": 1,    "SW_RL1C": 1 } }
+      { "name": "afd",    "label": "Alt",    "level_db": 1.0, "drive": "VIN", "resistors": { "SW_RL3B": 1,    "SW_RL1B_N": 1e12, "SW_RL1B_A": 1,    "SW_RL1C": 1 } }
     ]
   },
 
@@ -72,20 +72,18 @@
   },
 
   "lite": {
-    "base_gain_db": 21.1912,
-    "high_pass_hz": 17.626,
-    "shelf_hz": 177.0,
-    "presence_db": [0.0, 0.117996, 0.326971, 0.798134, 2.80715],
-    "sag_table": [[0, 0], [2.54648, 0.906987], [5.09296, 3.53686], [9.5493, 11.5079], [15.9155, 27.3961],
-                  [22.2817, 44.6179], [28.6479, 55.6443], [35.0141, 59.0846], [44.5634, 63.1741],
-                  [57.2958, 67.6619], [82.7606, 72.7515], [127.324, 76.5439]],
-    "rail_x_idle": 455.358,
-    "rail_sag_fraction": 0.58,
-    "ceiling_light": 44.4995,
-    "ceiling_heavy": 39.9326,
-    "ceiling_decay": 127.596,
-    "knee": 9.44663,
-    "sag_attack_s": 0.010,
-    "sag_release_s": 0.060
-  }
+  "base_gain_db": 22.536,
+  "high_pass_hz": 15.5829,
+  "shelf_hz": 246.455,
+  "presence_db": [0, 0.147858, 0.410956, 1.01012, 3.66554],
+  "sag_table": [[0, 0], [2.54648, 0.906585], [5.09296, 3.52967], [9.5493, 11.4472], [15.9155, 27.1386], [22.2817, 44.6394], [28.6479, 56.4695], [35.0141, 59.798], [44.5634, 63.1185], [57.2958, 67.4967], [82.7606, 72.9702], [127.324, 77.3249]],
+  "rail_x_idle": 453.191,
+  "rail_sag_fraction": 0.58,
+  "ceiling_light": 41.9887,
+  "ceiling_heavy": 41.6914,
+  "ceiling_decay": 86.4801,
+  "knee": 45.7604,
+  "sag_attack_s": 0.01,
+  "sag_release_s": 0.06
+}
 }

@@ -33,8 +33,8 @@ R R51 kk na 10k
 R R52 kk kc 470
 R R57 na 0 4k7
 C C31 na ga 47n
-T V4B gb pb kc ECC83
-T V4A ga pa kc ECC83
+T V4B gb pb kc 12AX7
+T V4A ga pa kc 12AX7
 R R46 x pb 82k
 R R58 x pa 100k
 

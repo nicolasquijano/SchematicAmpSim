@@ -2,6 +2,8 @@
 // measurements, so a freshly transcribed schematic can be sanity-checked against the drawing.
 //   sas_inspect <amp id>
 #include <cmath>
+#include <fstream>
+#include <sstream>
 #include <cstdio>
 #include <map>
 #include <string>
@@ -37,7 +39,20 @@ int main(int argc, char** argv) {
     }
 }
 
+// sas_inspect --dc <netlist file> <rail volts> [rail source name]: node voltages of the DC point of any netlist.
+static int dumpDc(int argc, char** argv) {
+    std::ifstream f(argv[2]);
+    std::stringstream ss;
+    ss << f.rdbuf();
+    auto net = sas::parseNetlist(ss.str(), argv[2]);
+    net.circuit.setSourceDc(net.source(argc > 4 ? argv[4] : "VRAIL"), std::atof(argv[3]));
+    sas::Solver solver(std::move(net.circuit), 96000.0);
+    for (const auto& [name, node] : net.nodes) std::printf("%-8s %12.5f\n", name.c_str(), solver.voltage(node));
+    return solver.dcConverged ? 0 : 2;
+}
+
 static int run(int argc, char** argv) {
+    if (argc > 3 && std::string(argv[1]) == "--dc") return dumpDc(argc, argv);
     const std::string id = argc > 1 ? argv[1] : "plexi_1959";
     const sas::AmpDef def = sas::loadEmbeddedAmp(id);
     std::printf("amp %s (%s)\n\n", def.id.c_str(), def.name.c_str());

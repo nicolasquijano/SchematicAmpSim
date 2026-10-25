@@ -1,7 +1,7 @@
 {
   "id": "plexi_1959",
   "order": 1,
-  "output_db": -0.1,
+  "output_db": 0.5,
   "name": "British Plexi",
 
   "preamp": {
@@ -22,8 +22,8 @@
     "source_ohms": { "resistors": ["RSRC"], "default": 7000, "min": 10 },
     "jacks": [
       { "name": "bright",   "label": "Bright",   "drive": "VIN", "resistors": { "SW_BRIGHT": 1,    "SW_NORMAL": 1e12 } },
-      { "name": "normal",   "label": "Normal",   "level_db": 4.2, "drive": "VIN", "resistors": { "SW_BRIGHT": 1e12, "SW_NORMAL": 1 } },
-      { "name": "jumpered", "label": "Jumpered", "level_db": -0.7, "drive": "VIN", "resistors": { "SW_BRIGHT": 1,    "SW_NORMAL": 1 } }
+      { "name": "normal",   "label": "Normal",   "level_db": 7.0, "drive": "VIN", "resistors": { "SW_BRIGHT": 1e12, "SW_NORMAL": 1 } },
+      { "name": "jumpered", "label": "Jumpered", "level_db": -0.6, "drive": "VIN", "resistors": { "SW_BRIGHT": 1,    "SW_NORMAL": 1 } }
     ]
   },
 
@@ -60,20 +60,18 @@
   },
 
   "lite": {
-    "base_gain_db": 17.2276,
-    "high_pass_hz": 1.0,
-    "shelf_hz": 563.829,
-    "presence_db": [0.0, 1.64402, 3.83459, 6.91482, 11.7854],
-    "sag_table": [[0, 0], [2.54648, 0.382793], [5.09296, 1.51047], [9.5493, 5.06446], [15.9155, 12.5326],
-                  [22.2817, 21.0991], [28.6479, 29.323], [35.0141, 36.3171], [44.5634, 39.6208],
-                  [57.2958, 42.2274], [82.7606, 44.0156], [127.324, 44.8645]],
-    "rail_x_idle": 345.119,
-    "rail_sag_fraction": 0.58,
-    "ceiling_light": 60.1536,
-    "ceiling_heavy": 40.3464,
-    "ceiling_decay": 142.733,
-    "knee": 26.6561,
-    "sag_attack_s": 0.010,
-    "sag_release_s": 0.060
-  }
+  "base_gain_db": 17.7445,
+  "high_pass_hz": 1,
+  "shelf_hz": 563.829,
+  "presence_db": [0, 1.73013, 4.07123, 7.44703, 13.1143],
+  "sag_table": [[0, 0], [2.54648, 0.3833], [5.09296, 1.51265], [9.5493, 5.07075], [15.9155, 12.5444], [22.2817, 21.1987], [28.6479, 29.9673], [35.0141, 38.2763], [44.5634, 40.5354], [57.2958, 43.017], [82.7606, 46.221], [127.324, 47.7136]],
+  "rail_x_idle": 338.097,
+  "rail_sag_fraction": 0.58,
+  "ceiling_light": 60.2386,
+  "ceiling_heavy": 40.2894,
+  "ceiling_decay": 185.786,
+  "knee": 16.1109,
+  "sag_attack_s": 0.01,
+  "sag_release_s": 0.06
+}
 }

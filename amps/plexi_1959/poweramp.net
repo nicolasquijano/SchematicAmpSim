@@ -23,8 +23,8 @@ R R16 kc f1 470
 R R19 f1 gb 1M
 C C15 gb f2 0.1u
 R R20 f1 f2 10k
-T V3A ga pa kc ECC83
-T V3B gb pb kc ECC83
+T V3A ga pa kc 12AX7
+T V3B gb pb kc 12AX7
 R R18 x pa 82k
 R R21 x pb 100k
 C C14 pa dt 22n

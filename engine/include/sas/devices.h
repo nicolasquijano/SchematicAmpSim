@@ -37,6 +37,13 @@ struct TriodeModel {
         return {100.0, 1.4, 1060.0, 600.0, 300.0, 6.177e-4, 9.901, 1.314, 1.6e-12, 1.7e-12, 0.46e-12};
     }
 
+    // 12AX7 fitted to the average plate characteristics of the GE data sheet ET-T509B (tools/tubefit): 1.17 mA,
+    // gm 1.84 mA/V, ra 55k at 250 V / -2 V (data sheet: 1.2 mA, 1.6 mA/V, 62.5k). The stock Koren values above give
+    // 0.48 mA, 0.83 mA/V, 107k there. The Dempwolf grid current and the capacitances are the same.
+    static constexpr TriodeModel ecc83Fit() {
+        return {104.7, 1.3, 474.0, 745.0, 13963.0, 6.177e-4, 9.901, 1.314, 1.6e-12, 1.7e-12, 0.46e-12};
+    }
+
     // ECC81 / 12AT7 with the Koren parameters: the medium-mu twin triode of the Fender phase inverter.
     static constexpr TriodeModel ecc81() {
         return {60.0, 1.35, 460.0, 300.0, 300.0, 6.177e-4, 9.901, 1.314, 1.6e-12, 1.7e-12, 0.46e-12};

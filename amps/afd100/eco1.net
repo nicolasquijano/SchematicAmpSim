@@ -11,13 +11,13 @@
 V VRAIL x 100 400
 R R61 x h4 10k
 C C50 h4 0 47u
-R R_V8 h4 0 170.5k
+R R_V8 h4 0 143.1k
 R R60 h4 h5 10k
 C C44 h5 0 47u
-R R_V7 h5 0 105k
+R R_V7 h5 0 99.8k
 R R59 h5 h6 10k
 C C47 h6 0 47u
-R R_V6 h6 0 579.7k
+R R_V6 h6 0 523k
 R R58 h6 h7 10k
 C C42 h7 0 47u
 
@@ -27,7 +27,7 @@ R R121 in 0 1M
 R R119 in g5 68k
 R R88 g5 0 4M7
 
-T V5 g5 p5 k5 ECC83 2
+T V5 g5 p5 k5 12AX7 2
 R R72 h7 p5 51k
 R R113 k5 0 1.33k
 C C74 k5 0 680n

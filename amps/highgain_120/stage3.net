@@ -44,7 +44,7 @@ R R81 m 0 2M2
 C C11 m g3a 47n
 R R26 g3a 0 1M
 R R85 g3a 0 220k
-T V3A g3a p3a k3a ECC83
+T V3A g3a p3a k3a 12AX7
 R R5 x2 p3a 68k
 R R14 k3a 0 3k3
 C C61 k3a 0 4n7

@@ -197,7 +197,7 @@ struct Parser {
         const char kind = t[0].size() == 1 ? t[0][0] : '?';
         if (t.size() < 2) fail("element needs a name");
         const std::string& id = t[1];
-        auto triodeModel = [](const std::string& n, TriodeModel& m) { if (n == "ECC83") { m = TriodeModel::ecc83(); return true; } if (n == "ECC81") { m = TriodeModel::ecc81(); return true; } return false; };
+        auto triodeModel = [](const std::string& n, TriodeModel& m) { if (n == "ECC83") { m = TriodeModel::ecc83(); return true; } if (n == "12AX7") { m = TriodeModel::ecc83Fit(); return true; } if (n == "ECC81") { m = TriodeModel::ecc81(); return true; } return false; };
         auto pentodeModel = [](const std::string& n, PentodeModel& m) {
             if (n == "EL34") { m = PentodeModel::el34(); return true; }
             if (n == "6550") { m = PentodeModel::el6550(); return true; }

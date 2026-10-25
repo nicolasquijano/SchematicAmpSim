@@ -30,7 +30,7 @@ R RLEAK_N jn 0 1M
 R R68_N jn g1n 68k
 
 * V1 right half: bright channel.
-T V1B g1b pb kb ECC83
+T V1B g1b pb kb 12AX7
 R R_PB na pb 100k
 R RK_B kb 0 2.7k
 C CK_B kb 0 0.68u
@@ -42,7 +42,7 @@ R R470_B wb g2 470k
 C C500 g2 wb 500p
 
 * V1 left half: normal channel.
-T V1A g1n pn kn ECC83
+T V1A g1n pn kn 12AX7
 R R_PN na pn 100k
 R RK_N kn 0 820
 C CK_N kn 0 250u
@@ -52,11 +52,11 @@ R VR_NB wn 0 1
 R R470_N wn g2 470k
 
 * V2a gain stage and V2b cathode follower (plate on the rail).
-T V2A g2 p2a k2a ECC83
+T V2A g2 p2a k2a 12AX7
 R R_P2A nb p2a 100k
 R RK2A k2a 0 820
 C CK2A k2a 0 0.68u
-T V2B p2a nb k2b ECC83
+T V2B p2a nb k2b 12AX7
 R R13 k2b 0 100k
 
 * Tone stack: 500p + 33k from the follower, treble 250k pot (wiper = output), bass 1M rheostat,
