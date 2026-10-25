@@ -1,0 +1,82 @@
+* Peavey 5150 (EVH 120 preamp board 81501510, 5-Feb-92), preamp stage 1 of 3: the input, V1A, the Rhythm (clean)
+* and Lead (ultra) gain networks selected by the relays, and V1B. Transcribed from the factory drawing.
+* Stage 2 (stage2.net) takes V1B's plate through a link source; the V2A input network (C2, R6, R9, R20 / K1B)
+* is repeated here as V1B's load.
+*
+* Relay contacts as drawn (coil off) / energised: K2A, K2B pick the clean (VR1, VR6) or ultra (VR2, VR7)
+* pot; K4A puts 470k || 270p (off) or 2.2M || 470p (on) in the clean network and K4B a 39k + 0.1u shunt
+* (off) or nothing (on); K1A closes the 22u on V1B's cathode to ground (off) or leaves it behind 47k
+* (on); K1B puts 220k to ground on V2A's grid (off) or nothing (on). Jack modes in amp.json:
+* Rhythm = all off, Crunch = K4 on, Lead = K2 and K1 on. Which coil states the front panel really gives
+* each channel is an assumption: the drawing shows the contacts, not the switching logic.
+*
+* The V1 rail (node x1) is a fixed source at its idle value (the real one is a 22k + 10k RC from the V3 rail
+* with 22u caps: it follows the power supply only over a second or two). x3 is unused in the stages.
+* C3, C4, C5 "1A50NP" are read as 1u 50 V non-polar.
+
+V VRAIL x3 100 440
+V VX1 x1 50 322
+* Guitar, input jack (22k), 39p, 0.1u coupling, 1M grid leak, 68k grid stopper.
+I VIN gin 1
+R RSRC gin in 7k
+R R27 in nin 22k
+C C20 nin 0 39p
+C C15 nin g1 0.1u
+R R25 g1 0 1M
+R R22 g1 gv1a 68k
+
+* V1A.
+T V1A gv1a p1a k1a ECC83
+R R2 x1 p1a 220k
+R R12 k1a 0 1k82
+C C3 k1a 0 1u
+C C6 p1a p1 22n
+
+* Clean (Rhythm) network: K4A selects the series element, then 1M into the VR1 pot (clean pre).
+R SW_K4A3 p1 n19 1
+R R19 n19 q 470k
+C C51 n19 q 270p
+R SW_K4A4 p1 n43 1e12
+R R43 n43 q 2M2
+C C13 n43 q 470p
+R R21 q h 1M
+R SW_K4B6 h n23 1
+R R23 n23 nc63 39k
+C C63 nc63 0 0.1u
+C C10 q fl 470p
+R R75 fl h 2M2
+R SW_S1C fl h 1e12
+R VR1_T h w1 1
+R VR1_B w1 0 1
+C C27 h w1 180p
+
+* Ultra (Lead) network: 470k || 2.2n into the 1M VR2 pot (ultra pre) with its bright 1n and 1M across the top.
+R R29 p1 b 470k
+C C17 p1 b 2n2
+R R41 b 0 1M
+R VR2_T b w2 1
+R VR2_B w2 0 1
+C C19 b w2 1n
+R R40 b w2 1M
+
+* K2A: the selected pre pot wiper goes to V1B's grid through 470k.
+R SW_K2A3 w1 k2 1
+R SW_K2A4 w2 k2 1e12
+R R82 k2 gv1b 470k
+
+* V1B with the K1A bass bypass (22u, 47k).
+T V1B gv1b p1b k1b ECC83
+R R3 x1 p1b 100k
+R R17 k1b 0 1k82
+C C4 k1b 0 1u
+C C26 k1b kn 22u
+R R18 kn 0 47k
+R SW_K1A kn 0 1
+C C2 p1b a2 22n
+R R6 a2 g2a 470k
+R R9 g2a 0 1M
+R R20 g2a n20 220k
+R SW_K1B n20 0 1
+
+
+* Load of V1B's plate: V2A's input network (stage 2 repeats it behind the link source).

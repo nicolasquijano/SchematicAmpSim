@@ -46,6 +46,7 @@ Layout SasProcessor::createLayout(const std::vector<sas::AmpDef>& defs) {
     l.add(knob(ids::vibSpeed, "Vibrato Speed", 5.0f));
     l.add(knob(ids::vibIntensity, "Vibrato Intensity", 5.0f));
     l.add(knob(ids::reverb, "Reverb", 3.0f));
+    l.add(knob(ids::resonance, "Resonance", 5.0f));
     l.add(std::make_unique<juce::AudioParameterBool>(juce::ParameterID{ids::vibOn, kVersion}, "Vibrato", false));
     l.add(dbParam(ids::input, "Input"));
     l.add(dbParam(ids::output, "Output"));

@@ -1,0 +1,77 @@
+* Peavey 5150 (EVH 120 power board 81501510 and tube breakaway board) power amp: the 12AX7 long-tailed
+* phase inverter (V4A, V4B) with its negative feedback network (R56, R57, C30, resonance VR8 / C12, presence
+* VR9 / C8 / C62), four 6L6GC as two parallel pairs on fixed bias, the output transformer T2, and the HV
+* supply with the V3 filter node. B+ (node a) is the rectifier / reservoir, integrated by the engine.
+*
+* Assumptions where the drawing is silent or ambiguous (change them here, not in code):
+*  - feedback: the 8 ohm tap (W) drives R56 (39k) into the phase inverter's cathode leg (4.7k), and through
+*    the resonance network (C12 || VR8) and C30 into the same node; presence shunts the junction nb;
+*  - output transformer: 2.2k plate-to-plate onto the 8 ohm tap, 6 H per primary half, 40 ohm per half;
+*  - bias: -46 V (R54, R55 return to it), a Thevenin source behind 3k with C41 10u: gives ~38 mA per tube;
+*  - screens: 100 ohm each (R203, R205, R207, R209) from B+; the standby switch is closed;
+*  - the CR200 / CR201 plate clamps to ground are left out;
+*  - the supply: 4 x 1N4007 bridge, 330u + 330u (series) and 100u + 100u (series), R59 4.7k to the V3 rail
+*    (node x) with 47u; RPREAMP stands for what the preamp draws from it.
+
+S VAUDIO pin 32k 0
+S VHT a 1 490
+S VBIAS cb 3k -50
+C C41 cb 0 10u
+
+* V3 rail: 4.7k from B+, 47u, and the preamp's load (V2 / V1 stages are inside the preamp netlist).
+R R59 a x 4k7
+C C36 x 0 47u
+R RPREAMP x 0 100k
+
+* Phase inverter. P (pp) is the input node: the 0.022u (C49) is in the preamp (stage 3), so a large coupling cap here only sets the DC of the grid network; 100k to V4B's grid, 1M to the cathode
+* node kk. V4A's grid sits behind 0.047u on node na (4.7k to ground, the feedback node) and 1M to kk.
+C CIN pin pp 10u
+R R48 pp gb 100k
+R R50 pp kk 1M
+R R53 kk ga 1M
+R R51 kk na 10k
+R R52 kk kc 470
+R R57 na 0 4k7
+C C31 na ga 47n
+T V4B gb pb kc ECC83
+T V4A ga pa kc ECC83
+R R46 x pb 82k
+R R58 x pa 100k
+
+* Negative feedback and its resonance / presence shaping (t8 is the 8 ohm tap).
+R R56 t8 na 39k
+C C30 na nb 22u
+C C12 nb 0 6n8
+R VR8 t8 nb 500k
+C C8 nb pr 0.1u
+R VR9_T pr wp 5k
+R VR9_B wp 0 5k
+C C62 nb wp 33n
+
+* Output stage: 0.047u couplings, 220k grid returns to the bias, 2.2k stoppers (two tubes per half),
+* 100p to ground.
+C C29 pb pga 47n
+C C28 pa pgb 47n
+R R55 pga cb 220k
+R R54 pgb cb 220k
+R R206 pga g1 2k2/2
+R R202 pgb g2 2k2/2
+C C202 pga 0 100p
+C C201 pgb 0 100p
+P V5 g1 pt s1 0 6L6GC 2
+P V6 g2 pbm s2 0 6L6GC 2
+R R207 a s1 100/2
+R R203 a s2 100/2
+
+* Output transformer T2: primary halves around the B+ centre tap, one secondary for the 8 ohm tap.
+R DCR_PT pt npt 40
+R DCR_PB pbm npb 40
+.param n8 = 2*1/sqrt(2200/8)
+.xfmr OT L=6
+  W npt a 1 pri
+  W a npb 1 pri
+  W t8 0 n8 sec
+  K pri pri 0.9998
+  K pri sec 0.9993
+.end
+R RLOAD t8 0 8

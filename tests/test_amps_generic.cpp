@@ -352,3 +352,64 @@ TEST_CASE("Twin: the spring reverb leaves a decaying tail only with the Reverb k
     CHECK(full[1] > 1e-4);          // and lasts for seconds
     CHECK(mid[0] < full[0]);        // less with the knob lower
 }
+
+TEST_CASE("5150: supply, bias and idle current are in the range of the amp, and the power amp is quiet at rest") {
+    const AmpDef def = loadEmbeddedAmp("highgain_120");
+    PowerAmp power(def, kFs);
+    const auto net = parseNetlist(def.power.netlistText, def.power.netlist);
+    CHECK(power.solver().dcConverged);
+    auto v = [&](const char* n) { return power.solver().voltage(net.node(n)); };
+    CHECK(std::abs(v("a") - 480.0) < 40.0);      // B+ around 480 V
+    CHECK(std::abs(v("cb") + 50.0) < 6.0);       // bias around -50 V
+    const double idleMa = (v("a") - v("pt")) / 40.0 / 2.0 * 1e3;  // per tube
+    CHECK(idleMa > 28.0);
+    CHECK(idleMa < 55.0);
+    // At rest nothing oscillates: the feedback loop with presence and resonance is stable.
+    for (std::size_t i = 0; i < std::size_t(0.4 * kFs); ++i) power.process(0.0);
+    double lo = 1e9, hi = -1e9;
+    for (std::size_t i = 0; i < std::size_t(0.1 * kFs); ++i) {
+        power.process(0.0);
+        lo = std::min(lo, power.solver().voltage(net.node("t8")));
+        hi = std::max(hi, power.solver().voltage(net.node("t8")));
+    }
+    CHECK(hi - lo < 0.5);
+}
+
+TEST_CASE("5150: the power amp makes about 100 W clean-to-clipped and the presence control opens the highs") {
+    const AmpDef def = loadEmbeddedAmp("highgain_120");
+    auto outRms = [&](double presence, double hz, double peak) {
+        PowerAmp p(def, kFs);
+        p.setPresence(presence);
+        return rmsAt(p, hz, peak);
+    };
+    const double loud = outRms(0.5, 440.0, 10.0);
+    INFO("440 Hz at 10 V: " << loud << " V rms into the 8 ohm tap");
+    CHECK(loud * loud / 8.0 > 80.0);
+    CHECK(loud * loud / 8.0 < 220.0);
+    // Presence: more highs, same lows.
+    CHECK(outRms(1.0, 5000.0, 0.2) > 1.5 * outRms(0.0, 5000.0, 0.2));
+    CHECK(std::abs(20.0 * std::log10(outRms(1.0, 100.0, 0.2) / outRms(0.0, 100.0, 0.2))) < 1.5);
+}
+
+TEST_CASE("5150: Lead has more gain than Crunch, which has more than Rhythm; the tone stack and posts act") {
+    const AmpDef def = loadEmbeddedAmp("highgain_120");
+    auto level = [&](const char* jack, const char* knob, double v, double hz, double peak = 0.0005) {
+        FullAmp amp(def, kFs);
+        auto k = defaultKnobs(def);
+        if (knob) k[def.knobIndex(knob)] = v;
+        amp.setKnobs(k, 0.5);
+        amp.setJack(def.jackIndex(jack));
+        return rmsAt(amp, hz, peak);
+    };
+    const double r = level("rhythm", nullptr, 0, 500.0), c = level("crunch", nullptr, 0, 500.0), l = level("lead", nullptr, 0, 500.0);
+    INFO("rhythm " << r << " crunch " << c << " lead " << l);
+    CHECK(c > 3.0 * r);
+    CHECK(l > 1.5 * c);
+    // Pre pots of the selected channel work, and the other channel's pots do not matter.
+    CHECK(level("rhythm", "rhythm_pre", 0.8, 500.0) > 1.5 * level("rhythm", "rhythm_pre", 0.3, 500.0));
+    CHECK(level("lead", "lead_pre", 0.8, 500.0, 0.00005) > 1.3 * level("lead", "lead_pre", 0.3, 500.0, 0.00005));
+    CHECK(std::abs(level("lead", "rhythm_pre", 0.1, 500.0, 0.00005) / level("lead", "rhythm_pre", 0.9, 500.0, 0.00005) - 1.0) < 0.15);
+    // The shared tone stack on the clean channel: HIGH opens the treble, LOW the bass.
+    CHECK(level("rhythm", "high", 1.0, 4000.0) > 1.3 * level("rhythm", "high", 0.0, 4000.0));
+    CHECK(level("rhythm", "low", 1.0, 80.0) > 1.3 * level("rhythm", "low", 0.0, 80.0));
+}

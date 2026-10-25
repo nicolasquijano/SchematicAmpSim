@@ -59,7 +59,31 @@ static int run(int argc, char** argv) {
     std::printf("  PI plates        %8.1f / %.1f V\n", v("pa"), v("pb"));
     std::printf("  PI cathode kc    %8.1f V\n", v("kc", "k"));
     std::printf("  bias node        %8.1f V\n", v("bias", "cbias"));
-    std::printf("  failures         %llu\n\n", (unsigned long long)power.solver().newtonFailures);
+    std::printf("  failures         %llu   (dc converged: %s)\n\n", (unsigned long long)power.solver().newtonFailures, power.solver().dcConverged ? "yes" : "NO");
+    if (std::getenv("SAS_DUMP_POWER"))
+        for (const auto& [name, node] : net.nodes) std::printf("    pow %-6s %9.2f V\n", name.c_str(), power.solver().voltage(node));
+    if (std::getenv("SAS_TRACE_POWER")) {
+        sas::PowerAmp p3(def, kFs);
+        std::printf("  trace (ms: wp pt nb na t8):\n");
+        for (std::size_t i = 0; i < std::size_t(0.05 * kFs); ++i) {
+            p3.process(0.0);
+            if (i % 96 == 0 && net.nodes.count("wp"))
+                std::printf("   %5.1f  %9.3f %9.3f %9.3f %9.3f %9.3f\n", 1e3 * double(i) / kFs, p3.solver().voltage(net.node("wp")), p3.solver().voltage(net.node("pt")),
+                            p3.solver().voltage(net.node("nb")), p3.solver().voltage(net.node("na")), p3.solver().voltage(net.node("t8")));
+        }
+    }
+    if (std::getenv("SAS_DUMP_POWER")) {
+        // Is it really at rest? Run silence and report the peak-to-peak of a few nodes.
+        const char* watch[] = {"t8", "pga", "wp", "na", "pt"};
+        for (const char* w : watch) {
+            if (!net.nodes.count(w)) continue;
+            double lo = 1e18, hi = -1e18;
+            sas::PowerAmp p2(def, kFs);
+            for (std::size_t i = 0; i < std::size_t(0.3 * kFs); ++i) p2.process(0.0);
+            for (std::size_t i = 0; i < std::size_t(0.1 * kFs); ++i) { p2.process(0.0); const double x = p2.solver().voltage(net.node(w)); lo = std::min(lo, x); hi = std::max(hi, x); }
+            std::printf("    silence %-4s min %9.3f max %9.3f\n", w, lo, hi);
+        }
+    }
 
     // Preamp DC point at the power amp's rail.
     sas::Preamp pre(def, kFs, power.railX());
@@ -174,6 +198,33 @@ static int run(int argc, char** argv) {
         }
     }
 
+    if (std::getenv("SAS_SWEEP")) {
+        std::printf("\npower amp alone, 440 Hz at the phase inverter input (peak volts -> output rms at the 8 ohm tap, grid mean):\n");
+        for (double a : {0.05, 0.2, 0.5, 1.0, 2.0, 5.0, 10.0, 20.0, 40.0}) {
+            sas::PowerAmp p4(def, kFs);
+            double acc = 0, gm = 0; std::size_t cnt = 0;
+            const std::size_t total = std::size_t(0.6 * kFs);
+            for (std::size_t i = 0; i < total; ++i) {
+                const double y = p4.process(a * std::sin(2 * kPi * 440.0 * double(i) / kFs));
+                if (i > total / 2) { acc += y * y; gm += p4.solver().voltage(net.node("pga")); ++cnt; }
+            }
+            std::printf("  %6.2f V -> %7.2f V rms (%.0f W into 8 ohm), pga mean %.1f V\n", a, std::sqrt(acc / double(cnt)), acc / double(cnt) / 8.0, gm / double(cnt));
+        }
+    }
+    if (std::getenv("SAS_FAILS")) {
+        for (std::size_t j = 0; j < def.preamp.jacks.size(); ++j) {
+            sas::FullAmp a(def, kFs);
+            std::vector<double> k;
+            for (const auto& kd : def.preamp.knobs) k.push_back(kd.def);
+            a.setKnobs(k, def.power.presenceDefault);
+            a.setJack(j);
+            std::size_t firstFail = 0; for (std::size_t i = 0; i < std::size_t(0.5 * kFs); ++i) { a.process(0.1 * std::sin(2 * kPi * 220.0 * double(i) / kFs)); if (!firstFail && a.power().solver().newtonFailures) firstFail = i; }
+            std::printf("  first failure at sample %zu (%.2f ms)\n", firstFail, 1e3 * double(firstFail) / kFs);
+            std::printf("  fails %-8s power %llu", def.preamp.jacks[j].name.c_str(), (unsigned long long)a.power().solver().newtonFailures);
+            for (std::size_t s = 0; s < a.pre().stageCount(); ++s) std::printf("  stage%zu %llu (cont %llu)", s + 1, (unsigned long long)a.pre().solver(s).newtonFailures, (unsigned long long)a.pre().solver(s).continuationRuns);
+            std::printf("\n");
+        }
+    }
     // Level through the whole amp at a few drive levels, 220 Hz, each jack, default knobs.
     std::printf("\nfull amp output (rms volts at 16 ohm) for 220 Hz at peak input:\n");
     std::vector<double> knobs;

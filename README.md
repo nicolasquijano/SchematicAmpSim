@@ -14,13 +14,14 @@ VST3 for Windows, built with C++17 and [JUCE](https://juce.com).
 - **Amps are data, not code.** Each amp is a folder with a netlist and an `amp.json` that maps
   knobs, input jacks, presence, supply and output level onto circuit elements. Adding an amp means
   adding files; nothing is recompiled except to embed them.
-- **Four amps included** (display names are deliberately generic):
+- **Five amps included** (display names are deliberately generic):
   | Name | Circuit |
   |---|---|
   | British 800 | Cascading-gain preamp, 100 W-class EL34 power amp, High and Low input jacks |
   | British Plexi | Vintage 100 W-class EL34 head, two channels with jumper |
   | SLSH 100W | Modern 100 W head, 6550 output stage, two modes |
   | American Twin | Two-channel 85 W+ blackface-style amp, 12AT7 phase inverter, four 6L6GC on fixed bias with its optical vibrato and spring reverb (driver and recovery tubes as circuit, the spring tank behavioural) |
+  | American 5050 | Modern high-gain 120 W head: two channels (Rhythm with a Crunch voicing, Lead) through six gain stages, Marshall-type tone stack, 12AX7 phase inverter with presence and resonance in the feedback loop, four 6L6GC |
 - **Quality modes**
   | Mode | What it does |
   |---|---|
@@ -37,7 +38,7 @@ VST3 for Windows, built with C++17 and [JUCE](https://juce.com).
 ## Parameters
 
 Amp, Volume, Volume 2, Bass, Middle, Treble, Presence, Master, Power, Input, Output, Quality,
-Cab (Off / Filter / IR), Jack (1-4), Level match, Vibrato (On, Speed, Intensity) and Reverb (amps that have them), and the pedal controls (On, Drive, Tone, Level).
+Cab (Off / Filter / IR), Jack (1-4), Level match, Vibrato (On, Speed, Intensity) and Reverb and Resonance (amps that have them), and the pedal controls (On, Drive, Tone, Level).
 Which knobs apply depends on the selected amp.
 
 ## Building

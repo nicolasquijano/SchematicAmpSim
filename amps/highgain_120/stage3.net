@@ -1,0 +1,52 @@
+* Peavey 5150 preamp stage 3 of 3: the tone stack with its post pots and V3A.
+* V5A's output (o5a) arrives through the link source VLNK, with R89 as in the drawing.
+*
+* Not modelled: the effects loop (bypassed: send and return joined), the preamp out, the clamp mute, S1C
+* (Bright, left open) and the V3B cathode follower that the drawing taps from the stack input (C59 .01u, R94 47k,
+* R79, R80, R16) and couples into the post-pot node through C52 .022u: as read, it would pass the stack input
+* around the tone controls almost unattenuated and make LOW / MID / HIGH inaudible, so it is left out until the
+* drawing can be checked against a real amp.
+
+V VRAIL x3 100 440
+V VX2 x2 50 338
+S VLNK o5a 40k 0
+R R89 o5a tb 470k
+
+* Tone stack input bus tb: 33k to ground.
+R R24 tb 0 33k
+
+* Marshall-type stack: 570p to the HIGH pot (VR5, 250k), 47k slope, 0.022u caps, LOW (VR3, 1M rheostat),
+* MID (VR4, 50k) with its 0.022u, and the 47k R95 from the LOW/MID junction to ground.
+C C14 tb ts 470p
+C C60 tb ts 100p
+R VR5_T ts w5 1
+R VR5_B w5 su 1
+R R28 tb sm 47k
+C C18 sm su 22n
+R VR3 su sv 1
+R VR4_T sv w4 1
+R VR4_B w4 0 1
+C C21 sm w4 22n
+R R95 sv 0 47k
+
+* Post pots: VR6 (clean) and VR7 (ultra) on the stack output; K2B takes one of them to node m.
+R VR6_T w5 w6 1
+R VR6_B w6 0 1
+R VR7_T w5 w7 1
+R VR7_B w7 0 1
+R SW_K2B6 w6 m 1
+R SW_K2B5 w7 m 1e12
+R R81 m 0 2M2
+
+
+* V3A: 0.047u from m, 1M and 220k grid leaks; plate 68k, cathode 3.3k with 4.7n. Its plate is the
+* output (node pl, after the 0.022u coupling cap C49 with the 1M of the inverter's input network).
+C C11 m g3a 47n
+R R26 g3a 0 1M
+R R85 g3a 0 220k
+T V3A g3a p3a k3a ECC83
+R R5 x2 p3a 68k
+R R14 k3a 0 3k3
+C C61 k3a 0 4n7
+C C49L p3a pl 22n
+R RPIL pl 0 1M

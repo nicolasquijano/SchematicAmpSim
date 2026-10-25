@@ -1,0 +1,92 @@
+{
+  "id": "highgain_120",
+  "order": 4,
+  "output_db": 10.4,
+  "name": "American 5050",
+
+  "preamp": {
+    "netlist": "preamp.net",
+    "stages": [
+      { "netlist": "stage2.net", "link_from": "p1b", "link_source": "VLNK" },
+      { "netlist": "stage3.net", "link_from": "o5a", "link_source": "VLNK" }
+    ],
+    "tolerance": 2e-6,
+    "rail_source": "VRAIL",
+    "input_source": "VIN",
+    "output_node": "pl",
+    "pot_min_ohms": 100,
+    "jack_label": "CHANNEL",
+    "knobs": [
+      { "name": "lead_pre",     "default": 0.5, "pot": { "type": "wiper", "top": "VR2_T", "bottom": "VR2_B", "total": 1e6, "taper": "log" } },
+      { "name": "rhythm_pre",   "default": 0.5, "pot": { "type": "wiper", "top": "VR1_T", "bottom": "VR1_B", "total": 1e6, "taper": "log" } },
+      { "name": "lead_post",    "default": 0.5, "pot": { "type": "wiper", "top": "VR7_T", "bottom": "VR7_B", "total": 1e6, "taper": "log" } },
+      { "name": "rhythm_post",  "default": 0.5, "pot": { "type": "wiper", "top": "VR6_T", "bottom": "VR6_B", "total": 1e6, "taper": "log" } },
+      { "name": "low",    "default": 0.5, "pot": { "type": "variable", "resistor": "VR3", "total": 1e6, "taper": "log" } },
+      { "name": "mid",    "default": 0.5, "pot": { "type": "wiper", "top": "VR4_T", "bottom": "VR4_B", "total": 50e3, "taper": "linear" } },
+      { "name": "high",   "default": 0.5, "pot": { "type": "wiper", "top": "VR5_T", "bottom": "VR5_B", "total": 250e3, "taper": "linear" } }
+    ],
+    "source_ohms": { "resistors": ["RSRC"], "default": 7000, "min": 10 },
+    "jacks": [
+      { "name": "rhythm", "label": "Rhythm", "level_db": 17.0, "drive": "VIN", "resistors": {
+          "SW_K2A3": 1, "SW_K2A4": 1e12, "SW_K2B6": 1, "SW_K2B5": 1e12, "SW_K4A3": 1,    "SW_K4A4": 1e12, "SW_K4B6": 1,    "SW_K1A": 1,    "SW_K1B": 1 } },
+      { "name": "crunch", "label": "Crunch", "level_db": 3.5, "drive": "VIN", "resistors": {
+          "SW_K2A3": 1, "SW_K2A4": 1e12, "SW_K2B6": 1, "SW_K2B5": 1e12, "SW_K4A3": 1e12, "SW_K4A4": 1,    "SW_K4B6": 1e12, "SW_K1A": 1,    "SW_K1B": 1 } },
+      { "name": "lead",   "label": "Lead",   "drive": "VIN", "resistors": {
+          "SW_K2A3": 1e12, "SW_K2A4": 1, "SW_K2B6": 1e12, "SW_K2B5": 1, "SW_K4A3": 1,    "SW_K4A4": 1e12, "SW_K4B6": 1,    "SW_K1A": 1e12, "SW_K1B": 1e12 } }
+    ]
+  },
+
+  "ui": [
+    { "param": "volume",   "knob": "lead_pre",    "label": "LEAD PRE" },
+    { "param": "volume2",  "knob": "rhythm_pre",  "label": "RHYTHM PRE" },
+    { "param": "master",   "knob": "lead_post",   "label": "LEAD POST" },
+    { "param": "power",    "knob": "rhythm_post", "label": "RHYTHM POST" },
+    { "param": "bass",     "knob": "low",         "label": "LOW" },
+    { "param": "middle",   "knob": "mid",         "label": "MID" },
+    { "param": "treble",   "knob": "high",        "label": "HIGH" },
+    { "param": "presence",                         "label": "PRESENCE" },
+    { "param": "resonance", "power_knob": "resonance", "label": "RESONANCE" }
+  ],
+
+  "power": {
+    "netlist": "poweramp.net",
+    "tolerance": 1e-4,
+    "input_source": "VAUDIO",
+    "ht_source": "VHT",
+    "ht_node": "a",
+    "rail_node": "x",
+    "output_node": "t8",
+    "load_resistor": "RLOAD",
+    
+    "presence": { "resistor": "VR9_B", "complement": "VR9_T", "scale": 10e3, "min_ohms": 50, "default": 0.5 },
+    "knobs": [
+      { "name": "resonance", "resistor": "VR8", "scale": 1e6, "min_ohms": 100, "default": 0.5 }
+    ],
+    "supply": {
+      "mains_hz": 60,
+      "vac_peak": 540,
+      "rect_source_ohms": 60,
+      "ht_dc_source": 490,
+      "rect_drop": 1.4,
+      "reservoir_farads": 215e-6,
+      "tie_ohms": 1.0,
+      "settle_seconds": 0.15
+    }
+  },
+
+  "lite": {
+  "base_gain_db": 17.8329,
+  "high_pass_hz": 22.3592,
+  "shelf_hz": 1093.14,
+  "presence_db": [0, 0.305882, 0.850342, 2.13954, 6.54016],
+  "sag_table": [[0, 0], [2.54648, 0.737273], [5.09296, 2.93621], [9.5493, 10.1115], [15.9155, 26.2393], [22.2817, 44.4508], [28.6479, 58.3934], [35.0141, 69.3244], [44.5634, 76.677], [57.2958, 82.0475], [82.7606, 94.983], [127.324, 105.336]],
+  "rail_x_idle": 442.812,
+  "rail_sag_fraction": 0.58,
+  "ceiling_light": 35.8243,
+  "ceiling_heavy": 35.8243,
+  "ceiling_decay": 105.739,
+  "knee": 5.0672,
+  "sag_attack_s": 0.01,
+  "sag_release_s": 0.06
+}
+}

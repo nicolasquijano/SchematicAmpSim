@@ -1,0 +1,49 @@
+* Peavey 5150 preamp stage 2 of 3: V2A (39k cathode), V2B, V5B and V5A. V1B's plate arrives through the link
+* source VLNK (the Thevenin resistance is R3 100k in parallel with the tube); its load, V2A's input network, is
+* repeated from stage 1. The next stage takes V5A's output (node o5a); R89, R24 and a fitted
+* equivalent of the tone stack's input are repeated here as its load.
+
+V VRAIL x3 100 440
+V VX1 x1 50 322
+V VX2 x2 50 338
+S VLNK p1b 45k 0
+C C2 p1b a2 22n
+R R6 a2 g2a 470k
+R R9 g2a 0 1M
+R R20 g2a n20 220k
+R SW_K1B n20 0 1
+
+* V2A (39k cathode, unbypassed) and V2B.
+T V2A g2a p2a k2a ECC83
+R R1 x1 p2a 100k
+R R15 k2a 0 39k
+C C1 p2a xa 22n
+C C48 xa 0 1n
+R R11 xa 0 330k
+R R7 xa g2b 220k
+T V2B g2b p2b k2b ECC83
+R R4 x2 p2b 220k
+R R13 k2b 0 1k82
+C C5 k2b 0 1u
+
+* V5B and V5A (V5A has 1M from its plate side back to the grid).
+R R32 p2b n32 1M
+C C57 n32 g5b 22n
+R R101 g5b 0 100k
+T V5B g5b p5b k5b ECC83
+R R96 x2 p5b 220k
+R R102 k5b 0 2k2
+R R87 p5b n87 1M
+C C56 n87 g5a 22n
+R R91 g5a 0 1M
+T V5A g5a p5a k5a ECC83
+R R86 x2 p5a 100k
+R R93 k5a 0 2k2
+C C58 p5a o5a 22n
+R R88 g5a o5a 1M
+R R89 o5a tb 470k
+
+
+* Load of V5A's output: the tone stack input as stage 3 will see it (R24 and the stack ~ 100k).
+R R24 tb 0 33k
+R RSTACK tb 0 100k

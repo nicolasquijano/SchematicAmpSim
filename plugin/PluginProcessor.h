@@ -22,6 +22,7 @@ inline constexpr const char* treble = "treble";
 inline constexpr const char* presence = "presence";
 inline constexpr const char* master = "master";
 inline constexpr const char* power = "power";
+inline constexpr const char* resonance = "resonance";  // power-amp feedback shaping (amps that have it)
 inline constexpr const char* vibSpeed = "vib_speed";          // optical tremolo (amps that have one)
 inline constexpr const char* vibIntensity = "vib_intensity";
 inline constexpr const char* vibOn = "vib_on";
