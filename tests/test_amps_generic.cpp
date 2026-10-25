@@ -103,7 +103,7 @@ TEST_CASE("selector captions and labels come from each amp") {
     const AmpDef afd = loadEmbeddedAmp("afd100"), plexi = loadEmbeddedAmp("plexi_1959"), jcm = loadEmbeddedAmp("jcm800_2203");
     CHECK(afd.preamp.jackLabel == "MODE");
     CHECK(afd.preamp.jacks[0].label == "Normal");
-    CHECK(afd.preamp.jacks[1].label == "AFD");
+    CHECK(afd.preamp.jacks[1].label == "Alt");
     CHECK(plexi.preamp.jackLabel == "CHANNEL");
     CHECK(jcm.preamp.jackLabel == "INPUT JACK");
     CHECK(jcm.preamp.jacks[1].label == "Low");

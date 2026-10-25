@@ -2,7 +2,7 @@
   "id": "plexi_1959",
   "order": 1,
   "output_db": -0.1,
-  "name": "Marshall 1959 Plexi",
+  "name": "British Plexi",
 
   "preamp": {
     "netlist": "preamp.net",
