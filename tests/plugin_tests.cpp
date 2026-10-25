@@ -6,7 +6,7 @@
 
 #include <juce_audio_formats/juce_audio_formats.h>
 
-#include "PluginProcessor.h"
+#include "PluginEditor.h"
 
 namespace {
 
@@ -176,9 +176,12 @@ TEST_CASE("the editor builds for every amp and can be rendered") {
     const char* dir = std::getenv("SAS_EDITOR_PNG_DIR");  // set it to also write a picture of every amp's editor
     for (int amp = 0; amp < p.apvts.getParameter("amp")->getNumSteps(); ++amp) {
         setParam(p, "amp", float(amp));
+        p.prepareToPlay(48000.0, 512);
         std::unique_ptr<juce::AudioProcessorEditor> ed(p.createEditor());
         REQUIRE(ed != nullptr);
         ed->setSize(800, 410);
+        run(p, 40, 220.0, 0.2);  // so the meters have something to show
+        if (auto* se = dynamic_cast<SasEditor*>(ed.get())) for (int i = 0; i < 12; ++i) { se->pollMeters(); run(p, 2, 220.0, 0.2); }
         CHECK(ed->getWidth() > 0);
         if (dir) {
             const auto img = ed->createComponentSnapshot(ed->getLocalBounds());

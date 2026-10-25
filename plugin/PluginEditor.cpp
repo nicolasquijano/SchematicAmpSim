@@ -83,14 +83,56 @@ void KnobWithLabel::resized() {
     slider_.setBounds(r);
 }
 
+// ------------------------------------------------------------------ level bar
+
+void LevelBar::setLevel(float peak) {
+    const float now = 20.0f * std::log10(std::max(peak, 1e-5f));
+    db_ = now > db_ ? now : std::max(now, db_ - 1.6f);
+    if (peak >= 0.999f) clip_ = 40;
+    else if (clip_ > 0) --clip_;
+    repaint();
+}
+
+void LevelBar::paint(juce::Graphics& g) {
+    const auto b = getLocalBounds().toFloat();
+    g.setColour(juce::Colour::fromRGB(14, 12, 10));
+    g.fillRoundedRectangle(b, 2.0f);
+    const float f = juce::jlimit(0.0f, 1.0f, (db_ + 60.0f) / 60.0f);
+    const float h = (b.getHeight() - 2.0f) * f;
+    const float top = b.getBottom() - 1.0f - h;
+    auto colourAt = [](float db) {
+        return db > -6.0f ? juce::Colour::fromRGB(230, 70, 50) : db > -18.0f ? juce::Colour::fromRGB(240, 160, 40) : juce::Colour::fromRGB(80, 200, 100);
+    };
+    // Drawn in three bands so the colour follows the level.
+    const float y18 = b.getBottom() - 1.0f - (b.getHeight() - 2.0f) * (42.0f / 60.0f);
+    const float y6 = b.getBottom() - 1.0f - (b.getHeight() - 2.0f) * (54.0f / 60.0f);
+    auto band = [&](float yTop, float yBot, juce::Colour col) {
+        const float t = std::max(yTop, top);
+        if (t < yBot) { g.setColour(col); g.fillRect(b.getX() + 1.0f, t, b.getWidth() - 2.0f, yBot - t); }
+    };
+    band(y18, b.getBottom() - 1.0f, colourAt(-30.0f));
+    band(y6, y18, colourAt(-12.0f));
+    band(b.getY() + 1.0f, y6, colourAt(-3.0f));
+    g.setColour(juce::Colours::black.withAlpha(0.6f));
+    g.drawHorizontalLine(int(y18), b.getX(), b.getRight());
+    g.drawHorizontalLine(int(y6), b.getX(), b.getRight());
+    if (clip_ > 0) {
+        g.setColour(juce::Colour::fromRGB(230, 70, 50));
+        g.fillRect(b.getX() + 1.0f, b.getY() + 1.0f, b.getWidth() - 2.0f, 3.0f);
+    }
+}
+
 // ------------------------------------------------------------------ editor
 
 SasEditor::SasEditor(SasProcessor& p)
     : AudioProcessorEditor(&p), processor_(p),
       input_(p.apvts, ids::input, "INPUT dB"), output_(p.apvts, ids::output, "OUTPUT dB"),
-      tsDrive_(p.apvts, ids::tsDrive, "DRIVE"), tsTone_(p.apvts, ids::tsTone, "TONE"), tsLevel_(p.apvts, ids::tsLevel, "LEVEL") {
+      tsDrive_(p.apvts, ids::tsDrive, "DRIVE"), tsTone_(p.apvts, ids::tsTone, "TONE"), tsLevel_(p.apvts, ids::tsLevel, "LEVEL"),
+      gateThreshold_(p.apvts, ids::gateThreshold, "THRESHOLD"), gateRelease_(p.apvts, ids::gateRelease, "RELEASE") {
     setLookAndFeel(&look_);
-    for (auto* k : {&input_, &output_, &tsDrive_, &tsTone_, &tsLevel_}) addAndMakeVisible(*k);
+    for (auto* k : {&input_, &output_, &tsDrive_, &tsTone_, &tsLevel_, &gateThreshold_, &gateRelease_}) addAndMakeVisible(*k);
+    addAndMakeVisible(inBar_);
+    addAndMakeVisible(outBar_);
 
     if (const auto* amp = dynamic_cast<juce::AudioParameterChoice*>(p.apvts.getParameter(ids::amp))) ampNames_ = amp->choices;
     ampList_.setModel(this);
@@ -116,6 +158,8 @@ SasEditor::SasEditor(SasProcessor& p)
     styleCaption(cabCaption_, "CABINET");
     addAndMakeVisible(tsOn_);
     tsOnAtt_ = std::make_unique<juce::AudioProcessorValueTreeState::ButtonAttachment>(p.apvts, ids::tsOn, tsOn_);
+    addAndMakeVisible(gateOn_);
+    gateOnAtt_ = std::make_unique<juce::AudioProcessorValueTreeState::ButtonAttachment>(p.apvts, ids::gateOn, gateOn_);
     addAndMakeVisible(vibrato_);
     vibratoAtt_ = std::make_unique<juce::AudioProcessorValueTreeState::ButtonAttachment>(p.apvts, ids::vibOn, vibrato_);
     addAndMakeVisible(levelMatch_);
@@ -146,7 +190,7 @@ SasEditor::SasEditor(SasProcessor& p)
     setResizable(true, true);
     setResizeLimits(680, 380, 1200, 760);
     setSize(800, 410);
-    startTimerHz(4);
+    startTimerHz(30);
     timerCallback();
 }
 
@@ -233,7 +277,14 @@ void SasEditor::showAmp(int index) {
     repaint();
 }
 
+void SasEditor::pollMeters() {
+    inBar_.setLevel(processor_.takeInputPeak());
+    outBar_.setLevel(processor_.takeOutputPeak());
+}
+
 void SasEditor::timerCallback() {
+    pollMeters();
+    if (tick_++ % 8 != 0) return;  // the rest at about 4 Hz
     // Follows the amp parameter when the host or a restored state changes it.
     if (processor_.selectedAmpIndex() != shownAmp_) showAmp(processor_.selectedAmpIndex());
     const int jackNow = int(processor_.apvts.getRawParameterValue(ids::jack)->load() + 0.5f);
@@ -319,17 +370,28 @@ void SasEditor::resized() {
     }
     const bool ampPage = page_ == 0;
     for (auto& k : ampKnobs_) k->setVisible(ampPage);
-    for (auto* c : std::initializer_list<juce::Component*>{&cabCaption_, &cab_, &loadIr_, &clearIr_, &irName_, &input_, &output_}) c->setVisible(ampPage);
-    for (auto* c : std::initializer_list<juce::Component*>{&tsOn_, &tsDrive_, &tsTone_, &tsLevel_}) c->setVisible(!ampPage);
+    for (auto* c : std::initializer_list<juce::Component*>{&cabCaption_, &cab_, &loadIr_, &clearIr_, &irName_, &input_, &output_, &inBar_, &outBar_}) c->setVisible(ampPage);
+    for (auto* c : std::initializer_list<juce::Component*>{&tsOn_, &tsDrive_, &tsTone_, &tsLevel_, &gateOn_, &gateThreshold_, &gateRelease_}) c->setVisible(!ampPage);
 
     if (!ampPage) {
         // Effects page: one panel per effect, side by side; only the overdrive for now.
         const int knobW = std::clamp(area.getWidth() / 8, 70, 110);
-        auto tsPanel = area.removeFromTop(std::min(area.getHeight(), 190)).removeFromLeft(knobW * 3 + 12);
+        auto fxRow = area.removeFromTop(std::min(area.getHeight(), 190));
+        auto tsPanel = fxRow.removeFromLeft(knobW * 3 + 12);
+        fxRow.removeFromLeft(gap);
+        auto gatePanel = fxRow.removeFromLeft(knobW * 2 + 12);
+        panels_.push_back({gatePanel, "NOISE GATE"});
+        {
+            auto gin = gatePanel.reduced(6, 4);
+            auto ghead = gin.removeFromTop(20);
+            gateOn_.setBounds(ghead.removeFromRight(56));
+            gateThreshold_.setBounds(gin.removeFromLeft(gin.getWidth() / 2));
+            gateRelease_.setBounds(gin);
+        }
         panels_.push_back({tsPanel, "OVERDRIVE"});
         auto in = tsPanel.reduced(6, 4);
         auto head = in.removeFromTop(20);
-        tsOn_.setBounds(head.removeFromRight(116));
+        tsOn_.setBounds(head.removeFromRight(56));
         tsDrive_.setBounds(in.removeFromLeft(in.getWidth() / 3));
         tsTone_.setBounds(in.removeFromLeft(in.getWidth() / 2));
         tsLevel_.setBounds(in);
@@ -350,8 +412,8 @@ void SasEditor::resized() {
         for (auto& k : ampKnobs_) k->setBounds(row.removeFromLeft(w));
     }
 
-    const int knobW = std::clamp(bottom.getWidth() / 6, 70, 110);
-    auto ioPanel = bottom.removeFromRight(knobW * 2 + 12);
+    const int knobW = std::clamp(bottom.getWidth() / 7, 64, 100);
+    auto ioPanel = bottom.removeFromRight(knobW * 2 + 12 + 2 * 16);
     bottom.removeFromRight(gap);
     auto cabPanel = bottom;
     panels_.push_back({cabPanel, ""});
@@ -371,8 +433,12 @@ void SasEditor::resized() {
     {
         auto in = ioPanel.reduced(6, 4);
         in.removeFromTop(16);
-        input_.setBounds(in.removeFromLeft(in.getWidth() / 2));
-        output_.setBounds(in);
+        auto col = [&](KnobWithLabel& k, LevelBar& bar, juce::Rectangle<int> r) {
+            bar.setBounds(r.removeFromRight(12).withTrimmedTop(20).withTrimmedBottom(20));
+            k.setBounds(r);
+        };
+        col(input_, inBar_, in.removeFromLeft(in.getWidth() / 2));
+        col(output_, outBar_, in);
     }
     repaint();
 }

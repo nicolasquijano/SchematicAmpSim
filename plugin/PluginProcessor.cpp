@@ -62,6 +62,11 @@ Layout SasProcessor::createLayout(const std::vector<sas::AmpDef>& defs) {
     l.add(knob(ids::tsDrive, "TS Drive", 5.0f));
     l.add(knob(ids::tsTone, "TS Tone", 5.0f));
     l.add(knob(ids::tsLevel, "TS Level", 5.0f));
+    l.add(std::make_unique<juce::AudioParameterBool>(juce::ParameterID{ids::gateOn, kVersion}, "Noise gate", false));
+    l.add(std::make_unique<juce::AudioParameterFloat>(juce::ParameterID{ids::gateThreshold, kVersion}, "Gate threshold", juce::NormalisableRange<float>(-80.0f, -20.0f, 0.0f), -60.0f,
+                                                       juce::AudioParameterFloatAttributes().withLabel("dB").withStringFromValueFunction([](float v, int) { return juce::String(v, 0); })));
+    l.add(std::make_unique<juce::AudioParameterFloat>(juce::ParameterID{ids::gateRelease, kVersion}, "Gate release", juce::NormalisableRange<float>(20.0f, 500.0f, 0.0f, 0.5f), 120.0f,
+                                                       juce::AudioParameterFloatAttributes().withLabel("ms").withStringFromValueFunction([](float v, int) { return juce::String(v, 0); })));
     return l;
 }
 
@@ -175,6 +180,7 @@ void SasProcessor::prepareToPlay(double sampleRate, int samplesPerBlock) {
     convolution_.prepare(spec);
     irWasActive_ = false;
     latencyReported_ = -1;
+    gate_.prepare(sampleRate);
 }
 
 sas::ChainSettings SasProcessor::readSettings(bool irAvailable) {
@@ -225,6 +231,8 @@ void SasProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::MidiBuff
     const auto cabParam = static_cast<CabMode>(juce::jlimit(0, 2, int(apvts.getRawParameterValue(ids::cab)->load() + 0.5f)));
     const bool irActive = cabParam == CabMode::Ir && irLoaded;
     chain_->setSettings(readSettings(irLoaded));
+    gate_.setParams(apvts.getRawParameterValue(ids::gateOn)->load() > 0.5f, double(apvts.getRawParameterValue(ids::gateThreshold)->load()),
+                    double(apvts.getRawParameterValue(ids::gateRelease)->load()));
 
     // Latency follows the quality and the convolution; report it when it changes.
     const int latency = int(chain_->latencySamples()) + (irActive ? convolution_.getLatency() : 0);
@@ -235,6 +243,7 @@ void SasProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::MidiBuff
     if (irActive && !irWasActive_) convolution_.reset();
     irWasActive_ = irActive;
 
+    gateGain_.store(float(gate_.gain()));
     for (int start = 0; start < numSamples; start += int(kMaxChunk)) {
         const int n = std::min<int>(int(kMaxChunk), numSamples - start);
         float* m = mono_.data();
@@ -245,6 +254,9 @@ void SasProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::MidiBuff
             for (int i = 0; i < n; ++i) m[i] += in[i];
         }
         for (int i = 0; i < n; ++i) m[i] *= inv;
+        float inPeak = 0.0f;
+        for (int i = 0; i < n; ++i) inPeak = std::max(inPeak, std::fabs(m[i]));
+        gate_.process(m, std::size_t(n));
 
         chain_->processAmp(m, m, std::size_t(n));
         if (irActive) {
@@ -253,6 +265,10 @@ void SasProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::MidiBuff
             convolution_.process(juce::dsp::ProcessContextReplacing<float>(block));
         }
         chain_->applyOutput(m, std::size_t(n));
+        float outPeak = 0.0f;
+        for (int i = 0; i < n; ++i) outPeak = std::max(outPeak, std::fabs(m[i]));
+        if (inPeak > inputPeak_.load()) inputPeak_.store(inPeak);
+        if (outPeak > outputPeak_.load()) outputPeak_.store(outPeak);
 
         for (int ch = 0; ch < numCh; ++ch) std::copy(m, m + n, buffer.getWritePointer(ch) + start);
     }

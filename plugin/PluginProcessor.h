@@ -10,6 +10,7 @@
 
 #include "sas/amp_def.h"
 #include "sas/chain.h"
+#include "sas/gate.h"
 
 namespace ids {
 inline constexpr const char* amp = "amp";
@@ -37,6 +38,9 @@ inline constexpr const char* tsOn = "ts_on";
 inline constexpr const char* tsDrive = "ts_drive";
 inline constexpr const char* tsTone = "ts_tone";
 inline constexpr const char* tsLevel = "ts_level";
+inline constexpr const char* gateOn = "gate_on";
+inline constexpr const char* gateThreshold = "gate_threshold";
+inline constexpr const char* gateRelease = "gate_release";
 }  // namespace ids
 
 // Cabinet source. Order is saved in projects: append only.
@@ -81,6 +85,11 @@ public:
     // new amp is being built).
     int runningAmpIndex() const { return activeAmp_.load(); }
 
+    // Peak level (linear, 0..1+) since the last call, for the editor's meters.
+    float takeInputPeak() { return inputPeak_.exchange(0.0f); }
+    float takeOutputPeak() { return outputPeak_.exchange(0.0f); }
+    float gateGain() const { return gateGain_.load(); }
+
     juce::AudioProcessorValueTreeState apvts;
 
 private:
@@ -121,6 +130,8 @@ private:
     juce::String irName_;
     mutable juce::CriticalSection irLock_;  // guards irBytes_/irName_ (message thread vs state calls)
 
+    sas::NoiseGate gate_;
+    std::atomic<float> inputPeak_{0.0f}, outputPeak_{0.0f}, gateGain_{1.0f};
     std::vector<float> mono_;
     sas::ChainSettings settings_;
 

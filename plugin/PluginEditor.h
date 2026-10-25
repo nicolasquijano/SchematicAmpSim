@@ -30,6 +30,17 @@ private:
     juce::AudioProcessorValueTreeState::SliderAttachment attachment_;
 };
 
+// Vertical level bar (-60..0 dBFS) with a fast rise, a slower fall and a clip mark.
+class LevelBar final : public juce::Component {
+public:
+    void setLevel(float linearPeak);
+    void paint(juce::Graphics&) override;
+
+private:
+    float db_ = -90.0f;
+    int clip_ = 0;
+};
+
 class SasEditor final : public juce::AudioProcessorEditor, private juce::Timer, private juce::ListBoxModel {
 public:
     explicit SasEditor(SasProcessor&);
@@ -37,6 +48,7 @@ public:
 
     void paint(juce::Graphics&) override;
     void resized() override;
+    void pollMeters();  // reads the processor's peaks into the level bars (the timer calls it)
 
 private:
     // The amp list (a ListBox over the amp parameter's choices).
@@ -66,15 +78,19 @@ private:
     std::vector<std::unique_ptr<KnobWithLabel>> ampKnobs_;  // first row, from the amp's "ui" block
     KnobWithLabel input_, output_;
     KnobWithLabel tsDrive_, tsTone_, tsLevel_;
+    KnobWithLabel gateThreshold_, gateRelease_;
+    LevelBar inBar_, outBar_;
+    int tick_ = 0;
 
     juce::ListBox ampList_{"amps", nullptr};
     juce::ComboBox quality_, jack_, cab_;
     std::unique_ptr<juce::AudioProcessorValueTreeState::ComboBoxAttachment> qualityAtt_, cabAtt_;
     juce::Label ampCaption_, qualityCaption_, jackCaption_, cabCaption_, irName_;
-    juce::ToggleButton tsOn_{"Overdrive on"};
+    juce::ToggleButton tsOn_{"On"};
+    juce::ToggleButton gateOn_{"On"};
     juce::ToggleButton levelMatch_{"Level match"};  // shown only for amps whose jacks differ in level
     juce::ToggleButton vibrato_{"Vibrato"};  // shown only for amps that have an optical tremolo
-    std::unique_ptr<juce::AudioProcessorValueTreeState::ButtonAttachment> tsOnAtt_, levelMatchAtt_, vibratoAtt_;
+    std::unique_ptr<juce::AudioProcessorValueTreeState::ButtonAttachment> tsOnAtt_, gateOnAtt_, levelMatchAtt_, vibratoAtt_;
     juce::TextButton ampTab_{"Amp"}, fxTab_{"Effects"};
     juce::TextButton loadIr_{"Load IR..."}, clearIr_{"Clear"};
     std::unique_ptr<juce::FileChooser> chooser_;
