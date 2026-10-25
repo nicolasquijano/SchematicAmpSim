@@ -16,7 +16,7 @@ struct PowerAmp::Built {
     ParsedNetlist net;
     SrcId srcAudio{0}, srcHt{0};
     ResId rPres{0}, rNfb{0}, rLoad{0}, rPresBottom{0};
-    bool hasPresBottom = false;
+    bool hasPresBottom = false, hasPres = false;
     std::vector<ResId> knobResistors;
     Node x = 0, ht = 0, out = 0;
 };
@@ -27,7 +27,10 @@ PowerAmp::Built PowerAmp::build(const AmpDef& def) {
     b.net = parseNetlist(pd.netlistText, pd.netlist);
     b.srcAudio = b.net.source(pd.inputSource);
     b.srcHt = b.net.source(pd.htSource);
-    b.rPres = b.net.resistor(pd.presenceResistor);
+    if (!pd.presenceResistor.empty()) {
+        b.rPres = b.net.resistor(pd.presenceResistor);
+        b.hasPres = true;
+    }
     if (!pd.presenceComplement.empty()) {
         b.rPresBottom = b.net.resistor(pd.presenceComplement);
         b.hasPresBottom = true;
@@ -37,7 +40,7 @@ PowerAmp::Built PowerAmp::build(const AmpDef& def) {
         // The solve for the DC point starts from the knob's default position.
         b.net.circuit.setResistor(b.knobResistors.back(), std::max(k.scale * k.def, k.minOhms));
     }
-    b.rNfb = b.net.resistor(pd.nfbResistor);
+    if (!pd.nfbResistor.empty()) b.rNfb = b.net.resistor(pd.nfbResistor);
     b.rLoad = b.net.resistor(pd.loadResistor);
     b.x = b.net.node(pd.railNode);
     b.ht = b.net.node(pd.htNode);
@@ -66,6 +69,7 @@ PowerAmp::PowerAmp(Built&& b, const AmpDef& def, double fs)
     if (!solver_.dcConverged) throw std::runtime_error("power amp DC operating point did not converge");
     // Signals here are volts to tens of volts, so a looser tolerance is inaudible (-125 dB).
     solver_.tolerance = def.power.tolerance;
+    hasPres_ = b.hasPres;
     setPresence(def.power.presenceDefault);
     // Let the reservoir, bias and filter caps settle onto the real rectified waveform.
     for (std::size_t i = 0, n = std::size_t(supply_.settleSeconds * fs); i < n; ++i) process(0.0);
@@ -84,6 +88,7 @@ void PowerAmp::setKnobs(const std::vector<double>& values) {
 
 void PowerAmp::setPresence(double p) {
     presence_ = std::clamp(p, 0.0, 1.0);
+    if (!hasPres_) return;
     const double top = std::max(presenceScale_ * (1.0 - presence_), presenceMinOhms_);
     solver_.setResistor(rPres_, top);
     if (hasPresBottom_) solver_.setResistor(rPresBottom_, std::max(presenceScale_ - top, presenceMinOhms_));

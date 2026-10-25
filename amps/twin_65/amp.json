@@ -1,0 +1,82 @@
+{
+  "id": "twin_65",
+  "order": 3,
+  "output_db": 5.5,
+  "name": "American Twin",
+
+  "preamp": {
+    "netlist": "preamp.net",
+    "tolerance": 2e-6,
+    "rail_source": "VRAIL",
+    "input_source": "VIN",
+    "output_node": "m1",
+    "pot_min_ohms": 100,
+    "jack_label": "INPUT",
+    "knobs": [
+      { "name": "vibrato_volume", "default": 0.5, "pot": { "type": "wiper", "top": "VR_VT_V", "bottom": "VR_VB_V", "total": 1e6, "taper": "log30" } },
+      { "name": "normal_volume",  "default": 0.5, "pot": { "type": "wiper", "top": "VR_VT_N", "bottom": "VR_VB_N", "total": 1e6, "taper": "log30" } },
+      { "name": "bass",   "default": 0.6, "pot": { "type": "variable", "resistor": "VR_BASS_V", "total": 250e3, "taper": "log10",
+                                                 "also": [ { "resistor": "VR_BASS_N" } ] } },
+      { "name": "middle", "default": 0.5, "pot": { "type": "variable", "resistor": "VR_MID_V",  "total": 10e3,  "taper": "log10",
+                                                 "also": [ { "resistor": "VR_MID_N" } ] } },
+      { "name": "treble", "default": 0.6, "pot": { "type": "wiper", "top": "VR_TT_V", "bottom": "VR_TB_V", "total": 250e3, "taper": "log30",
+                                                 "also": [ { "top": "VR_TT_N", "bottom": "VR_TB_N" } ] } }
+    ],
+    "source_ohms": { "resistors": ["RSRC"], "default": 7000, "min": 10 },
+    "jacks": [
+      { "name": "vibrato1", "label": "Vibrato 1", "drive": "VIN", "resistors": {
+          "SW_V1": 1, "SW_V2": 1e12, "SW_VTN": 1,    "SW_VNG": 1e12, "SW_N1": 1e12, "SW_N2": 1e12, "SW_NTN": 1, "SW_NNG": 1 } },
+      { "name": "vibrato2", "label": "Vibrato 2", "level_db": 5.3, "drive": "VIN", "resistors": {
+          "SW_V1": 1e12, "SW_V2": 1, "SW_VTN": 1e12, "SW_VNG": 1,    "SW_N1": 1e12, "SW_N2": 1e12, "SW_NTN": 1, "SW_NNG": 1 } },
+      { "name": "normal1",  "label": "Normal 1",  "level_db": 5.8, "drive": "VIN", "resistors": {
+          "SW_N1": 1, "SW_N2": 1e12, "SW_NTN": 1,    "SW_NNG": 1e12, "SW_V1": 1e12, "SW_V2": 1e12, "SW_VTN": 1, "SW_VNG": 1 } },
+      { "name": "normal2",  "label": "Normal 2",  "level_db": 12.1, "drive": "VIN", "resistors": {
+          "SW_N1": 1e12, "SW_N2": 1, "SW_NTN": 1e12, "SW_NNG": 1,    "SW_V1": 1e12, "SW_V2": 1e12, "SW_VTN": 1, "SW_VNG": 1 } }
+    ]
+  },
+
+  "ui": [
+    { "param": "volume",  "knob": "vibrato_volume", "label": "VIBRATO" },
+    { "param": "volume2", "knob": "normal_volume",  "label": "NORMAL" },
+    { "param": "bass",    "knob": "bass",           "label": "BASS" },
+    { "param": "middle",  "knob": "middle",         "label": "MIDDLE" },
+    { "param": "treble",  "knob": "treble",         "label": "TREBLE" }
+  ],
+
+  "power": {
+    "netlist": "poweramp.net",
+    "tolerance": 1e-4,
+    "input_source": "VAUDIO",
+    "ht_source": "VHT",
+    "ht_node": "a",
+    "rail_node": "x",
+    "output_node": "t4",
+    "load_resistor": "RLOAD",
+    "supply": {
+      "mains_hz": 60,
+      "vac_peak": 478,
+      "rect_source_ohms": 35,
+      "ht_dc_source": 442,
+      "rect_drop": 1.4,
+      "reservoir_farads": 110e-6,
+      "tie_ohms": 15,
+      "settle_seconds": 0.15
+    }
+  },
+
+  "lite": {
+    "base_gain_db": 13.7493,
+    "high_pass_hz": 30.0822,
+    "shelf_hz": 150,
+    "presence_db": [0, 0, 0, 0, 0],
+    "sag_table": [[0, 0], [2.54648, 1.93024], [5.09296, 7.43248], [9.5493, 22.8797], [15.9155, 48.6862], [22.2817, 55.0997], [28.6479, 57.5379], [35.0141, 59.7579], [44.5634, 62.9977], [57.2958, 66.2392], [82.7606, 70.0492], [127.324, 73.2518]],
+    "rail_x_idle": 392.409,
+    "rail_sag_fraction": 0.58,
+    "ceiling_light": 22.4109,
+    "ceiling_heavy": 22.3983,
+    "ceiling_decay": 40.4012,
+    "knee": 11.483,
+    "sag_attack_s": 0.01,
+    "sag_release_s": 0.06
+  }
+}

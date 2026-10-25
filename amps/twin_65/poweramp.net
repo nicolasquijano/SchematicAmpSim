@@ -1,0 +1,73 @@
+* Fender '65 Twin Reverb reissue power amp (drawing 037627 rev E): 12AT7 long-tailed phase inverter
+* (V6) with the 820 / 1500p feedback network, four 6L6GC as two parallel pairs on fixed bias, the
+* output transformer, and the supply. B+ (node a) is the rectifier/reservoir, integrated by the
+* engine; the 22u / 1k / 4.7k filters feed the phase inverter plates (y) and the preamp (x).
+*
+* Assumptions where the drawing is silent (change them here, not in code):
+*  - output transformer: 2.1k plate-to-plate onto the 4 ohm load (two 8 ohm speakers), 5 H per primary
+*    half, 35 ohm per half, coupling like the Marshall models;
+*  - screens: 470 ohm each to B+ (the drawing shows the R50..R53 ends on the Z rail);
+*  - bias: the -50 V of TP26 as a Thevenin source behind 1k with the 22u filter (adjusted by the pot);
+*  - the preamp rail load RPREAMP stands for everything on X (preamp, reverb and vibrato stages):
+*    7.45 mA, the drop the schematic shows across the 4.7k (TP29 428 V -> TP30 393 V).
+
+.nodes pin gp gn cc f k pa pb pga pgb g1 g2 cbias a t4 y x pt pbm npt npb s1 s2
+
+S VAUDIO pin 130k 0
+S VHT a 15 442
+S VBIAS cbias 1k -45
+
+* Phase inverter: grid of V6A on the mixer through 1n; V6B's grid is tied to the feedback node f
+* through 0.1u. Cathodes share 470 + 22k (1 W) + 100, the node f being at the 22k / 100 junction.
+C C20 pin gp 1n
+R R37 gp cc 1M
+R R38 gn cc 1M
+R R41 cc k 470
+R R36 cc f 22k
+R R40 f 0 100
+C C21 f gn 0.1u
+T V6A gp pa k ECC81
+T V6B gn pb k ECC81
+R R42 y pa 82k
+R R43 y pb 100k
+
+* Negative feedback: the 4 ohm tap through 820 || 1500p to f.
+R R39 t4 f 820
+C C39 t4 f 1500p
+
+* Coupling to the power tubes (0.1u), 220k grid leaks to the bias line, 1.5k stoppers (two per side
+* in parallel).
+C C22 pa pga 0.1u
+C C23 pb pgb 0.1u
+R R44 pga cbias 220k
+R R45 pgb cbias 220k
+R R46 pga g1 1k5/2
+R R48 pgb g2 1k5/2
+C C36 cbias 0 22u
+
+* 6L6GC: V7+V8 on the BRN half, V9+V10 on the BLU half; screens on B+ through 470.
+P V7 g1 pt s1 0 6L6GC 1.6
+P V9 g2 pbm s2 0 6L6GC 1.6
+R R50 a s1 470/2
+R R52 a s2 470/2
+
+* Output transformer (037612): primary halves around the B+ centre tap, one 4 ohm secondary.
+R DCR_PT pt npt 35
+R DCR_PB pbm npb 35
+.param n4 = 2*1/sqrt(2100/4)
+.xfmr OT L=5
+  W npt a 1 pri
+  W a npb 1 pri
+  W t4 0 n4 sec
+  K pri pri 0.9998
+  K pri sec 0.9993
+.end
+R RLOAD t4 0 4
+
+* Supply filters: 1k + 22u to the phase-inverter plates (428 V), then 4.7k + 22u (393 V) with the load
+* of everything on the preamp rail.
+R R67 a y 1k
+C C33 y 0 22u
+R R68 y x 4.7k
+C C34 x 0 22u
+R RPREAMP x 0 52.8k

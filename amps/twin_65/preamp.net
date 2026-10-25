@@ -1,0 +1,109 @@
+* Fender '65 Twin Reverb reissue (drawing 037627 rev E) preamp: Normal channel (V1A, tone stack, V1B)
+* and Vibrato channel (V2A, tone stack, V2B), the V4B mixer stage that follows the Vibrato channel, and
+* the Normal/Vibrato mixing network that feeds the phase inverter. Transcribed from the schematic.
+*
+* Not modelled (the signal path is complete without them):
+*  - reverb: V3 driver, spring pan and V4A recovery. With the Reverb knob at 0 the return network is
+*    just R30 + R74 to ground; V4A only shares V4B's cathode, so its idle current is a fixed source;
+*  - vibrato: V5A/V5B oscillator and the optocoupler, which is dark (open) when the effect is off;
+*  - the two Bright switches (C5, C10 120p across the volume pots), left open.
+*
+* Reading notes:
+*  - jacks: Input 1 puts the signal on N1 (1M to ground) and, because the unused Input 2 switch ties T1
+*    to N1, reaches the grid through 68k || 68k; Input 2 feeds T1 with the unused Input 1 switch
+*    grounding N1, so the 68k + 68k pair divides by two (-6 dB). Both unplugged jacks of the idle channel
+*    ground its grid through 34k, so that channel stays silent.
+*  - tone stacks (the usual Fender topology): C 250p from the plate to the treble pot, 100k slope
+*    resistor to the bass/mid capacitors (0.1u, 0.047u), bass 250k and mid 10k as rheostats in the
+*    ground leg, treble wiper = output into the volume pot (1M). Tapers 30A / 10A.
+*  - V1B and V2B share the 820/22u cathode network; V4A and V4B share 820/22u too.
+*  - the cut for the power amp is after the mixing network at node m1.
+
+* 393 V rail (node x), driven from the power amp at run time (TP30).
+V VRAIL x 100 393
+* The guitar behind a variable source resistance, then the four jacks.
+I VIN gin 1
+R RSRC gin in 7k
+
+* Normal channel jacks: SW_N1/SW_N2 route the signal to N1 / T1; SW_NTN (T1 tied to N1) and SW_NNG
+* (N1 grounded) are the unplugged-jack switches. Closed 1 ohm / open 1e12, set by the jack modes.
+R SW_N1 in nn 1e12
+R SW_N2 in nt 1e12
+R SW_NTN nt nn 1
+R SW_NNG nn 0 1
+R R3 nn 0 1M
+R R1 nt ng 68k
+R R2 ng nn 68k
+
+* Vibrato channel jacks (J3 = Input 1, J4 = Input 2).
+R SW_V1 in vn 1
+R SW_V2 in vt 1e12
+R SW_VTN vt vn 1
+R SW_VNG vn 0 1e12
+R R14 vn 0 1M
+R R12 vt vg 68k
+R R13 vg vn 68k
+
+* Normal channel: V1A with its tone stack and V1B.
+T V1A ng pa1 ka1 ECC83
+R R4 x pa1 100k
+R R5 ka1 0 1k5
+C C1 ka1 0 22u
+C C2 pa1 nt1 250p
+R R6 pa1 nb1 100k
+C C3 nb1 nu1 0.1u
+C C4 nb1 nm1 0.047u
+R VR_TT_N nt1 no1 1
+R VR_TB_N no1 nu1 1
+R VR_BASS_N nu1 nm1 1
+R VR_MID_N nm1 0 1
+R VR_VT_N no1 gb1 1
+R VR_VB_N gb1 0 1
+T V1B gb1 pb1 kb ECC83
+R R11 x pb1 100k
+
+* Vibrato channel: V2A with its tone stack and V2B.
+T V2A vg pa2 ka2 ECC83
+R R15 x pa2 100k
+R R16 ka2 0 1k5
+C C6 ka2 0 22u
+C C7 pa2 nt2 250p
+R R17 pa2 nb2 100k
+C C8 nb2 nu2 0.1u
+C C9 nb2 nm2 0.047u
+R VR_TT_V nt2 no2 1
+R VR_TB_V no2 nu2 1
+R VR_BASS_V nu2 nm2 1
+R VR_MID_V nm2 0 1
+R VR_VT_V no2 gb2 1
+R VR_VB_V gb2 0 1
+T V2B gb2 pb2 kb ECC83
+R R22 x pb2 100k
+* Cathode of V1B and V2B.
+R R23 kb 0 820
+C C11 kb 0 22u
+
+* Vibrato channel into V4B: 0.022u, then 3.3M (10p across it) against 220k and the Reverb-off return
+* (390k + 82k) to ground.
+C C12 pb2 qa 22n
+R R32 qa q 3M3
+C C17 qa q 10p
+R R31 q 0 220k
+R R30 q rv 390k
+R R74 rv 0 82k
+T V4B q p4 k4 ECC83
+R R33 x p4 100k
+R R27 k4 0 820
+C C15 k4 0 22u
+* V4A shares V4B's cathode network: its idle current (about 1.2 mA at grid 0 V) is a resistor to the rail, fitted to the schematic's DC.
+R RV4A x k4 330k
+* Mixer: V4B plate through 0.1u into m2; the Normal channel through 220k + 0.047u into m1; 220k between.
+C C19 p4 m2 0.1u
+R R34 pb1 a1 220k
+C C18 a1 m1 0.047u
+R R35 m2 m1 220k
+* DC reference for the floating mixing nodes (the real one is the phase inverter's grid network).
+R RDC m1 0 100M
+* Load of the phase inverter input: 1n coupling cap and the 1M grid network.
+C C20L m1 pl 1n
+R RPI pl 0 1M

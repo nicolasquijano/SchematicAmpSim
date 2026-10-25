@@ -230,3 +230,51 @@ TEST_CASE("Plexi: the Lite power amp follows the full circuit from clean to satu
         CHECK(std::abs(errDb) < 1.5);
     }
 }
+
+TEST_CASE("Twin: supply and operating point are in the range the drawing shows") {
+    const AmpDef def = loadEmbeddedAmp("twin_65");
+    PowerAmp power(def, kFs);
+    const auto net = parseNetlist(def.power.netlistText, def.power.netlist);
+    auto v = [&](const char* n) { return power.solver().voltage(net.node(n)); };
+    CHECK(std::abs(v("a") - 440.0) < 12.0);      // TP28 +440 V
+    CHECK(std::abs(v("x") - 393.0) < 8.0);       // TP30 +393 V
+    CHECK(std::abs(v("k") - 99.0) < 15.0);       // TP18: phase inverter cathodes +99 V
+    CHECK(std::abs(v("cbias") + 50.0) < 6.0);    // TP26 -50 V
+    const double idleMa = (v("a") - v("pt")) / 35.0 / 2.0 * 1e3;  // per tube
+    CHECK(idleMa > 25.0);
+    CHECK(idleMa < 45.0);
+
+    Preamp pre(def, kFs, power.railX());
+    const auto pnet = parseNetlist(def.preamp.netlistText, def.preamp.netlist);
+    auto p = [&](const char* n) { return pre.solver().voltage(pnet.node(n)); };
+    CHECK(std::abs(p("ka2") - 1.9) < 0.4);       // TP2 +1.9 V (V2A cathode)
+    CHECK(std::abs(p("kb") - 2.0) < 0.4);        // TP5 +2.0 V (V1B cathode)
+}
+
+TEST_CASE("Twin: jacks, channels and the ganged tone controls behave like the amp") {
+    const AmpDef def = loadEmbeddedAmp("twin_65");
+    auto level = [&](const char* jack, double bass, double treble, double hz, double peak = 0.005) {
+        FullAmp amp(def, kFs);
+        auto k = defaultKnobs(def);
+        k[def.knobIndex("bass")] = bass;
+        k[def.knobIndex("treble")] = treble;
+        amp.setKnobs(k, 0.5);
+        amp.setJack(def.jackIndex(jack));
+        return rmsAt(amp, hz, peak);
+    };
+    // Input 2 is the -6 dB input, on both channels.
+    for (const char* ch : {"vibrato", "normal"}) {
+        const double hi = level((std::string(ch) + "1").c_str(), 0.6, 0.6, 500.0);
+        const double lo = level((std::string(ch) + "2").c_str(), 0.6, 0.6, 500.0);
+        INFO(ch << ": input 1 " << hi << " V, input 2 " << lo << " V");
+        CHECK(std::abs(20.0 * std::log10(lo / hi) + 6.0) < 1.5);
+    }
+    // One set of tone controls serves both channels: more treble opens the highs on either.
+    for (const char* jack : {"vibrato1", "normal1"}) {
+        const double bright = level(jack, 0.5, 1.0, 3000.0) / level(jack, 0.5, 1.0, 200.0);
+        const double dull = level(jack, 0.5, 0.0, 3000.0) / level(jack, 0.5, 0.0, 200.0);
+        INFO(jack << ": " << bright << " vs " << dull);
+        CHECK(bright > 2.0 * dull);
+        CHECK(level(jack, 1.0, 0.5, 100.0) > 1.5 * level(jack, 0.0, 0.5, 100.0));  // bass knob
+    }
+}

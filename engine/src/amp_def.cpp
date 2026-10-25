@@ -41,7 +41,9 @@ Taper taper(const json& j, const std::string& path) {
     const std::string t = str(j, "taper", path);
     if (t == "log") return Taper::Log;
     if (t == "linear") return Taper::Linear;
-    bad(path + ".taper", "expected 'log' or 'linear', got '" + t + "'");
+    if (t == "log10") return Taper::Log10;
+    if (t == "log30") return Taper::Log30;
+    bad(path + ".taper", "expected 'log', 'log10', 'log30' or 'linear', got '" + t + "'");
 }
 
 PreampDef parsePreamp(const json& j, const FileReader& read) {
@@ -76,9 +78,13 @@ PreampDef parsePreamp(const json& j, const FileReader& read) {
             kd.pot.type = PotDef::Type::Wiper;
             kd.pot.top = str(pot, "top", path + ".pot");
             kd.pot.bottom = str(pot, "bottom", path + ".pot");
+            if (pot.contains("also"))
+                for (const auto& a : pot.at("also")) kd.pot.also.push_back({str(a, "top", path + ".pot.also"), str(a, "bottom", path + ".pot.also")});
         } else if (type == "variable") {
             kd.pot.type = PotDef::Type::Variable;
             kd.pot.resistor = str(pot, "resistor", path + ".pot");
+            if (pot.contains("also"))
+                for (const auto& a : pot.at("also")) kd.pot.also.push_back({str(a, "resistor", path + ".pot.also"), ""});
         } else {
             bad(path + ".pot.type", "expected 'wiper' or 'variable'");
         }
@@ -116,13 +122,16 @@ PowerDef parsePower(const json& j, const FileReader& read) {
     p.railNode = str(j, "rail_node", "power");
     p.outputNode = str(j, "output_node", "power");
     p.loadResistor = str(j, "load_resistor", "power");
-    p.nfbResistor = str(j, "nfb_resistor", "power");
-    const json& pr = need(j, "presence", "power");
-    p.presenceResistor = str(pr, "resistor", "power.presence");
-    p.presenceScale = num(pr, "scale", "power.presence");
-    p.presenceMinOhms = num(pr, "min_ohms", "power.presence");
-    p.presenceDefault = num(pr, "default", "power.presence");
-    if (pr.contains("complement")) p.presenceComplement = str(pr, "complement", "power.presence");
+    if (j.contains("nfb_resistor")) p.nfbResistor = str(j, "nfb_resistor", "power");
+    // An amp without a presence control (the Fender) omits the block.
+    if (j.contains("presence")) {
+        const json& pr = j.at("presence");
+        p.presenceResistor = str(pr, "resistor", "power.presence");
+        p.presenceScale = num(pr, "scale", "power.presence");
+        p.presenceMinOhms = num(pr, "min_ohms", "power.presence");
+        p.presenceDefault = num(pr, "default", "power.presence");
+        if (pr.contains("complement")) p.presenceComplement = str(pr, "complement", "power.presence");
+    }
     if (j.contains("knobs"))
         for (const auto& k : j.at("knobs")) {
             PowerKnobDef kd;

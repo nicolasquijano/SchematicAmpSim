@@ -37,6 +37,11 @@ struct TriodeModel {
         return {100.0, 1.4, 1060.0, 600.0, 300.0, 6.177e-4, 9.901, 1.314, 1.6e-12, 1.7e-12, 0.46e-12};
     }
 
+    // ECC81 / 12AT7 with the Koren parameters: the medium-mu twin triode of the Fender phase inverter.
+    static constexpr TriodeModel ecc81() {
+        return {60.0, 1.35, 460.0, 300.0, 300.0, 6.177e-4, 9.901, 1.314, 1.6e-12, 1.7e-12, 0.46e-12};
+    }
+
     Plate plate(double vgk, double vpk) const {
         if (vpk <= 0.0) return {0, 0, 0};
         const double s = std::sqrt(kvb + vpk * vpk);
@@ -86,6 +91,12 @@ struct PentodeModel {
     // the stock curve, not a fit to one amp.
     static constexpr PentodeModel el6550() {
         return {8.8, 1.35, 730.0, 4200.0, 32.0, 16.0, 1.5e-3, 8.0, 1.3, 14e-12, 0.8e-12, 12e-12};
+    }
+
+    // 6L6GC beam tetrode with the usual Koren parameters. As for the other power tubes the current
+    // scale is set per amp by the `scale` argument of the netlist's P element.
+    static constexpr PentodeModel el6l6gc() {
+        return {8.7, 1.35, 1460.0, 4500.0, 48.0, 12.0, 1.5e-3, 8.0, 1.3, 11e-12, 0.9e-12, 6e-12};
     }
 
     Eval eval(double vg1k, double vpk, double vg2k) const {

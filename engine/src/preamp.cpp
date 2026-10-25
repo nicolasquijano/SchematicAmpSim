@@ -10,13 +10,18 @@ namespace sas {
 
 namespace {
 
-// Audio ("log") taper: ~15% of the resistance at mid rotation.
-double logTaper(double w) {
-    constexpr double k = 3.47;
-    return (std::exp(k * w) - 1.0) / (std::exp(k) - 1.0);
-}
+// Exponential taper with the given fraction of the resistance at mid rotation; "log" is ~15%.
+double expTaper(double w, double k) { return (std::exp(k * w) - 1.0) / (std::exp(k) - 1.0); }
+double logTaper(double w) { return expTaper(w, 3.47); }
 
-double applyTaper(Taper t, double w) { return t == Taper::Log ? logTaper(w) : w; }
+double applyTaper(Taper t, double w) {
+    switch (t) {
+        case Taper::Log: return logTaper(w);
+        case Taper::Log10: return expTaper(w, 4.394);  // 2 ln(1/0.10 - 1)
+        case Taper::Log30: return expTaper(w, 1.695);  // 2 ln(1/0.30 - 1)
+        default: return w;
+    }
+}
 
 }  // namespace
 
@@ -59,6 +64,11 @@ Preamp::Preamp(const AmpDef& def, double fs, double railVolts, bool useTables)
             k.bottom = find(kd.pot.bottom);
         } else {
             k.top = find(kd.pot.resistor);
+        }
+        for (const auto& [a, b] : kd.pot.also) {
+            for (const Ref& r : find(a)) k.top.push_back(r);
+            if (kd.pot.type == PotDef::Type::Wiper)
+                for (const Ref& r : find(b)) k.bottom.push_back(r);
         }
         knobs_.push_back(k);
         values_.push_back(kd.def);

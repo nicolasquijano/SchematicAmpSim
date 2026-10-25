@@ -10,7 +10,8 @@
 
 namespace sas {
 
-enum class Taper { Linear, Log };
+// Log is the ~15%-at-mid audio taper; Log10 and Log30 are the Fender "10A" and "30A" tapers (10% / 30% at mid).
+enum class Taper { Linear, Log, Log10, Log30 };
 
 struct PotDef {
     enum class Type { Wiper, Variable } type = Type::Wiper;
@@ -18,6 +19,9 @@ struct PotDef {
     std::string resistor;     // Variable: the single resistor
     double total = 0;
     Taper taper = Taper::Linear;
+    // Further pots of the same value that turn with this one (ganged: one set of tone controls
+    // serving two channels): (top, bottom) for a wiper pot, (resistor, "") for a variable one.
+    std::vector<std::pair<std::string, std::string>> also;
 };
 
 struct KnobDef {

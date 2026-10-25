@@ -14,12 +14,13 @@ VST3 for Windows, built with C++17 and [JUCE](https://juce.com).
 - **Amps are data, not code.** Each amp is a folder with a netlist and an `amp.json` that maps
   knobs, input jacks, presence, supply and output level onto circuit elements. Adding an amp means
   adding files; nothing is recompiled except to embed them.
-- **Three amps included** (display names are deliberately generic):
+- **Four amps included** (display names are deliberately generic):
   | Name | Circuit |
   |---|---|
   | British 800 | Cascading-gain preamp, 100 W-class EL34 power amp, High and Low input jacks |
   | British Plexi | Vintage 100 W-class EL34 head, two channels with jumper |
   | SLSH 100W | Modern 100 W head, 6550 output stage, two modes |
+  | American Twin | Two-channel 85 W+ blackface-style amp, 12AT7 phase inverter, four 6L6GC on fixed bias (reverb and vibrato are not modelled yet) |
 - **Quality modes**
   | Mode | What it does |
   |---|---|
@@ -36,7 +37,7 @@ VST3 for Windows, built with C++17 and [JUCE](https://juce.com).
 ## Parameters
 
 Amp, Volume, Volume 2, Bass, Middle, Treble, Presence, Master, Power, Input, Output, Quality,
-Cab (Off / Filter / IR), Jack (1-3), Level match, and the pedal controls (On, Drive, Tone, Level).
+Cab (Off / Filter / IR), Jack (1-4), Level match, and the pedal controls (On, Drive, Tone, Level).
 Which knobs apply depends on the selected amp.
 
 ## Building

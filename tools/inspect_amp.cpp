@@ -43,20 +43,20 @@ static int run(int argc, char** argv) {
     // Power amp DC point.
     sas::PowerAmp power(def, kFs);
     const auto net = sas::parseNetlist(def.power.netlistText, def.power.netlist);
-    auto v = [&](const char* a, const char* b = nullptr) {
-        for (const char* n : {a, b}) if (n && net.nodes.count(n)) return power.solver().voltage(net.node(n));
+    auto v = [&](const char* a, const char* b = nullptr, const char* c = nullptr) {
+        for (const char* n : {a, b, c}) if (n && net.nodes.count(n)) return power.solver().voltage(net.node(n));
         return std::nan("");
     };
     std::printf("power amp, idle after settling:\n");
     std::printf("  B+ (a)           %8.1f V\n", v("a"));
     std::printf("  rail x           %8.1f V\n", v("x"));
-    const double ipair = (v("a") - v("pt")) / 40.0;
+    const double ipair = (v("a") - v("pt")) / (def.id == "twin_65" ? 35.0 : 40.0);
     std::printf("  plate pt         %8.1f V   idle %.1f mA per tube (pair via DCR)\n", v("pt"), ipair / 2 * 1e3);
-    std::printf("  output tube grid %8.1f V\n", v("g45", "g12"));
-    std::printf("  screen           %8.1f V\n", v("s45", "s12"));
+    std::printf("  output tube grid %8.1f V\n", v("g45", "g12", "g1"));
+    std::printf("  screen           %8.1f V\n", v("s45", "s12", "s1"));
     std::printf("  PI plates        %8.1f / %.1f V\n", v("pa"), v("pb"));
-    std::printf("  PI cathode kc    %8.1f V\n", v("kc"));
-    std::printf("  bias node        %8.1f V\n", v("bias"));
+    std::printf("  PI cathode kc    %8.1f V\n", v("kc", "k"));
+    std::printf("  bias node        %8.1f V\n", v("bias", "cbias"));
     std::printf("  failures         %llu\n\n", (unsigned long long)power.solver().newtonFailures);
 
     // Preamp DC point at the power amp's rail.
@@ -108,8 +108,8 @@ static int run(int argc, char** argv) {
 
     // Where does the signal go? Peak of selected nodes through the amp (first jack, default knobs).
     std::printf("\nstage peaks (volts, 220 Hz, first jack, default knobs):\n");
-    const char* preNodes[] = {"p5", "v1w", "p6a", "p6b", "p7a", "k7b", "so", "k8", "p8", "mo", "y", "o"};
-    const char* powNodes[] = {"pin", "ga", "pa", "pb", "g12", "g45", "pt", "t16"};
+    const char* preNodes[] = {"m1", "p4", "pb1", "pb2", "gb1", "gb2", "p5", "v1w", "p6a", "p6b", "p7a", "k7b", "so", "k8", "p8", "mo", "y", "o"};
+    const char* powNodes[] = {"pin", "gp", "ga", "pga", "g1", "t4", "pa", "pb", "g12", "g45", "pt", "t16"};
     for (double amp : {0.01, 0.5}) {
         sas::FullAmp a(def, kFs);
         a.setKnobs(knobs, def.power.presenceDefault);

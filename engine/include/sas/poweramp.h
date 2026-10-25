@@ -45,6 +45,7 @@ private:
     double presenceScale_, presenceMinOhms_;
     ResId rPresBottom_;
     bool hasPresBottom_;
+    bool hasPres_ = true;
     struct Knob { ResId resistor; double scale, minOhms; };
     std::vector<Knob> knobs_;
     std::vector<double> knobValues_;
