@@ -1,12 +1,12 @@
-#include "aes/preamp.h"
+#include "sas/preamp.h"
 
 #include <algorithm>
 #include <cmath>
 #include <stdexcept>
 
-#include "aes/netlist.h"
+#include "sas/netlist.h"
 
-namespace aes {
+namespace sas {
 
 namespace {
 
@@ -139,4 +139,4 @@ void Preamp::setJack(std::size_t jack) {
     refreshAll();
 }
 
-}  // namespace aes
+}  // namespace sas

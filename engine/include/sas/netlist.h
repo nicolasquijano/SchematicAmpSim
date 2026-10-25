@@ -25,9 +25,9 @@
 #include <string>
 #include <string_view>
 
-#include "aes/circuit.h"
+#include "sas/circuit.h"
 
-namespace aes {
+namespace sas {
 
 struct NetlistError : std::runtime_error {
     using std::runtime_error::runtime_error;
@@ -50,4 +50,4 @@ ParsedNetlist parseNetlist(std::string_view text, const std::string& origin = "n
 // Evaluates one expression (exposed for tests and for amp.json numbers written as text).
 double evalExpression(std::string_view expr, const std::map<std::string, double>& params = {});
 
-}  // namespace aes
+}  // namespace sas

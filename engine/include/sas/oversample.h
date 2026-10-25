@@ -8,7 +8,7 @@
 #include <cstddef>
 #include <vector>
 
-namespace aes {
+namespace sas {
 
 class HalfbandStage {
 public:
@@ -119,4 +119,4 @@ private:
     HalfbandStage s0_, s1_;
 };
 
-}  // namespace aes
+}  // namespace sas

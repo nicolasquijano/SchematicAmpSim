@@ -12,10 +12,10 @@
 #include <utility>
 #include <vector>
 
-#include "aes/devices.h"
-#include "aes/linalg.h"
+#include "sas/devices.h"
+#include "sas/linalg.h"
 
-namespace aes {
+namespace sas {
 
 using Node = std::size_t;  // 0 is ground
 inline constexpr Node GND = 0;
@@ -85,7 +85,7 @@ class TriodeTable;
 
 class Solver {
 public:
-    // useTables: evaluate triodes through interpolation tables (aes/tables.h), cheaper and equal to
+    // useTables: evaluate triodes through interpolation tables (sas/tables.h), cheaper and equal to
     // the formulas within ~1e-6; the exact formulas stay the default (the Rust-parity modes).
     Solver(Circuit circuit, double fs, bool useTables = false);
     ~Solver();
@@ -183,4 +183,4 @@ private:
     double lambdaHint_ = 1.0;
 };
 
-}  // namespace aes
+}  // namespace sas

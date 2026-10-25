@@ -3,7 +3,7 @@
 //   1. small-signal response vs presence  -> base gain, high-pass corner, presence boost, shelf corner
 //   2. static saturation curve at 150 Hz   -> ceiling (light/heavy), decay, knee (fitted to output rms)
 //   3. rail sag vs drive                   -> sag table
-// Usage: aes_fit_lite <amp id>   (prints a "lite" JSON block and the residual errors)
+// Usage: sas_fit_lite <amp id>   (prints a "lite" JSON block and the residual errors)
 #include <algorithm>
 #include <cmath>
 #include <cstdio>
@@ -11,10 +11,10 @@
 #include <string>
 #include <vector>
 
-#include "aes/amp_def.h"
-#include "aes/embedded_amps.h"
-#include "aes/poweramp.h"
-#include "aes/poweramp_lite.h"
+#include "sas/amp_def.h"
+#include "sas/embedded_amps.h"
+#include "sas/poweramp.h"
+#include "sas/poweramp_lite.h"
 
 namespace {
 
@@ -59,7 +59,7 @@ double lerp(double a, double b, double t) { return a + (b - a) * t; }
 
 int main(int argc, char** argv) {
     const std::string id = argc > 1 ? argv[1] : "plexi_1959";
-    aes::AmpDef def = aes::loadEmbeddedAmp(id);
+    sas::AmpDef def = sas::loadEmbeddedAmp(id);
     std::printf("fitting Lite for %s (%s)\n", def.id.c_str(), def.name.c_str());
 
     // ---------------------------------------------------------------- 1. small signal
@@ -67,7 +67,7 @@ int main(int argc, char** argv) {
     const std::vector<double> freqs = {30, 125, 500, 1250, 3150, 6000};
     double g[5][6];
     for (int p = 0; p < 5; ++p) {
-        aes::PowerAmp amp(def, kFs);
+        sas::PowerAmp amp(def, kFs);
         amp.setPresence(presences[p]);
         for (std::size_t f = 0; f < freqs.size(); ++f)
             g[p][f] = toneGainDb([&](double x) { return amp.process(x); }, freqs[f], 0.05);
@@ -81,7 +81,7 @@ int main(int argc, char** argv) {
         std::printf("\n");
     }
 
-    aes::LiteParams& L = def.lite;
+    sas::LiteParams& L = def.lite;
     L.baseGainDb = g[0][3];  // 1250 Hz, presence 0
     const double r = std::pow(10.0, (g[0][0] - g[0][3]) / 20.0);
     // A bass lift at 30 Hz (r > 1) cannot be modelled by a high-pass: leave it at a DC blocker.
@@ -90,9 +90,9 @@ int main(int argc, char** argv) {
 
     // Shelf corner: least squares over the mid/high frequencies at p = .5, .75, 1.
     auto modelGain = [&](double shelfHz, int p, std::size_t f) {
-        aes::AmpDef d = def;
+        sas::AmpDef d = def;
         d.lite.shelfHz = shelfHz;
-        aes::PowerAmpLite lite(d, kFs);
+        sas::PowerAmpLite lite(d, kFs);
         lite.setPresence(presences[p]);
         return toneGainDb([&](double x) { return lite.process(x); }, freqs[f], 0.05);
     };
@@ -140,25 +140,25 @@ int main(int argc, char** argv) {
     {
         // Same duration and averaging window as the driven runs: the rail has a ~2 s time constant,
         // so an idle value taken at another time would show up as fake sag.
-        aes::PowerAmp idle(def, kFs);
+        sas::PowerAmp idle(def, kFs);
         idle.setPresence(0.5);
         railIdle = levelAt([&](double x) { return idle.process(x); }, [&] { return idle.railX(); }, 150.0, 0.0, 1.6).meanRail;
     }
     for (double t : targets) {
         const double vin = t / linGain;
-        aes::PowerAmp amp(def, kFs);
+        sas::PowerAmp amp(def, kFs);
         amp.setPresence(0.5);
         const auto lv = levelAt([&](double x) { return amp.process(x); }, [&] { return amp.railX(); }, 150.0, vin, 1.6);
         pts.push_back({vin, lv.rms, lv.meanRail, 2.0 / kPi * t});
     }
 
     // Fit ceiling/decay/knee to the output rms (what is heard), as for the JCM800.
-    auto satCost = [&](const aes::LiteParams& lp) {
-        aes::AmpDef d = def;
+    auto satCost = [&](const sas::LiteParams& lp) {
+        sas::AmpDef d = def;
         d.lite = lp;
         double cost = 0;
         for (const auto& pt : pts) {
-            aes::PowerAmpLite lite(d, kFs);
+            sas::PowerAmpLite lite(d, kFs);
             lite.setPresence(0.5);
             const auto lv = levelAt([&](double x) { return lite.process(x); }, [] { return 0.0; }, 150.0, pt.vin, 0.8);
             const double e = 20.0 * std::log10(lv.rms / pt.rmsOut);
@@ -166,13 +166,13 @@ int main(int argc, char** argv) {
         }
         return cost;
     };
-    aes::LiteParams best = L;
+    sas::LiteParams best = L;
     double bestSat = satCost(best);
     double step = 0.3;
     for (int round = 0; round < 28; ++round, step *= 0.82) {
         for (int k = 0; k < 4; ++k) {
             for (double dir : {-1.0, 1.0}) {
-                aes::LiteParams c = best;
+                sas::LiteParams c = best;
                 double* field[4] = {&c.ceilingLight, &c.ceilingHeavy, &c.ceilingDecay, &c.knee};
                 *field[k] *= std::exp(dir * step);
                 c.ceilingHeavy = std::min(c.ceilingHeavy, c.ceilingLight);
@@ -196,7 +196,7 @@ int main(int argc, char** argv) {
 
     std::printf("\nsaturation (150 Hz, presence .5): input pk V, circuit rms V, Lite rms V, error dB, rail drop V\n");
     for (const auto& pt : pts) {
-        aes::PowerAmpLite lite(def, kFs);
+        sas::PowerAmpLite lite(def, kFs);
         lite.setPresence(0.5);
         const auto lv = levelAt([&](double x) { return lite.process(x); }, [] { return 0.0; }, 150.0, pt.vin, 0.8);
         std::printf("  %8.3f  %8.2f  %8.2f  %6.2f  %7.2f\n", pt.vin, pt.rmsOut, lv.rms, 20 * std::log10(lv.rms / pt.rmsOut), railIdle - pt.rail);

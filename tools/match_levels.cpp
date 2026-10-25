@@ -1,6 +1,6 @@
 // Measures how loud every amp and every jack/mode plays through the whole chain (default knobs, cab
 // filter on), so their level_db / output_db can be set to equalise them.
-//   aes_match_levels [reference peak volts]
+//   sas_match_levels [reference peak volts]
 // Reference = the first amp's first jack, without trim, at the reference input (default 0.1 V peak).
 // "Level" is the rms of the chain's output for a guitar-like signal (three sines + noise), in dB re
 // the reference. The last column says how many dB are still missing at the reference input.
@@ -9,8 +9,8 @@
 #include <cstdlib>
 #include <vector>
 
-#include "aes/chain.h"
-#include "aes/embedded_amps.h"
+#include "sas/chain.h"
+#include "sas/embedded_amps.h"
 
 namespace {
 
@@ -31,9 +31,9 @@ std::vector<float> guitar(double peak, std::size_t n) {
 }
 
 // rms (digital full scale = 1) of the chain's output, second half of 1.5 s.
-double level(const aes::AmpDef& def, std::size_t jack, double peak) {
-    aes::Chain chain(def, kFs);
-    aes::ChainSettings s;
+double level(const sas::AmpDef& def, std::size_t jack, double peak) {
+    sas::Chain chain(def, kFs);
+    sas::ChainSettings s;
     for (const auto& k : def.preamp.knobs) s.knobs.push_back(k.def);
     for (const auto& k : def.power.knobs) s.powerKnobs.push_back(k.def);
     s.presence = def.power.presenceDefault;
@@ -56,9 +56,9 @@ double db(double x) { return 20.0 * std::log10(x); }
 int main(int argc, char** argv) {
     const double refPeak = argc > 1 ? std::atof(argv[1]) : 0.1;
     const std::vector<double> peaks = {0.01, 0.03, 0.1, 0.3};
-    const auto ids = aes::embeddedAmpIds();
+    const auto ids = sas::embeddedAmpIds();
     // The reference is always measured without the amp's own output trim.
-    aes::AmpDef first = aes::loadEmbeddedAmp(ids.front());
+    sas::AmpDef first = sas::loadEmbeddedAmp(ids.front());
     first.outputDb = 0.0;
     const double ref = level(first, 0, refPeak);
     std::printf("reference: %s / %s at %.3f V peak = %.1f dBFS rms\n\n", first.name.c_str(), first.preamp.jacks[0].label.c_str(), refPeak, db(ref));
@@ -66,7 +66,7 @@ int main(int argc, char** argv) {
     for (double p : peaks) std::printf("  %6.2f V", p);
     std::printf("   still missing\n");
     for (const auto& id : ids) {
-        const aes::AmpDef def = aes::loadEmbeddedAmp(id);
+        const sas::AmpDef def = sas::loadEmbeddedAmp(id);
         for (std::size_t j = 0; j < def.preamp.jacks.size(); ++j) {
             std::printf("%-12s %-12s", def.name.substr(0, 12).c_str(), def.preamp.jacks[j].label.c_str());
             for (double p : peaks) std::printf("  %+7.1f", db(level(def, j, p) / ref));

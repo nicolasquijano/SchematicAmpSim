@@ -3,7 +3,7 @@
 #include <algorithm>
 
 #include "PluginEditor.h"
-#include "aes/embedded_amps.h"
+#include "sas/embedded_amps.h"
 
 namespace {
 
@@ -30,7 +30,7 @@ constexpr std::size_t kMaxStoredIrBytes = 4 * 1024 * 1024;
 
 }  // namespace
 
-Layout AesProcessor::createLayout(const std::vector<aes::AmpDef>& defs) {
+Layout SasProcessor::createLayout(const std::vector<sas::AmpDef>& defs) {
     Layout l;
     juce::StringArray ampNames;
     for (const auto& d : defs) ampNames.add(d.name);
@@ -64,9 +64,9 @@ Layout AesProcessor::createLayout(const std::vector<aes::AmpDef>& defs) {
 
 // Builds the circuits for another amp off the audio thread. At most one build runs at a time and
 // a newer request replaces an older one that has not started yet.
-class AesProcessor::ChainBuilder final : public juce::Thread {
+class SasProcessor::ChainBuilder final : public juce::Thread {
 public:
-    explicit ChainBuilder(AesProcessor& p) : juce::Thread("AES chain builder"), owner_(p) { startThread(juce::Thread::Priority::low); }
+    explicit ChainBuilder(SasProcessor& p) : juce::Thread("SAS chain builder"), owner_(p) { startThread(juce::Thread::Priority::low); }
     ~ChainBuilder() override { stopThread(5000); }
 
     void wake() { notify(); }
@@ -79,7 +79,7 @@ public:
             const int amp = owner_.requestedAmp_.exchange(-1);
             if (amp < 0 || amp >= int(owner_.defs_.size()) || owner_.sampleRate_ <= 0.0) continue;
             try {
-                auto* built = new aes::Chain(owner_.defs_[std::size_t(amp)], owner_.sampleRate_);
+                auto* built = new sas::Chain(owner_.defs_[std::size_t(amp)], owner_.sampleRate_);
                 owner_.readyAmp_.store(amp);
                 delete owner_.ready_.exchange(built);  // replaces a build nobody picked up
             } catch (const std::exception&) {
@@ -89,21 +89,21 @@ public:
     }
 
 private:
-    AesProcessor& owner_;
+    SasProcessor& owner_;
 };
 
-int AesProcessor::selectedAmpIndex() const {
+int SasProcessor::selectedAmpIndex() const {
     return juce::jlimit(0, int(defs_.size()) - 1, int(apvts.getRawParameterValue(ids::amp)->load() + 0.5f));
 }
 
-void AesProcessor::swapInBuiltChain() {
-    aes::Chain* built = ready_.exchange(nullptr);
+void SasProcessor::swapInBuiltChain() {
+    sas::Chain* built = ready_.exchange(nullptr);
     if (!built) return;
     const int amp = readyAmp_.load();
     // Start the new circuits at the current knob positions instead of ramping from their defaults.
     activeAmp_ = amp;
     built->snap(readSettings(irLoaded_.load()));
-    aes::Chain* old = chain_.release();
+    sas::Chain* old = chain_.release();
     chain_.reset(built);
     // The builder frees it; if it has not yet freed the previous one, do it here (rare).
     delete retired_.exchange(old);
@@ -112,16 +112,16 @@ void AesProcessor::swapInBuiltChain() {
 
 // ------------------------------------------------------------------ lifecycle
 
-AesProcessor::AesProcessor()
+SasProcessor::SasProcessor()
     : AudioProcessor(BusesProperties()
                          .withInput("Input", juce::AudioChannelSet::stereo(), true)
                          .withOutput("Output", juce::AudioChannelSet::stereo(), true)),
-      apvts(*this, nullptr, "AES" /* state tag: part of saved projects, do not rename */, createLayout([] {
-                std::vector<aes::AmpDef> defs;
-                for (const auto& id : aes::embeddedAmpIds()) defs.push_back(aes::loadEmbeddedAmp(id));
+      apvts(*this, nullptr, "SAS" /* state tag: part of saved projects */, createLayout([] {
+                std::vector<sas::AmpDef> defs;
+                for (const auto& id : sas::embeddedAmpIds()) defs.push_back(sas::loadEmbeddedAmp(id));
                 return defs;
             }())) {
-    for (const auto& id : aes::embeddedAmpIds()) defs_.push_back(aes::loadEmbeddedAmp(id));
+    for (const auto& id : sas::embeddedAmpIds()) defs_.push_back(sas::loadEmbeddedAmp(id));
 
     // Resolve, per amp, which parameter drives each of its knobs (via its "ui" block).
     for (const auto& def : defs_) {
@@ -142,24 +142,24 @@ AesProcessor::AesProcessor()
     builder_ = std::make_unique<ChainBuilder>(*this);
 }
 
-AesProcessor::~AesProcessor() {
+SasProcessor::~SasProcessor() {
     builder_.reset();  // joins the thread before the chains it may own go away
     delete ready_.exchange(nullptr);
     delete retired_.exchange(nullptr);
 }
 
-bool AesProcessor::isBusesLayoutSupported(const BusesLayout& layouts) const {
+bool SasProcessor::isBusesLayoutSupported(const BusesLayout& layouts) const {
     const auto& out = layouts.getMainOutputChannelSet();
     return (out == juce::AudioChannelSet::mono() || out == juce::AudioChannelSet::stereo())
            && out == layouts.getMainInputChannelSet();
 }
 
-void AesProcessor::prepareToPlay(double sampleRate, int samplesPerBlock) {
+void SasProcessor::prepareToPlay(double sampleRate, int samplesPerBlock) {
     const int wanted = selectedAmpIndex();
     if (!chain_ || sampleRate != sampleRate_ || wanted != activeAmp_) {
         sampleRate_ = sampleRate;
         delete ready_.exchange(nullptr);
-        chain_ = std::make_unique<aes::Chain>(defs_[std::size_t(wanted)], sampleRate);  // heavy: solves the DC points
+        chain_ = std::make_unique<sas::Chain>(defs_[std::size_t(wanted)], sampleRate);  // heavy: solves the DC points
         activeAmp_ = wanted;
     } else {
         chain_->reset();
@@ -170,7 +170,7 @@ void AesProcessor::prepareToPlay(double sampleRate, int samplesPerBlock) {
     latencyReported_ = -1;
 }
 
-aes::ChainSettings AesProcessor::readSettings(bool irAvailable) {
+sas::ChainSettings SasProcessor::readSettings(bool irAvailable) {
     auto& s = settings_;
     const auto& def = defs_[std::size_t(activeAmp_)];
     const auto& ap = ampParams_[std::size_t(activeAmp_)];
@@ -184,7 +184,7 @@ aes::ChainSettings AesProcessor::readSettings(bool irAvailable) {
     s.presence = double(ap.presence->load()) / 10.0;
     s.inputDb = raw(ids::input);
     s.outputDb = raw(ids::output);
-    s.quality = static_cast<aes::Quality>(juce::jlimit(0, 3, int(raw(ids::quality) + 0.5)));
+    s.quality = static_cast<sas::Quality>(juce::jlimit(0, 3, int(raw(ids::quality) + 0.5)));
     s.jack = std::size_t(juce::jlimit(0, int(def.preamp.jacks.size()) - 1, int(raw(ids::jack) + 0.5)));
     const auto cab = static_cast<CabMode>(juce::jlimit(0, 2, int(raw(ids::cab) + 0.5)));
     // With no IR loaded the IR mode falls back to the cab filter instead of the raw amp.
@@ -197,7 +197,7 @@ aes::ChainSettings AesProcessor::readSettings(bool irAvailable) {
     return s;
 }
 
-void AesProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::MidiBuffer&) {
+void SasProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::MidiBuffer&) {
     juce::ScopedNoDenormals noDenormals;
     const int numCh = buffer.getNumChannels();
     const int numSamples = buffer.getNumSamples();
@@ -251,7 +251,7 @@ void AesProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::MidiBuff
 
 // ------------------------------------------------------------------ impulse response
 
-void AesProcessor::loadImpulseResponseFromMemory(const void* data, std::size_t size, const juce::String& name) {
+void SasProcessor::loadImpulseResponseFromMemory(const void* data, std::size_t size, const juce::String& name) {
     convolution_.loadImpulseResponse(data, size, juce::dsp::Convolution::Stereo::no, juce::dsp::Convolution::Trim::yes, 0,
                                      juce::dsp::Convolution::Normalise::yes);
     {
@@ -262,7 +262,7 @@ void AesProcessor::loadImpulseResponseFromMemory(const void* data, std::size_t s
     irLoaded_ = true;
 }
 
-bool AesProcessor::loadImpulseResponse(const juce::File& file) {
+bool SasProcessor::loadImpulseResponse(const juce::File& file) {
     juce::MemoryBlock bytes;
     if (!file.existsAsFile() || !file.loadFileAsData(bytes) || bytes.getSize() == 0) return false;
     // Reject anything JUCE cannot decode before replacing the current IR.
@@ -275,21 +275,21 @@ bool AesProcessor::loadImpulseResponse(const juce::File& file) {
     return true;
 }
 
-void AesProcessor::clearImpulseResponse() {
+void SasProcessor::clearImpulseResponse() {
     irLoaded_ = false;
     const juce::ScopedLock lock(irLock_);
     irBytes_.reset();
     irName_.clear();
 }
 
-juce::String AesProcessor::impulseResponseName() const {
+juce::String SasProcessor::impulseResponseName() const {
     const juce::ScopedLock lock(irLock_);
     return irName_;
 }
 
 // ------------------------------------------------------------------ state
 
-void AesProcessor::getStateInformation(juce::MemoryBlock& dest) {
+void SasProcessor::getStateInformation(juce::MemoryBlock& dest) {
     auto state = apvts.copyState();
     {
         const juce::ScopedLock lock(irLock_);
@@ -303,7 +303,7 @@ void AesProcessor::getStateInformation(juce::MemoryBlock& dest) {
     if (auto xml = state.createXml()) copyXmlToBinary(*xml, dest);
 }
 
-void AesProcessor::setStateInformation(const void* data, int size) {
+void SasProcessor::setStateInformation(const void* data, int size) {
     std::unique_ptr<juce::XmlElement> xml(getXmlFromBinary(data, size));
     if (!xml || !xml->hasTagName(apvts.state.getType())) return;
     const auto tree = juce::ValueTree::fromXml(*xml);
@@ -317,6 +317,6 @@ void AesProcessor::setStateInformation(const void* data, int size) {
     }
 }
 
-juce::AudioProcessorEditor* AesProcessor::createEditor() { return new AesEditor(*this); }
+juce::AudioProcessorEditor* SasProcessor::createEditor() { return new SasEditor(*this); }
 
-juce::AudioProcessor* JUCE_CALLTYPE createPluginFilter() { return new AesProcessor(); }
+juce::AudioProcessor* JUCE_CALLTYPE createPluginFilter() { return new SasProcessor(); }

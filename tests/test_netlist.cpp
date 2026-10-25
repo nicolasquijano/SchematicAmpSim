@@ -1,9 +1,9 @@
 #include <catch2/catch_test_macros.hpp>
 #include <cmath>
 
-#include "aes/netlist.h"
+#include "sas/netlist.h"
 
-using namespace aes;
+using namespace sas;
 
 TEST_CASE("expressions: SI suffixes parse like C++ literals") {
     CHECK(evalExpression("5.6k") == 5.6e3);

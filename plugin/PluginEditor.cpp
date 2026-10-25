@@ -72,7 +72,7 @@ void KnobWithLabel::resized() {
 
 // ------------------------------------------------------------------ editor
 
-AesEditor::AesEditor(AesProcessor& p)
+SasEditor::SasEditor(SasProcessor& p)
     : AudioProcessorEditor(&p), processor_(p),
       input_(p.apvts, ids::input, "INPUT dB"), output_(p.apvts, ids::output, "OUTPUT dB"),
       tsDrive_(p.apvts, ids::tsDrive, "DRIVE"), tsTone_(p.apvts, ids::tsTone, "TONE"), tsLevel_(p.apvts, ids::tsLevel, "LEVEL") {
@@ -120,9 +120,9 @@ AesEditor::AesEditor(AesProcessor& p)
     timerCallback();
 }
 
-AesEditor::~AesEditor() { setLookAndFeel(nullptr); }
+SasEditor::~SasEditor() { setLookAndFeel(nullptr); }
 
-void AesEditor::styleCombo(juce::ComboBox& box, const char* paramId,
+void SasEditor::styleCombo(juce::ComboBox& box, const char* paramId,
                            std::unique_ptr<juce::AudioProcessorValueTreeState::ComboBoxAttachment>& att) {
     addAndMakeVisible(box);
     // Items first, then the attachment selects the stored one.
@@ -131,14 +131,14 @@ void AesEditor::styleCombo(juce::ComboBox& box, const char* paramId,
     att = std::make_unique<juce::AudioProcessorValueTreeState::ComboBoxAttachment>(processor_.apvts, paramId, box);
 }
 
-void AesEditor::styleCaption(juce::Label& l, const juce::String& text) {
+void SasEditor::styleCaption(juce::Label& l, const juce::String& text) {
     l.setText(text, juce::dontSendNotification);
     l.setFont(juce::FontOptions(13.0f, juce::Font::bold));
     l.setColour(juce::Label::textColourId, AmpLookAndFeel::gold());
     addAndMakeVisible(l);
 }
 
-void AesEditor::showAmp(int index) {
+void SasEditor::showAmp(int index) {
     const auto& defs = processor_.amps();
     if (index < 0 || index >= int(defs.size())) return;
     shownAmp_ = index;
@@ -155,14 +155,14 @@ void AesEditor::showAmp(int index) {
     jack_.clear(juce::dontSendNotification);
     for (std::size_t j = 0; j < def.preamp.jacks.size(); ++j) jack_.addItem(juce::String(def.preamp.jacks[j].label), int(j) + 1);
     jackCaption_.setText(juce::String(def.preamp.jackLabel), juce::dontSendNotification);
-    levelMatch_.setVisible(std::any_of(def.preamp.jacks.begin(), def.preamp.jacks.end(), [](const aes::JackDef& j) { return j.levelDb != 0.0; }));
+    levelMatch_.setVisible(std::any_of(def.preamp.jacks.begin(), def.preamp.jacks.end(), [](const sas::JackDef& j) { return j.levelDb != 0.0; }));
     const int jackNow = int(processor_.apvts.getRawParameterValue(ids::jack)->load() + 0.5f);
     jack_.setSelectedItemIndex(juce::jlimit(0, int(def.preamp.jacks.size()) - 1, jackNow), juce::dontSendNotification);
     resized();
     repaint();
 }
 
-void AesEditor::timerCallback() {
+void SasEditor::timerCallback() {
     // Follows the amp parameter when the host or a restored state changes it.
     if (processor_.selectedAmpIndex() != shownAmp_) showAmp(processor_.selectedAmpIndex());
     const int jackNow = int(processor_.apvts.getRawParameterValue(ids::jack)->load() + 0.5f);
@@ -173,7 +173,7 @@ void AesEditor::timerCallback() {
     irName_.setText(name.isEmpty() ? "no IR loaded (the cab filter is used)" : name, juce::dontSendNotification);
 }
 
-void AesEditor::chooseImpulseResponse() {
+void SasEditor::chooseImpulseResponse() {
     chooser_ = std::make_unique<juce::FileChooser>("Choose a cabinet impulse response", juce::File{}, "*.wav;*.aif;*.aiff;*.flac");
     chooser_->launchAsync(juce::FileBrowserComponent::openMode | juce::FileBrowserComponent::canSelectFiles,
                           [this](const juce::FileChooser& fc) {
@@ -189,7 +189,7 @@ void AesEditor::chooseImpulseResponse() {
                           });
 }
 
-void AesEditor::paint(juce::Graphics& g) {
+void SasEditor::paint(juce::Graphics& g) {
     g.fillAll(kBackground);
     g.setColour(AmpLookAndFeel::gold());
     g.setFont(juce::FontOptions(28.0f, juce::Font::bold));
@@ -206,7 +206,7 @@ void AesEditor::paint(juce::Graphics& g) {
     g.drawHorizontalLine(70 + rowH * 2, float(r.getX()), float(r.getRight()));
 }
 
-void AesEditor::resized() {
+void SasEditor::resized() {
     auto area = getLocalBounds().reduced(14);
     area.removeFromTop(70);
     const int rowH = area.getHeight() / 3;

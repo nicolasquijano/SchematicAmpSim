@@ -8,10 +8,10 @@
 #include <utility>
 #include <vector>
 
-#include "aes/amp_def.h"
-#include "aes/filters.h"
+#include "sas/amp_def.h"
+#include "sas/filters.h"
 
-namespace aes {
+namespace sas {
 
 class PowerAmpLite {
 public:
@@ -92,4 +92,4 @@ private:
     double env_ = 0.0, attack_, release_, sag_ = 0.0;
 };
 
-}  // namespace aes
+}  // namespace sas

@@ -1,15 +1,15 @@
 // Development tool: loads an embedded amp and prints its DC operating point and a few
 // measurements, so a freshly transcribed schematic can be sanity-checked against the drawing.
-//   aes_inspect <amp id>
+//   sas_inspect <amp id>
 #include <cmath>
 #include <cstdio>
 #include <map>
 #include <string>
 #include <vector>
 
-#include "aes/amp.h"
-#include "aes/embedded_amps.h"
-#include "aes/netlist.h"
+#include "sas/amp.h"
+#include "sas/embedded_amps.h"
+#include "sas/netlist.h"
 
 namespace {
 
@@ -37,12 +37,12 @@ int main(int argc, char** argv) {
 
 static int run(int argc, char** argv) {
     const std::string id = argc > 1 ? argv[1] : "plexi_1959";
-    const aes::AmpDef def = aes::loadEmbeddedAmp(id);
+    const sas::AmpDef def = sas::loadEmbeddedAmp(id);
     std::printf("amp %s (%s)\n\n", def.id.c_str(), def.name.c_str());
 
     // Power amp DC point.
-    aes::PowerAmp power(def, kFs);
-    const auto net = aes::parseNetlist(def.power.netlistText, def.power.netlist);
+    sas::PowerAmp power(def, kFs);
+    const auto net = sas::parseNetlist(def.power.netlistText, def.power.netlist);
     auto v = [&](const char* a, const char* b = nullptr) {
         for (const char* n : {a, b}) if (n && net.nodes.count(n)) return power.solver().voltage(net.node(n));
         return std::nan("");
@@ -60,8 +60,8 @@ static int run(int argc, char** argv) {
     std::printf("  failures         %llu\n\n", (unsigned long long)power.solver().newtonFailures);
 
     // Preamp DC point at the power amp's rail.
-    aes::Preamp pre(def, kFs, power.railX());
-    const auto pnet = aes::parseNetlist(def.preamp.netlistText, def.preamp.netlist);
+    sas::Preamp pre(def, kFs, power.railX());
+    const auto pnet = sas::parseNetlist(def.preamp.netlistText, def.preamp.netlist);
     std::printf("preamp node voltages:\n");
     for (const auto& [name, node] : pnet.nodes) std::printf("  %-6s %8.2f V\n", name.c_str(), pre.solver().voltage(node));
 
@@ -75,7 +75,7 @@ static int run(int argc, char** argv) {
     for (std::size_t j = 0; j < def.preamp.jacks.size(); ++j) {
         std::printf("  %-9s", def.preamp.jacks[j].name.c_str());
         for (double amp : {0.01, 0.05, 0.2, 0.5}) {
-            aes::FullAmp a(def, kFs);
+            sas::FullAmp a(def, kFs);
             a.setKnobs(knobs, def.power.presenceDefault);
             a.setJack(j);
             std::vector<double> y;
@@ -93,7 +93,7 @@ static int run(int argc, char** argv) {
         for (std::size_t j = 0; j < def.preamp.jacks.size(); ++j) {
             std::printf("  %-9s", def.preamp.jacks[j].name.c_str());
             for (double amp : {0.01, 0.05, 0.2, 0.5}) {
-                aes::FullAmp a(def, kFs);
+                sas::FullAmp a(def, kFs);
                 a.setKnobs(open, 0.5, openPower);
                 a.setJack(j);
                 std::vector<double> y;
@@ -111,7 +111,7 @@ static int run(int argc, char** argv) {
     const char* preNodes[] = {"p5", "v1w", "p6a", "p6b", "p7a", "k7b", "so", "k8", "p8", "mo", "y", "o"};
     const char* powNodes[] = {"pin", "ga", "pa", "pb", "g12", "g45", "pt", "t16"};
     for (double amp : {0.01, 0.5}) {
-        aes::FullAmp a(def, kFs);
+        sas::FullAmp a(def, kFs);
         a.setKnobs(knobs, def.power.presenceDefault);
         std::map<std::string, double> peak;
         const std::size_t n = std::size_t(0.5 * kFs);

@@ -6,7 +6,7 @@
 #include <utility>
 #include <vector>
 
-namespace aes {
+namespace sas {
 
 // Gauss-Jordan inverter with preallocated scratch (no allocation after construction).
 class Inverter {
@@ -227,4 +227,4 @@ inline void luSolveFast(const double* lu, const std::size_t* piv, double* b, std
     }
 }
 
-}  // namespace aes
+}  // namespace sas

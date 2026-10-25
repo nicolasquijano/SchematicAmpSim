@@ -7,9 +7,9 @@
 #include <algorithm>
 #include <cmath>
 
-#include "aes/filters.h"
+#include "sas/filters.h"
 
-namespace aes {
+namespace sas {
 
 struct TsControls {
     double drive = 0.5, tone = 0.5, level = 0.5;
@@ -120,4 +120,4 @@ private:
     double levelGain_ = 0;
 };
 
-}  // namespace aes
+}  // namespace sas

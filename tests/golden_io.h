@@ -9,8 +9,8 @@
 #include <string>
 #include <vector>
 
-#ifndef AES_GOLDEN_DIR
-#error "AES_GOLDEN_DIR must point at the golden/ folder"
+#ifndef SAS_GOLDEN_DIR
+#error "SAS_GOLDEN_DIR must point at the golden/ folder"
 #endif
 
 namespace golden {
@@ -35,7 +35,7 @@ inline std::vector<double> readF64(const std::string& path) {
 }
 
 inline Case load(const std::string& name) {
-    const std::string dir = AES_GOLDEN_DIR;
+    const std::string dir = SAS_GOLDEN_DIR;
     std::ifstream man(dir + "/manifest.txt");
     std::string line;
     while (std::getline(man, line)) {
@@ -59,7 +59,7 @@ inline Case load(const std::string& name) {
 
 // DC node voltages: lines "<node> <volts>" in node order (node 0 = first unknown).
 inline std::vector<double> loadDc(const std::string& file) {
-    std::ifstream f(std::string(AES_GOLDEN_DIR) + "/" + file);
+    std::ifstream f(std::string(SAS_GOLDEN_DIR) + "/" + file);
     if (!f) throw std::runtime_error("cannot open " + file);
     std::vector<double> v;
     std::size_t node;

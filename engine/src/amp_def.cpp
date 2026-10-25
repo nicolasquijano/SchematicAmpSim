@@ -1,4 +1,4 @@
-#include "aes/amp_def.h"
+#include "sas/amp_def.h"
 
 #include <fstream>
 #include <sstream>
@@ -6,7 +6,7 @@
 
 #include <nlohmann/json.hpp>
 
-namespace aes {
+namespace sas {
 
 namespace {
 
@@ -236,4 +236,4 @@ AmpDef loadAmpDefFromFolder(const std::string& folder) {
     return loadAmpDef(readFile(folder + "/amp.json"), [&](const std::string& f) { return readFile(folder + "/" + f); });
 }
 
-}  // namespace aes
+}  // namespace sas

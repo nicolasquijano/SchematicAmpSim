@@ -5,7 +5,7 @@
 #include <array>
 #include <cmath>
 
-namespace aes {
+namespace sas {
 
 // RBJ biquad, direct form I, float.
 class Biquad {
@@ -70,4 +70,4 @@ private:
     std::array<Biquad, 3> stages_;
 };
 
-}  // namespace aes
+}  // namespace sas

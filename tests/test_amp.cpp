@@ -1,12 +1,12 @@
 #include <catch2/catch_test_macros.hpp>
 #include <cmath>
 
-#include "aes/amp.h"
-#include "aes/ts808_fast.h"
+#include "sas/amp.h"
+#include "sas/ts808_fast.h"
 #include "amp_fixture.h"
 #include "golden_io.h"
 
-using namespace aes;
+using namespace sas;
 
 namespace {
 

@@ -1,6 +1,6 @@
-#include "aes/circuit.h"
-#include "aes/profile.h"
-#include "aes/tables.h"
+#include "sas/circuit.h"
+#include "sas/profile.h"
+#include "sas/tables.h"
 
 #include <algorithm>
 #include <cstring>
@@ -8,7 +8,7 @@
 #include <limits>
 #include <stdexcept>
 
-namespace aes {
+namespace sas {
 
 namespace {
 
@@ -333,7 +333,7 @@ double Solver::residualCached() {
 }
 
 double Solver::eval(bool useTrial) {
-    AES_PROF(ProfEval);
+    SAS_PROF(ProfEval);
     const std::size_t p = p_;
     if (p == 0) { fmax_ = 0.0; return 0.0; }
     const std::vector<double>& xs = useTrial ? xt_ : x_;
@@ -396,7 +396,7 @@ double Solver::eval(bool useTrial) {
 }
 
 bool Solver::factorJacobian() {
-    AES_PROF(ProfFactor);
+    SAS_PROF(ProfFactor);
     const std::size_t p = p_;
     ++jacobianFactorizations;
     auto buildJacobian = [&] {
@@ -420,7 +420,7 @@ bool Solver::factorJacobian() {
 }
 
 bool Solver::newtonDirection() {
-    AES_PROF(ProfSolve);
+    SAS_PROF(ProfSolve);
     if (!luValid_ && !factorJacobian()) return false;
     for (std::size_t i = 0; i < p_; ++i) dx_[i] = -f_[i];
     luSolveFast(lu_.data(), piv_.data(), dx_.data(), p_);
@@ -533,7 +533,7 @@ void Solver::dcOperatingPoint() {
 }
 
 void Solver::computeSrAndP() {
-    AES_PROF(ProfMatvec);
+    SAS_PROF(ProfMatvec);
     const std::size_t n = n_;
     r_[n] = 0.0;
     for (std::size_t i = 0; i < n; ++i) {
@@ -547,7 +547,7 @@ void Solver::computeSrAndP() {
 }
 
 void Solver::reconstructVoltages() {
-    AES_PROF(ProfReconstruct);
+    SAS_PROF(ProfReconstruct);
     const std::size_t p = p_, n = n_;
     if (p == 0) {
         std::copy(sr_.begin(), sr_.begin() + n, v_.begin());
@@ -562,7 +562,7 @@ void Solver::reconstructVoltages() {
 }
 
 void Solver::step() {
-    AES_PROF(ProfStep);
+    SAS_PROF(ProfStep);
     std::fill(r_.begin(), r_.end(), 0.0);
     for (std::size_t i = 0; i < sources_.size(); ++i) r_[sources_[i].node] += srcVal_[i] * sources_[i].g;
     for (std::size_t c = 0; c < capIx_.size(); ++c) {
@@ -613,4 +613,4 @@ void Solver::step() {
     }
 }
 
-}  // namespace aes
+}  // namespace sas

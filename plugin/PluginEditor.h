@@ -28,10 +28,10 @@ private:
     juce::AudioProcessorValueTreeState::SliderAttachment attachment_;
 };
 
-class AesEditor final : public juce::AudioProcessorEditor, private juce::Timer {
+class SasEditor final : public juce::AudioProcessorEditor, private juce::Timer {
 public:
-    explicit AesEditor(AesProcessor&);
-    ~AesEditor() override;
+    explicit SasEditor(SasProcessor&);
+    ~SasEditor() override;
 
     void paint(juce::Graphics&) override;
     void resized() override;
@@ -43,7 +43,7 @@ private:
     void styleCombo(juce::ComboBox&, const char* paramId, std::unique_ptr<juce::AudioProcessorValueTreeState::ComboBoxAttachment>&);
     void styleCaption(juce::Label&, const juce::String&);
 
-    AesProcessor& processor_;
+    SasProcessor& processor_;
     AmpLookAndFeel look_;
     int shownAmp_ = -1;
     juce::String title_;
@@ -61,5 +61,5 @@ private:
     juce::TextButton loadIr_{"Load IR..."}, clearIr_{"Clear"};
     std::unique_ptr<juce::FileChooser> chooser_;
 
-    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(AesEditor)
+    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(SasEditor)
 };

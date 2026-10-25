@@ -1,19 +1,19 @@
 // The AFD100 preamp is solved in two parts (preamp.net up to the tone stack, master.net after it).
 // The monolithic circuit is kept in tests/data as the reference: the split must stay close to it in
-// DC and across frequency and level (set AES_SPLIT_VERBOSE=1 to print the error table).
+// DC and across frequency and level (set SAS_SPLIT_VERBOSE=1 to print the error table).
 #include <catch2/catch_test_macros.hpp>
 #include <cmath>
 #include <fstream>
 #include <sstream>
 
-#include "aes/embedded_amps.h"
-#include "aes/netlist.h"
-#include "aes/preamp.h"
+#include "sas/embedded_amps.h"
+#include "sas/netlist.h"
+#include "sas/preamp.h"
 
-using namespace aes;
+using namespace sas;
 
-#ifndef AES_TEST_DATA_DIR
-#error "AES_TEST_DATA_DIR must point at tests/data"
+#ifndef SAS_TEST_DATA_DIR
+#error "SAS_TEST_DATA_DIR must point at tests/data"
 #endif
 
 namespace {
@@ -22,7 +22,7 @@ constexpr double kFs = 96000.0, kPi = 3.14159265358979323846, kRail = 467.4;
 
 AmpDef monolithic() {
     AmpDef def = loadEmbeddedAmp("afd100");
-    std::ifstream f(std::string(AES_TEST_DATA_DIR) + "/afd100_preamp_full.net");
+    std::ifstream f(std::string(SAS_TEST_DATA_DIR) + "/afd100_preamp_full.net");
     std::stringstream ss;
     ss << f.rdbuf();
     def.preamp.netlistText = ss.str();
@@ -80,7 +80,7 @@ TEST_CASE("AFD100 split preamp matches the monolithic circuit") {
                 const double a = outputRms(split, jack, knobs, hz, peak), b = outputRms(full, jack, knobs, hz, peak);
                 const double errDb = 20.0 * std::log10(a / b);
                 INFO("jack " << jack << ", " << hz << " Hz, " << peak << " V: split " << a << ", full " << b << " (" << errDb << " dB)");
-                if (std::getenv("AES_SPLIT_VERBOSE"))
+                if (std::getenv("SAS_SPLIT_VERBOSE"))
                     std::printf("jack %zu %6.0f Hz %5.3f V: split %9.5f full %9.5f  %+6.2f dB\n", jack, hz, peak, a, b, errDb);
                 (peak < 0.05 ? worstSmall : worstLarge) = std::max(peak < 0.05 ? worstSmall : worstLarge, std::abs(errDb));
             }
@@ -128,7 +128,7 @@ TEST_CASE("AFD100 Eco preamp (three parts, tables) matches the monolithic circui
             for (double peak : {0.005, 0.1}) {
                 const double a = outputRms(eco, jack, knobs, hz, peak, true), b = outputRms(full, jack, knobs, hz, peak);
                 const double errDb = 20.0 * std::log10(a / b);
-                if (std::getenv("AES_SPLIT_VERBOSE"))
+                if (std::getenv("SAS_SPLIT_VERBOSE"))
                     std::printf("eco jack %zu %6.0f Hz %5.3f V: eco %9.5f full %9.5f  %+6.2f dB\n", jack, hz, peak, a, b, errDb);
                 (peak < 0.05 ? worstSmall : worstLarge) = std::max(peak < 0.05 ? worstSmall : worstLarge, std::abs(errDb));
             }

@@ -1,9 +1,9 @@
 #include <catch2/catch_test_macros.hpp>
 #include <cmath>
 
-#include "aes/circuit.h"
+#include "sas/circuit.h"
 
-using namespace aes;
+using namespace sas;
 
 TEST_CASE("RC step response matches the analytic solution") {
     Circuit c;

@@ -1,9 +1,9 @@
-#include "aes/chain.h"
+#include "sas/chain.h"
 
 #include <algorithm>
 #include <cmath>
 
-namespace aes {
+namespace sas {
 
 namespace {
 inline double dbToGain(double db) { return std::pow(10.0, db / 20.0); }
@@ -172,4 +172,4 @@ void Chain::applyOutput(float* buf, std::size_t n) {
     }
 }
 
-}  // namespace aes
+}  // namespace sas

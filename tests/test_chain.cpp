@@ -3,11 +3,11 @@
 #include <cmath>
 #include <string>
 
-#include "aes/chain.h"
-#include "aes/embedded_amps.h"
+#include "sas/chain.h"
+#include "sas/embedded_amps.h"
 #include "amp_fixture.h"
 
-using namespace aes;
+using namespace sas;
 
 namespace {
 
@@ -136,7 +136,7 @@ TEST_CASE("level match lifts the JCM800's quiet Low jack and leaves High alone")
 TEST_CASE("every amp and every jack plays at the same loudness at the reference input") {
     // The reference input is the level of the author's recorded guitar (rms ~0.05): a three-sine
     // guitar-like signal of 0.1 V peak. Amps differ at other playing levels (their gains and
-    // saturation differ), but at the reference they must agree; see tools/aes_match_levels.
+    // saturation differ), but at the reference they must agree; see tools/sas_match_levels.
     auto guitar = [](std::size_t n) {
         std::vector<float> v(n);
         for (std::size_t i = 0; i < n; ++i) {

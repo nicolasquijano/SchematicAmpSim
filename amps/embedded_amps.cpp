@@ -1,9 +1,9 @@
-#include "aes/embedded_amps.h"
+#include "sas/embedded_amps.h"
 
 #include <algorithm>
 #include <stdexcept>
 
-namespace aes {
+namespace sas {
 
 std::vector<std::string> embeddedAmpIds() {
     std::vector<std::pair<std::pair<int, std::string>, std::string>> keyed;
@@ -27,4 +27,4 @@ AmpDef loadEmbeddedAmp(const std::string& id) {
     return loadAmpDef(read("amp.json"), read);
 }
 
-}  // namespace aes
+}  // namespace sas

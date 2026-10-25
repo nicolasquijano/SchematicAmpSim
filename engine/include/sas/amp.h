@@ -6,18 +6,18 @@
 #include <cmath>
 #include <cstdint>
 
-#include "aes/amp_def.h"
-#include "aes/poweramp.h"
-#include "aes/poweramp_lite.h"
-#include "aes/preamp.h"
+#include "sas/amp_def.h"
+#include "sas/poweramp.h"
+#include "sas/poweramp_lite.h"
+#include "sas/preamp.h"
 
-namespace aes {
+namespace sas {
 
 template <class Power>
 class AmpT {
 public:
     // `fs` is the (already oversampled) rate the circuits run at.
-    // eco: triodes through tables (see aes/tables.h); the circuits are otherwise the same.
+    // eco: triodes through tables (see sas/tables.h); the circuits are otherwise the same.
     AmpT(const AmpDef& def, double fs, bool eco = false)
         : power_(def, fs), pre_(def, fs, power_.railX(), eco) {}
 
@@ -53,4 +53,4 @@ private:
 using FullAmp = AmpT<PowerAmp>;
 using LiteAmp = AmpT<PowerAmpLite>;
 
-}  // namespace aes
+}  // namespace sas

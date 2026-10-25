@@ -2,7 +2,7 @@
 * transcribed from the factory schematic. Element order is part of the contract: the solver's
 * floating-point sums follow it, and the parity tests compare against the original Rust build.
 *
-* Units: k M, m u n p. Node "0" is ground. See engine/include/aes/netlist.h for the format.
+* Units: k M, m u n p. Node "0" is ground. See engine/include/sas/netlist.h for the format.
 
 * Node numbering (golden DC dumps list nodes in this order); the Low-jack nodes come last.
 .nodes x b1 in g1 p1 k1 vt vp w p1b k1b g2 g2a p2a k2a k2b m t w3 n1 n2 wm y c3n lowin gin lowsrc

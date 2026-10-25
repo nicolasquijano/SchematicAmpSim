@@ -1,11 +1,11 @@
 #include <catch2/catch_test_macros.hpp>
 #include <cmath>
 
-#include "aes/preamp.h"
+#include "sas/preamp.h"
 #include "amp_fixture.h"
 #include "golden_io.h"
 
-using namespace aes;
+using namespace sas;
 
 TEST_CASE("preamp DC operating point matches Rust to 1e-6 V") {
     const auto& def = jcm800();

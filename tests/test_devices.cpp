@@ -2,9 +2,9 @@
 #include <catch2/matchers/catch_matchers_floating_point.hpp>
 #include <cmath>
 
-#include "aes/devices.h"
+#include "sas/devices.h"
 
-using namespace aes;
+using namespace sas;
 
 static bool close(double d, double n, double abs, double rel) { return std::abs(d - n) <= abs + rel * std::abs(n); }
 

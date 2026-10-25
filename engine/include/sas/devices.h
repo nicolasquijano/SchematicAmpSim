@@ -5,7 +5,7 @@
 #include <array>
 #include <cmath>
 
-namespace aes {
+namespace sas {
 
 // ln(1 + e^x) and its derivative (the logistic function), numerically stable.
 inline void softplus(double x, double& sp, double& sig) {
@@ -183,4 +183,4 @@ struct OpampModel {
     }
 };
 
-}  // namespace aes
+}  // namespace sas

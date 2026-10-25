@@ -10,9 +10,9 @@
 #include <cmath>
 #include <vector>
 
-#include "aes/devices.h"
+#include "sas/devices.h"
 
-namespace aes {
+namespace sas {
 
 // A function on a uniform grid, Hermite-interpolated. Outside the grid `lo`/`hi` are used.
 class HermiteTable {
@@ -117,4 +117,4 @@ private:
     double gridScale_;
 };
 
-}  // namespace aes
+}  // namespace sas

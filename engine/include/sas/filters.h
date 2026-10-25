@@ -1,7 +1,7 @@
 #pragma once
 // First-order IIR section shared by the behavioural models.
 
-namespace aes {
+namespace sas {
 
 // (n0 + n1 s) / (1 + d1 s) discretised with the bilinear transform.
 class FirstOrder {
@@ -29,4 +29,4 @@ private:
     double b0_ = 0, b1_ = 0, a1_ = 0, x1_ = 0, y1_ = 0;
 };
 
-}  // namespace aes
+}  // namespace sas

@@ -2,9 +2,9 @@
 #include <cmath>
 #include <random>
 
-#include "aes/tables.h"
+#include "sas/tables.h"
 
-using namespace aes;
+using namespace sas;
 
 TEST_CASE("triode tables reproduce Koren's formulas") {
     const auto m = TriodeModel::ecc83();

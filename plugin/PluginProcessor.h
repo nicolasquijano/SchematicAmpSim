@@ -8,8 +8,8 @@
 #include <memory>
 #include <vector>
 
-#include "aes/amp_def.h"
-#include "aes/chain.h"
+#include "sas/amp_def.h"
+#include "sas/chain.h"
 
 namespace ids {
 inline constexpr const char* amp = "amp";
@@ -37,10 +37,10 @@ inline constexpr const char* tsLevel = "ts_level";
 // Cabinet source. Order is saved in projects: append only.
 enum class CabMode { Off = 0, Filter = 1, Ir = 2 };
 
-class AesProcessor final : public juce::AudioProcessor {
+class SasProcessor final : public juce::AudioProcessor {
 public:
-    AesProcessor();
-    ~AesProcessor() override;
+    SasProcessor();
+    ~SasProcessor() override;
 
     void prepareToPlay(double sampleRate, int samplesPerBlock) override;
     void releaseResources() override {}
@@ -70,7 +70,7 @@ public:
     juce::String impulseResponseName() const;
 
     // Amps available in this build (sorted by id) and the one the "amp" parameter selects.
-    const std::vector<aes::AmpDef>& amps() const { return defs_; }
+    const std::vector<sas::AmpDef>& amps() const { return defs_; }
     int selectedAmpIndex() const;
     // The amp whose circuits are processing audio right now (differs from the selection while a
     // new amp is being built).
@@ -81,12 +81,12 @@ public:
 private:
     class ChainBuilder;
 
-    static juce::AudioProcessorValueTreeState::ParameterLayout createLayout(const std::vector<aes::AmpDef>& defs);
+    static juce::AudioProcessorValueTreeState::ParameterLayout createLayout(const std::vector<sas::AmpDef>& defs);
     void loadImpulseResponseFromMemory(const void* data, std::size_t size, const juce::String& name);
-    aes::ChainSettings readSettings(bool irAvailable);
+    sas::ChainSettings readSettings(bool irAvailable);
     void swapInBuiltChain();
 
-    std::vector<aes::AmpDef> defs_;
+    std::vector<sas::AmpDef> defs_;
 
     // Per amp: the APVTS value behind each preamp knob (nullptr = the knob's default) and presence.
     struct AmpParams {
@@ -96,16 +96,16 @@ private:
     };
     std::vector<AmpParams> ampParams_;
 
-    std::unique_ptr<aes::Chain> chain_;
+    std::unique_ptr<sas::Chain> chain_;
     std::atomic<int> activeAmp_{0};  // the amp chain_ was built for (written by the audio thread)
     double sampleRate_ = 0.0;
     int latencyReported_ = -1;
 
     // A chain for another amp is built off the audio thread and swapped in between blocks.
     std::unique_ptr<ChainBuilder> builder_;
-    std::atomic<aes::Chain*> ready_{nullptr};
+    std::atomic<sas::Chain*> ready_{nullptr};
     std::atomic<int> readyAmp_{-1};
-    std::atomic<aes::Chain*> retired_{nullptr};
+    std::atomic<sas::Chain*> retired_{nullptr};
     std::atomic<int> requestedAmp_{-1};
 
     juce::dsp::Convolution convolution_{juce::dsp::Convolution::NonUniform{512}};
@@ -116,7 +116,7 @@ private:
     mutable juce::CriticalSection irLock_;  // guards irBytes_/irName_ (message thread vs state calls)
 
     std::vector<float> mono_;
-    aes::ChainSettings settings_;
+    sas::ChainSettings settings_;
 
-    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(AesProcessor)
+    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(SasProcessor)
 };

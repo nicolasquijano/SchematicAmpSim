@@ -2,11 +2,11 @@
 #include <catch2/catch_test_macros.hpp>
 #include <cmath>
 
-#include "aes/amp.h"
-#include "aes/embedded_amps.h"
-#include "aes/netlist.h"
+#include "sas/amp.h"
+#include "sas/embedded_amps.h"
+#include "sas/netlist.h"
 
-using namespace aes;
+using namespace sas;
 
 namespace {
 

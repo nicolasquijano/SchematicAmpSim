@@ -8,7 +8,7 @@
 #include <utility>
 #include <vector>
 
-namespace aes {
+namespace sas {
 
 enum class Taper { Linear, Log };
 
@@ -106,7 +106,7 @@ struct AmpDef {
     // amp keeps its `order` forever and new amps take the next number.
     int order = 1000;
     // Output trim in dB, set so that every amp plays at the same loudness at its default knobs
-    // (see tools/aes_match_levels). Applied by the chain, not part of the circuit.
+    // (see tools/sas_match_levels). Applied by the chain, not part of the circuit.
     double outputDb = 0.0;
     std::vector<UiKnob> ui;
     PreampDef preamp;
@@ -129,4 +129,4 @@ AmpDef loadAmpDef(const std::string& jsonText, const FileReader& read);
 // Same, reading all files from a folder.
 AmpDef loadAmpDefFromFolder(const std::string& folder);
 
-}  // namespace aes
+}  // namespace sas

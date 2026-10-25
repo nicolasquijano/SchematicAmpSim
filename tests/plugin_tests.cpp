@@ -26,7 +26,7 @@ double rms(const juce::AudioBuffer<float>& b) {
 }
 
 // Runs `blocks` blocks and returns the last one.
-juce::AudioBuffer<float> run(AesProcessor& p, int blocks, double hz = 220.0, double amp = 0.05) {
+juce::AudioBuffer<float> run(SasProcessor& p, int blocks, double hz = 220.0, double amp = 0.05) {
     juce::AudioBuffer<float> buf(2, 512);
     juce::MidiBuffer midi;
     for (int b = 0; b < blocks; ++b) {
@@ -36,7 +36,7 @@ juce::AudioBuffer<float> run(AesProcessor& p, int blocks, double hz = 220.0, dou
     return buf;
 }
 
-void setParam(AesProcessor& p, const char* id, float plainValue) {
+void setParam(SasProcessor& p, const char* id, float plainValue) {
     auto* param = p.apvts.getParameter(id);
     param->setValueNotifyingHost(param->convertTo0to1(plainValue));
 }
@@ -58,7 +58,7 @@ juce::File writeImpulse(const juce::String& name) {
 
 TEST_CASE("processor exposes the expected parameters") {
     JuceInit init;
-    AesProcessor p;
+    SasProcessor p;
     for (const char* id : {ids::amp, ids::volume2, ids::volume, ids::bass, ids::middle, ids::treble, ids::presence, ids::master, ids::input, ids::output,
                            ids::quality, ids::cab, ids::jack, ids::tsOn, ids::tsDrive, ids::tsTone, ids::tsLevel})
         CHECK(p.apvts.getParameter(id) != nullptr);
@@ -70,7 +70,7 @@ TEST_CASE("processor exposes the expected parameters") {
 
 TEST_CASE("processor makes finite audio in every quality and reports latency") {
     JuceInit init;
-    AesProcessor p;
+    SasProcessor p;
     p.prepareToPlay(48000.0, 512);
     for (int q = 0; q < 4; ++q) {
         setParam(p, ids::quality, float(q));
@@ -89,7 +89,7 @@ TEST_CASE("processor makes finite audio in every quality and reports latency") {
 
 TEST_CASE("switching amp keeps audio flowing and swaps in the new circuits") {
     JuceInit init;
-    AesProcessor p;
+    SasProcessor p;
     p.prepareToPlay(48000.0, 512);
     REQUIRE(p.amps().size() >= 2);
     CHECK(p.amps()[0].id == "jcm800_2203");
@@ -128,7 +128,7 @@ TEST_CASE("switching amp keeps audio flowing and swaps in the new circuits") {
 
 TEST_CASE("state round trip restores parameters") {
     JuceInit init;
-    AesProcessor a, b;
+    SasProcessor a, b;
     setParam(a, ids::volume, 9.0f);
     setParam(a, ids::quality, 2.0f);
     setParam(a, ids::tsOn, 1.0f);
@@ -142,14 +142,14 @@ TEST_CASE("state round trip restores parameters") {
 
 TEST_CASE("an impulse response loads, survives the state, and shapes the sound") {
     JuceInit init;
-    AesProcessor p;
+    SasProcessor p;
     p.prepareToPlay(48000.0, 512);
     CHECK(p.impulseResponseName().isEmpty());
     CHECK(!p.loadImpulseResponse(juce::File("C:/definitely/not/here.wav")));
 
-    const auto file = writeImpulse("aes_test_ir.wav");
+    const auto file = writeImpulse("sas_test_ir.wav");
     REQUIRE(p.loadImpulseResponse(file));
-    CHECK(p.impulseResponseName() == "aes_test_ir.wav");
+    CHECK(p.impulseResponseName() == "sas_test_ir.wav");
 
     setParam(p, ids::cab, 2.0f);  // IR
     // The convolution builds its engine in the background: give it a moment, then audio must flow.
@@ -160,9 +160,9 @@ TEST_CASE("an impulse response loads, survives the state, and shapes the sound")
 
     juce::MemoryBlock state;
     p.getStateInformation(state);
-    AesProcessor q;
+    SasProcessor q;
     q.setStateInformation(state.getData(), int(state.getSize()));
-    CHECK(q.impulseResponseName() == "aes_test_ir.wav");  // the IR travels inside the project
+    CHECK(q.impulseResponseName() == "sas_test_ir.wav");  // the IR travels inside the project
 
     p.clearImpulseResponse();
     CHECK(p.impulseResponseName().isEmpty());

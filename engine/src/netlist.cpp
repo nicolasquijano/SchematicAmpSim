@@ -1,4 +1,4 @@
-#include "aes/netlist.h"
+#include "sas/netlist.h"
 
 #include <cctype>
 #include <cmath>
@@ -6,7 +6,7 @@
 #include <sstream>
 #include <vector>
 
-namespace aes {
+namespace sas {
 
 namespace {
 
@@ -375,4 +375,4 @@ ParsedNetlist parseNetlist(std::string_view text, const std::string& origin) {
     return std::move(p.out);
 }
 
-}  // namespace aes
+}  // namespace sas

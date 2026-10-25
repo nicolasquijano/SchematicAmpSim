@@ -9,12 +9,12 @@
 #include <memory>
 #include <vector>
 
-#include "aes/amp.h"
-#include "aes/cab.h"
-#include "aes/oversample.h"
-#include "aes/ts808_fast.h"
+#include "sas/amp.h"
+#include "sas/cab.h"
+#include "sas/oversample.h"
+#include "sas/ts808_fast.h"
 
-namespace aes {
+namespace sas {
 
 // Quality order is part of saved-project compatibility: new qualities are only ever appended.
 enum class Quality { Normal = 0, High = 1, Lite = 2, Eco = 3 };
@@ -100,4 +100,4 @@ private:
     std::vector<double> knobScratch_, powerScratch_;
 };
 
-}  // namespace aes
+}  // namespace sas

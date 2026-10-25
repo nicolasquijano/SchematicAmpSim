@@ -8,10 +8,10 @@
 #include <cstdint>
 #include <vector>
 
-#include "aes/amp_def.h"
-#include "aes/circuit.h"
+#include "sas/amp_def.h"
+#include "sas/circuit.h"
 
-namespace aes {
+namespace sas {
 
 class Preamp {
 public:
@@ -106,4 +106,4 @@ private:
     std::size_t jack_ = 0;
 };
 
-}  // namespace aes
+}  // namespace sas

@@ -9,10 +9,10 @@
 #include <string>
 #include <vector>
 
-#include "aes/amp.h"
-#include "aes/embedded_amps.h"
-#include "aes/profile.h"
-#include "aes/ts808_fast.h"
+#include "sas/amp.h"
+#include "sas/embedded_amps.h"
+#include "sas/profile.h"
+#include "sas/ts808_fast.h"
 
 namespace {
 
@@ -47,11 +47,11 @@ int main() {
     struct Case { const char* name; double volume, master, amp; };
     const Case cases[] = {{"clean", 0.2, 0.5, 0.05}, {"crunch", 0.6, 0.5, 0.15}, {"lead", 1.0, 0.8, 0.3}};
     double sink = 0;
-    std::vector<std::pair<std::string, aes::AmpDef>> amps;
-    for (const auto& id : aes::embeddedAmpIds()) amps.push_back({id, aes::loadEmbeddedAmp(id)});
-    // AES_BENCH_MONO=<path to afd100_preamp_full.net> also runs the unsplit AFD100 preamp for comparison.
-    if (const char* mono = std::getenv("AES_BENCH_MONO")) {
-        aes::AmpDef d = aes::loadEmbeddedAmp("afd100");
+    std::vector<std::pair<std::string, sas::AmpDef>> amps;
+    for (const auto& id : sas::embeddedAmpIds()) amps.push_back({id, sas::loadEmbeddedAmp(id)});
+    // SAS_BENCH_MONO=<path to afd100_preamp_full.net> also runs the unsplit AFD100 preamp for comparison.
+    if (const char* mono = std::getenv("SAS_BENCH_MONO")) {
+        sas::AmpDef d = sas::loadEmbeddedAmp("afd100");
         std::ifstream f(mono);
         std::stringstream ss;
         ss << f.rdbuf();
@@ -68,27 +68,27 @@ int main() {
             for (std::size_t i = 0; i < knobs.size(); ++i)
                 if (def.preamp.knobs[i].name == "master") knobs[i] = c.master;
             const auto in = signal(c.amp, n, fs);
-#ifdef AES_PROFILE
+#ifdef SAS_PROFILE
             // Lite runs only the preamp solver, so the counters isolate it.
             {
-                aes::LiteAmp l(def, fs, true);
+                sas::LiteAmp l(def, fs, true);
                 l.setKnobs(knobs, def.power.presenceDefault);
-                for (auto& v : aes::g_profile) v = 0;
+                for (auto& v : sas::g_profile) v = 0;
                 for (double x : in) sink += l.process(x);
-                const double total = double(aes::g_profile[aes::ProfStep]);
+                const double total = double(sas::g_profile[sas::ProfStep]);
                 std::printf("  %-7s preamp cycles/sample %.0f: eval %2.0f%%  factor %2.0f%%  lu-solve %2.0f%%  S*r %2.0f%%  v=S*r-K*i %2.0f%%\n", c.name,
-                            total / double(n), 100 * double(aes::g_profile[aes::ProfEval]) / total, 100 * double(aes::g_profile[aes::ProfFactor]) / total,
-                            100 * double(aes::g_profile[aes::ProfSolve]) / total, 100 * double(aes::g_profile[aes::ProfMatvec]) / total,
-                            100 * double(aes::g_profile[aes::ProfReconstruct]) / total);
+                            total / double(n), 100 * double(sas::g_profile[sas::ProfEval]) / total, 100 * double(sas::g_profile[sas::ProfFactor]) / total,
+                            100 * double(sas::g_profile[sas::ProfSolve]) / total, 100 * double(sas::g_profile[sas::ProfMatvec]) / total,
+                            100 * double(sas::g_profile[sas::ProfReconstruct]) / total);
             }
 #endif
-            aes::FullAmp full(def, fs);
+            sas::FullAmp full(def, fs);
             full.setKnobs(knobs, def.power.presenceDefault);
             const double pf = percent([&] { for (double x : in) sink += full.process(x); }, seconds);
-            aes::LiteAmp lite(def, fs);
+            sas::LiteAmp lite(def, fs);
             lite.setKnobs(knobs, def.power.presenceDefault);
             const double pl = percent([&] { for (double x : in) sink += lite.process(x); }, seconds);
-            aes::LiteAmp eco(def, fs, true);  // Lite power amp + triode tables
+            sas::LiteAmp eco(def, fs, true);  // Lite power amp + triode tables
             eco.setKnobs(knobs, def.power.presenceDefault);
             const double pe = percent([&] { for (double x : in) sink += eco.process(x); }, seconds);
             const auto& ps = full.pre().solver(0);
@@ -99,7 +99,7 @@ int main() {
     }
     {
         const auto in = signal(0.1, n, fs);
-        aes::TubeScreamerFast ts(fs);
+        sas::TubeScreamerFast ts(fs);
         const double p = percent([&] { for (double x : in) sink += ts.process(x); }, seconds);
         std::printf("ts808   fast %5.2f %%\n", p);
     }

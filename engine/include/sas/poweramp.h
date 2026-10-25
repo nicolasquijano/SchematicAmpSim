@@ -3,10 +3,10 @@
 // supply) plus the rectifier/reservoir model from amp.json. The reservoir voltage is integrated
 // at the audio rate from the real load current, so sag and ripple come out of the circuit.
 
-#include "aes/amp_def.h"
-#include "aes/circuit.h"
+#include "sas/amp_def.h"
+#include "sas/circuit.h"
 
-namespace aes {
+namespace sas {
 
 class PowerAmp {
 public:
@@ -55,4 +55,4 @@ private:
     double presence_ = 0.5;
 };
 
-}  // namespace aes
+}  // namespace sas

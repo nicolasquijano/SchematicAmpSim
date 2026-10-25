@@ -1,12 +1,12 @@
-#include "aes/poweramp.h"
+#include "sas/poweramp.h"
 
 #include <algorithm>
 #include <cmath>
 #include <stdexcept>
 
-#include "aes/netlist.h"
+#include "sas/netlist.h"
 
-namespace aes {
+namespace sas {
 
 namespace {
 constexpr double kPi = 3.14159265358979323846;
@@ -104,4 +104,4 @@ double PowerAmp::process(double vin) {
     return solver_.voltage(nodeOut_);
 }
 
-}  // namespace aes
+}  // namespace sas
