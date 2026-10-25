@@ -421,11 +421,10 @@ TEST_CASE("British Class A: HT chain, cathode bias and idle current are in the r
         const auto net = parseNetlist(def.power.netlistText, def.power.netlist);
         CHECK(power.solver().dcConverged);
         auto v = [&](const char* n) { return power.solver().voltage(net.node(n)); };
-        CHECK(std::abs(v("a") - 340.0) < 25.0);      // HT1 around 350 V
-        CHECK(std::abs(v("x") - 250.0) < 20.0);      // HT3
-        CHECK(v("kc") > 6.0);                        // shared 47 ohm cathode bias
+        CHECK(std::abs(v("b") - 330.0) < 25.0);      // HT after the choke
+                CHECK(v("kc") > 6.0);                        // shared 47 ohm cathode bias
         CHECK(v("kc") < 13.0);
-        const double idleMa = (v("a") - v("pt")) / 45.0 / 2.0 * 1e3;  // per tube
+        const double idleMa = (v("b") - v("pt")) / 50.0 / 2.0 * 1e3;  // per tube
         CHECK(idleMa > 30.0);
         CHECK(idleMa < 60.0);
     }
@@ -448,6 +447,6 @@ TEST_CASE("British Class A: HT chain, cathode bias and idle current are in the r
     };
     CHECK(level("normal", "normal_volume", 0.4, 500.0) > 1.5 * level("normal", "normal_volume", 0.1, 500.0));
     CHECK(level("brilliant", "brilliant_volume", 0.4, 500.0) > 1.5 * level("brilliant", "brilliant_volume", 0.1, 500.0));
-    CHECK(level("normal", "treble", 1.0, 4000.0) > 1.3 * level("normal", "treble", 0.0, 4000.0));
-    CHECK(level("normal", "bass", 1.0, 80.0) > 1.2 * level("normal", "bass", 0.0, 80.0));
+    CHECK(level("brilliant", "treble", 1.0, 4000.0) > 1.3 * level("brilliant", "treble", 0.0, 4000.0));
+    CHECK(level("brilliant", "bass", 1.0, 80.0) > 1.2 * level("brilliant", "bass", 0.0, 80.0));  // the Normal channel skips the tone controls;);
 }

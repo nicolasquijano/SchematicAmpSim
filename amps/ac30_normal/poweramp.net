@@ -1,67 +1,69 @@
-* Class A 30 W power amp (same drawing as preamp.net): 12AX7 long-tailed phase inverter (V8), four EL84
-* as two parallel pairs on a shared 47 ohm / 220u cathode bias, no negative feedback, the output
-* transformer, and the HT chain. B+ (node a, HT1) is the rectifier / reservoir, integrated by the engine.
+* Class A 30 W power amp ("AC30 Top Boost" reissue, Vox drawing AC30-60-02 issue 5, sheet 2): V6 12AX7 long-tailed
+* phase inverter (1k2 + 47k tail, 1M grid returns), four EL84 as two parallel pairs on a shared cathode bias
+* (two 100 ohm / 5 W in parallel, 220u), no negative feedback, the 4k output transformer, and the supply: GZ34
+* rectifier, 47u reservoir (node a, integrated by the engine), choke, 22u (node b = HT).
 *
 * Assumptions where the drawing is silent or ambiguous (change them here, not in code):
-*  - output transformer: 4k plate-to-plate onto the 8 ohm load, 6 H per primary half, 45 ohm per half,
-*    coupling like the other amps;
-*  - screens: 100 ohm each from HT2 (680 ohm + 33u from B+);
-*  - Cut: 4n7 + 220k rheostat between the two grid lines; the knob turns the resistance down;
-*  - HT3 (node x, 250 V) is 10k + 33u from HT2 and feeds the phase inverter plates and the preamp;
-*    RPREAMP stands for what the preamp draws from it.
+*  - the drawing prints no voltages: the supply (mains transformer 789-102) is a Thevenin rectifier source chosen
+*    for an HT of about 340 V at idle;
+*  - output transformer 784-413: 4k plate-to-plate onto the 16 ohm tap with the two 8 ohm speakers in series,
+*    6 H per primary half, 50 ohm per half, coupling like the other amps;
+*  - the choke CH1 is its winding resistance (100 ohm): its inductance is not modelled;
+*  - the phase inverter's right grid goes to the Vib/Trem bus through C2 (4n7): taken as a ground return;
+*  - Cut: 4n7 + 220k rheostat between the two grid lines; the knob turns the resistance down.
 
-.nodes pin gr gl nt kv pa pb ga gb g1 g2 cn a h2 x pt pbm npt npb s1 s2 kc t8
+.nodes pin gl gr nt kv pa pb y ga gb g1 g2 cn a b x pt pbm npt npb s1 s2 kc t16
 
-S VAUDIO pin 50k 0
-S VHT a 15 350
+S VAUDIO pin 150k 0
+S VHT a 15 345
 
-* Phase inverter V8: signal on the right grid through 100n, the left grid grounded by 100n; both grids
-* returned through 100k to the tail junction (47k to ground), 1k2 between the cathodes and that junction.
-C CIN pin gr 100n
-C CGL gl 0 100n
-R RGR gr nt 100k
-R RGL gl nt 100k
-R R1K2 kv nt 1k2
-R R47K nt 0 47k
-T V8A gl pa kv 12AX7
-T V8B gr pb kv 12AX7
-R R_PA x pa 100k
-R R_PB x pb 100k
+* Phase inverter V6: signal on the left grid through C3 (47n), the right grid returned through C2 (4n7).
+C C3 pin gl 47n
+R R4 gl nt 1M
+C C2 gr 0 4n7
+R R2 gr nt 1M
+R R3 kv nt 1k2
+R R1 nt 0 47k
+T V6A gl pa kv 12AX7
+T V6B gr pb kv 12AX7
+R R52 y pa 100k
+R R51 y pb 100k
+R R54 b y 22k
+C C35 y 0 10u
 
 * Coupling to the EL84 grids (100n, 220k leaks to ground, 1k5 stoppers, two tubes per side) and Cut.
-C C_A pa ga 100n
-C C_B pb gb 100n
-R RGA ga 0 220k
-R RGB gb 0 220k
+C C25 pa ga 100n
+C C24 pb gb 100n
+R R50 ga 0 220k
+R R53 gb 0 220k
 R RS_A ga g1 1k5/2
 R RS_B gb g2 1k5/2
-C C4N7 ga cn 4n7
+C C1 ga cn 4n7
 R VR_CUT cn gb 220k
 
-* EL84: V9 + V10 on the red half, V11 + V12 on the yellow half; common cathode 47 ohm || 220u.
-P V9 g1 pt s1 kc EL84 2
-P V11 g2 pbm s2 kc EL84 2
-R RK kc 0 47
-C CK kc 0 220u
-R RS1 h2 s1 100/2
-R RS2 h2 s2 100/2
+* EL84: V3 + V2 on one half of the primary, V4 + V5 on the other; common cathode 50 ohm || 220u.
+P V3 g1 pt s1 kc EL84 2
+P V4 g2 pbm s2 kc EL84 2
+R R70 kc 0 100/2
+C C47 kc 0 220u
+R R75 b s1 100/2
+R R77 b s2 100/2
 
-* Output transformer: primary halves around the HT1 centre tap, one 8 ohm secondary.
-R DCR_PT pt npt 45
-R DCR_PB pbm npb 45
-.param n8 = 2*1/sqrt(4000/8)
+* Output transformer: primary halves around the HT centre tap, one 16 ohm secondary.
+R DCR_PT pt npt 50
+R DCR_PB pbm npb 50
+.param n16 = 2*1/sqrt(4000/16)
 .xfmr OT L=6
-  W npt a 1 pri
-  W a npb 1 pri
-  W t8 0 n8 sec
+  W npt b 1 pri
+  W b npb 1 pri
+  W t16 0 n16 sec
   K pri pri 0.9998
   K pri sec 0.9993
 .end
-R RLOAD t8 0 8
+R RLOAD t16 0 16
 
-* HT chain: HT2 (680 ohm + 33u, screens), HT3 (10k + 33u, node x).
-R R680 a h2 680
-C C_H2 h2 0 33u
-R R10K2 h2 x 10k
-C C_H3 x 0 33u
-R RPREAMP x 0 35k
+* Supply: choke (winding resistance) and 22u after the reservoir; x is HT for the preamp, RPREAMP its draw.
+R CH1 a b 100
+C C46 b 0 22u
+R RX b x 1
+R RPREAMP x 0 75k

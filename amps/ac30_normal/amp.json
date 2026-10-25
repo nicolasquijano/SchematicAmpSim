@@ -9,20 +9,20 @@
     "tolerance": 2e-6,
     "rail_source": "VRAIL",
     "input_source": "VIN",
-    "output_node": "o",
+    "output_node": "m",
     "pot_min_ohms": 100,
     "jack_label": "CHANNEL",
     "knobs": [
-      { "name": "brilliant_volume", "default": 0.2, "pot": { "type": "wiper", "top": "VR_BT", "bottom": "VR_BB", "total": 1e6, "taper": "log" } },
-      { "name": "normal_volume",    "default": 0.2, "pot": { "type": "wiper", "top": "VR_NT", "bottom": "VR_NB", "total": 1e6, "taper": "log" } },
+      { "name": "brilliant_volume", "default": 0.5, "pot": { "type": "wiper", "top": "VR_BT", "bottom": "VR_BB", "total": 470e3, "taper": "log" } },
+      { "name": "normal_volume",    "default": 0.5, "pot": { "type": "wiper", "top": "VR_NT", "bottom": "VR_NB", "total": 470e3, "taper": "log" } },
       { "name": "bass",   "default": 0.5, "pot": { "type": "wiper", "top": "VR_KB", "bottom": "VR_KT", "total": 1e6, "taper": "log" } },
-      { "name": "treble", "default": 0.6, "pot": { "type": "wiper", "top": "VR_TT", "bottom": "VR_TB", "total": 1e6, "taper": "linear" } }
+      { "name": "treble", "default": 0.6, "pot": { "type": "wiper", "top": "VR_TT", "bottom": "VR_TB", "total": 1e6, "taper": "log" } }
     ],
     "source_ohms": { "resistors": ["RSRC"], "default": 7000, "min": 10 },
     "jacks": [
       { "name": "normal",    "label": "Normal",    "drive": "VIN", "resistors": { "SW_N": 1,    "SW_B": 1e12 } },
-      { "name": "brilliant", "label": "Brilliant", "level_db": 0.6, "drive": "VIN", "resistors": { "SW_N": 1e12, "SW_B": 1 } },
-      { "name": "both",      "label": "Both",      "drive": "VIN", "resistors": { "SW_N": 1,    "SW_B": 1 } }
+      { "name": "brilliant", "label": "Brilliant", "level_db": -3.5, "drive": "VIN", "resistors": { "SW_N": 1e12, "SW_B": 1 } },
+      { "name": "both",      "label": "Both",      "level_db": -4.0, "drive": "VIN", "resistors": { "SW_N": 1,    "SW_B": 1 } }
     ]
   },
 
@@ -41,33 +41,33 @@
     "ht_source": "VHT",
     "ht_node": "a",
     "rail_node": "x",
-    "output_node": "t8",
+    "output_node": "t16",
     "load_resistor": "RLOAD",
     "presence": { "resistor": "VR_CUT", "scale": 220e3, "min_ohms": 100, "default": 0.0 },
     "supply": {
       "mains_hz": 50,
-      "vac_peak": 395,
-      "rect_source_ohms": 60,
-      "ht_dc_source": 350,
-      "rect_drop": 1.4,
-      "reservoir_farads": 100e-6,
+      "vac_peak": 488,
+      "rect_source_ohms": 180,
+      "ht_dc_source": 345,
+      "rect_drop": 25,
+      "reservoir_farads": 47e-6,
       "tie_ohms": 15,
       "settle_seconds": 0.15
     }
   },
 
   "lite": {
-  "base_gain_db": 34.4938,
-  "high_pass_hz": 17.3792,
+  "base_gain_db": 39.0332,
+  "high_pass_hz": 22.5405,
   "shelf_hz": 2950.99,
-  "presence_db": [0, -0.707193, -1.97064, -4.92253, -20.2297],
-  "sag_table": [[0, 0], [2.54648, 0.118506], [5.09296, 0.479744], [9.5493, 1.74101], [15.9155, 4.96483], [22.2817, 9.38245], [28.6479, 11.689], [35.0141, 12.1394], [44.5634, 12.3823], [57.2958, 12.8019], [82.7606, 14.5254], [127.324, 17.9322]],
-  "rail_x_idle": 234.753,
+  "presence_db": [0, -0.651663, -1.83159, -4.64745, -19.7362],
+  "sag_table": [[0, 0], [2.54648, 0.0791763], [5.09296, 0.317166], [9.5493, 1.12017], [15.9155, 3.15283], [22.2817, 6.2635], [28.6479, 10.2171], [35.0141, 13.4919], [44.5634, 13.5292], [57.2958, 13.5292], [82.7606, 13.5292], [127.324, 13.5292]],
+  "rail_x_idle": 313.012,
   "rail_sag_fraction": 0.58,
-  "ceiling_light": 21.8026,
-  "ceiling_heavy": 19.8717,
-  "ceiling_decay": 21.1669,
-  "knee": 4.38958,
+  "ceiling_light": 54.244,
+  "ceiling_heavy": 26.59,
+  "ceiling_decay": 5.62996,
+  "knee": 4.394,
   "sag_attack_s": 0.01,
   "sag_release_s": 0.06
 }

@@ -22,7 +22,7 @@ VST3 for Windows, built with C++17 and [JUCE](https://juce.com).
   | SLSH 100W | Modern 100 W head, 6550 output stage, two modes |
   | American Twin | Two-channel 85 W+ blackface-style amp, 12AT7 phase inverter, four 6L6GC on fixed bias with its optical vibrato and spring reverb (driver and recovery tubes as circuit, the spring tank behavioural) |
   | American 5050 | Modern high-gain 120 W head: two channels (Rhythm with a Crunch voicing, Lead) through six gain stages, Marshall-type tone stack, 12AX7 phase inverter with presence and resonance in the feedback loop, four 6L6GC |
-  | British Class A | Class A 30 W combo-style amp: Normal and Brilliant channels, Treble / Bass / Cut, 12AX7 long-tailed phase inverter, four cathode-biased EL84 with no negative feedback (no vibrato or reverb) |
+  | British Class A | Class A 30 W combo-style amp (Top Boost reissue drawing): Normal channel straight to the phase inverter, Brilliant channel through the Treble / Bass network, Cut control, four cathode-biased EL84 with no negative feedback (no vibrato or reverb) |
 - **Quality modes**
   | Mode | What it does |
   |---|---|
