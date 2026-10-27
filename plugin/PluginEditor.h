@@ -66,6 +66,21 @@ private:
     int clip_ = 0;
 };
 
+// The output tubes drawn as glass envelopes whose plates glow with the plate current (the share of the tube's rating),
+// so bias, wear and how hard the amp is driven can be seen.
+class TubeGlow final : public juce::Component {
+public:
+    void setTubes(int count, const juce::String& name);
+    // `level`: plate dissipation as a fraction of the rating (about 0.7 at a typical idle, above 1 when overdriven); `mA` for the text.
+    void setGlow(float level, float mA);
+    void paint(juce::Graphics&) override;
+
+private:
+    int count_ = 2;
+    juce::String name_;
+    float level_ = 0.0f, shown_ = 0.0f, mA_ = 0.0f;
+};
+
 class SasEditor final : public juce::AudioProcessorEditor, private juce::Timer, private juce::ListBoxModel {
 public:
     explicit SasEditor(SasProcessor&);
@@ -109,6 +124,7 @@ private:
     KnobWithLabel gateThreshold_, gateRelease_, cable_;
     KnobWithLabel bias_, wear_;
     LevelBar inBar_, outBar_;
+    TubeGlow tubes_;
     int tick_ = 0;
 
     juce::ListBox ampList_{"amps", nullptr};

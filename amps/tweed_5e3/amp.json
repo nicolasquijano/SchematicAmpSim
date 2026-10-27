@@ -49,6 +49,7 @@
   ],
 
   "power": {
+    "tubes": [ { "name": "6V6GT", "model": "6V6GT", "pmax_w": 14.0, "bias_scale": 1.0 } ],
     "bias": { "idle_resistors": ["DCR_PT", "DCR_PB"], "tubes_per_half": 1 },
     "netlist": "poweramp.net",
     "tolerance": 1e-4,

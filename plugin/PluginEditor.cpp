@@ -195,6 +195,71 @@ void LevelBar::paint(juce::Graphics& g) {
     }
 }
 
+// ------------------------------------------------------------------ tube glow
+
+void TubeGlow::setTubes(int count, const juce::String& name) {
+    if (count == count_ && name == name_) return;
+    count_ = std::max(1, count);
+    name_ = name;
+    repaint();
+}
+
+void TubeGlow::setGlow(float level, float mA) {
+    level_ = level;
+    mA_ = mA;
+    shown_ += 0.25f * (level_ - shown_);  // the glow follows the current with a little inertia, like a hot plate
+    repaint();
+}
+
+void TubeGlow::paint(juce::Graphics& g) {
+    auto r = getLocalBounds().toFloat();
+    auto text = r.removeFromBottom(16.0f);
+    const float cell = r.getWidth() / float(count_);
+    const float w = std::min(30.0f, cell - 8.0f), h = std::min(r.getHeight() - 2.0f, 62.0f);
+    const float glow = juce::jlimit(0.0f, 1.0f, shown_ * 1.1f);
+    for (int i = 0; i < count_; ++i) {
+        const float cx = r.getX() + cell * (float(i) + 0.5f);
+        const auto env = juce::Rectangle<float>(cx - w * 0.5f, r.getBottom() - h, w, h - 8.0f);
+        juce::Path glass;
+        glass.addRoundedRectangle(env.getX(), env.getY(), env.getWidth(), env.getHeight(), w * 0.5f, w * 0.5f, true, true, false, false);
+
+        g.setColour(juce::Colours::black.withAlpha(0.55f));
+        g.fillPath(glass);
+        {
+            // Everything that glows is clipped to the glass.
+            juce::Graphics::ScopedSaveState state(g);
+            g.reduceClipRegion(glass);
+            const auto plate = juce::Rectangle<float>(cx - w * 0.22f, env.getY() + env.getHeight() * 0.22f, w * 0.44f, env.getHeight() * 0.50f);
+            const auto hot = juce::Colour::fromRGB(255, 96, 28);
+            g.setGradientFill(juce::ColourGradient(hot.withAlpha(0.65f * glow), plate.getCentreX(), plate.getCentreY(), juce::Colours::transparentBlack,
+                                                   plate.getCentreX() + w * 0.9f, plate.getCentreY(), true));
+            g.fillRect(env);
+            g.setColour(juce::Colour::fromRGB(70, 66, 62).interpolatedWith(juce::Colour::fromRGB(255, 120, 40), glow));
+            g.fillRoundedRectangle(plate, 1.5f);
+            g.setColour(juce::Colours::black.withAlpha(0.35f * (1.0f - glow)));
+            g.drawRoundedRectangle(plate, 1.5f, 1.0f);
+            // The heater is always lit.
+            g.setGradientFill(juce::ColourGradient(juce::Colour::fromRGB(255, 176, 70).withAlpha(0.45f), cx, env.getBottom() - 3.0f, juce::Colours::transparentBlack,
+                                                   cx, env.getBottom() - env.getHeight() * 0.35f, true));
+            g.fillRect(env);
+            // Glass highlight.
+            g.setColour(juce::Colours::white.withAlpha(0.10f));
+            g.fillRect(env.getX() + 3.0f, env.getY() + 5.0f, 2.0f, env.getHeight() - 10.0f);
+        }
+        g.setColour(juce::Colours::white.withAlpha(0.28f));
+        g.strokePath(glass, juce::PathStrokeType(1.2f));
+        // Base with its pins.
+        g.setColour(juce::Colour::fromRGB(48, 44, 40));
+        g.fillRoundedRectangle(env.getX() - 1.0f, env.getBottom(), w + 2.0f, 6.0f, 1.5f);
+        g.setColour(juce::Colour::fromRGB(150, 140, 120));
+        g.fillRect(cx - w * 0.3f, env.getBottom() + 6.0f, 1.5f, 2.0f);
+        g.fillRect(cx + w * 0.3f - 1.5f, env.getBottom() + 6.0f, 1.5f, 2.0f);
+    }
+    g.setColour(getLookAndFeel().findColour(juce::Label::textColourId).withAlpha(0.75f));
+    g.setFont(AmpLookAndFeel::font(11.0f));
+    g.drawText(name_ + (mA_ > 0.5f ? juce::String(" - ") + juce::String(juce::roundToInt(mA_)) + " mA" : juce::String("")), text, juce::Justification::centred);
+}
+
 // ------------------------------------------------------------------ editor
 
 SasEditor::SasEditor(SasProcessor& p)
@@ -206,6 +271,7 @@ SasEditor::SasEditor(SasProcessor& p)
     setLookAndFeel(&look_);
     for (auto* k : {&input_, &output_, &tsDrive_, &tsTone_, &tsLevel_, &gateThreshold_, &gateRelease_, &cable_, &bias_, &wear_}) addAndMakeVisible(*k);
     addAndMakeVisible(inBar_);
+    addAndMakeVisible(tubes_);
     addAndMakeVisible(outBar_);
 
     if (const auto* amp = dynamic_cast<juce::AudioParameterChoice*>(p.apvts.getParameter(ids::amp))) ampNames_ = amp->choices;
@@ -388,6 +454,15 @@ void SasEditor::showAmp(int index) {
 void SasEditor::pollMeters() {
     inBar_.setLevel(processor_.takeInputPeak());
     outBar_.setLevel(processor_.takeOutputPeak());
+    if (shownAmp_ >= 0 && shownAmp_ < int(processor_.amps().size())) {
+        const auto& def = processor_.amps()[std::size_t(shownAmp_)];
+        const int idx = def.power.tubes.empty() ? 0 : std::min(processor_.wantedCondition().tube, int(def.power.tubes.size()) - 1);
+        const double pmax = def.power.tubes.empty() ? 25.0 : def.power.tubes[std::size_t(idx)].pmaxW;
+        const juce::String name = def.power.tubes.empty() ? juce::String("tubes") : juce::String(def.power.tubes[std::size_t(idx)].name);
+        tubes_.setTubes(int(def.power.bias.tubesPerHalf * 2.0 + 0.5), name);
+        const float ma = processor_.idleMilliamps();
+        tubes_.setGlow(float(ma / (pmax / 0.42)), ma);  // dissipation ~ current x about 420 V of plate voltage
+    }
 }
 
 void SasEditor::timerCallback() {
@@ -534,7 +609,7 @@ void SasEditor::resized() {
     }
     const bool ampPage = page_ == 0;
     for (auto& k : ampKnobs_) k->setVisible(ampPage);
-    for (auto* c : std::initializer_list<juce::Component*>{&cabCaption_, &cab_, &loadIr_, &clearIr_, &irName_, &input_, &output_, &inBar_, &outBar_}) c->setVisible(ampPage);
+    for (auto* c : std::initializer_list<juce::Component*>{&cabCaption_, &cab_, &loadIr_, &clearIr_, &irName_, &input_, &output_, &inBar_, &outBar_, &tubes_}) c->setVisible(ampPage);
     for (auto* c : std::initializer_list<juce::Component*>{&tsOn_, &tsDrive_, &tsTone_, &tsLevel_, &gateOn_, &gateThreshold_, &gateRelease_, &cable_, &pickup_, &pickupCaption_,
                                                            &bias_, &wear_, &tube_, &noise_, &unit_, &tubeCaption_, &noiseCaption_, &unitCaption_, &idleLabel_, &conditionNote_}) c->setVisible(!ampPage);
 
@@ -612,6 +687,10 @@ void SasEditor::resized() {
     const int knobW = std::clamp(bottom.getWidth() / 7, 64, 100);
     auto ioPanel = bottom.removeFromRight(knobW * 2 + 12 + 2 * 16);
     bottom.removeFromRight(gap);
+    auto tubesPanel = bottom.removeFromRight(std::clamp(bottom.getWidth() * 36 / 100, 140, 190));
+    bottom.removeFromRight(gap);
+    panels_.push_back({tubesPanel, "POWER TUBES"});
+    tubes_.setBounds(tubesPanel.reduced(8, 4).withTrimmedTop(18));
     auto cabPanel = bottom;
     panels_.push_back({cabPanel, ""});
     {
