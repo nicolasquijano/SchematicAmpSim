@@ -74,6 +74,7 @@ public:
     }
 
     std::size_t stageCount() const { return stages_.size(); }
+    void setChord(bool on, double keep = 0.0625) { for (auto& s : stages_) { s.solver.chord = on; s.solver.luKeepRatio = keep; } }
     Solver& solver(std::size_t stage = 0) { return stages_[stage].solver; }
     const Solver& solver(std::size_t stage = 0) const { return stages_[stage].solver; }
     // Failed Newton solves summed over all stages.

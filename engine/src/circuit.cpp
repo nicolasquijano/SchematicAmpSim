@@ -456,13 +456,15 @@ bool Solver::newtonDirection() {
     return true;
 }
 
-bool Solver::newton(std::size_t maxIter) {
+bool Solver::newton(std::size_t maxIter, bool reuseLu) {
     const std::size_t p = p_;
     if (p == 0) return true;
     const double tol = tolerance;
-    luValid_ = false;
+    const bool carryLu = chord && reuseLu && luValid_;  // the previous sample's factors serve the first iteration
+    if (!carryLu) luValid_ = false;
+    bool staleFirst = carryLu, retried = false;
     double merit = residualCached();
-    for (std::size_t it = 0; it < maxIter; ++it) {
+    for (std::size_t it = 0; it < maxIter;) {
         if (fmax_ < tol) return true;
         ++newtonIterations;
         if (!newtonDirection()) return false;
@@ -481,7 +483,7 @@ bool Solver::newton(std::size_t maxIter) {
             for (std::size_t r = 0; r < p; ++r) xt_[r] = x_[r] + lambda * dx_[r];
             const double tm = eval(true);
             if (tm < merit || lambda < 1e-3) {
-                if (lambda < 1.0 || tm > 0.0625 * merit) luValid_ = false;
+                if (lambda < 1.0 || tm > luKeepRatio * merit) luValid_ = false;
                 lambdaHint_ = firstTrial ? std::min(lambda * 2.0, 1.0) : lambda;
                 x_ = xt_;
                 merit = tm;
@@ -494,8 +496,15 @@ bool Solver::newton(std::size_t maxIter) {
         if (!accepted) {
             luValid_ = false;
             eval(false);
+            if (staleFirst && !retried) {  // the stale Jacobian gave no descent: refactor and redo this iteration
+                retried = true;
+                staleFirst = false;
+                continue;
+            }
             return false;
         }
+        staleFirst = false;
+        ++it;
     }
     return fmax_ < tol * 100.0;
 }
@@ -621,7 +630,7 @@ void Solver::step() {
         }
     }
     computeSrAndP();
-    const bool plainOk = newton(plainIterations);
+    const bool plainOk = newton(plainIterations, true);
     const bool solved = plainOk || continuation() || newton(30);
     if (solved) {
         xGood_ = x_;

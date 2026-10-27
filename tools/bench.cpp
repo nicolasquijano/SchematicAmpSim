@@ -98,10 +98,20 @@ int main() {
             sas::LiteAmp lite(def, fs);
             lite.setKnobs(knobs, def.power.presenceDefault);
             const double pl = percent([&] { for (double x : in) sink += lite.process(x); }, seconds);
-            sas::FullAmp tab(def, fs, false, true);  // full circuits, triodes through tables
+            sas::FullAmp tab(def, fs, false, true, false);  // full circuits, triodes and pentodes through tables
             tab.setKnobs(knobs, def.power.presenceDefault);
             const double pt = percent([&] { for (double x : in) sink += tab.process(x); }, seconds);
-            std::printf("  %-7s tables-only full %6.1f %%\n", c.name, pt);
+            std::printf("  %-7s tables %6.1f %%  (iter %.2f, fact %.2f)", c.name, pt, double(tab.power().solver().newtonIterations) / double(n),
+                        double(tab.power().solver().jacobianFactorizations) / double(n));
+            for (double keep : {0.0625, 0.25, 0.6}) {
+                sas::FullAmp chord(def, fs, false, true, true);
+                chord.setChord(true, keep);
+                chord.setKnobs(knobs, def.power.presenceDefault);
+                const double pc = percent([&] { for (double x : in) sink += chord.process(x); }, seconds);
+                std::printf("   chord keep %.2f: %6.1f %% (iter %.2f, fact %.2f, fail %llu)", keep, pc, double(chord.power().solver().newtonIterations) / double(n),
+                            double(chord.power().solver().jacobianFactorizations) / double(n), (unsigned long long)chord.newtonFailures());
+            }
+            std::printf("%c", 10);
             sas::LiteAmp eco(def, fs, true);  // Lite power amp + triode tables
             eco.setKnobs(knobs, def.power.presenceDefault);
             const double pe = percent([&] { for (double x : in) sink += eco.process(x); }, seconds);

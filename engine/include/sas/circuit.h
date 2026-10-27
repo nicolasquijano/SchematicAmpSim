@@ -124,6 +124,10 @@ public:
     // Tunables / counters (public like the Rust fields).
     std::size_t plainIterations = 24;
     double tolerance = 1e-3;
+    // Chord mode: the first Newton iteration of a sample reuses the previous sample's LU factors instead of factorising
+    // again (a stale Jacobian costs a few more iterations but saves most factorisations; a failed first step refactors).
+    bool chord = false;
+    double luKeepRatio = 0.0625;  // a full step that cuts the squared residual below this fraction keeps the LU factors
     bool dcConverged = false;
     std::uint64_t continuationRuns = 0, jacobianFactorizations = 0, newtonFailures = 0,
                   newtonSoftFailures = 0, newtonIterations = 0;
@@ -153,7 +157,7 @@ private:
     double eval(bool useTrial);
     bool factorJacobian();
     bool newtonDirection();
-    bool newton(std::size_t maxIter);
+    bool newton(std::size_t maxIter, bool reuseLu = false);
     bool continuation();
     void dcOperatingPoint();
     void computeSrAndP();

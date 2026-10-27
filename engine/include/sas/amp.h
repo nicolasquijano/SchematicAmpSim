@@ -20,8 +20,17 @@ public:
     // `fs` is the (already oversampled) rate the circuits run at.
     // eco: triodes through tables (see sas/tables.h); the circuits are otherwise the same.
     // tablesOnly: the full circuits with every triode through tables (cheaper, same sound within ~1e-6).
-    AmpT(const AmpDef& def, double fs, bool eco = false, bool tablesOnly = false)
-        : power_(makePower(def, fs, tablesOnly)), pre_(def, fs, power_.railX(), eco || tablesOnly, !tablesOnly) {}
+    AmpT(const AmpDef& def, double fs, bool eco = false, bool tablesOnly = false, bool chord = true)
+        : power_(makePower(def, fs, tablesOnly)), pre_(def, fs, power_.railX(), eco || tablesOnly, !tablesOnly) {
+        if (tablesOnly) setChord(chord);
+    }
+    void setChord(bool on, double keep = 0.0625) {
+        pre_.setChord(on, keep);
+        if constexpr (requires { power_.solver(); }) {
+            power_.solver().chord = on;
+            power_.solver().luKeepRatio = keep;
+        }
+    }
 
     void setKnobs(const std::vector<double>& knobs, double presence, const std::vector<double>& powerKnobs = {}) {
         pre_.setKnobs(knobs);
