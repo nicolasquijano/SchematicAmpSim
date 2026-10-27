@@ -727,6 +727,136 @@ TEST_CASE("a mono guitar track can feed the stereo output") {
     CHECK_FALSE(p.isBusesLayoutSupported(layout));
 }
 
+// Not a test: renders the editor in the states shown in the README into the folder named by SAS_SCREENSHOT_DIR.
+//   SAS_SCREENSHOT_DIR=docs/images sas_plugin_tests "readme screenshots"
+TEST_CASE("readme screenshots", "[.screenshots]") {
+    JuceInit init;
+    const char* dir = std::getenv("SAS_SCREENSHOT_DIR");
+    if (!dir) { SKIP("SAS_SCREENSHOT_DIR is not set"); }
+    juce::File(dir).createDirectory();
+
+    auto savePng = [&](const juce::Image& img, const juce::String& name) {
+        juce::PNGImageFormat png;
+        juce::FileOutputStream out(juce::File(dir).getChildFile(name));
+        REQUIRE(out.openedOk());
+        out.setPosition(0);
+        out.truncate();
+        png.writeImageToStream(img, out);
+    };
+    auto ampIndex = [](SasProcessor& p, const char* id) {
+        for (std::size_t i = 0; i < p.amps().size(); ++i)
+            if (p.amps()[i].id == id) return int(i);
+        FAIL(std::string("unknown amp ") + id);
+        return 0;
+    };
+    auto clickTab = [](juce::AudioProcessorEditor& ed, const char* text) {
+        for (auto* c : ed.getChildren())
+            if (auto* b = dynamic_cast<juce::TextButton*>(c); b && b->getButtonText() == text) { b->setToggleState(true, juce::dontSendNotification); b->onClick(); }
+    };
+    // One continuous stretch of audio (the sine restarts its phase on every call to run).
+    auto play = [&](SasProcessor& p, SasEditor& ed, double hz, double amp) {
+        run(p, 80, hz, amp);
+        for (int i = 0; i < 12; ++i) ed.pollMeters();
+    };
+    const float scale = 2.0f;  // crisp on a high-resolution screen
+
+    // The Amp page of one amp, playing.
+    auto ampPage = [&](const char* id, float imageScale) {
+        SasProcessor p;
+        setParam(p, "amp", float(ampIndex(p, id)));
+        p.prepareToPlay(48000.0, 512);
+        std::unique_ptr<juce::AudioProcessorEditor> ed(p.createEditor());
+        ed->setSize(800, 410);
+        play(p, *dynamic_cast<SasEditor*>(ed.get()), 196.0, 0.2);
+        return ed->createComponentSnapshot(ed->getLocalBounds(), true, imageScale);
+    };
+
+    savePng(ampPage("jcm800_2203", scale), "amp-british-800.png");
+
+    // Four more amps in one picture.
+    {
+        const char* ids4[4] = {"twin_65", "tweed_5e3", "highgain_120", "ac30_normal"};
+        juce::Image montage(juce::Image::RGB, 1600, 820, true);
+        {
+            juce::Graphics g(montage);
+            g.fillAll(juce::Colours::black);
+            for (int i = 0; i < 4; ++i) {
+                const auto shot = ampPage(ids4[i], 1.0f);
+                g.drawImageAt(shot, (i % 2) * 800, (i / 2) * 410);
+            }
+        }  // the graphics context is closed before the image is saved
+        savePng(montage, "amps.png");
+    }
+
+    // The Effects page with the pedals and the gate switched on.
+    {
+        SasProcessor p;
+        setParam(p, ids::compOn, 1.0f);
+        setParam(p, ids::tsOn, 1.0f);
+        setParam(p, ids::gateOn, 1.0f);
+        setParam(p, ids::noise, 2.0f);
+        setParam(p, ids::wear, 3.0f);
+        p.prepareToPlay(48000.0, 512);
+        std::unique_ptr<juce::AudioProcessorEditor> ed(p.createEditor());
+        ed->setSize(800, 410);
+        play(p, *dynamic_cast<SasEditor*>(ed.get()), 196.0, 0.2);
+        clickTab(*ed, "Effects");
+        savePng(ed->createComponentSnapshot(ed->getLocalBounds(), true, scale), "effects.png");
+    }
+
+    // The Cabinet page with two impulse responses, a little width and double tracking.
+    {
+        auto makeIr = [](const juce::String& name, float smoothing, float decay) {
+            auto file = juce::File::getSpecialLocation(juce::File::tempDirectory).getChildFile(name);
+            file.deleteFile();
+            juce::WavAudioFormat wav;
+            std::unique_ptr<juce::AudioFormatWriter> w(wav.createWriterFor(new juce::FileOutputStream(file), 48000.0, 1, 24, {}, 0));
+            juce::AudioBuffer<float> ir(1, 12000);
+            juce::Random rnd(11);
+            float lp = 0.0f;
+            for (int i = 0; i < ir.getNumSamples(); ++i) {
+                const float noise = rnd.nextFloat() * 2.0f - 1.0f;
+                lp += smoothing * (noise - lp);
+                ir.setSample(0, i, (smoothing < 0.5f ? lp : noise - 0.6f * lp) * std::exp(-float(i) / decay));
+            }
+            w->writeFromAudioSampleBuffer(ir, 0, ir.getNumSamples());
+            return file;
+        };
+        const auto a = makeIr("Cabinet A.wav", 0.12f, 700.0f), b = makeIr("Cabinet B.wav", 0.5f, 500.0f);
+        SasProcessor p;
+        setParam(p, ids::cab, 2.0f);
+        p.prepareToPlay(48000.0, 512);
+        REQUIRE(p.loadImpulseResponse(a, 0));
+        REQUIRE(p.loadImpulseResponse(b, 1));
+        setParam(p, ids::irWidth, 4.0f);
+        setParam(p, ids::doubleAmount, 3.0f);
+        setParam(p, ids::speaker, 3.0f);
+        std::unique_ptr<juce::AudioProcessorEditor> ed(p.createEditor());
+        ed->setSize(800, 410);
+        auto* se = dynamic_cast<SasEditor*>(ed.get());
+        play(p, *se, 196.0, 0.2);
+        se->updateImpulseStatus();
+        clickTab(*ed, "Cabinet");
+        savePng(ed->createComponentSnapshot(ed->getLocalBounds(), true, scale), "cabinet.png");
+        a.deleteFile();
+        b.deleteFile();
+    }
+
+    // The tuner on an A2 (110 Hz), in tune.
+    {
+        SasProcessor p;
+        setParam(p, ids::tunerOn, 1.0f);
+        p.prepareToPlay(48000.0, 512);
+        std::unique_ptr<juce::AudioProcessorEditor> ed(p.createEditor());
+        ed->setSize(800, 410);
+        auto* se = dynamic_cast<SasEditor*>(ed.get());
+        run(p, 100, 110.0, 0.1);
+        for (int i = 0; i < 12; ++i) se->updateTuner();
+        clickTab(*ed, "Tuner");
+        savePng(ed->createComponentSnapshot(ed->getLocalBounds(), true, scale), "tuner.png");
+    }
+}
+
 TEST_CASE("the editor builds for every amp and can be rendered") {
     JuceInit juceInit;
     SasProcessor p;

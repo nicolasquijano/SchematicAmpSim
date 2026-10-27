@@ -74,8 +74,8 @@
   },
 
   "ui": [
-    { "param": "volume",  "knob": "vibrato_volume", "label": "VIB CHANNEL" },
-    { "param": "volume2", "knob": "normal_volume",  "label": "NORM CHANNEL" },
+    { "param": "volume",  "knob": "vibrato_volume", "label": "VIB CHAN" },
+    { "param": "volume2", "knob": "normal_volume",  "label": "NORM CHAN" },
     { "param": "bass",    "knob": "bass",           "label": "BASS" },
     { "param": "middle",  "knob": "middle",         "label": "MIDDLE" },
     { "param": "treble",  "knob": "treble",         "label": "TREBLE" },

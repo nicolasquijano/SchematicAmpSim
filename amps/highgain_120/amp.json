@@ -50,9 +50,9 @@
 
   "ui": [
     { "param": "volume",   "knob": "lead_pre",    "label": "LEAD PRE" },
-    { "param": "volume2",  "knob": "rhythm_pre",  "label": "RHYTHM PRE" },
+    { "param": "volume2",  "knob": "rhythm_pre",  "label": "RHY PRE" },
     { "param": "master",   "knob": "lead_post",   "label": "LEAD POST" },
-    { "param": "power",    "knob": "rhythm_post", "label": "RHYTHM POST" },
+    { "param": "power",    "knob": "rhythm_post", "label": "RHY POST" },
     { "param": "bass",     "knob": "low",         "label": "LOW" },
     { "param": "middle",   "knob": "mid",         "label": "MID" },
     { "param": "treble",   "knob": "high",        "label": "HIGH" },
