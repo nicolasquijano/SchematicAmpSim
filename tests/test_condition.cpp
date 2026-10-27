@@ -122,3 +122,23 @@ TEST_CASE("noise and hum: silent when off, audible when on, and a single coil hu
     CHECK(single < 0.5);  // a hum, not a roar
     CHECK(humbucker < single * 0.6);
 }
+
+TEST_CASE("full circuits through the triode tables sound the same as the exact formulas") {
+    constexpr double fs2 = kFs * 2.0;
+    for (const auto* id : {"jcm800_2203", "highgain_120", "ac30_normal"}) {
+        const auto def = loadEmbeddedAmp(id);
+        FullAmp exact(def, fs2), tables(def, fs2, false, true);
+        std::vector<double> knobs;
+        for (const auto& k : def.preamp.knobs) knobs.push_back(k.def);
+        exact.setKnobs(knobs, def.power.presenceDefault);
+        tables.setKnobs(knobs, def.power.presenceDefault);
+        double err = 0.0, ref = 0.0;
+        for (std::size_t i = 0, n = std::size_t(0.5 * fs2); i < n; ++i) {
+            const double x = 0.05 * std::sin(2.0 * 3.14159265358979 * 196.0 * double(i) / fs2) * std::min(1.0, double(i) / 4000.0);
+            const double a = exact.process(x), b = tables.process(x);
+            if (i > n / 2) { err += (a - b) * (a - b); ref += a * a; }
+        }
+        INFO(id << " error " << 10.0 * std::log10(err / ref) << " dB");
+        CHECK(err < ref * 1e-6);  // below -60 dB
+    }
+}

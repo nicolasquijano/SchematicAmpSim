@@ -10,7 +10,8 @@ namespace sas {
 
 class PowerAmp {
 public:
-    PowerAmp(const AmpDef& def, double fs);
+    // useTables: triodes (the phase inverter) through interpolation tables, equal to the formulas within ~1e-6.
+    PowerAmp(const AmpDef& def, double fs, bool useTables = false);
 
     // Presence knob, 0..1: more presence shunts more of the high-frequency feedback.
     void setPresence(double p);
@@ -41,7 +42,7 @@ public:
 
 private:
     struct Built;
-    PowerAmp(Built&& b, const AmpDef& def, double fs);
+    PowerAmp(Built&& b, const AmpDef& def, double fs, bool useTables);
     // Dimensions ordered so the member initialisers below stay in declaration order.
     static Built build(const AmpDef& def);
 

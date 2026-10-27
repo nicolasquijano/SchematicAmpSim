@@ -63,8 +63,8 @@ PowerAmp::Built PowerAmp::build(const AmpDef& def) {
     return b;
 }
 
-PowerAmp::PowerAmp(Built&& b, const AmpDef& def, double fs)
-    : solver_(std::move(b.net.circuit), fs), supply_(def.power.supply), srcAudio_(b.srcAudio),
+PowerAmp::PowerAmp(Built&& b, const AmpDef& def, double fs, bool useTables)
+    : solver_(std::move(b.net.circuit), fs, useTables), supply_(def.power.supply), srcAudio_(b.srcAudio),
       srcHt_(b.srcHt), rPres_(b.rPres), rNfb_(b.rNfb), rLoad_(b.rLoad),
       presenceScale_(def.power.presenceScale), presenceMinOhms_(def.power.presenceMinOhms),
       rPresBottom_(b.rPresBottom), hasPresBottom_(b.hasPresBottom),
@@ -92,7 +92,7 @@ PowerAmp::PowerAmp(Built&& b, const AmpDef& def, double fs)
     for (std::size_t i = 0, n = std::size_t(supply_.settleSeconds * fs); i < n; ++i) process(0.0);
 }
 
-PowerAmp::PowerAmp(const AmpDef& def, double fs) : PowerAmp(build(def), def, fs) {}
+PowerAmp::PowerAmp(const AmpDef& def, double fs, bool useTables) : PowerAmp(build(def), def, fs, useTables) {}
 
 void PowerAmp::setKnobs(const std::vector<double>& values) {
     if (values.size() != knobs_.size()) throw std::invalid_argument("wrong number of power knob values");

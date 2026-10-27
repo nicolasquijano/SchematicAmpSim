@@ -48,7 +48,7 @@ TEST_CASE("chain equals the same primitives wired by hand (static settings)") {
     chain.setSettings(s);
 
     // The same wiring, written out with the engine pieces.
-    FullAmp amp(def, kFs * 2.0);
+    FullAmp amp(def, kFs * 2.0, false, true);  // the chain's Normal mode uses the triode tables
     amp.setKnobs(s.knobs, s.presence);
     amp.setJack(0);
     amp.setSourceOhms(def.preamp.sourceOhmsDefault);

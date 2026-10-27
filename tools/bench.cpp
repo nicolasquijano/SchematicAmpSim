@@ -88,6 +88,10 @@ int main() {
             sas::LiteAmp lite(def, fs);
             lite.setKnobs(knobs, def.power.presenceDefault);
             const double pl = percent([&] { for (double x : in) sink += lite.process(x); }, seconds);
+            sas::FullAmp tab(def, fs, false, true);  // full circuits, triodes through tables
+            tab.setKnobs(knobs, def.power.presenceDefault);
+            const double pt = percent([&] { for (double x : in) sink += tab.process(x); }, seconds);
+            std::printf("  %-7s tables-only full %6.1f %%\n", c.name, pt);
             sas::LiteAmp eco(def, fs, true);  // Lite power amp + triode tables
             eco.setKnobs(knobs, def.power.presenceDefault);
             const double pe = percent([&] { for (double x : in) sink += eco.process(x); }, seconds);

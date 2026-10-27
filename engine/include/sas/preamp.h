@@ -23,7 +23,8 @@ class Preamp {
 public:
     // railVolts overrides the rail supply's value in the netlists (the power amp drives it live).
     // useTables: evaluate the triodes through interpolation tables (the Eco modes).
-    Preamp(const AmpDef& def, double fs, double railVolts, bool useTables = false);
+    // splitStages: with useTables, also use the amp's finer-split Eco preamp when it has one.
+    Preamp(const AmpDef& def, double fs, double railVolts, bool useTables = false, bool splitStages = true);
 
     std::size_t knobCount() const { return knobs_.size(); }
     const std::vector<double>& knobs() const { return values_; }

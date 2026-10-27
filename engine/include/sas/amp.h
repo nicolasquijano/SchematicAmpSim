@@ -5,6 +5,7 @@
 
 #include <cmath>
 #include <cstdint>
+#include <type_traits>
 
 #include "sas/amp_def.h"
 #include "sas/poweramp.h"
@@ -18,8 +19,9 @@ class AmpT {
 public:
     // `fs` is the (already oversampled) rate the circuits run at.
     // eco: triodes through tables (see sas/tables.h); the circuits are otherwise the same.
-    AmpT(const AmpDef& def, double fs, bool eco = false)
-        : power_(def, fs), pre_(def, fs, power_.railX(), eco) {}
+    // tablesOnly: the full circuits with every triode through tables (cheaper, same sound within ~1e-6).
+    AmpT(const AmpDef& def, double fs, bool eco = false, bool tablesOnly = false)
+        : power_(makePower(def, fs, tablesOnly)), pre_(def, fs, power_.railX(), eco || tablesOnly, !tablesOnly) {}
 
     void setKnobs(const std::vector<double>& knobs, double presence, const std::vector<double>& powerKnobs = {}) {
         pre_.setKnobs(knobs);
@@ -48,6 +50,10 @@ public:
     Power& power() { return power_; }
 
 private:
+    static Power makePower(const AmpDef& def, double fs, bool tables) {
+        if constexpr (std::is_constructible_v<Power, const AmpDef&, double, bool>) return Power(def, fs, tables);
+        else return Power(def, fs);
+    }
     Power power_;  // declared first: the preamp's initial rail comes from it
     Preamp pre_;
 };

@@ -39,10 +39,10 @@ void Preamp::potValues(const Knob& k, double value, double minOhms, double& top,
     }
 }
 
-Preamp::Preamp(const AmpDef& def, double fs, double railVolts, bool useTables)
+Preamp::Preamp(const AmpDef& def, double fs, double railVolts, bool useTables, bool splitStages)
     : potMinOhms_(def.preamp.potMinOhms), sourceOhmsMin_(def.preamp.sourceOhmsMin), sourceOhms_(def.preamp.sourceOhmsDefault) {
     // The Eco modes use the amp's finer-split preamp when it defines one.
-    const PreampDef& pd = (useTables && def.hasEcoPreamp) ? def.ecoPreamp : def.preamp;
+    const PreampDef& pd = (useTables && splitStages && def.hasEcoPreamp) ? def.ecoPreamp : def.preamp;
 
     // Parse every stage's netlist.
     std::vector<ParsedNetlist> nets;

@@ -11,8 +11,9 @@ inline double dbToGain(double db) { return std::pow(10.0, db / 20.0); }
 
 Chain::Chain(const AmpDef& def, double fs)
     : def_(def), fs_(fs),
-      amp2_(std::make_unique<FullAmp>(def, fs * 2.0)),
-      amp4_(std::make_unique<FullAmp>(def, fs * 4.0)),
+      // Normal and High use the triode tables: the same sound within ~1e-6, noticeably cheaper.
+      amp2_(std::make_unique<FullAmp>(def, fs * 2.0, false, true)),
+      amp4_(std::make_unique<FullAmp>(def, fs * 4.0, false, true)),
       lite_(std::make_unique<LiteAmp>(def, fs * 2.0)),
       eco_(std::make_unique<LiteAmp>(def, fs * 2.0, true)),
       ts2_(fs * 2.0), ts4_(fs * 4.0), cab_(float(fs)) {
