@@ -1,0 +1,135 @@
+* Compressor pedal with an OTA gain cell, from the AionFX trace "Keeley Compressor Plus" schematic v1.0 (11/24/2023).
+*
+* How it works (read from the drawing):
+*  - Q3 buffers the input. The LM13700 sees the signal as a DIFFERENCE: the signal itself on the - input and, on the + input, the
+*    signal through R4 + R10 into a shunt (R28, and R29 || C17 in series with C18), so the OTA works on the high-passed part of the
+*    signal. Its diode-bias pin is not connected, so it has no linearising diodes and saturates (tanh) for signals beyond ~30 mV.
+*  - The OTA output current goes into R5 || C4 (about 150k and 1n, a low-pass near 1 kHz) and Q1. Q1 is a gain stage and a phase
+*    splitter at once: its collector (inverted) and its emitter (the compressed signal) feed the two halves of a full-wave
+*    envelope detector (C5 / Q2 / D3 and C7 / Q4 / D4), whose collectors discharge the envelope capacitor C6.
+*  - ENV (C6) normally sits at the supply, charged through R20 (and R58). Q5 follows it and sets the OTA bias current through
+*    R12 and the Sustain pot: more signal -> lower ENV -> less bias current -> less OTA gain. A feedback compressor.
+*  - The ATTACK switch shorts R58, so the envelope capacitor recovers through R20 alone (fast release) instead of R20 + R58.
+*  - The compressed signal goes C3 / R2 / C22 into IC3A, an inverting stage whose Tone network adds treble; the dry signal goes
+*    through IC2A (gain 1.37). BLEND mixes both into the inverting sum IC2B, then IC3B (inverting again), a 390 ohm resistor,
+*    C20 and the Level pot.
+*
+* Variable parts (set by the engine): RSUS (Sustain), SWATK (Attack switch), RTONE, RBT_TOP / RBT_BOT (Blend), RLV_TOP / RLV_BOT (Level).
+* The source resistance RSRC stands for the guitar and its cable.
+*
+* Assumptions where the drawing is silent (change them here, not in code):
+*  - MMBT6429: beta 500, reverse beta 4, Is 1e-14; 1N914 as the stock signal diode;
+*  - the OTA output stage runs out of room near the rails: two clamps (VCLH, VCLL) hold node n5 between about -0.2 V and 8.1 V;
+*  - the op-amp output stages are biased around a stiff 4.5 V reference (VREF); the half-supply divider VC (R9 / R11) is a
+*    separate, high-impedance node that the resistors of the audio stages return to.
+
+* Supply: 9 V; VB and VC are the filtered dividers R15 / R17 and R9 / R11.
+V VA va 1 9
+R R15 va vb 56k
+R R17 vb 0 27k
+C C21 vb 0 10u
+R R9 va vc 10k
+R R11 vc 0 10k
+C C15 vc 0 1u
+V VREF vr 1 4.5
+
+* Input.
+I VIN gin 1
+R RSRC gin in 7k
+R R26 in 0 1M
+C C14 in 0 150p
+
+* Q3 buffer: base biased from VB through R25 + R22 (C12 filters the middle), collector decoupled by C8.
+C C10 in n10 22n
+R R19 n10 b3 10k
+R R25 vb bm 470k
+C C12 bm 0 1u
+R R22 bm b3 470k
+R R18 va c3 10k
+C C8 c3 0 1u
+N Q3 b3 c3 e3 MMBT6429
+R R21 e3 0 10k
+C C11 e3 s 1u
+R R27 s 0 1M
+
+* OTA input: s on the - input; + input through R4 + R10 (J is biased through R14 + R13, C9 filters the middle).
+R R4 s j 1k
+R R14 va jm 220k
+C C9 jm 0 1u
+R R13 jm j 220k
+R R10 j p 1k
+R R28 p 0 1M
+R R29 p x29 15k
+C C17 p x29 10n
+C C18 x29 0 1u
+
+* OTA IC1A (LM13700): output n5, amplifier bias pin pin1 fed from Q5's emitter through the Sustain pot and R12.
+A IC1A p s n5 pin1 LM13700
+R R12 pin1 nsus 27k
+R RSUS nsus q5e 100k
+
+* OTA output load and the Q1 stage.
+R R5 vb n5 150k
+C C4 vb n5 1n
+V VCLH clh 1 7.5
+D DCH n5 clh SIGNAL
+V VCLL cll 1 0.4
+D DCL cll n5 SIGNAL
+N Q1 n5 c1 e1 MMBT6429
+R R6 va c1 10k
+R R3 e1 0 10k
+
+* Envelope detector: Q2 from Q1's collector, Q4 from its emitter; both discharge ENV.
+C C5 c1 b2 10n
+R R16 b2 0 1M
+D D3 0 b2 SIGNAL
+N Q2 b2 env 0 MMBT6429
+C C7 e1 b4 10n
+R R7 b4 0 1M
+D D4 0 b4 SIGNAL
+N Q4 b4 env 0 MMBT6429
+R R20 va ra 10k
+R R58 ra env 150k
+R SWATK ra env 1e12
+C C6 env 0 10u
+N Q5 env va q5e MMBT6429
+
+* Dry path: IC2A, a non-inverting stage biased by R46 / R45 (gain 1 + R30 / R31).
+C C13 in n13 22n
+R R24 n13 p2a 10k
+R R46 va p2a 1M
+R R45 p2a 0 1M
+O IC2A p2a m2a d2a vr RC4558
+R R31 vc m2a 27k
+R R30 m2a d2a 10k
+R R32 d2a bt 15k
+
+* Compressed path: from Q1's emitter into IC3A, an inverting stage; the Tone pot (a rheostat) feeds treble through C23.
+C C3 e1 n3 47n
+R R2 n3 n2 10k
+C C22 n2 xw 1u
+R R48 xw m3a 47k
+C C23 xw tc 6n8
+R RTONE tc tr 50k
+R R49 tr m3a 10k
+R R50 vc p3a 12k
+O IC3A p3a m3a w3a vr RC4558
+R R51 m3a w3a 47k
+C C34 m3a w3a 47p
+R R34 w3a bb 15k
+
+* Blend pot (wiper to VC), the inverting sum IC2B, the inverting buffer IC3B, and the Level pot.
+R RBT_TOP bt vc 5k
+R RBT_BOT vc bb 5k
+R R33 bt m6 15k
+R R35 bb m6 15k
+O IC2B vc m6 o2b vr RC4558
+R R36 m6 o2b 100k
+R R23 o2b m3b 10k
+O IC3B vc m3b o3b vr RC4558
+R R37 m3b o3b 10k
+R R56 o3b n20 390
+C C20 n20 lv 47n
+R RLV_TOP lv out 50k
+R RLV_BOT out 0 50k
+R RLOAD out 0 1M

@@ -227,6 +227,64 @@ struct BjtModel {
     }
 };
 
+// Ebers-Moll NPN with both junctions, so it saturates (the forward-active BjtModel cannot). The two junction currents are the
+// state of the device: jf (base to emitter) and jr (base to collector); the terminal currents follow from them:
+//   Ib = jf / bf + jr / br,   Ic = jf - jr (1 + 1 / br),   Ie = -(Ib + Ic).
+struct NpnModel {
+    double is, bf, br, nvt;
+
+    struct Eval { double jf, jr, gf, gr; };
+
+    // MMBT6429 (high gain, low noise): hFE a few hundred at 1 mA, a poor reverse beta.
+    static constexpr NpnModel mmbt6429() { return {1e-14, 500.0, 4.0, 0.02585}; }
+
+    Eval eval(double vbe, double vbc) const {
+        auto junction = [&](double v, double& i, double& g) {
+            const double vcrit = 30.0 * nvt;
+            if (v > vcrit) {
+                const double e = std::exp(vcrit / nvt);
+                g = is * e / nvt;
+                i = is * (e - 1.0) + g * (v - vcrit);
+            } else {
+                const double e = std::exp(v / nvt);
+                i = is * (e - 1.0);
+                g = is * e / nvt;
+            }
+        };
+        Eval r{};
+        junction(vbe, r.jf, r.gf);
+        junction(vbc, r.jr, r.gr);
+        return r;
+    }
+};
+
+// Operational transconductance amplifier (LM13700 type) with its diode-biased amplifier-bias pin: the control pin conducts like
+// two diodes in series, i1 = is1 (exp(v1 / n1vt) - 1), the external resistor sets that current, and the output current is
+// iout = i1 tanh(vd / (2 vt)) for the differential input vd (no linearising diodes, so it saturates for signals beyond ~30 mV).
+struct OtaModel {
+    double is1, n1vt, vt;
+
+    struct Eval { double i1, g1, iout, dvd, dv1; };
+
+    static constexpr OtaModel lm13700() { return {8.3e-15, 0.0517, 0.02585}; }
+
+    Eval eval(double vd, double v1) const {
+        const double vcrit = 30.0 * n1vt;
+        double i1, g1;
+        if (v1 > vcrit) {
+            const double e = std::exp(vcrit / n1vt);
+            g1 = is1 * e / n1vt;
+            i1 = is1 * (e - 1.0) + g1 * (v1 - vcrit);
+        } else {
+            const double e = std::exp(v1 / n1vt);
+            i1 = is1 * (e - 1.0);
+            g1 = is1 * e / n1vt;
+        }
+        const double t = std::tanh(vd / (2.0 * vt));
+        return {i1, g1, i1 * t, i1 * (1.0 - t * t) / (2.0 * vt), g1 * t};
+    }
+};
+
 // Op-amp as gm into a dominant-pole node, then a tanh output stage around the reference node.
 struct OpampModel {
     double gm, a0, gbw, rout, vsat;

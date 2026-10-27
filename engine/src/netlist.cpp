@@ -215,6 +215,8 @@ struct Parser {
             return false;
         };
         auto bjtModel = [](const std::string& n, BjtModel& m) { if (n == "C1815") { m = BjtModel::c1815(); return true; } return false; };
+        auto npnModel = [](const std::string& n, NpnModel& m) { if (n == "MMBT6429") { m = NpnModel::mmbt6429(); return true; } return false; };
+        auto otaModel = [](const std::string& n, OtaModel& m) { if (n == "LM13700") { m = OtaModel::lm13700(); return true; } return false; };
         auto opampModel = [](const std::string& n, OpampModel& m) { if (n == "RC4558") { m = OpampModel::rc4558(); return true; } return false; };
 
         auto unique = [&](auto& registry) {
@@ -249,6 +251,14 @@ struct Parser {
             case 'Q':
                 need(t, 6, "Q name b c e MODEL");
                 c.bjt(node(t[2]), node(t[3]), node(t[4]), model<BjtModel>(t[5], bjtModel));
+                break;
+            case 'N':
+                need(t, 6, "N name b c e MODEL");
+                c.npn(node(t[2]), node(t[3]), node(t[4]), model<NpnModel>(t[5], npnModel));
+                break;
+            case 'A':
+                need(t, 7, "A name plus minus out ctrl MODEL");
+                c.ota(node(t[2]), node(t[3]), node(t[4]), node(t[5]), model<OtaModel>(t[6], otaModel));
                 break;
             case 'O':
                 need(t, 7, "O name plus minus out vref MODEL");

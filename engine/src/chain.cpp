@@ -16,7 +16,7 @@ Chain::Chain(const AmpDef& def, double fs)
       amp4_(std::make_unique<FullAmp>(def, fs * 4.0, false, true)),
       lite_(std::make_unique<LiteAmp>(def, fs * 2.0)),
       eco_(std::make_unique<LiteAmp>(def, fs * 2.0, true)),
-      ts2_(fs * 2.0), ts4_(fs * 4.0), cab_(float(fs)) {
+      ts2_(fs * 2.0), ts4_(fs * 4.0), cab_(float(fs)), comp_(fs) {
     ampTrim_ = float(dbToGain(def.outputDb));
     speaker_.prepare(fs);
     noise2_.prepare(fs * 2.0, def.power.supply.mainsHz);
@@ -61,6 +61,8 @@ void Chain::setSettings(const ChainSettings& s) {
     target_.jack = std::min(s.jack, def_.preamp.jacks.size() - 1);
     target_.cabFilter = s.cabFilter;
     target_.tsOn = s.tsOn;
+    target_.compOn = s.compOn;
+    if (s.compOn) comp_.setControls(s.comp);  // the circuit is only touched while the pedal is on
     target_.pickup = s.pickup;
     speaker_.setAmount(s.speaker, s.speakerIntense);
     noise2_.setLevel(s.noise);
@@ -112,8 +114,10 @@ void Chain::processAmp(const float* mono, float* out, std::size_t n) {
     }
     const Quality quality = active_;
     const bool tsOn = target_.tsOn;
+    const bool compOn = target_.compOn;
+    const bool pedalOn = tsOn || compOn;  // a pedal in front of the amp replaces the guitar's own impedance
     const bool cabOn = target_.cabFilter;
-    const double sourceOhms = tsOn ? kTsOutputOhms : def_.preamp.sourceOhmsDefault;
+    const double sourceOhms = pedalOn ? kTsOutputOhms : def_.preamp.sourceOhmsDefault;
     std::size_t sinceUpdate = kControlEvery;
 
     for (std::size_t i = 0; i < n; ++i) {
@@ -132,7 +136,7 @@ void Chain::processAmp(const float* mono, float* out, std::size_t n) {
                     amp2_->setJack(target_.jack);
                     amp2_->setVibrato(target_.vibratoOn, target_.vibratoSpeed);
                     amp2_->setSourceOhms(sourceOhms);
-                    amp2_->setGuitar(target_.pickup, target_.cableMeters, tsOn);
+                    amp2_->setGuitar(target_.pickup, target_.cableMeters, pedalOn);
                     ts2_.setControls(ts);
                     break;
                 case Quality::High:
@@ -141,7 +145,7 @@ void Chain::processAmp(const float* mono, float* out, std::size_t n) {
                     amp4_->setJack(target_.jack);
                     amp4_->setVibrato(target_.vibratoOn, target_.vibratoSpeed);
                     amp4_->setSourceOhms(sourceOhms);
-                    amp4_->setGuitar(target_.pickup, target_.cableMeters, tsOn);
+                    amp4_->setGuitar(target_.pickup, target_.cableMeters, pedalOn);
                     ts4_.setControls(ts);
                     break;
                 case Quality::Lite:
@@ -149,7 +153,7 @@ void Chain::processAmp(const float* mono, float* out, std::size_t n) {
                     lite_->setJack(target_.jack);
                     lite_->setVibrato(target_.vibratoOn, target_.vibratoSpeed);
                     lite_->setSourceOhms(sourceOhms);
-                    lite_->setGuitar(target_.pickup, target_.cableMeters, tsOn);
+                    lite_->setGuitar(target_.pickup, target_.cableMeters, pedalOn);
                     ts2_.setControls(ts);
                     break;
                 case Quality::Eco:
@@ -157,7 +161,7 @@ void Chain::processAmp(const float* mono, float* out, std::size_t n) {
                     eco_->setJack(target_.jack);
                     eco_->setVibrato(target_.vibratoOn, target_.vibratoSpeed);
                     eco_->setSourceOhms(sourceOhms);
-                    eco_->setGuitar(target_.pickup, target_.cableMeters, tsOn);
+                    eco_->setGuitar(target_.pickup, target_.cableMeters, pedalOn);
                     ts2_.setControls(ts);
                     break;
             }
@@ -165,7 +169,8 @@ void Chain::processAmp(const float* mono, float* out, std::size_t n) {
         }
         ++sinceUpdate;
 
-        const float vin = float(double(mono[i]) * dbToGain(inputDb_.next()));
+        float vin = float(double(mono[i]) * dbToGain(inputDb_.next()));
+        if (compOn) vin = float(comp_.process(double(vin)));
         // The pedal sits in front of the amp, inside the oversampled loop; it costs nothing while off.
         // `comp` is the jack's level match: extra gain at the amp's input (after the pedal), 1 when off.
         const double comp = dbToGain(jackCompDb_.next());

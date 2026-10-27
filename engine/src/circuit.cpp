@@ -87,6 +87,18 @@ void Circuit::bjt(Node b, Node c, Node e, const BjtModel& model) {
     devices_.push_back(d);
 }
 
+void Circuit::npn(Node b, Node c, Node e, const NpnModel& model) {
+    Dev d{Kind::Npn};
+    d.a = b; d.b = c; d.c = e; d.npn = model;
+    devices_.push_back(d);
+}
+
+void Circuit::ota(Node plus, Node minus, Node out, Node ctrl, const OtaModel& model) {
+    Dev d{Kind::Ota};
+    d.a = plus; d.b = minus; d.c = out; d.d = ctrl; d.ota = model;
+    devices_.push_back(d);
+}
+
 void Circuit::vccs(Node into, Node ctrlPlus, Node ctrlMinus, double gm) {
     vccs_.push_back({into, ctrlPlus, ctrlMinus, gm});
 }
@@ -169,6 +181,23 @@ Solver::Solver(Circuit circuit, double fs, bool useTables)
                 ports = {Port{d.a, d.b, {{d.c, -1.0}}}}; np = 1;
                 gridPort_.push_back(0);
                 gridUpLimit_.push_back(std::numeric_limits<double>::infinity());
+                break;
+            case Circuit::Kind::Npn:
+                // Ports: base-emitter and base-collector junctions; their currents are the junction currents jf and jr.
+                ports = {Port{d.a, d.c, {{d.a, 1.0 / d.npn.bf}, {d.b, 1.0}, {d.c, -(1.0 + 1.0 / d.npn.bf)}}},
+                         Port{d.a, d.b, {{d.a, 1.0 / d.npn.br}, {d.b, -(1.0 + 1.0 / d.npn.br)}, {d.c, 1.0}}}};
+                np = 2;
+                gridPort_.insert(gridPort_.end(), {0, 0});
+                gridUpLimit_.insert(gridUpLimit_.end(), {std::numeric_limits<double>::infinity(), std::numeric_limits<double>::infinity()});
+                break;
+            case Circuit::Kind::Ota:
+                // Ports: the differential input (no current), the control pin to ground (the biasing junction), and the output node
+                // to ground, whose current is the transconductance output flowing into the node.
+                ports = {Port{d.a, d.b, {}}, Port{d.d, GND, {{d.d, 1.0}}}, Port{d.c, GND, {{d.c, -1.0}}}};
+                np = 3;
+                gridPort_.insert(gridPort_.end(), {0, 0, 0});
+                gridUpLimit_.insert(gridUpLimit_.end(), {std::numeric_limits<double>::infinity(), std::numeric_limits<double>::infinity(),
+                                                        std::numeric_limits<double>::infinity()});
                 break;
         }
         for (std::size_t m = 0; m < np; ++m)
@@ -407,6 +436,29 @@ double Solver::eval(bool useTrial) {
                 const auto e = d.dev.opamp.stage(xs[b]);
                 ivec_[b] = e.i;
                 der_[d.derOff] = e.g;
+                break;
+            }
+            case Circuit::Kind::Npn: {
+                // xs[b] = vbe, xs[b + 1] = vbc; currents are the junction currents, so the Jacobian is diagonal.
+                const auto e = d.dev.npn.eval(xs[b], xs[b + 1]);
+                ivec_[b] = e.jf;
+                ivec_[b + 1] = e.jr;
+                der_[d.derOff] = e.gf;
+                der_[d.derOff + 1] = 0.0;
+                der_[d.derOff + 2] = 0.0;
+                der_[d.derOff + 3] = e.gr;
+                break;
+            }
+            case Circuit::Kind::Ota: {
+                // xs[b] = vd, xs[b + 1] = v(ctrl), xs[b + 2] = v(out) (the output current does not depend on it).
+                const auto e = d.dev.ota.eval(xs[b], xs[b + 1]);
+                ivec_[b] = 0.0;
+                ivec_[b + 1] = e.i1;
+                ivec_[b + 2] = e.iout;
+                for (std::size_t m = 0; m < 9; ++m) der_[d.derOff + m] = 0.0;
+                der_[d.derOff + 4] = e.g1;     // d i1 / d v1
+                der_[d.derOff + 6] = e.dvd;    // d iout / d vd
+                der_[d.derOff + 7] = e.dv1;    // d iout / d v1
                 break;
             }
         }

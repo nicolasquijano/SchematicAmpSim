@@ -41,6 +41,7 @@ VST3 for Windows, built with C++17 and [JUCE](https://juce.com).
   `engine/src/condition.cpp`). `tools/sas_bias_cal` computes the `bias_scale` of each alternative tube.
 - **Cabinet page:** off, a simple filter, or two impulse responses (A and B, each with its response curve) mixed with an equal-power blend; both are stored inside the project. Speaker dynamics sit between the amp and the cabinet: cone excursion (the motor force falls and the suspension stiffens as the cone is pushed), voice-coil heating and cone break-up, with an Intense mode. The values are typical figures, tuned by ear.
 - **Tube-screamer style pedal** in front of the amp (drive, tone, level).
+- **Compressor pedal** (Effects page, in front of everything else), solved as a circuit from a transcription of the Keeley Compressor Plus schematic (AionFX trace v1.0, `engine/data/compressor.net`): an LM13700 OTA gain cell, a transistor full-wave envelope detector and the feedback that closes the loop, with Sustain, Blend, Tone, Level and the Attack switch (which in the circuit selects fast or slow release). It needed two new devices in the engine: an Ebers-Moll NPN that saturates and the OTA. It costs about 15 % of a core while on. The transistor, OTA and diode values are typical figures; the drawing prints none.
 - **Level matching** across amps, jacks and modes, so switching does not jump in volume.
 - Fast parameter smoothing, no allocations on the audio thread; switching amps builds the new
   circuits on a worker thread and swaps them in without stopping audio.

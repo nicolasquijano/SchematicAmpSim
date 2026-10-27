@@ -309,9 +309,11 @@ SasEditor::SasEditor(SasProcessor& p)
       input_(p.apvts, ids::input, "INPUT dB"), output_(p.apvts, ids::output, "OUTPUT dB"),
       tsDrive_(p.apvts, ids::tsDrive, "DRIVE"), tsTone_(p.apvts, ids::tsTone, "TONE"), tsLevel_(p.apvts, ids::tsLevel, "LEVEL"),
       gateThreshold_(p.apvts, ids::gateThreshold, "THRESHOLD"), gateRelease_(p.apvts, ids::gateRelease, "RELEASE"), cable_(p.apvts, ids::cable, "CABLE m"),
-      bias_(p.apvts, ids::bias, "BIAS"), wear_(p.apvts, ids::wear, "WEAR"), speaker_(p.apvts, ids::speaker, "SPEAKER"), blend_(p.apvts, ids::irBlend, "BLEND") {
+      bias_(p.apvts, ids::bias, "BIAS"), wear_(p.apvts, ids::wear, "WEAR"), speaker_(p.apvts, ids::speaker, "SPEAKER"), blend_(p.apvts, ids::irBlend, "BLEND"),
+      compSustain_(p.apvts, ids::compSustain, "SUSTAIN"), compBlend_(p.apvts, ids::compBlend, "BLEND"), compTone_(p.apvts, ids::compTone, "TONE"),
+      compLevel_(p.apvts, ids::compLevel, "LEVEL") {
     setLookAndFeel(&look_);
-    for (auto* k : {&input_, &output_, &tsDrive_, &tsTone_, &tsLevel_, &gateThreshold_, &gateRelease_, &cable_, &bias_, &wear_, &speaker_, &blend_}) addAndMakeVisible(*k);
+    for (auto* k : {&input_, &output_, &tsDrive_, &tsTone_, &tsLevel_, &gateThreshold_, &gateRelease_, &cable_, &bias_, &wear_, &speaker_, &blend_, &compSustain_, &compBlend_, &compTone_, &compLevel_}) addAndMakeVisible(*k);
     addAndMakeVisible(inBar_);
     addAndMakeVisible(tubes_);
     addAndMakeVisible(outBar_);
@@ -364,6 +366,11 @@ SasEditor::SasEditor(SasProcessor& p)
     tsOnAtt_ = std::make_unique<juce::AudioProcessorValueTreeState::ButtonAttachment>(p.apvts, ids::tsOn, tsOn_);
     addAndMakeVisible(gateOn_);
     gateOnAtt_ = std::make_unique<juce::AudioProcessorValueTreeState::ButtonAttachment>(p.apvts, ids::gateOn, gateOn_);
+    addAndMakeVisible(compOn_);
+    compOnAtt_ = std::make_unique<juce::AudioProcessorValueTreeState::ButtonAttachment>(p.apvts, ids::compOn, compOn_);
+    addAndMakeVisible(compFast_);
+    compFast_.setTooltip("Fast release: the pedal's Attack switch (the envelope recovers through 10k instead of 160k)");
+    compFastAtt_ = std::make_unique<juce::AudioProcessorValueTreeState::ButtonAttachment>(p.apvts, ids::compFast, compFast_);
     addAndMakeVisible(speakerIntense_);
     speakerIntense_.setTooltip("Stronger cone, heating and break-up effects");
     speakerIntenseAtt_ = std::make_unique<juce::AudioProcessorValueTreeState::ButtonAttachment>(p.apvts, ids::speakerIntense, speakerIntense_);
@@ -679,17 +686,32 @@ void SasEditor::resized() {
     for (auto* c : std::initializer_list<juce::Component*>{&input_, &output_, &inBar_, &outBar_, &tubes_, &cable_, &pickup_, &pickupCaption_}) c->setVisible(ampPage);
     for (auto* c : std::initializer_list<juce::Component*>{&cabCaption_, &cab_, &speaker_, &speakerIntense_, &blend_, &blendNote_, &loadA_, &clearA_, &nameA_, &curveA_,
                                                            &loadB_, &clearB_, &nameB_, &curveB_, &cabNote_}) c->setVisible(cabPage);
-    for (auto* c : std::initializer_list<juce::Component*>{&tsOn_, &tsDrive_, &tsTone_, &tsLevel_, &gateOn_, &gateThreshold_, &gateRelease_,
+    for (auto* c : std::initializer_list<juce::Component*>{&compOn_, &compFast_, &compSustain_, &compBlend_, &compTone_, &compLevel_, &tsOn_, &tsDrive_, &tsTone_, &tsLevel_, &gateOn_, &gateThreshold_, &gateRelease_,
                                                            &bias_, &wear_, &tube_, &noise_, &unit_, &tubeCaption_, &noiseCaption_, &unitCaption_, &idleLabel_, &conditionNote_}) c->setVisible(fxPage);
 
     if (fxPage) {
-        // Effects page: one panel per effect, side by side; only the overdrive for now.
-        const int knobW = std::clamp(area.getWidth() / 8, 70, 110);
-        auto fxRow = area.removeFromTop(std::min(area.getHeight(), 190));
+        // Effects page, in signal order: compressor, overdrive, noise gate; below them the state of the amp itself.
+        const int knobW = std::clamp((area.getWidth() - 2 * gap - 36) / 9, 50, 110);
+        const int condKnobW = 75;
+        auto fxRow = area.removeFromTop(std::min(area.getHeight(), 160));
+        auto compPanel = fxRow.removeFromLeft(knobW * 4 + 12);
+        fxRow.removeFromLeft(gap);
         auto tsPanel = fxRow.removeFromLeft(knobW * 3 + 12);
         fxRow.removeFromLeft(gap);
         auto gatePanel = fxRow.removeFromLeft(knobW * 2 + 12);
-        panels_.push_back({gatePanel, "NOISE GATE"});
+        panels_.push_back({compPanel, "COMPRESSOR"});
+        {
+            auto cin = compPanel.reduced(6, 4);
+            auto chead = cin.removeFromTop(20);
+            compOn_.setBounds(chead.removeFromRight(56));
+            compFast_.setBounds(chead.removeFromRight(62));
+            const int w = cin.getWidth() / 4;
+            compSustain_.setBounds(cin.removeFromLeft(w));
+            compBlend_.setBounds(cin.removeFromLeft(w));
+            compTone_.setBounds(cin.removeFromLeft(w));
+            compLevel_.setBounds(cin);
+        }
+        panels_.push_back({gatePanel, "GATE"});
         {
             auto gin = gatePanel.reduced(6, 4);
             auto ghead = gin.removeFromTop(20);
@@ -709,17 +731,17 @@ void SasEditor::resized() {
             tubeCaption_.setBounds(col1.removeFromTop(16));
             tube_.setBounds(col1.removeFromTop(24));
             idleLabel_.setBounds(col1.removeFromTop(20));
-            bias_.setBounds(cin.removeFromLeft(knobW));
+            bias_.setBounds(cin.removeFromLeft(condKnobW));
             auto col2 = cin.removeFromLeft(120);
             col2.removeFromLeft(10);
             noiseCaption_.setBounds(col2.removeFromTop(16));
             noise_.setBounds(col2.removeFromTop(24));
-            wear_.setBounds(cin.removeFromLeft(knobW));
+            wear_.setBounds(cin.removeFromLeft(condKnobW));
             auto col3 = cin.removeFromLeft(110);
             unitCaption_.setBounds(col3.removeFromTop(16));
             unit_.setBounds(col3.removeFromTop(24));
         }
-        panels_.push_back({tsPanel, "OVERDRIVE - TS808 STYLE"});
+        panels_.push_back({tsPanel, "OVERDRIVE - TS808"});
         auto in = tsPanel.reduced(6, 4);
         auto head = in.removeFromTop(20);
         tsOn_.setBounds(head.removeFromRight(56));

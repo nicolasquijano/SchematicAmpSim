@@ -25,7 +25,7 @@ struct SrcId { std::size_t i; };
 
 class Circuit {
 public:
-    enum class Kind { Triode, Pentode, Diode, Bjt, OpampOut };
+    enum class Kind { Triode, Pentode, Diode, Bjt, OpampOut, Npn, Ota };
     struct Dev {
         Kind kind;
         Node a = 0, b = 0, c = 0, d = 0;  // triode g,p,k | pentode g1,p,g2,k | diode a,k | bjt b,c,e | opamp sense,ref,out
@@ -35,6 +35,8 @@ public:
         DiodeModel diode{};
         BjtModel bjt{};
         OpampModel opamp{};
+        NpnModel npn{};
+        OtaModel ota{};  // Ota: a = plus, b = minus, c = out, d = control pin
     };
     struct Source { Node node; double ohms; double dc; };
     struct CoupledDef {
@@ -63,6 +65,9 @@ public:
     void pentode(Node g1, Node p, Node g2, Node k, const PentodeModel& model, double scale);
     void diode(Node anode, Node cathode, const DiodeModel& model);
     void bjt(Node b, Node c, Node e, const BjtModel& model);
+    void npn(Node b, Node c, Node e, const NpnModel& model);
+    // Transconductance amplifier: output current into `out`, set by v(plus) - v(minus) and the current in the control pin `ctrl`.
+    void ota(Node plus, Node minus, Node out, Node ctrl, const OtaModel& model);
     // gm * (v(ctrlPlus) - v(ctrlMinus)) amps injected into `into`.
     void vccs(Node into, Node ctrlPlus, Node ctrlMinus, double gm);
     // Op-amp biased around vref; inputs draw no current.

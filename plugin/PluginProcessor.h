@@ -49,6 +49,12 @@ inline constexpr const char* tube = "tube";    // output tube type (index into t
 inline constexpr const char* noise = "noise";  // hiss and hum: Off / Low / Real
 inline constexpr const char* wear = "wear";    // 0..10 tenths of wear
 inline constexpr const char* unit = "unit";    // 0 = ideal parts, 1..9 = an individual unit
+inline constexpr const char* compOn = "comp_on";            // compressor pedal
+inline constexpr const char* compSustain = "comp_sustain";
+inline constexpr const char* compBlend = "comp_blend";
+inline constexpr const char* compTone = "comp_tone";
+inline constexpr const char* compLevel = "comp_level";
+inline constexpr const char* compFast = "comp_fast";        // the pedal's Attack switch: fast release
 inline constexpr const char* irBlend = "ir_blend";  // 0 = impulse response A only, 10 = B only
 inline constexpr const char* speaker = "speaker";               // speaker dynamics amount, 0..10
 inline constexpr const char* speakerIntense = "speaker_intense";  // stronger speaker dynamics

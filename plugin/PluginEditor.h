@@ -138,6 +138,7 @@ private:
     KnobWithLabel tsDrive_, tsTone_, tsLevel_;
     KnobWithLabel gateThreshold_, gateRelease_, cable_;
     KnobWithLabel bias_, wear_, speaker_, blend_;
+    KnobWithLabel compSustain_, compBlend_, compTone_, compLevel_;
     LevelBar inBar_, outBar_;
     TubeGlow tubes_;
     int tick_ = 0;
@@ -149,9 +150,10 @@ private:
     juce::ToggleButton tsOn_{"On"};
     juce::ToggleButton gateOn_{"On"};
     juce::ToggleButton speakerIntense_{"Intense"};
+    juce::ToggleButton compOn_{"On"}, compFast_{"Fast"};
     juce::ToggleButton levelMatch_{"Level match"};  // shown only for amps whose jacks differ in level
     juce::ToggleButton vibrato_{"Vibrato"};  // shown only for amps that have an optical tremolo
-    std::unique_ptr<juce::AudioProcessorValueTreeState::ButtonAttachment> tsOnAtt_, gateOnAtt_, speakerIntenseAtt_, levelMatchAtt_, vibratoAtt_;
+    std::unique_ptr<juce::AudioProcessorValueTreeState::ButtonAttachment> tsOnAtt_, gateOnAtt_, speakerIntenseAtt_, compOnAtt_, compFastAtt_, levelMatchAtt_, vibratoAtt_;
     juce::TextButton ampTab_{"Amp"}, cabTab_{"Cabinet"}, fxTab_{"Effects"};
     juce::TextButton loadA_{"Load..."}, clearA_{"Clear"}, loadB_{"Load..."}, clearB_{"Clear"};
     IrCurve curveA_, curveB_;

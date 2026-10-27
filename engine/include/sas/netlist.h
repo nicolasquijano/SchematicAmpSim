@@ -9,6 +9,8 @@
 //   P name g1 p g2 k MODEL scale   pentode, `scale` identical tubes in parallel
 //   D name anode cathode MODEL     diode    Q name b c e MODEL   NPN (forward-active)
 //   O name plus minus out vref MODEL        op-amp biased around vref
+//   N name b c e MODEL                      Ebers-Moll NPN (both junctions: saturates)
+//   A name plus minus out ctrl MODEL        transconductance amplifier (OTA): output current into `out`, bias current in `ctrl`
 //   G name into cp cn gm           voltage-controlled current source
 //   V name node ohms volts         DC supply behind `ohms`
 //   S name node ohms dc            source driven at run time (dc = its value for the DC solve)
@@ -18,7 +20,7 @@
 //
 // Node "0" or "gnd" is ground. A value is an expression without spaces: numbers with an SI suffix
 // (k M G m u n p f; M is mega, m is milli; the schematic form 4k7 = 4.7k, 1M0 = 1M also works), parameters, + - * / ( ) and sqrt exp ln abs.
-// MODEL is a built-in name: 12AX7, 12AT7, 12AY7, 6550DS (data sheet fits), ECC83, ECC81, EL34, 6550 (stock Koren), 6L6GC, 6L6GCDS (data sheet fit), EL84, 6V6GT, SIGNAL, RECTIFIER_BRIDGE, C1815, RC4558.
+// MODEL is a built-in name: 12AX7, 12AT7, 12AY7, 6550DS (data sheet fits), ECC83, ECC81, EL34, 6550 (stock Koren), 6L6GC, 6L6GCDS (data sheet fit), EL84, 6V6GT, SIGNAL, RECTIFIER_BRIDGE, C1815, MMBT6429 (N), LM13700 (A), RC4558.
 
 #include <map>
 #include <stdexcept>

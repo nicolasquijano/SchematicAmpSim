@@ -73,6 +73,12 @@ Layout SasProcessor::createLayout(const std::vector<sas::AmpDef>& defs) {
                                                        juce::AudioParameterFloatAttributes().withLabel("dB").withStringFromValueFunction([](float v, int) { return juce::String(v, 0); })));
     l.add(std::make_unique<juce::AudioParameterFloat>(juce::ParameterID{ids::gateRelease, kVersion}, "Gate release", juce::NormalisableRange<float>(20.0f, 500.0f, 0.0f, 0.5f), 120.0f,
                                                        juce::AudioParameterFloatAttributes().withLabel("ms").withStringFromValueFunction([](float v, int) { return juce::String(v, 0); })));
+    l.add(std::make_unique<juce::AudioParameterBool>(juce::ParameterID{ids::compOn, kVersion}, "Compressor", false));
+    l.add(knob(ids::compSustain, "Compressor sustain", 5.0f));
+    l.add(knob(ids::compBlend, "Compressor blend", 7.0f));
+    l.add(knob(ids::compTone, "Compressor tone", 5.0f));
+    l.add(knob(ids::compLevel, "Compressor level", 7.5f));
+    l.add(std::make_unique<juce::AudioParameterBool>(juce::ParameterID{ids::compFast, kVersion}, "Compressor fast release", false));
     l.add(knob(ids::irBlend, "IR blend", 5.0f));
     l.add(knob(ids::speaker, "Speaker dynamics", 0.0f));
     l.add(std::make_unique<juce::AudioParameterBool>(juce::ParameterID{ids::speakerIntense, kVersion}, "Speaker dynamics intense", false));
@@ -247,6 +253,12 @@ sas::ChainSettings SasProcessor::readSettings(bool irAvailable) {
     s.tsTone = raw(ids::tsTone) / 10.0;
     s.tsLevel = raw(ids::tsLevel) / 10.0;
     s.bias = 0.75 + 0.05 * raw(ids::bias);
+    s.compOn = raw(ids::compOn) > 0.5;
+    s.comp.sustain = raw(ids::compSustain) / 10.0;
+    s.comp.blend = raw(ids::compBlend) / 10.0;
+    s.comp.tone = raw(ids::compTone) / 10.0;
+    s.comp.level = raw(ids::compLevel) / 10.0;
+    s.comp.fastRelease = raw(ids::compFast) > 0.5;
     s.speaker = raw(ids::speaker) / 10.0;
     s.speakerIntense = raw(ids::speakerIntense) > 0.5;
     s.noise = std::array<double, 3>{0.0, 0.5, 1.0}[std::size_t(juce::jlimit(0, 2, int(raw(ids::noise) + 0.5)))];

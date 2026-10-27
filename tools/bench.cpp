@@ -12,6 +12,7 @@
 #include "sas/amp.h"
 #include "sas/embedded_amps.h"
 #include "sas/profile.h"
+#include "sas/compressor.h"
 #include "sas/ts808_fast.h"
 
 namespace {
@@ -126,6 +127,14 @@ int main() {
         sas::TubeScreamerFast ts(fs);
         const double p = percent([&] { for (double x : in) sink += ts.process(x); }, seconds);
         std::printf("ts808   fast %5.2f %%\n", p);
+    }
+    {
+        // The compressor pedal circuit runs at the host rate (half of the benchmark's 96 kHz), so it is timed on 48 kHz audio.
+        const std::size_t n48 = std::size_t(48000.0 * seconds);
+        const auto in48 = signal(0.1, n48, 48000.0);
+        sas::Compressor comp(48000.0);
+        const double p = percent([&] { for (double x : in48) sink += comp.process(x); }, seconds);
+        std::printf("compressor pedal (circuit, 48 kHz) %5.2f %%  (%.1f it/sample)\n", p, double(comp.solver().newtonIterations) / double(n48));
     }
     std::printf("(checksum %g)\n", sink);
 }
