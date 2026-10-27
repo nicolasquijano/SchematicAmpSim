@@ -78,14 +78,14 @@ private:
     std::vector<std::unique_ptr<KnobWithLabel>> ampKnobs_;  // first row, from the amp's "ui" block
     KnobWithLabel input_, output_;
     KnobWithLabel tsDrive_, tsTone_, tsLevel_;
-    KnobWithLabel gateThreshold_, gateRelease_;
+    KnobWithLabel gateThreshold_, gateRelease_, cable_;
     LevelBar inBar_, outBar_;
     int tick_ = 0;
 
     juce::ListBox ampList_{"amps", nullptr};
-    juce::ComboBox quality_, jack_, cab_;
-    std::unique_ptr<juce::AudioProcessorValueTreeState::ComboBoxAttachment> qualityAtt_, cabAtt_;
-    juce::Label ampCaption_, qualityCaption_, jackCaption_, cabCaption_, irName_;
+    juce::ComboBox quality_, jack_, cab_, pickup_;
+    std::unique_ptr<juce::AudioProcessorValueTreeState::ComboBoxAttachment> qualityAtt_, cabAtt_, pickupAtt_;
+    juce::Label ampCaption_, qualityCaption_, jackCaption_, cabCaption_, pickupCaption_, irName_;
     juce::ToggleButton tsOn_{"On"};
     juce::ToggleButton gateOn_{"On"};
     juce::ToggleButton levelMatch_{"Level match"};  // shown only for amps whose jacks differ in level

@@ -14,6 +14,27 @@ V VRAIL x 100 375
 * The guitar behind a variable source resistance, then the jack switches.
 I VIN gin 1
 R RSRC gin in 7k
+* The guitar behind its source impedance. RSRC is the plain 7k source: the "Off" setting, and what a pedal in front of the amp
+* looks like. A pickup replaces it with its own impedance as seen from the open-circuit voltage (the recording): the
+* coil (winding resistance RPU + inductance) in parallel with its winding capacitance CPU and an eddy-current loss resistor
+* RPL, then the cable capacitance (200 pF per 2 m, switched in steps of 200, 400 and 800 pF). The engine sets the values:
+* single coil = coil 1 (2.5 H), humbucker and P-90 = coil 2 (5 H) with their own resistances; open = 1e12.
+R RPU1 gin pkb1 1e12
+.xfmr LPU1 L=2.5
+  W pkb1 in 1 pu
+.end
+R RPU2 gin pkb2 1e12
+.xfmr LPU2 L=5
+  W pkb2 in 1 pu
+.end
+C CPU gin in 110p
+R RPL gin in 1e12
+R SWK1 in pkk1 1e12
+C CCAB1 pkk1 0 200p
+R SWK2 in pkk2 1e12
+C CCAB2 pkk2 0 400p
+R SWK4 in pkk4 1e12
+C CCAB4 pkk4 0 800p
 
 * Supply filtering: 10k/1W + 50 uF per stage (x -> V2 rail -> V1 rail).
 R R_B x nb 10k

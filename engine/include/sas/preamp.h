@@ -40,6 +40,10 @@ public:
     }
     // ~7 kohm for a guitar, far less behind a pedal.
     void setSourceOhms(double ohms);
+    // The guitar's own impedance instead of the plain source resistance: pickup 0 = off (RSRC), 1 = single coil,
+    // 2 = humbucker, 3 = P-90; the cable is `cableMeters` (0..14, in steps of 2) of capacitance. A pedal in front of the amp (its buffer
+    // isolates the guitar) turns it off. Does nothing for netlists without the pickup networks.
+    void setGuitar(int pickup, int cableMeters, bool pedalOn);
     // Optical tremolo (amps that have one): footswitch and speed knob, 0..1.
     bool hasVibrato() const { return bool(vib_); }
     void setVibrato(bool on, double speed) {
@@ -115,6 +119,11 @@ private:
     double potMinOhms_;
     double sourceOhmsMin_;
     std::vector<Refs> sourceResistors_;
+    std::size_t rsrcIndex_ = static_cast<std::size_t>(-1);  // which of the source resistors is the guitar's RSRC
+    bool hasPickups_ = false, guitarActive_ = false;
+    int pickup_ = 0, cableMeters_ = 0;
+    Refs pickupCoil_[2], pickupLoss_;  // the two coil branches (series resistance) and the shared loss resistor
+    Refs cableSwitch_[3];
     double sourceOhms_;
     std::vector<Knob> knobs_;
     std::vector<double> values_;

@@ -28,10 +28,20 @@ inline void withoutCoreSaturation(std::string& text) {
     }
 }
 
+// ...and without the guitar pickup / cable network, which adds nodes the Rust circuit does not have.
+inline void withoutGuitarNetwork(std::string& text) {
+    const auto from = text.find("* The guitar behind its source impedance.");
+    const auto last = text.find("C CCAB4 pkk4 0 800p");
+    if (from == std::string::npos || last == std::string::npos) return;
+    const auto eol = text.find('\n', last);  // the line may end in CR LF
+    text.erase(from, (eol == std::string::npos ? text.size() : eol + 1) - from);
+}
+
 inline const sas::AmpDef& jcm800() {
     static const sas::AmpDef def = [] {
         sas::AmpDef d = sas::loadAmpDefFromFolder(std::string(SAS_AMPS_DIR) + "/jcm800_2203");
         useStockTriodes(d.preamp.netlistText);
+        withoutGuitarNetwork(d.preamp.netlistText);
         for (auto& s : d.preamp.stages) useStockTriodes(s.netlistText);
         useStockTriodes(d.power.netlistText);
         withoutCoreSaturation(d.power.netlistText);

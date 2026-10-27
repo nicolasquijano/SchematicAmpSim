@@ -103,7 +103,28 @@ Preamp::Preamp(const AmpDef& def, double fs, double railVolts, bool useTables)
         for (const auto& [name, ohms] : jd.resistors) j.resistors.push_back({find(name), ohms});
         jacks_.push_back(std::move(j));
     }
-    for (const auto& name : pd.sourceResistors) sourceResistors_.push_back(find(name));
+    for (const auto& name : pd.sourceResistors) {
+        if (name == "RSRC") rsrcIndex_ = sourceResistors_.size();
+        sourceResistors_.push_back(find(name));
+    }
+    // The guitar's pickup and cable networks (optional): switches that are open until setGuitar() closes them.
+    {
+        auto findAll = [&](const std::string& name) {
+            Refs refs;
+            for (std::size_t i = 0; i < nets.size(); ++i)
+                if (nets[i].resistors.count(name)) refs.push_back({i, nets[i].resistor(name)});
+            return refs;
+        };
+        pickupCoil_[0] = findAll("RPU1");
+        pickupCoil_[1] = findAll("RPU2");
+        pickupLoss_ = findAll("RPL");
+        hasPickups_ = !pickupCoil_[0].empty() && !pickupCoil_[1].empty() && !pickupLoss_.empty();
+        for (int b = 0; b < 3; ++b) {
+            cableSwitch_[b] = findAll("SWK" + std::to_string(1 << b));
+            if (cableSwitch_[b].empty()) hasPickups_ = false;
+        }
+        if (rsrcIndex_ == static_cast<std::size_t>(-1)) hasPickups_ = false;
+    }
 
     // Build the solvers in signal order: each later stage's DC point starts from what the
     // previous one settled to at the link node.
@@ -163,7 +184,29 @@ void Preamp::setSourceOhms(double ohms) {
     ohms = std::max(ohms, sourceOhmsMin_);
     if (std::abs(ohms - sourceOhms_) < 1e-9) return;
     sourceOhms_ = ohms;
-    for (const Refs& r : sourceResistors_) set(r, ohms);
+    for (std::size_t i = 0; i < sourceResistors_.size(); ++i)
+        if (!(guitarActive_ && i == rsrcIndex_)) set(sourceResistors_[i], ohms);
+    refreshAll();
+}
+
+void Preamp::setGuitar(int pickup, int cableMeters, bool pedalOn) {
+    if (!hasPickups_) return;
+    pickup = std::clamp(pickup, 0, 3);
+    cableMeters = std::clamp(cableMeters, 0, 14) / 2 * 2;
+    const bool active = pickup > 0 && !pedalOn;
+    if (active == guitarActive_ && pickup == pickup_ && (!active || cableMeters == cableMeters_)) return;
+    guitarActive_ = active;
+    pickup_ = pickup;
+    cableMeters_ = cableMeters;
+    constexpr double kOpen = 1e12, kClosed = 1.0;
+    // Pickups (coil resistance, loss resistor): single coil on coil 1; humbucker and P-90 on coil 2.
+    static constexpr double kCoilOhms[4][2] = {{kOpen, kOpen}, {6.5e3, kOpen}, {kOpen, 8.0e3}, {kOpen, 8.5e3}};
+    static constexpr double kLossOhms[4] = {kOpen, 220e3, 180e3, 200e3};
+    set(pickupCoil_[0], active ? kCoilOhms[pickup][0] : kOpen);
+    set(pickupCoil_[1], active ? kCoilOhms[pickup][1] : kOpen);
+    set(pickupLoss_, active ? kLossOhms[pickup] : kOpen);
+    for (int b = 0; b < 3; ++b) set(cableSwitch_[b], active && (((cableMeters / 2) >> b) & 1) ? kClosed : kOpen);
+    set(sourceResistors_[rsrcIndex_], active ? kOpen : sourceOhms_);
     refreshAll();
 }
 

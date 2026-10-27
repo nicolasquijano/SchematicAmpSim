@@ -30,6 +30,7 @@ public:
     void setVibrato(bool on, double speed) { pre_.setVibrato(on, speed); }
     // Guitar ~7 kohm, a pedal's output far lower.
     void setSourceOhms(double ohms) { pre_.setSourceOhms(ohms); }
+    void setGuitar(int pickup, int cableMeters, bool pedalOn) { pre_.setGuitar(pickup, cableMeters, pedalOn); }
 
     // One sample: guitar volts in, speaker volts (16 ohm tap) out.
     double process(double vin) {

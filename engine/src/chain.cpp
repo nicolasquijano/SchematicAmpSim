@@ -55,6 +55,8 @@ void Chain::setSettings(const ChainSettings& s) {
     target_.jack = std::min(s.jack, def_.preamp.jacks.size() - 1);
     target_.cabFilter = s.cabFilter;
     target_.tsOn = s.tsOn;
+    target_.pickup = s.pickup;
+    target_.cableMeters = s.cableMeters;
     jackCompDb_.setTarget(s.jackLevelMatch ? def_.preamp.jacks[target_.jack].levelDb : 0.0);
 }
 
@@ -108,6 +110,7 @@ void Chain::processAmp(const float* mono, float* out, std::size_t n) {
                     amp2_->setJack(target_.jack);
                     amp2_->setVibrato(target_.vibratoOn, target_.vibratoSpeed);
                     amp2_->setSourceOhms(sourceOhms);
+                    amp2_->setGuitar(target_.pickup, target_.cableMeters, tsOn);
                     ts2_.setControls(ts);
                     break;
                 case Quality::High:
@@ -115,6 +118,7 @@ void Chain::processAmp(const float* mono, float* out, std::size_t n) {
                     amp4_->setJack(target_.jack);
                     amp4_->setVibrato(target_.vibratoOn, target_.vibratoSpeed);
                     amp4_->setSourceOhms(sourceOhms);
+                    amp4_->setGuitar(target_.pickup, target_.cableMeters, tsOn);
                     ts4_.setControls(ts);
                     break;
                 case Quality::Lite:
@@ -122,6 +126,7 @@ void Chain::processAmp(const float* mono, float* out, std::size_t n) {
                     lite_->setJack(target_.jack);
                     lite_->setVibrato(target_.vibratoOn, target_.vibratoSpeed);
                     lite_->setSourceOhms(sourceOhms);
+                    lite_->setGuitar(target_.pickup, target_.cableMeters, tsOn);
                     ts2_.setControls(ts);
                     break;
                 case Quality::Eco:
@@ -129,6 +134,7 @@ void Chain::processAmp(const float* mono, float* out, std::size_t n) {
                     eco_->setJack(target_.jack);
                     eco_->setVibrato(target_.vibratoOn, target_.vibratoSpeed);
                     eco_->setSourceOhms(sourceOhms);
+                    eco_->setGuitar(target_.pickup, target_.cableMeters, tsOn);
                     ts2_.setControls(ts);
                     break;
             }

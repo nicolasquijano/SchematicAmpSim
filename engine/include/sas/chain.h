@@ -32,6 +32,8 @@ struct ChainSettings {
     double vibratoSpeed = 0.5;
     bool cabFilter = true;
     bool tsOn = false;
+    int pickup = 0;        // guitar impedance: 0 off (plain 7k), 1 single coil, 2 humbucker, 3 P-90
+    int cableMeters = 4;   // cable capacitance, 0..14 m in steps of 2 (only with a pickup selected)
     double tsDrive = 0.5, tsTone = 0.5, tsLevel = 0.5;
 };
 

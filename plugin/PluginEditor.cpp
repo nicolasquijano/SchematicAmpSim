@@ -128,9 +128,9 @@ SasEditor::SasEditor(SasProcessor& p)
     : AudioProcessorEditor(&p), processor_(p),
       input_(p.apvts, ids::input, "INPUT dB"), output_(p.apvts, ids::output, "OUTPUT dB"),
       tsDrive_(p.apvts, ids::tsDrive, "DRIVE"), tsTone_(p.apvts, ids::tsTone, "TONE"), tsLevel_(p.apvts, ids::tsLevel, "LEVEL"),
-      gateThreshold_(p.apvts, ids::gateThreshold, "THRESHOLD"), gateRelease_(p.apvts, ids::gateRelease, "RELEASE") {
+      gateThreshold_(p.apvts, ids::gateThreshold, "THRESHOLD"), gateRelease_(p.apvts, ids::gateRelease, "RELEASE"), cable_(p.apvts, ids::cable, "CABLE m") {
     setLookAndFeel(&look_);
-    for (auto* k : {&input_, &output_, &tsDrive_, &tsTone_, &tsLevel_, &gateThreshold_, &gateRelease_}) addAndMakeVisible(*k);
+    for (auto* k : {&input_, &output_, &tsDrive_, &tsTone_, &tsLevel_, &gateThreshold_, &gateRelease_, &cable_}) addAndMakeVisible(*k);
     addAndMakeVisible(inBar_);
     addAndMakeVisible(outBar_);
 
@@ -141,6 +141,8 @@ SasEditor::SasEditor(SasProcessor& p)
 
     styleCombo(quality_, ids::quality, qualityAtt_);
     styleCombo(cab_, ids::cab, cabAtt_);
+    styleCombo(pickup_, ids::pickup, pickupAtt_);
+    styleCaption(pickupCaption_, "PICKUP");
     // The jack list depends on the amp, so it is filled by showAmp() and wired by hand.
     addAndMakeVisible(jack_);
     jack_.onChange = [this] {
@@ -371,7 +373,7 @@ void SasEditor::resized() {
     const bool ampPage = page_ == 0;
     for (auto& k : ampKnobs_) k->setVisible(ampPage);
     for (auto* c : std::initializer_list<juce::Component*>{&cabCaption_, &cab_, &loadIr_, &clearIr_, &irName_, &input_, &output_, &inBar_, &outBar_}) c->setVisible(ampPage);
-    for (auto* c : std::initializer_list<juce::Component*>{&tsOn_, &tsDrive_, &tsTone_, &tsLevel_, &gateOn_, &gateThreshold_, &gateRelease_}) c->setVisible(!ampPage);
+    for (auto* c : std::initializer_list<juce::Component*>{&tsOn_, &tsDrive_, &tsTone_, &tsLevel_, &gateOn_, &gateThreshold_, &gateRelease_, &cable_, &pickup_, &pickupCaption_}) c->setVisible(!ampPage);
 
     if (!ampPage) {
         // Effects page: one panel per effect, side by side; only the overdrive for now.
@@ -387,6 +389,16 @@ void SasEditor::resized() {
             gateOn_.setBounds(ghead.removeFromRight(56));
             gateThreshold_.setBounds(gin.removeFromLeft(gin.getWidth() / 2));
             gateRelease_.setBounds(gin);
+        }
+        fxRow.removeFromLeft(gap);
+        auto guitarPanel = fxRow.removeFromLeft(knobW * 2 + 12);
+        panels_.push_back({guitarPanel, "GUITAR INPUT"});
+        {
+            auto gin = guitarPanel.reduced(8, 4);
+            gin.removeFromTop(18);
+            pickupCaption_.setBounds(gin.removeFromTop(16));
+            pickup_.setBounds(gin.removeFromTop(24));
+            cable_.setBounds(gin.removeFromLeft(gin.getWidth() / 2));
         }
         panels_.push_back({tsPanel, "OVERDRIVE - TS808 STYLE"});
         auto in = tsPanel.reduced(6, 4);

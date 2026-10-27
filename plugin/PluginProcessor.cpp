@@ -62,6 +62,10 @@ Layout SasProcessor::createLayout(const std::vector<sas::AmpDef>& defs) {
     l.add(knob(ids::tsDrive, "TS Drive", 5.0f));
     l.add(knob(ids::tsTone, "TS Tone", 5.0f));
     l.add(knob(ids::tsLevel, "TS Level", 5.0f));
+    l.add(std::make_unique<juce::AudioParameterChoice>(
+        juce::ParameterID{ids::pickup, kVersion}, "Guitar pickup", juce::StringArray{"Off", "Single coil", "Humbucker", "P-90"}, 0));
+    l.add(std::make_unique<juce::AudioParameterFloat>(juce::ParameterID{ids::cable, kVersion}, "Guitar cable", juce::NormalisableRange<float>(0.0f, 14.0f, 2.0f), 4.0f,
+                                                       juce::AudioParameterFloatAttributes().withLabel("m").withStringFromValueFunction([](float v, int) { return juce::String(v, 0); })));
     l.add(std::make_unique<juce::AudioParameterBool>(juce::ParameterID{ids::gateOn, kVersion}, "Noise gate", false));
     l.add(std::make_unique<juce::AudioParameterFloat>(juce::ParameterID{ids::gateThreshold, kVersion}, "Gate threshold", juce::NormalisableRange<float>(-80.0f, -20.0f, 0.0f), -60.0f,
                                                        juce::AudioParameterFloatAttributes().withLabel("dB").withStringFromValueFunction([](float v, int) { return juce::String(v, 0); })));
@@ -206,6 +210,8 @@ sas::ChainSettings SasProcessor::readSettings(bool irAvailable) {
     s.vibratoOn = raw(ids::vibOn) > 0.5;
     s.vibratoSpeed = double(ap.vibSpeed->load()) / 10.0;
     s.tsOn = raw(ids::tsOn) > 0.5;
+    s.pickup = int(raw(ids::pickup) + 0.5);
+    s.cableMeters = int(raw(ids::cable) + 0.5);
     s.tsDrive = raw(ids::tsDrive) / 10.0;
     s.tsTone = raw(ids::tsTone) / 10.0;
     s.tsLevel = raw(ids::tsLevel) / 10.0;

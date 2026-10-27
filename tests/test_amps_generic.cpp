@@ -548,3 +548,37 @@ TEST_CASE("tube rectifier: the 5Y3 and GZ34 supplies sag when the amp is driven,
         }
     }
 }
+
+TEST_CASE("guitar input: a pickup's impedance makes a resonance that the cable lowers, and a pedal in front switches it off") {
+    for (const char* id : {"plexi_1959", "tweed_5e3", "afd100"}) {
+        DYNAMIC_SECTION(id) {
+            const AmpDef def = loadEmbeddedAmp(id);
+            auto level = [&](int pickup, int cable, bool pedal, double hz) {
+                Preamp pre(def, kFs, def.power.supply.htDcSource * 0.8);
+                pre.setGuitar(pickup, cable, pedal);
+                const std::size_t n = std::size_t(0.4 * kFs);
+                double acc = 0;
+                for (std::size_t i = 0; i < n; ++i) {
+                    const double y = pre.process(0.0004 * std::sin(2.0 * kPi * hz * double(i) / kFs));
+                    REQUIRE(std::isfinite(y));
+                    if (i >= n / 2) acc += y * y;
+                }
+                return std::sqrt(acc / double(n - n / 2));
+            };
+            // The highest lift over 300 Hz among a few frequencies around the resonances (2 to 4.5 kHz).
+            auto peak = [&](int pickup, int cable) {
+                double best = 0.0;
+                for (double hz : {2000.0, 2800.0, 3500.0, 4500.0}) best = std::max(best, level(pickup, cable, false, hz) / level(pickup, cable, false, 300.0));
+                return best;
+            };
+            const double off = peak(0, 5);
+            INFO(id << ": best of 2 to 4.5 kHz over 300 Hz: off " << off << ", single coil 5 m " << peak(1, 5) << ", humbucker 5 m " << peak(2, 5));
+            CHECK(peak(1, 5) > 1.3 * off);   // the resonance lifts the highs
+            CHECK(peak(2, 5) > 1.1 * off);
+            // A longer cable moves the resonance down: more cable, less at 6 kHz than none.
+            CHECK(level(1, 14, false, 6000.0) < 0.9 * level(1, 0, false, 6000.0));
+            // With a pedal in front the guitar's impedance is not there: same as "off".
+            CHECK(std::abs(level(1, 5, true, 3500.0) / level(0, 5, false, 3500.0) - 1.0) < 0.01);
+        }
+    }
+}
