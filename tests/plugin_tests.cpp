@@ -376,6 +376,167 @@ TEST_CASE("two impulse responses are mixed by the blend knob") {
     fileB.deleteFile();
 }
 
+// Not a regression test: loads every WAV of the folder named by SAS_TEST_IR_DIR and reports what the processor does with it.
+TEST_CASE("real impulse responses from SAS_TEST_IR_DIR are applied", "[.realir]") {
+    JuceInit init;
+    const char* dir = std::getenv("SAS_TEST_IR_DIR");
+    if (!dir) { SKIP("SAS_TEST_IR_DIR is not set"); }
+    juce::Array<juce::File> files;
+    juce::File(dir).findChildFiles(files, juce::File::findFiles, false, "*.wav");
+    REQUIRE(files.size() > 0);
+    auto capture = [](SasProcessor& p, double hostRate, int blocks, int blockSize) {
+        std::vector<float> out;
+        juce::AudioBuffer<float> buf(2, blockSize);
+        juce::MidiBuffer midi;
+        for (int b = 0; b < blocks; ++b) {
+            // Band-limited noise (100 Hz to 5 kHz, a guitar-like spectrum): the level through a cabinet is judged over a band, not at one tone.
+            static unsigned noiseState = 1;
+            static double hp = 0, lp1 = 0, lp2 = 0;
+            if (b == 0) { noiseState = 1; hp = lp1 = lp2 = 0; }
+            for (int i = 0; i < blockSize; ++i) {
+                noiseState = noiseState * 1664525u + 1013904223u;
+                const double white = double(noiseState >> 8) / double(1u << 24) - 0.5;
+                hp += 0.0129 * (white - hp);            // ~100 Hz
+                lp1 += 0.45 * ((white - hp) - lp1);     // ~5 kHz
+                lp2 += 0.45 * (lp1 - lp2);
+                for (int ch = 0; ch < 2; ++ch) buf.setSample(ch, i, float(0.25 * lp2));
+            }
+            p.processBlock(buf, midi);
+            for (int i = 0; i < blockSize; ++i) out.push_back(buf.getSample(0, i));
+        }
+        return out;
+    };
+    auto rmsOf = [](const std::vector<float>& v, std::size_t from) {
+        double e = 0;
+        for (std::size_t i = from; i < v.size(); ++i) e += double(v[i]) * v[i];
+        return std::sqrt(e / double(v.size() - from));
+    };
+    for (double hostRate : {44100.0, 48000.0}) {
+        SasProcessor plain;
+        setParam(plain, ids::quality, 2.0f);
+        setParam(plain, ids::cab, 0.0f);
+        plain.prepareToPlay(hostRate, 512);
+        const int blocks = int(hostRate * 1.0 / 512);
+        const auto a = capture(plain, hostRate, blocks, 512);
+        const std::size_t from = a.size() / 2;
+        SasProcessor filter;
+        setParam(filter, ids::quality, 2.0f);
+        setParam(filter, ids::cab, 1.0f);
+        filter.prepareToPlay(hostRate, 512);
+        const auto f = capture(filter, hostRate, blocks, 512);
+        WARN("the built-in cabinet filter at host " << hostRate << " is " << 20.0 * std::log10(rmsOf(f, from) / std::max(rmsOf(a, from), 1e-12)) << " dB re the raw amp");
+        for (const auto& file : files) {
+            SasProcessor p;
+            setParam(p, ids::quality, 2.0f);
+            setParam(p, ids::cab, 2.0f);
+            p.prepareToPlay(hostRate, 512);
+            const bool loaded = p.loadImpulseResponse(file);
+            juce::Thread::sleep(500);
+            const auto y = capture(p, hostRate, blocks, 512);
+            double ab = 0, aa = 0, bb = 0;
+            for (std::size_t i = from; i < a.size(); ++i) { ab += double(a[i]) * y[i]; aa += double(a[i]) * a[i]; bb += double(y[i]) * y[i]; }
+            const auto curve = p.impulseResponseCurve(0);
+            WARN(file.getFileName() << " @ host " << hostRate << ": loaded " << loaded << ", level " << 20.0 * std::log10(rmsOf(y, from) / std::max(rmsOf(a, from), 1e-12))
+                                    << " dB re the raw amp (" << 20.0 * std::log10(rmsOf(y, from) / std::max(rmsOf(f, from), 1e-12)) << " re the cab filter), similarity " << ab / std::sqrt(aa * bb + 1e-30) << ", curve points " << curve.size());
+            CHECK(loaded);
+            CHECK(rmsOf(y, from) > 1e-5);
+        }
+    }
+}
+
+TEST_CASE("an impulse response is applied for any IR rate, host rate, load order, re-preparation and block size") {
+    JuceInit init;
+    // A cabinet-like IR: a tap and an echo 2 ms later, written at `irRate`, mono or stereo.
+    auto writeIr = [](double irRate, int channels, const juce::String& name) {
+        auto file = juce::File::getSpecialLocation(juce::File::tempDirectory).getChildFile(name);
+        file.deleteFile();
+        juce::WavAudioFormat wav;
+        std::unique_ptr<juce::AudioFormatWriter> w(wav.createWriterFor(new juce::FileOutputStream(file), irRate, std::uint32_t(channels), 24, {}, 0));
+        juce::AudioBuffer<float> ir(channels, int(irRate * 0.05));
+        ir.clear();
+        for (int ch = 0; ch < channels; ++ch) {
+            ir.setSample(ch, 0, 1.0f);
+            ir.setSample(ch, int(irRate * 0.002), -0.9f);
+            // A decaying tail, like any real cabinet: the convolution trims silence at the end of an IR, and an echo that was its very last
+            // sample would be cut off when the IR is resampled.
+            for (int i = int(irRate * 0.003); i < ir.getNumSamples(); ++i)
+                ir.setSample(ch, i, 0.02f * std::exp(-float(i) / float(irRate * 0.01)) * std::sin(0.7f * float(i)));
+        }
+        w->writeFromAudioSampleBuffer(ir, 0, ir.getNumSamples());
+        return file;
+    };
+    // Output of the processor (first channel) for `blocks` blocks of `blockSize`, with a steady tone as input.
+    auto capture = [](SasProcessor& p, double hostRate, int blocks, int blockSize) {
+        std::vector<float> out;
+        juce::AudioBuffer<float> buf(2, blockSize);
+        juce::MidiBuffer midi;
+        for (int b = 0; b < blocks; ++b) {
+            fill(buf, 196.0, 0.08, hostRate, b * blockSize);
+            p.processBlock(buf, midi);
+            for (int i = 0; i < blockSize; ++i) out.push_back(buf.getSample(0, i));
+        }
+        return out;
+    };
+    auto rmsOf = [](const std::vector<float>& v, std::size_t from) {
+        double e = 0;
+        for (std::size_t i = from; i < v.size(); ++i) e += double(v[i]) * v[i];
+        return std::sqrt(e / double(v.size() - from));
+    };
+    // 1 = the signal is unchanged by the IR, ~0 = it is a different signal (a 2 ms comb filter changes the waveform a lot).
+    auto similarity = [](const std::vector<float>& a, const std::vector<float>& b, std::size_t from) {
+        double ab = 0, aa = 0, bb = 0;
+        for (std::size_t i = from; i < a.size(); ++i) { ab += double(a[i]) * b[i]; aa += double(a[i]) * a[i]; bb += double(b[i]) * b[i]; }
+        return ab / std::sqrt(aa * bb + 1e-30);
+    };
+
+    for (double hostRate : {44100.0, 48000.0, 96000.0}) {
+        for (double irRate : {44100.0, 48000.0, 96000.0}) {
+            for (int channels : {1, 2}) {
+                for (int order = 0; order < 2; ++order) {  // 0 = load after prepareToPlay, 1 = before (a restored project)
+                    const auto file = writeIr(irRate, channels, "sas_diag_ir.wav");
+                    const int blockSize = 256;
+                    SasProcessor plain, p;
+                    for (auto* proc : {&plain, &p}) setParam(*proc, ids::quality, 2.0f);  // Lite
+                    setParam(plain, ids::cab, 0.0f);
+                    setParam(p, ids::cab, 2.0f);
+                    plain.prepareToPlay(hostRate, blockSize);
+                    if (order == 1) { REQUIRE(p.loadImpulseResponse(file)); p.prepareToPlay(hostRate, blockSize); }
+                    else { p.prepareToPlay(hostRate, blockSize); REQUIRE(p.loadImpulseResponse(file)); }
+                    juce::Thread::sleep(400);
+                    const int blocks = int(hostRate * 0.6 / blockSize);
+                    const auto a = capture(plain, hostRate, blocks, blockSize);
+                    const auto y = capture(p, hostRate, blocks, blockSize);
+                    const std::size_t from = a.size() / 2;
+                    const double sim = similarity(a, y, from);
+                    const double dB = 20.0 * std::log10(rmsOf(y, from) / std::max(rmsOf(a, from), 1e-12));
+                    INFO("host " << hostRate << ", IR " << irRate << " Hz x " << channels << " ch, loaded " << (order ? "before" : "after") << " prepareToPlay: similarity " << sim
+                                 << ", level " << dB << " dB re the raw amp");
+                    for (float v : y) REQUIRE(std::isfinite(v));
+                    CHECK(rmsOf(y, from) > 1e-5);          // sound, not silence
+                    CHECK(sim < 0.97);                      // and it is not the raw amp: the IR is applied
+                    CHECK(dB > -20.0);
+                    CHECK(dB < 12.0);
+
+                    // Stop and play again: the host calls prepareToPlay once more; the IR has to survive it.
+                    p.prepareToPlay(hostRate, blockSize);
+                    juce::Thread::sleep(400);
+                    const auto y2 = capture(p, hostRate, blocks, blockSize);
+                    INFO("after a second prepareToPlay: similarity " << similarity(a, y2, from));
+                    CHECK(rmsOf(y2, from) > 1e-5);
+                    CHECK(similarity(a, y2, from) < 0.97);
+
+                    // Blocks larger than the size announced in prepareToPlay (some hosts do that).
+                    const auto big = capture(p, hostRate, blocks / 4, 1024);
+                    for (float v : big) REQUIRE(std::isfinite(v));
+                    INFO("with 1024-sample blocks after preparing for 256: similarity " << similarity(a, big, big.size() / 2));
+                    CHECK(rmsOf(big, big.size() / 2) > 1e-5);
+                    file.deleteFile();
+                }
+            }
+        }
+    }
+}
+
 TEST_CASE("the editor builds for every amp and can be rendered") {
     JuceInit juceInit;
     SasProcessor p;

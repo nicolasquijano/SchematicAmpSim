@@ -217,7 +217,10 @@ void SasProcessor::prepareToPlay(double sampleRate, int samplesPerBlock) {
     } else {
         chain_->reset();
     }
-    juce::dsp::ProcessSpec spec{sampleRate, static_cast<juce::uint32>(std::min<int>(samplesPerBlock, (int) kMaxChunk)), 1};
+    // The convolution is told the largest block it can ever get: processBlock hands it chunks of up to kMaxChunk whatever block size the host
+    // announced here (some hosts send bigger ones), and a block above the announced maximum crashes it.
+    juce::dsp::ProcessSpec spec{sampleRate, static_cast<juce::uint32>(kMaxChunk), 1};
+    (void)samplesPerBlock;
     for (auto& slot : ir_) slot.conv.prepare(spec);
     irWasActive_ = false;
     latencyReported_ = -1;
@@ -354,7 +357,7 @@ void SasProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::MidiBuff
 // ------------------------------------------------------------------ impulse response
 
 // Magnitude response in dB (mean 0) at 96 log-spaced frequencies from 50 Hz to 10 kHz, each the average power in a 1/6 octave band.
-static std::vector<float> responseCurve(const juce::AudioBuffer<float>& mono, double sampleRate) {
+static std::vector<float> responseCurve(const juce::AudioBuffer<float>& mono, double sampleRate, double& guitarBandPower) {
     constexpr int order = 15, points = 96;
     constexpr int fftSize = 1 << order;
     juce::dsp::FFT fft(order);
@@ -362,6 +365,13 @@ static std::vector<float> responseCurve(const juce::AudioBuffer<float>& mono, do
     const int n = std::min(mono.getNumSamples(), fftSize / 2);
     for (int i = 0; i < n; ++i) data[std::size_t(i)] = mono.getSample(0, i);
     fft.performFrequencyOnlyForwardTransform(data.data());
+    {
+        // Mean power of the spectrum over the guitar band (100 Hz to 5 kHz): the reference for the IR's level.
+        const int lo = std::max(1, int(100.0 * fftSize / sampleRate)), hi = std::min(fftSize / 2 - 1, int(5000.0 * fftSize / sampleRate));
+        double power = 0.0;
+        for (int b = lo; b <= hi; ++b) power += double(data[std::size_t(b)]) * data[std::size_t(b)];
+        guitarBandPower = hi >= lo ? power / double(hi - lo + 1) : 0.0;
+    }
     std::vector<float> curve(points);
     double mean = 0.0;
     for (int k = 0; k < points; ++k) {
@@ -392,12 +402,16 @@ bool SasProcessor::loadImpulseResponseFromMemory(const void* data, std::size_t s
     reader->read(&all, 0, length, 0, true, true);
     juce::AudioBuffer<float> mono(1, length);
     mono.copyFrom(0, 0, all, 0, 0, length);  // first channel: the amp is mono
-    // Unit energy: a white signal keeps its level through the cabinet (the normalisation of JUCE is about 20 dB lower).
     double energy = 0.0;
     for (int i = 0; i < length; ++i) energy += double(mono.getSample(0, i)) * double(mono.getSample(0, i));
     if (!(energy > 0.0)) return false;
-    mono.applyGain(float(1.0 / std::sqrt(energy)));
-    auto curve = responseCurve(mono, reader->sampleRate);
+    // Level: unity gain over the guitar band (100 Hz to 5 kHz), so switching from the cabinet filter to an impulse does not jump in
+    // volume. (Equal total energy would not do: a cabinet has almost nothing above 5 kHz, so its energy sits in the guitar band
+    // and it would come out 9 to 14 dB louder. JUCE's own normalisation is about 20 dB lower.)
+    double bandPower = 0.0;
+    auto curve = responseCurve(mono, reader->sampleRate, bandPower);
+    const double gain = bandPower > 0.0 ? 1.0 / std::sqrt(bandPower) : 1.0 / std::sqrt(energy);
+    mono.applyGain(float(gain));
     ir_[slot].conv.loadImpulseResponse(std::move(mono), reader->sampleRate, juce::dsp::Convolution::Stereo::no, juce::dsp::Convolution::Trim::yes,
                                        juce::dsp::Convolution::Normalise::no);
     {

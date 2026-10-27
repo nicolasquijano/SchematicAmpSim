@@ -61,6 +61,8 @@ void Chain::setSettings(const ChainSettings& s) {
     target_.jack = std::min(s.jack, def_.preamp.jacks.size() - 1);
     target_.cabFilter = s.cabFilter;
     target_.tsOn = s.tsOn;
+    target_.vibratoOn = s.vibratoOn;
+    target_.vibratoSpeed = std::clamp(s.vibratoSpeed, 0.0, 1.0);
     target_.compOn = s.compOn;
     if (s.compOn) comp_.setControls(s.comp);  // the circuit is only touched while the pedal is on
     target_.pickup = s.pickup;
