@@ -22,6 +22,18 @@
     ]
   },
 
+  "theme": {
+    "background": "#09090b",
+    "panel": "#151519",
+    "edge": "#34343e",
+    "accent": "#ff4d3a",
+    "label": "#8b8b99",
+    "text": "#e4e4ea",
+    "knob_top": "#3a3a44",
+    "knob_bottom": "#121216",
+    "pointer": "#ffffff"
+  },
+
   "preamp": {
     "netlist": "preamp.net",
     "stages": [ { "netlist": "master.net", "link_from": "so", "link_source": "VLINK" } ],

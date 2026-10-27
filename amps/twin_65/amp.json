@@ -4,6 +4,18 @@
   "output_db": 8.4,
   "name": "American Twin",
 
+  "theme": {
+    "background": "#0b0c0e",
+    "panel": "#17191d",
+    "edge": "#3b4048",
+    "accent": "#9fc6ea",
+    "label": "#8a929c",
+    "text": "#e3e8ee",
+    "knob_top": "#d9dde2",
+    "knob_bottom": "#8c939b",
+    "pointer": "#16181b"
+  },
+
   "preamp": {
     "netlist": "preamp.net",
     "tolerance": 2e-6,

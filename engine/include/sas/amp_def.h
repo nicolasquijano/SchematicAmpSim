@@ -2,6 +2,7 @@
 // Everything that defines one amp, loaded from files: amp.json (knobs, jacks, supply, Lite fit)
 // plus the preamp and power-amp netlists it names. Adding an amp means adding such a folder.
 
+#include <cstdint>
 #include <functional>
 #include <map>
 #include <string>
@@ -178,8 +179,16 @@ struct UiKnob {
     std::string param, knob, powerKnob, label;  // `knob` (preamp) or `powerKnob` (power amp), or neither (presence)
 };
 
+// Colours of the editor while this amp is shown (amp.json "theme", each "#rrggbb"; missing ones keep the amber default).
+// Presentation only: nothing in the circuits reads it.
+struct ThemeDef {
+    std::uint32_t background = 0x0f0d0b, panel = 0x1b1713, edge = 0x3e3224, accent = 0xf0a028, label = 0x968062, text = 0xe6e0d4;
+    std::uint32_t knobTop = 0x3a322a, knobBottom = 0x16130f, pointer = 0xffffff;  // the knob cap's gradient and its pointer
+};
+
 struct AmpDef {
     std::string id, name;
+    ThemeDef theme;
     // Position in the plugin's amp list (then by id). Saved projects store the list index, so an
     // amp keeps its `order` forever and new amps take the next number.
     int order = 1000;

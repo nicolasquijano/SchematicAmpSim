@@ -33,6 +33,19 @@ std::string str(const json& j, const char* key, const std::string& path) {
     return v.get<std::string>();
 }
 
+std::uint32_t colourOr(const json& j, const char* key, std::uint32_t fallback) {
+    if (!j.contains(key)) return fallback;
+    const json& v = j.at(key);
+    if (!v.is_string()) bad(std::string("theme.") + key, "expected a string like \"#d4a017\"");
+    const std::string s = v.get<std::string>();
+    if (s.size() != 7 || s[0] != '#') bad(std::string("theme.") + key, "expected #rrggbb, got '" + s + "'");
+    try {
+        return std::uint32_t(std::stoul(s.substr(1), nullptr, 16));
+    } catch (const std::exception&) {
+        bad(std::string("theme.") + key, "not a hex colour: '" + s + "'");
+    }
+}
+
 double numOr(const json& j, const char* key, double fallback) {
     return j.contains(key) && j.at(key).is_number() ? j.at(key).get<double>() : fallback;
 }
@@ -300,6 +313,18 @@ AmpDef loadAmpDef(const std::string& jsonText, const FileReader& read) {
     d.name = str(j, "name", "");
     d.order = int(numOr(j, "order", 1000));
     d.outputDb = numOr(j, "output_db", 0.0);
+    if (j.contains("theme")) {
+        const json& t = j.at("theme");
+        d.theme.background = colourOr(t, "background", d.theme.background);
+        d.theme.panel = colourOr(t, "panel", d.theme.panel);
+        d.theme.edge = colourOr(t, "edge", d.theme.edge);
+        d.theme.accent = colourOr(t, "accent", d.theme.accent);
+        d.theme.label = colourOr(t, "label", d.theme.label);
+        d.theme.text = colourOr(t, "text", d.theme.text);
+        d.theme.knobTop = colourOr(t, "knob_top", d.theme.knobTop);
+        d.theme.knobBottom = colourOr(t, "knob_bottom", d.theme.knobBottom);
+        d.theme.pointer = colourOr(t, "pointer", d.theme.pointer);
+    }
     if (j.contains("ui"))
         for (const auto& u : j.at("ui")) {
             UiKnob k;

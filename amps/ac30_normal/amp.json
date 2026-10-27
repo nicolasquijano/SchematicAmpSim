@@ -4,6 +4,18 @@
   "output_db": 7.3,
   "name": "British Class A",
 
+  "theme": {
+    "background": "#130909",
+    "panel": "#231213",
+    "edge": "#4b2a28",
+    "accent": "#e0894f",
+    "label": "#a67c70",
+    "text": "#f0ddd2",
+    "knob_top": "#4b2f2c",
+    "knob_bottom": "#170b0b",
+    "pointer": "#ffe1c7"
+  },
+
   "preamp": {
     "netlist": "preamp.net",
     "tolerance": 2e-6,

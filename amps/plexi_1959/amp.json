@@ -4,6 +4,18 @@
   "output_db": 0.5,
   "name": "British Plexi",
 
+  "theme": {
+    "background": "#100d0a",
+    "panel": "#241b12",
+    "edge": "#4d3c27",
+    "accent": "#e3a64b",
+    "label": "#aa8e5d",
+    "text": "#efe2c6",
+    "knob_top": "#4a3b2a",
+    "knob_bottom": "#18120c",
+    "pointer": "#ffe9b8"
+  },
+
   "preamp": {
     "netlist": "preamp.net",
     "tolerance": 2e-6,

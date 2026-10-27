@@ -1,61 +1,132 @@
 #include "PluginEditor.h"
 
-namespace {
-const juce::Colour kBackground = juce::Colour::fromRGB(15, 13, 11);
-const juce::Colour kBody = juce::Colour::fromRGB(34, 29, 24);
-}  // namespace
+#include <cmath>
 
 // ------------------------------------------------------------------ look
 
-AmpLookAndFeel::AmpLookAndFeel() {
-    setColour(juce::ResizableWindow::backgroundColourId, kBackground);
-    setColour(juce::Label::textColourId, juce::Colours::lightgrey);
-    setColour(juce::Slider::textBoxTextColourId, juce::Colours::lightgrey);
+juce::FontOptions AmpLookAndFeel::font(float size, bool bold, float tracking) {
+    auto f = juce::FontOptions(size, bold ? juce::Font::bold : juce::Font::plain);
+    return tracking != 0.0f ? f.withKerningFactor(tracking) : f;
+}
+
+AmpLookAndFeel::AmpLookAndFeel() : theme_(EditorTheme::from(sas::ThemeDef{})) {
+#if JUCE_WINDOWS
+    setDefaultSansSerifTypefaceName("Segoe UI");
+#elif JUCE_MAC
+    setDefaultSansSerifTypefaceName("Helvetica Neue");
+#endif
+    setTheme(theme_);
+}
+
+void AmpLookAndFeel::setTheme(const EditorTheme& t) {
+    theme_ = t;
+    const auto body = t.panel.brighter(0.12f);
+    setColour(juce::ResizableWindow::backgroundColourId, t.background);
+    setColour(juce::Label::textColourId, t.text);
+    setColour(juce::Slider::textBoxTextColourId, t.text.withAlpha(0.85f));
     setColour(juce::Slider::textBoxOutlineColourId, juce::Colours::transparentBlack);
     setColour(juce::Slider::textBoxBackgroundColourId, juce::Colours::transparentBlack);
-    setColour(juce::Slider::textBoxHighlightColourId, accent().withAlpha(0.4f));
-    setColour(juce::ComboBox::backgroundColourId, kBody);
-    setColour(juce::ComboBox::outlineColourId, panelEdge());
-    setColour(juce::ComboBox::textColourId, juce::Colours::white);
-    setColour(juce::ComboBox::arrowColourId, accent());
-    setColour(juce::PopupMenu::backgroundColourId, kBody);
-    setColour(juce::PopupMenu::highlightedBackgroundColourId, accent().withAlpha(0.35f));
-    setColour(juce::TextButton::buttonColourId, kBody);
-    setColour(juce::TextButton::textColourOffId, accent());
-    setColour(juce::ToggleButton::textColourId, juce::Colours::lightgrey);
-    setColour(juce::ToggleButton::tickColourId, accent());
-    setColour(juce::ListBox::backgroundColourId, panel());
-    setColour(juce::ListBox::outlineColourId, panelEdge());
+    setColour(juce::Slider::textBoxHighlightColourId, t.accent.withAlpha(0.4f));
+    setColour(juce::ComboBox::backgroundColourId, body);
+    setColour(juce::ComboBox::outlineColourId, t.edge);
+    setColour(juce::ComboBox::textColourId, t.text);
+    setColour(juce::ComboBox::arrowColourId, t.accent);
+    setColour(juce::PopupMenu::backgroundColourId, body);
+    setColour(juce::PopupMenu::textColourId, t.text);
+    setColour(juce::PopupMenu::highlightedBackgroundColourId, t.accent.withAlpha(0.35f));
+    setColour(juce::PopupMenu::highlightedTextColourId, t.text);
+    setColour(juce::TextButton::buttonColourId, body);
+    setColour(juce::TextButton::buttonOnColourId, t.accent.withAlpha(0.25f));
+    setColour(juce::TextButton::textColourOffId, t.text.withAlpha(0.75f));
+    setColour(juce::TextButton::textColourOnId, t.accent);
+    setColour(juce::ToggleButton::textColourId, t.text.withAlpha(0.85f));
+    setColour(juce::ToggleButton::tickColourId, t.accent);
+    setColour(juce::ListBox::backgroundColourId, t.panel);
+    setColour(juce::ListBox::outlineColourId, t.edge);
 }
 
 void AmpLookAndFeel::drawRotarySlider(juce::Graphics& g, int x, int y, int w, int h, float pos, float startAngle,
                                       float endAngle, juce::Slider&) {
-    const auto bounds = juce::Rectangle<float>(float(x), float(y), float(w), float(h)).reduced(4.0f);
+    const auto bounds = juce::Rectangle<float>(float(x), float(y), float(w), float(h)).reduced(3.0f);
     const float radius = std::min(bounds.getWidth(), bounds.getHeight()) * 0.5f;
-    const auto centre = bounds.getCentre();
-    const float arcR = radius - 2.0f;
-    const float bodyR = radius * 0.70f;
+    const auto c = bounds.getCentre();
     const float a = startAngle + (endAngle - startAngle) * pos;
+    const auto& t = theme_;
 
-    juce::Path track;
-    track.addCentredArc(centre.x, centre.y, arcR, arcR, 0.0f, startAngle, endAngle, true);
-    g.setColour(juce::Colour::fromRGB(58, 49, 40));
-    g.strokePath(track, juce::PathStrokeType(3.0f, juce::PathStrokeType::curved, juce::PathStrokeType::rounded));
+    // Tick marks 0..10 around the knob (the ends and the middle longer).
+    constexpr int ticks = 11;
+    for (int i = 0; i < ticks; ++i) {
+        const float ta = startAngle + (endAngle - startAngle) * float(i) / float(ticks - 1);
+        const bool major = i == 0 || i == ticks - 1 || i == ticks / 2;
+        const juce::Point<float> d(std::sin(ta), -std::cos(ta));
+        const float r0 = radius - (major ? 5.0f : 3.0f);
+        g.setColour(t.label.withAlpha(major ? 0.9f : 0.55f));
+        g.drawLine({c + d * r0, c + d * radius}, major ? 1.6f : 1.0f);
+    }
 
-    juce::Path value;
-    value.addCentredArc(centre.x, centre.y, arcR, arcR, 0.0f, startAngle, a, true);
-    g.setColour(AmpLookAndFeel::accent());
-    g.strokePath(value, juce::PathStrokeType(3.0f, juce::PathStrokeType::curved, juce::PathStrokeType::rounded));
+    // Value arc just inside the ticks, with a soft glow.
+    const float arcR = radius - 8.5f;
+    juce::Path track, value;
+    track.addCentredArc(c.x, c.y, arcR, arcR, 0.0f, startAngle, endAngle, true);
+    value.addCentredArc(c.x, c.y, arcR, arcR, 0.0f, startAngle, a, true);
+    g.setColour(t.edge.withAlpha(0.8f));
+    g.strokePath(track, juce::PathStrokeType(2.5f, juce::PathStrokeType::curved, juce::PathStrokeType::rounded));
+    g.setColour(t.accent.withAlpha(0.22f));
+    g.strokePath(value, juce::PathStrokeType(6.0f, juce::PathStrokeType::curved, juce::PathStrokeType::rounded));
+    g.setColour(t.accent);
+    g.strokePath(value, juce::PathStrokeType(2.5f, juce::PathStrokeType::curved, juce::PathStrokeType::rounded));
 
-    g.setGradientFill(juce::ColourGradient(juce::Colour::fromRGB(58, 50, 42), centre.x, centre.y - bodyR,
-                                           juce::Colour::fromRGB(22, 19, 16), centre.x, centre.y + bodyR, false));
-    g.fillEllipse(centre.x - bodyR, centre.y - bodyR, bodyR * 2, bodyR * 2);
-    g.setColour(panelEdge());
-    g.drawEllipse(centre.x - bodyR, centre.y - bodyR, bodyR * 2, bodyR * 2, 1.5f);
+    // Body: a shadow, a dark skirt and a domed cap.
+    const float skirtR = (arcR - 3.5f);
+    const float capR = skirtR * 0.80f;
+    juce::Path skirt;
+    skirt.addEllipse(c.x - skirtR, c.y - skirtR, skirtR * 2, skirtR * 2);
+    juce::DropShadow(juce::Colours::black.withAlpha(0.7f), 7, {0, 2}).drawForPath(g, skirt);
+    g.setGradientFill(juce::ColourGradient(t.knobBottom.brighter(0.15f), c.x, c.y - skirtR, t.knobBottom.darker(0.6f), c.x, c.y + skirtR, false));
+    g.fillPath(skirt);
+    g.setColour(t.edge.withAlpha(0.9f));
+    g.drawEllipse(c.x - skirtR, c.y - skirtR, skirtR * 2, skirtR * 2, 1.0f);
 
+    g.setGradientFill(juce::ColourGradient(t.knobTop, c.x - capR * 0.5f, c.y - capR * 0.9f, t.knobBottom, c.x + capR * 0.4f, c.y + capR, false));
+    g.fillEllipse(c.x - capR, c.y - capR, capR * 2, capR * 2);
+    g.setColour(juce::Colours::black.withAlpha(0.45f));
+    g.drawEllipse(c.x - capR, c.y - capR, capR * 2, capR * 2, 1.0f);
+    // A faint highlight along the upper left rim of the cap.
+    juce::Path hl;
+    hl.addCentredArc(c.x, c.y, capR - 1.5f, capR - 1.5f, 0.0f, juce::degreesToRadians(-70.0f), juce::degreesToRadians(15.0f), true);
+    g.setColour(juce::Colours::white.withAlpha(0.18f));
+    g.strokePath(hl, juce::PathStrokeType(1.4f, juce::PathStrokeType::curved, juce::PathStrokeType::rounded));
+
+    // Pointer.
     const juce::Point<float> d(std::sin(a), -std::cos(a));
-    g.setColour(juce::Colours::white);
-    g.drawLine({centre + d * (bodyR * 0.30f), centre + d * (bodyR - 3.0f)}, 2.5f);
+    g.setColour(juce::Colours::black.withAlpha(0.35f));
+    g.drawLine({c + d * (capR * 0.18f) + juce::Point<float>(0.0f, 1.0f), c + d * (capR - 2.5f) + juce::Point<float>(0.0f, 1.0f)}, 3.2f);
+    g.setColour(t.pointer);
+    g.drawLine({c + d * (capR * 0.18f), c + d * (capR - 2.5f)}, 2.4f);
+}
+
+void AmpLookAndFeel::drawToggleButton(juce::Graphics& g, juce::ToggleButton& b, bool highlighted, bool) {
+    const auto r = b.getLocalBounds().toFloat();
+    const float h = std::min(14.0f, r.getHeight() - 2.0f), w = h * 1.9f;
+    const auto track = juce::Rectangle<float>(r.getX() + 1.0f, r.getCentreY() - h * 0.5f, w, h);
+    const bool on = b.getToggleState();
+    const auto& t = theme_;
+    g.setColour(on ? t.accent.withAlpha(0.30f) : juce::Colours::black.withAlpha(0.45f));
+    g.fillRoundedRectangle(track, h * 0.5f);
+    g.setColour(on ? t.accent : t.edge.brighter(highlighted ? 0.4f : 0.0f));
+    g.drawRoundedRectangle(track.reduced(0.5f), h * 0.5f, 1.0f);
+    const float kr = h * 0.5f - 2.0f;
+    const float kx = on ? track.getRight() - h * 0.5f : track.getX() + h * 0.5f;
+    if (on) {
+        g.setColour(t.accent.withAlpha(0.35f));
+        g.fillEllipse(kx - kr - 2.0f, track.getCentreY() - kr - 2.0f, (kr + 2.0f) * 2, (kr + 2.0f) * 2);
+    }
+    g.setColour(on ? t.accent.brighter(0.3f) : t.label);
+    g.fillEllipse(kx - kr, track.getCentreY() - kr, kr * 2, kr * 2);
+    g.setColour(b.findColour(juce::ToggleButton::textColourId));
+    g.setFont(font(12.0f));
+    g.drawText(b.getButtonText(), juce::Rectangle<float>(track.getRight() + 6.0f, r.getY(), r.getRight() - track.getRight() - 6.0f, r.getHeight()),
+               juce::Justification::centredLeft);
 }
 
 // ------------------------------------------------------------------ knob
@@ -68,13 +139,15 @@ KnobWithLabel::KnobWithLabel(juce::AudioProcessorValueTreeState& apvts, const ch
     slider_.setMouseDragSensitivity(160);
     slider_.setColour(juce::Slider::textBoxBackgroundColourId, juce::Colours::transparentBlack);
     slider_.setColour(juce::Slider::textBoxOutlineColourId, juce::Colours::transparentBlack);
-    slider_.setColour(juce::Slider::textBoxTextColourId, juce::Colours::lightgrey);
     addAndMakeVisible(slider_);
     caption_.setText(caption, juce::dontSendNotification);
     caption_.setJustificationType(juce::Justification::centred);
-    caption_.setFont(juce::FontOptions(11.5f, juce::Font::bold));
-    caption_.setColour(juce::Label::textColourId, juce::Colours::lightgrey);
+    caption_.setFont(AmpLookAndFeel::font(10.5f, true, 0.1f));
     addAndMakeVisible(caption_);
+}
+
+void KnobWithLabel::lookAndFeelChanged() {
+    caption_.setColour(juce::Label::textColourId, findColour(juce::Label::textColourId));
 }
 
 void KnobWithLabel::resized() {
@@ -159,12 +232,10 @@ SasEditor::SasEditor(SasProcessor& p)
             param->endChangeGesture();
         }
     };
-    idleLabel_.setFont(juce::FontOptions(11.5f));
-    idleLabel_.setColour(juce::Label::textColourId, juce::Colours::lightgrey);
+    idleLabel_.setFont(AmpLookAndFeel::font(11.5f));
     addAndMakeVisible(idleLabel_);
     conditionNote_.setText("Tubes, wear and unit rebuild the circuits; they act in Normal and High quality.", juce::dontSendNotification);
-    conditionNote_.setFont(juce::FontOptions(10.5f));
-    conditionNote_.setColour(juce::Label::textColourId, juce::Colour::fromRGB(150, 128, 98));
+    conditionNote_.setFont(AmpLookAndFeel::font(10.5f));
     addAndMakeVisible(conditionNote_);
     // The jack list depends on the amp, so it is filled by showAmp() and wired by hand.
     addAndMakeVisible(jack_);
@@ -191,8 +262,7 @@ SasEditor::SasEditor(SasProcessor& p)
     levelMatch_.setTooltip("Raises the quieter jack so both play at a similar level");
     levelMatchAtt_ = std::make_unique<juce::AudioProcessorValueTreeState::ButtonAttachment>(p.apvts, ids::levelMatch, levelMatch_);
 
-    irName_.setColour(juce::Label::textColourId, juce::Colours::grey);
-    irName_.setFont(juce::FontOptions(11.0f));
+    irName_.setFont(AmpLookAndFeel::font(11.0f));
     addAndMakeVisible(irName_);
     addAndMakeVisible(loadIr_);
     addAndMakeVisible(clearIr_);
@@ -202,9 +272,6 @@ SasEditor::SasEditor(SasProcessor& p)
     for (auto* t : {&ampTab_, &fxTab_}) {
         t->setClickingTogglesState(true);
         t->setRadioGroupId(7);
-        t->setColour(juce::TextButton::buttonOnColourId, AmpLookAndFeel::accent().withAlpha(0.25f));
-        t->setColour(juce::TextButton::textColourOnId, AmpLookAndFeel::accent());
-        t->setColour(juce::TextButton::textColourOffId, juce::Colours::lightgrey);
         addAndMakeVisible(*t);
     }
     ampTab_.setToggleState(true, juce::dontSendNotification);
@@ -231,13 +298,13 @@ int SasEditor::getNumRows() { return ampNames_.size(); }
 void SasEditor::paintListBoxItem(int row, juce::Graphics& g, int w, int h, bool selected) {
     if (row < 0 || row >= ampNames_.size()) return;
     if (selected) {
-        g.setColour(AmpLookAndFeel::accent().withAlpha(0.18f));
+        g.setGradientFill(juce::ColourGradient(look_.accent().withAlpha(0.26f), 0.0f, 0.0f, look_.accent().withAlpha(0.06f), float(w), 0.0f, false));
         g.fillRect(0, 0, w, h);
-        g.setColour(AmpLookAndFeel::accent());
-        g.fillRect(0, 3, 3, h - 6);
+        g.setColour(look_.accent());
+        g.fillRoundedRectangle(0.0f, 4.0f, 3.0f, float(h - 8), 1.5f);
     }
-    g.setColour(selected ? AmpLookAndFeel::accent() : juce::Colours::lightgrey);
-    g.setFont(juce::FontOptions(14.0f, selected ? juce::Font::bold : juce::Font::plain));
+    g.setColour(selected ? look_.accent() : look_.text().withAlpha(0.8f));
+    g.setFont(AmpLookAndFeel::font(14.0f, selected, 0.01f));
     g.drawText(ampNames_[row], 12, 0, w - 16, h, juce::Justification::centredLeft);
 }
 
@@ -261,9 +328,18 @@ void SasEditor::styleCombo(juce::ComboBox& box, const char* paramId,
 
 void SasEditor::styleCaption(juce::Label& l, const juce::String& text) {
     l.setText(text, juce::dontSendNotification);
-    l.setFont(juce::FontOptions(11.0f, juce::Font::bold));
-    l.setColour(juce::Label::textColourId, juce::Colour::fromRGB(150, 128, 98));
+    l.setFont(AmpLookAndFeel::font(10.5f, true, 0.12f));
+    l.setColour(juce::Label::textColourId, look_.label());
     addAndMakeVisible(l);
+}
+
+void SasEditor::applyTheme(const sas::AmpDef& def) {
+    look_.setTheme(EditorTheme::from(def.theme));
+    for (auto* l : {&ampCaption_, &qualityCaption_, &jackCaption_, &cabCaption_, &pickupCaption_, &tubeCaption_, &noiseCaption_, &unitCaption_, &conditionNote_})
+        l->setColour(juce::Label::textColourId, look_.label());
+    irName_.setColour(juce::Label::textColourId, look_.label());
+    sendLookAndFeelChange();
+    repaint();
 }
 
 void SasEditor::setPage(int page) {
@@ -277,6 +353,7 @@ void SasEditor::showAmp(int index) {
     shownAmp_ = index;
     const auto& def = defs[std::size_t(index)];
     title_ = juce::String(def.name);
+    applyTheme(def);
 
     ampKnobs_.clear();
     for (const auto& u : def.ui) {
@@ -351,29 +428,42 @@ void SasEditor::chooseImpulseResponse() {
 }
 
 void SasEditor::paint(juce::Graphics& g) {
-    g.fillAll(kBackground);
+    const auto bg = look_.background();
+    g.setGradientFill(juce::ColourGradient(bg.brighter(0.18f), 0.0f, 0.0f, bg.darker(0.35f), 0.0f, float(getHeight()), false));
+    g.fillAll();
+    // A soft glow of the accent colour behind the title.
+    g.setGradientFill(juce::ColourGradient(look_.accent().withAlpha(0.07f), float(getWidth()) * 0.35f, 0.0f, juce::Colours::transparentBlack,
+                                           float(getWidth()) * 0.35f, 120.0f, true));
+    g.fillRect(0, 0, getWidth(), 130);
 
     for (const auto& p : panels_) {
         const auto b = p.bounds.toFloat();
-        g.setColour(AmpLookAndFeel::panel());
-        g.fillRoundedRectangle(b, 6.0f);
-        g.setColour(AmpLookAndFeel::panelEdge());
-        g.drawRoundedRectangle(b.reduced(0.5f), 6.0f, 1.0f);
+        const auto top = look_.panel().brighter(0.10f);
+        g.setGradientFill(juce::ColourGradient(top, 0.0f, b.getY(), look_.panel().darker(0.15f), 0.0f, b.getBottom(), false));
+        g.fillRoundedRectangle(b, 7.0f);
+        g.setColour(juce::Colours::white.withAlpha(0.05f));
+        g.drawHorizontalLine(int(b.getY()) + 1, b.getX() + 8.0f, b.getRight() - 8.0f);
+        g.setColour(look_.panelEdge());
+        g.drawRoundedRectangle(b.reduced(0.5f), 7.0f, 1.0f);
         if (p.caption.isNotEmpty()) {
-            g.setColour(juce::Colour::fromRGB(150, 128, 98));
-            g.setFont(juce::FontOptions(11.0f, juce::Font::bold));
-            g.drawText(p.caption, p.bounds.getX() + 10, p.bounds.getY() + 4, p.bounds.getWidth() - 20, 16, juce::Justification::centredLeft);
+            g.setColour(look_.accent());
+            g.fillRoundedRectangle(b.getX() + 10.0f, b.getY() + 9.0f, 3.0f, 9.0f, 1.5f);
+            g.setColour(look_.label());
+            g.setFont(AmpLookAndFeel::font(10.0f, true, 0.07f));
+            g.drawText(p.caption, p.bounds.getX() + 18, p.bounds.getY() + 4, p.bounds.getWidth() - 28, 18, juce::Justification::centredLeft);
         }
     }
 
-    // Title of the amp, with the product name small above it.
+    // Title of the amp, with the product name small above it, and a thin accent line under both.
     const int left = 12 + 176;
-    g.setColour(juce::Colour::fromRGB(150, 128, 98));
-    g.setFont(juce::FontOptions(11.0f));
+    g.setColour(look_.label());
+    g.setFont(AmpLookAndFeel::font(10.0f, true, 0.30f));
     g.drawText("SCHEMATIC AMP SIM", left, 8, 300, 14, juce::Justification::centredLeft);
-    g.setColour(AmpLookAndFeel::accent());
-    g.setFont(juce::FontOptions(22.0f, juce::Font::bold));
-    g.drawText(title_, left, 20, getWidth() - left - 12, 28, juce::Justification::centredLeft);
+    g.setColour(look_.accent());
+    g.setFont(AmpLookAndFeel::font(24.0f, true, 0.02f));
+    g.drawText(title_, left, 20, getWidth() - left - 12, 30, juce::Justification::centredLeft);
+    g.setGradientFill(juce::ColourGradient(look_.accent().withAlpha(0.7f), float(left), 0.0f, look_.accent().withAlpha(0.0f), float(getWidth() - 12), 0.0f, false));
+    g.fillRect(float(left), 49.0f, float(getWidth() - 12 - left), 1.0f);
 }
 
 void SasEditor::resized() {

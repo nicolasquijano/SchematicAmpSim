@@ -4,6 +4,18 @@
   "output_db": 10.1,
   "name": "American 5050",
 
+  "theme": {
+    "background": "#08090a",
+    "panel": "#131416",
+    "edge": "#2f3336",
+    "accent": "#6fd36b",
+    "label": "#84928a",
+    "text": "#e1e8e2",
+    "knob_top": "#34393b",
+    "knob_bottom": "#0f1112",
+    "pointer": "#e7ffe6"
+  },
+
   "preamp": {
     "netlist": "preamp.net",
     "stages": [

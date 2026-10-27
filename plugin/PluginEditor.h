@@ -6,16 +6,40 @@
 #include <vector>
 
 #include "PluginProcessor.h"
+#include "sas/amp_def.h"
 
-// Dark panels, amber accent: rotary knob with a value arc, and the list / combo / button colours.
+// The editor's colours for one amp (from the amp's amp.json "theme").
+struct EditorTheme {
+    juce::Colour background, panel, edge, accent, label, text, knobTop, knobBottom, pointer;
+    static EditorTheme from(const sas::ThemeDef& t) {
+        auto c = [](std::uint32_t v) { return juce::Colour(0xff000000u | v); };
+        return {c(t.background), c(t.panel), c(t.edge), c(t.accent), c(t.label), c(t.text), c(t.knobTop), c(t.knobBottom), c(t.pointer)};
+    }
+};
+
+// Dark panels with an accent colour per amp: rotary knob with tick marks, a dome cap and a value arc; switches drawn as
+// small LED toggles; the list / combo / button colours.
 class AmpLookAndFeel final : public juce::LookAndFeel_V4 {
 public:
     AmpLookAndFeel();
+    void setTheme(const EditorTheme& t);
+    const EditorTheme& theme() const { return theme_; }
+    juce::Colour accent() const { return theme_.accent; }
+    juce::Colour panel() const { return theme_.panel; }
+    juce::Colour panelEdge() const { return theme_.edge; }
+    juce::Colour label() const { return theme_.label; }
+    juce::Colour text() const { return theme_.text; }
+    juce::Colour background() const { return theme_.background; }
+
     void drawRotarySlider(juce::Graphics&, int x, int y, int w, int h, float pos, float startAngle, float endAngle,
                           juce::Slider&) override;
-    static juce::Colour accent() { return juce::Colour::fromRGB(240, 160, 40); }
-    static juce::Colour panel() { return juce::Colour::fromRGB(27, 23, 19); }
-    static juce::Colour panelEdge() { return juce::Colour::fromRGB(62, 50, 36); }
+    void drawToggleButton(juce::Graphics&, juce::ToggleButton&, bool highlighted, bool down) override;
+
+    // Typography: one family, small caps-style captions with a little tracking.
+    static juce::FontOptions font(float size, bool bold = false, float tracking = 0.0f);
+
+private:
+    EditorTheme theme_;
 };
 
 // A knob with its caption above and its value below.
@@ -23,6 +47,7 @@ class KnobWithLabel final : public juce::Component {
 public:
     KnobWithLabel(juce::AudioProcessorValueTreeState& apvts, const char* paramId, const juce::String& caption);
     void resized() override;
+    void lookAndFeelChanged() override;
 
 private:
     juce::Slider slider_{juce::Slider::RotaryVerticalDrag, juce::Slider::TextBoxBelow};
@@ -62,6 +87,7 @@ private:
     void styleCombo(juce::ComboBox&, const char* paramId, std::unique_ptr<juce::AudioProcessorValueTreeState::ComboBoxAttachment>&);
     void styleCaption(juce::Label&, const juce::String&);
     void setPage(int page);  // 0 = amp, 1 = effects
+    void applyTheme(const sas::AmpDef&);  // colours of the shown amp
 
     SasProcessor& processor_;
     AmpLookAndFeel look_;

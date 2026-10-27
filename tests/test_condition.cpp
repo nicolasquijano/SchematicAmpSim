@@ -1,6 +1,7 @@
 #include <catch2/catch_approx.hpp>
 #include <catch2/catch_test_macros.hpp>
 #include <cmath>
+#include <set>
 #include <vector>
 
 #include "sas/chain.h"
@@ -141,4 +142,14 @@ TEST_CASE("full circuits through the triode tables sound the same as the exact f
         INFO(id << " error " << 10.0 * std::log10(err / ref) << " dB");
         CHECK(err < ref * 1e-6);  // below -60 dB
     }
+}
+
+TEST_CASE("every amp carries its own editor theme") {
+    std::set<std::uint32_t> accents;
+    for (const auto& id : embeddedAmpIds()) {
+        const auto def = loadEmbeddedAmp(id);
+        CHECK(def.theme.accent != ThemeDef{}.accent);  // set in amp.json, not the default amber
+        accents.insert(def.theme.accent);
+    }
+    CHECK(accents.size() == embeddedAmpIds().size());
 }

@@ -4,6 +4,18 @@
   "output_db": 14.6,
   "name": "American Tweed",
 
+  "theme": {
+    "background": "#16100a",
+    "panel": "#2c2114",
+    "edge": "#5a4528",
+    "accent": "#f0dcae",
+    "label": "#b09a6c",
+    "text": "#f6ead0",
+    "knob_top": "#efe3c4",
+    "knob_bottom": "#b9a577",
+    "pointer": "#3a2a14"
+  },
+
   "preamp": {
     "netlist": "preamp.net",
     "tolerance": 2e-6,

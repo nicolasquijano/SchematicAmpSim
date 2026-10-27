@@ -12,6 +12,18 @@
     { "param": "master",   "knob": "master", "label": "MASTER" }
   ],
 
+  "theme": {
+    "background": "#0d0c0a",
+    "panel": "#1c1914",
+    "edge": "#41362a",
+    "accent": "#f0b53a",
+    "label": "#a08b63",
+    "text": "#ece5d3",
+    "knob_top": "#3b352c",
+    "knob_bottom": "#14110d",
+    "pointer": "#f6e7b4"
+  },
+
   "preamp": {
     "netlist": "preamp.net",
     "tolerance": 2e-6,
