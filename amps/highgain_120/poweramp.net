@@ -58,8 +58,8 @@ R R206 pga g1 2k2/2
 R R202 pgb g2 2k2/2
 C C202 pga 0 100p
 C C201 pgb 0 100p
-P V5 g1 pt s1 0 6L6GC 2
-P V6 g2 pbm s2 0 6L6GC 2
+P V5 g1 pt s1 0 6L6GCDS 2
+P V6 g2 pbm s2 0 6L6GCDS 2
 R R207 a s1 100/2
 R R203 a s2 100/2
 

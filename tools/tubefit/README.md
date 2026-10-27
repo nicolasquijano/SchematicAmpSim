@@ -30,3 +30,16 @@ about 1.9 to 2.0 V) are reproduced (1.99 V) where the stock values gave 1.69 V.
   is where the amps run.
 - 6L6GC: NOT changed. The only chart (TAD, raster, Ug2 = Ua) is fitted no better than 18 % by the Koren pentode
   (`extract_tad_6l6gc.py`, `fit_6l6gc_tad.py`); the stock values give 56 mA where the sheet says 54 mA.
+
+## Push-pull benchmark and the 6L6GC refit (third round)
+
+- `pp_bench.py` / `pp_fast.py`: a quasi-static push-pull pair with an ideal output transformer (Raa, fixed or cathode bias,
+  screen resistor) that reports power, zero-signal and maximum-signal plate and screen currents, to compare a pentode
+  model with a data sheet's typical-operation table. Current models against the tables: EL34 400/400 V, -36 V, 3.5k:
+  55 / 223 mA and 52 W (table 60 / 221 mA, 54 W) so it was kept; EL84 300 V: about 17 W at 90 mA (table 17 W, 92 mA).
+- 6L6GC: the old parameters gave 67.6 W against the table's 55 W (450 / 400 V, -37 V, 5.6k; 116 mA at rest, 210 mA at
+  full signal, screen 5.6 / 22 mA) and plate resistances of 98k to 281k against 22k to 35k. `fit_6l6gc_joint.py` fits
+  the transfer curves (GE sheet page 8, digitised to `p8_transfer.npy`), the three class A points and that table at once
+  (Levenberg-Marquardt over mu, kg1, kp, kvb, kg2 with the exponent fixed at 1.35). Result (`6L6GCDS`, weight 3 on the
+  table): 54.8 W, 103 / 206 mA, ra 18k to 51k, transfer error 0.351 against 0.383. Twin: scale 2 (was 1.6), bias
+  -47.5 V; 5150 unchanged.

@@ -15,7 +15,7 @@
 
 S VAUDIO pin 130k 0
 S VHT a 15 442
-S VBIAS cbias 1k -45
+S VBIAS cbias 1k -47.5
 
 * Phase inverter: grid of V6A on the mixer through 1n; V6B's grid is tied to the feedback node f
 * through 0.1u. Cathodes share 470 + 22k (1 W) + 100, the node f being at the 22k / 100 junction.
@@ -46,8 +46,8 @@ R R48 pgb g2 1k5/2
 C C36 cbias 0 22u
 
 * 6L6GC: V7+V8 on the BRN half, V9+V10 on the BLU half; screens on B+ through 470.
-P V7 g1 pt s1 0 6L6GC 1.6
-P V9 g2 pbm s2 0 6L6GC 1.6
+P V7 g1 pt s1 0 6L6GCDS 2
+P V9 g2 pbm s2 0 6L6GCDS 2
 R R50 a s1 470/2
 R R52 a s2 470/2
 

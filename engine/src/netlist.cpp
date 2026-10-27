@@ -204,6 +204,7 @@ struct Parser {
             if (n == "6550") { m = PentodeModel::el6550(); return true; }
             if (n == "6550DS") { m = PentodeModel::el6550Fit(); return true; }
             if (n == "6L6GC") { m = PentodeModel::el6l6gc(); return true; }
+            if (n == "6L6GCDS") { m = PentodeModel::el6l6gcFit(); return true; }
             if (n == "EL84") { m = PentodeModel::el84(); return true; }
             if (n == "6V6GT") { m = PentodeModel::el6v6(); return true; }
             return false;

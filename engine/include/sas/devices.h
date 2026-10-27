@@ -126,6 +126,14 @@ struct PentodeModel {
         return {8.7, 1.35, 1460.0, 4500.0, 48.0, 12.0, 1.5e-3, 8.0, 1.3, 11e-12, 0.9e-12, 6e-12};
     }
 
+    // 6L6GC fitted jointly to the GE sheet's transfer curves (Ua 400 V, Ug2 250..400 V), its class A points (ra 18k to 51k
+    // against 22k to 35k, where the older parameters gave 98k to 281k) and the push-pull AB1 table (450 / 400 V, -37 V,
+    // 5.6k plate to plate: zero-signal 116 mA, 210 mA at 55 W, screen 5.6 / 22 mA): the model gives 103 / 206 mA and 54.8 W
+    // for a pair at scale 1 per tube. mu is large only because kp is small (it is a shape parameter of the fit).
+    static constexpr PentodeModel el6l6gcFit() {
+        return {120.23, 1.35, 189.89, 1084.61, 22.43, 73.43, 1.5e-3, 8.0, 1.3, 11e-12, 0.9e-12, 6e-12};
+    }
+
     // EL84 fitted to the Philips/Mullard class A point (Ua = Ug2 = 250 V, Ug1 = -7.3 V: 48 mA, gm 11.3 mS, ra 38 k, Ig2 5.5 mA);
     // mu and kp are the usual Koren values, kg1/kvb/kg2 solve the three data points.
     static constexpr PentodeModel el84() {
