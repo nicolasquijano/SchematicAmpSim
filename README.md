@@ -10,7 +10,7 @@ VST3 for Windows, built with C++17 and [JUCE](https://juce.com).
 
 - **Circuit-level modelling.** Modified nodal analysis with a DK-style discretisation (trapezoidal
   capacitors, coupled inductors), Newton iteration with line search and a bounded continuation
-  fallback. Devices: Koren triodes and pentodes (12AX7-type, EL34, EL84, 6550), diodes, BJTs, op-amps.
+  fallback. Devices: Koren triodes and pentodes (12AX7-type, EL34, EL84, 6V6, 6L6, 6550), diodes, BJTs, op-amps.
 - **Amps are data, not code.** Each amp is a folder with a netlist and an `amp.json` that maps
   knobs, input jacks, presence, supply and output level onto circuit elements. Adding an amp means
   adding files; nothing is recompiled except to embed them.
@@ -23,6 +23,7 @@ VST3 for Windows, built with C++17 and [JUCE](https://juce.com).
   | American Twin | Two-channel 85 W+ blackface-style amp, 12AT7 phase inverter, four 6L6GC on fixed bias with its optical vibrato and spring reverb (driver and recovery tubes as circuit, the spring tank behavioural) |
   | American 5050 | Modern high-gain 120 W head: two channels (Rhythm with a Crunch voicing, Lead) through six gain stages, Marshall-type tone stack, 12AX7 phase inverter with presence and resonance in the feedback loop, four 6L6GC |
   | British Class A | Class A 30 W combo-style amp (Top Boost reissue drawing): Normal channel straight to the phase inverter, Brilliant channel through the Treble / Bass network, Cut control, four cathode-biased EL84 with no negative feedback (no vibrato or reverb) |
+  | American Tweed | 1950s-style 12 W tweed combo: two channels with interactive volume pots and a tone control, 12AY7 / 12AX7 preamp, cathodyne phase inverter, two cathode-biased 6V6GT, no negative feedback, high-impedance 5Y3GT rectifier supply |
 - **Quality modes**
   | Mode | What it does |
   |---|---|

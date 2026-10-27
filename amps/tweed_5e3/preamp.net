@@ -1,0 +1,70 @@
+* Fender "Deluxe" model 5E3 (the 1950s tweed, 12 to 15 W): preamp. Original Fender schematic as printed in
+* Reyer Velema's "Fender (Tweed) Deluxe 5E3" report (mennovanderveen.nl, project 2023), values cross-checked with
+* robrobinette.com/How_The_5E3_Deluxe_Works.htm.
+*
+* V1 is a 12AY7: one triode per channel (Bright = upper pair of jacks, with the tone control; Normal = lower pair),
+* 100k plate loads, one shared 820 ohm / 25u cathode. Each plate goes through 0.1u to its volume pot, which is wired
+* "backwards": the wiper takes the signal, one end of the pot goes to ground and the other end to the common node m
+* (V2a's grid), so each volume pot loads the other channel. The Bright channel's pot has the 500p bright cap into the
+* tone control (1M pot, 5n to ground): only the Bright channel feeds the 500p, but the 5n shunt is on the shared node, so turning the tone down also darkens the Normal channel. V2a is a 12AX7 (100k, 1k5 / 25u) and drives
+* the cathodyne phase inverter in poweramp.net.
+*
+* Reading notes (change these here, not in code):
+*  - Hi jack: the two 68k grid stoppers in parallel (34k); Lo jack: 68k into a divider (68k to ground at the grid)
+*    that takes about 6 dB off; the 1M grid leaks stay;
+*  - the preamp rail x is B+3 (the 22k + 16u node of the power amp); the drawing prints no voltages.
+
+.nodes x gin in jbh jbl jnh jnl gb gn db dn pb pn k1 xb xn t1 t2 m p2a k2a o
+
+* B+3 (node x): driven from the power amp at run time; 225 V is the standalone default.
+V VRAIL x 100 225
+I VIN gin 1
+R RSRC gin in 7k
+
+* Jacks. SW* are the jack-mode switches (closed 1 ohm / open 1e12), set by the jack modes.
+R SWH_B in jbh 1
+R RH_B jbh gb 34k
+R SWL_B in jbl 1e12
+R RL_B jbl gb 68k
+R RD_B gb db 68k
+R SWD_B db 0 1e12
+R RG_B gb 0 1M
+R SWH_N in jnh 1e12
+R RH_N jnh gn 34k
+R SWL_N in jnl 1e12
+R RL_N jnl gn 68k
+R RD_N gn dn 68k
+R SWD_N dn 0 1e12
+R RG_N gn 0 1M
+
+* V1, 12AY7: A = Bright, B = Normal.
+T V1A gb pb k1 12AY7
+R R_PB x pb 100k
+T V1B gn pn k1 12AY7
+R R_PN x pn 100k
+R RK1 k1 0 820
+C CK1 k1 0 25u
+
+* Coupling and volume pots: the wiper takes the signal (xb, xn), one end to ground, the other to m.
+C C1B pb xb 0.1u
+C C1N pn xn 0.1u
+R VR_BM xb m 1
+R VR_BG xb 0 1
+R VR_NM xn m 1
+R VR_NG xn 0 1
+
+* Tone: 500p from the Bright signal into the 1M tone pot (wiper = m), 5n from its other end to ground.
+C C500 xb t1 500p
+R VR_TT t1 m 1
+R VR_TB m t2 1
+C C5N t2 0 5n
+
+* V2a gain stage.
+T V2A m p2a k2a 12AX7
+R R_P2A x p2a 100k
+R RK2A k2a 0 1k5
+C CK2A k2a 0 25u
+
+* Output to the phase inverter (AC coupled).
+C C_OUT p2a o 1u
+R R_O o 0 1M

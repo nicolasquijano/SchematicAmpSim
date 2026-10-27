@@ -50,6 +50,12 @@ struct TriodeModel {
         return {69.4, 1.4, 318.0, 189.0, 1981.0, 6.177e-4, 9.901, 1.314, 1.6e-12, 1.7e-12, 0.46e-12};
     }
 
+    // 12AY7 (the Fender 5E3's input tube) fitted to the typical operating point: 250 V / -4 V gives 3.0 mA, gm 1.75 mA/V,
+    // ra 25k (mu about 44; the tube is sold with wide limits: 2.2 to 3.75 mA, 1.3 to 2.1 mA/V).
+    static constexpr TriodeModel ay7Fit() {
+        return {45.5, 1.3, 744.8, 300.0, 9221.4, 6.177e-4, 9.901, 1.314, 1.6e-12, 1.7e-12, 0.46e-12};
+    }
+
     // ECC81 / 12AT7 with the Koren parameters: the medium-mu twin triode of the Fender phase inverter.
     static constexpr TriodeModel ecc81() {
         return {60.0, 1.35, 460.0, 300.0, 300.0, 6.177e-4, 9.901, 1.314, 1.6e-12, 1.7e-12, 0.46e-12};
@@ -124,6 +130,12 @@ struct PentodeModel {
     // mu and kp are the usual Koren values, kg1/kvb/kg2 solve the three data points.
     static constexpr PentodeModel el84() {
         return {19.56, 1.35, 578.6, 1833.0, 152.4, 49.0, 1.5e-3, 8.0, 1.3, 10.8e-12, 0.5e-12, 7e-12};
+    }
+
+    // 6V6GT fitted to the class A points (250/250/-12.5 V: 45 mA, 4.1 mA/V; 315/225/-13 V: 34 mA, 3.75 mA/V) and the
+    // push-pull idle (285/285/-19 V: 35 mA per tube); plate resistance comes out 41k (data sheet 52k) and 88k (77k).
+    static constexpr PentodeModel el6v6() {
+        return {9.15, 1.35, 2334.1, 10300.0, 76.1, 48.9, 1.5e-3, 8.0, 1.3, 9.5e-12, 0.7e-12, 7.5e-12};
     }
 
     Eval eval(double vg1k, double vpk, double vg2k) const {

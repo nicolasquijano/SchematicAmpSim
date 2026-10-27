@@ -1,0 +1,58 @@
+* Fender "Deluxe" model 5E3: cathodyne phase inverter (V2b, 12AX7), two 6V6GT in push-pull on a shared 250 ohm /
+* 25u cathode bias with the screens on their own supply node and no negative feedback, the output transformer, and
+* the 5Y3GT supply. B+1 (node a) is the rectifier / reservoir (16u), integrated by the engine; 5000 ohm + 16u make
+* B+2 (screens), 22k + 16u make B+3 (node x: phase inverter and preamp).
+*
+* Assumptions where the drawing is silent or ambiguous (change them here, not in code):
+*  - output transformer: 8k plate-to-plate onto the 8 ohm speaker (the 5E3 is usually quoted at 8k), 10 H per
+*    primary half, 75 ohm per half, coupling like the other amps;
+*  - the 220k grid leaks go to ground and the 1500 grid stoppers sit at the grids;
+*  - the supply (355-0-355 transformer, 5Y3GT, no standby): a Thevenin rectifier source chosen for B+1 near 350 V
+*    at idle, with the sag of this high-impedance rectifier; the cathode then sits near 19 V (about 38 mA per tube);
+*  - RPREAMP stands for what V1 and V2a draw from B+3 (about 3 mA).
+
+.nodes pin gp cj kc pp g1x g2x g1 g2 kcat a bb x pt pbm npt npb t8
+
+S VAUDIO pin 65k 0
+S VHT a 15 350
+
+* Cathodyne: grid on the preamp output through 0.1u with a 1M leak to the cathode junction (1k5 / 56k divider),
+* plate load 56k, outputs from the plate (V3) and the cathode (V4).
+C C2 pin gp 0.1u
+R R1M gp cj 1M
+T V2B gp pp kc 12AX7
+R R_PP x pp 56k
+R RK2B kc cj 1k5
+R RK2C cj 0 56k
+C C3 pp g1x 0.1u
+C C4 kc g2x 0.1u
+R R220A g1x 0 220k
+R R220B g2x 0 220k
+R R1500A g1x g1 1500
+R R1500B g2x g2 1500
+
+* 6V6GT pair: screens on B+2 (node bb), shared cathode 250 ohm || 25u.
+P V3 g1 pt bb kcat 6V6GT 1
+P V4 g2 pbm bb kcat 6V6GT 1
+R R250 kcat 0 250
+C C25 kcat 0 25u
+
+* Output transformer: primary halves around the B+1 centre tap, one 8 ohm secondary.
+R DCR_PT pt npt 75
+R DCR_PB pbm npb 75
+.param n8 = 2*1/sqrt(8000/8)
+.xfmr OT L=10
+  W npt a 1 pri
+  W a npb 1 pri
+  W t8 0 n8 sec
+  K pri pri 0.9998
+  K pri sec 0.9993
+.end
+R RLOAD t8 0 8
+
+* Supply: B+2 and B+3.
+R R5000 a bb 5000
+C C16B bb 0 16u
+R R22K bb x 22k
+C C16C x 0 16u
+R RPREAMP x 0 75k

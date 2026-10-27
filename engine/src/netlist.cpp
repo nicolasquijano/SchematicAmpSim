@@ -197,13 +197,14 @@ struct Parser {
         const char kind = t[0].size() == 1 ? t[0][0] : '?';
         if (t.size() < 2) fail("element needs a name");
         const std::string& id = t[1];
-        auto triodeModel = [](const std::string& n, TriodeModel& m) { if (n == "ECC83") { m = TriodeModel::ecc83(); return true; } if (n == "12AX7") { m = TriodeModel::ecc83Fit(); return true; } if (n == "ECC81") { m = TriodeModel::ecc81(); return true; } if (n == "12AT7") { m = TriodeModel::ecc81Fit(); return true; } return false; };
+        auto triodeModel = [](const std::string& n, TriodeModel& m) { if (n == "ECC83") { m = TriodeModel::ecc83(); return true; } if (n == "12AX7") { m = TriodeModel::ecc83Fit(); return true; } if (n == "ECC81") { m = TriodeModel::ecc81(); return true; } if (n == "12AT7") { m = TriodeModel::ecc81Fit(); return true; } if (n == "12AY7") { m = TriodeModel::ay7Fit(); return true; } return false; };
         auto pentodeModel = [](const std::string& n, PentodeModel& m) {
             if (n == "EL34") { m = PentodeModel::el34(); return true; }
             if (n == "6550") { m = PentodeModel::el6550(); return true; }
             if (n == "6550DS") { m = PentodeModel::el6550Fit(); return true; }
             if (n == "6L6GC") { m = PentodeModel::el6l6gc(); return true; }
             if (n == "EL84") { m = PentodeModel::el84(); return true; }
+            if (n == "6V6GT") { m = PentodeModel::el6v6(); return true; }
             return false;
         };
         auto diodeModel = [](const std::string& n, DiodeModel& m) {

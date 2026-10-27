@@ -450,3 +450,41 @@ TEST_CASE("British Class A: HT chain, cathode bias and idle current are in the r
     CHECK(level("brilliant", "treble", 1.0, 4000.0) > 1.3 * level("brilliant", "treble", 0.0, 4000.0));
     CHECK(level("brilliant", "bass", 1.0, 80.0) > 1.2 * level("brilliant", "bass", 0.0, 80.0));  // the Normal channel skips the tone controls;);
 }
+
+TEST_CASE("American Tweed (5E3): supply, cathode bias and idle current are in the range of the amp; the controls act") {
+    const AmpDef def = loadEmbeddedAmp("tweed_5e3");
+    {
+        PowerAmp power(def, kFs);
+        const auto net = parseNetlist(def.power.netlistText, def.power.netlist);
+        CHECK(power.solver().dcConverged);
+        auto v = [&](const char* n) { return power.solver().voltage(net.node(n)); };
+        CHECK(std::abs(v("a") - 340.0) < 30.0);   // B+1
+        CHECK(std::abs(v("bb") - 300.0) < 30.0);  // B+2, the screens
+        CHECK(std::abs(v("x") - 225.0) < 30.0);   // B+3
+        CHECK(std::abs(v("kcat") - 19.0) < 4.0);  // the 250 ohm cathode bias
+    }
+    // About 12 to 15 W at the speaker when driven hard.
+    {
+        PowerAmp p(def, kFs);
+        const double loud = rmsAt(p, 440.0, 60.0);
+        INFO("440 Hz at 60 V: " << loud << " V rms into 8 ohm");
+        CHECK(loud * loud / 8.0 > 7.0);
+        CHECK(loud * loud / 8.0 < 18.0);
+    }
+    auto level = [&](const char* jack, const char* knob, double v, double hz, double peak = 0.002) {
+        FullAmp amp(def, kFs);
+        auto k = defaultKnobs(def);
+        if (knob) k[def.knobIndex(knob)] = v;
+        amp.setKnobs(k, 0.0);
+        amp.setJack(def.jackIndex(jack));
+        return rmsAt(amp, hz, peak);
+    };
+    // The Lo jacks take about 6 dB off.
+    CHECK(level("bright_hi", nullptr, 0, 500.0) > 1.6 * level("bright_lo", nullptr, 0, 500.0));
+    // The volume pots and the tone control.
+    CHECK(level("bright_hi", "bright_volume", 0.8, 500.0) > 1.3 * level("bright_hi", "bright_volume", 0.3, 500.0));
+    CHECK(level("normal_hi", "normal_volume", 0.8, 500.0) > 1.3 * level("normal_hi", "normal_volume", 0.3, 500.0));
+    CHECK(level("bright_hi", "tone", 1.0, 4000.0) > 1.3 * level("bright_hi", "tone", 0.0, 4000.0));
+    // Tone down shunts the highs of both channels (the 5n leg is on the shared node); only the Bright channel feeds the 500p.
+    CHECK(level("normal_hi", "tone", 0.0, 4000.0) < 0.6 * level("normal_hi", "tone", 1.0, 4000.0));
+}

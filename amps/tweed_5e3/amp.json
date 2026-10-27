@@ -1,0 +1,75 @@
+{
+  "id": "tweed_5e3",
+  "order": 6,
+  "output_db": 14.6,
+  "name": "American Tweed",
+
+  "preamp": {
+    "netlist": "preamp.net",
+    "tolerance": 2e-6,
+    "rail_source": "VRAIL",
+    "input_source": "VIN",
+    "output_node": "o",
+    "pot_min_ohms": 100,
+    "jack_label": "INPUT",
+    "knobs": [
+      { "name": "bright_volume", "default": 0.5, "pot": { "type": "wiper", "top": "VR_BM", "bottom": "VR_BG", "total": 1e6, "taper": "log10" } },
+      { "name": "normal_volume", "default": 0.5, "pot": { "type": "wiper", "top": "VR_NM", "bottom": "VR_NG", "total": 1e6, "taper": "log10" } },
+      { "name": "tone",          "default": 0.6, "pot": { "type": "wiper", "top": "VR_TT", "bottom": "VR_TB", "total": 1e6, "taper": "linear" } }
+    ],
+    "source_ohms": { "resistors": ["RSRC"], "default": 7000, "min": 10 },
+    "jacks": [
+      { "name": "bright_hi", "label": "Bright Hi", "drive": "VIN", "resistors": {
+          "SWH_B": 1, "SWL_B": 1e12, "SWD_B": 1e12, "SWH_N": 1e12, "SWL_N": 1e12, "SWD_N": 1e12 } },
+      { "name": "bright_lo", "label": "Bright Lo", "level_db": 4.2, "drive": "VIN", "resistors": {
+          "SWH_B": 1e12, "SWL_B": 1, "SWD_B": 1, "SWH_N": 1e12, "SWL_N": 1e12, "SWD_N": 1e12 } },
+      { "name": "normal_hi", "label": "Normal Hi", "drive": "VIN", "resistors": {
+          "SWH_B": 1e12, "SWL_B": 1e12, "SWD_B": 1e12, "SWH_N": 1, "SWL_N": 1e12, "SWD_N": 1e12 } },
+      { "name": "normal_lo", "label": "Normal Lo", "level_db": 5.3, "drive": "VIN", "resistors": {
+          "SWH_B": 1e12, "SWL_B": 1e12, "SWD_B": 1e12, "SWH_N": 1e12, "SWL_N": 1, "SWD_N": 1 } }
+    ]
+  },
+
+  "ui": [
+    { "param": "volume",  "knob": "bright_volume", "label": "BRIGHT" },
+    { "param": "volume2", "knob": "normal_volume", "label": "NORMAL" },
+    { "param": "treble",  "knob": "tone",          "label": "TONE" }
+  ],
+
+  "power": {
+    "netlist": "poweramp.net",
+    "tolerance": 1e-4,
+    "input_source": "VAUDIO",
+    "ht_source": "VHT",
+    "ht_node": "a",
+    "rail_node": "x",
+    "output_node": "t8",
+    "load_resistor": "RLOAD",
+    "supply": {
+      "mains_hz": 60,
+      "vac_peak": 480,
+      "rect_source_ohms": 450,
+      "ht_dc_source": 350,
+      "rect_drop": 25,
+      "reservoir_farads": 16e-6,
+      "tie_ohms": 15,
+      "settle_seconds": 0.15
+    }
+  },
+
+  "lite": {
+  "base_gain_db": -1.30789,
+  "high_pass_hz": 32.0595,
+  "shelf_hz": 150,
+  "presence_db": [0, 0, 0, 0, 0],
+  "sag_table": [[0, 0], [2.54648, 0.560107], [5.09296, 2.39239], [9.5493, 9.39809], [15.9155, 9.39809], [22.2817, 10.6638], [28.6479, 12.5741], [35.0141, 13.7309], [44.5634, 14.8039], [57.2958, 15.6443], [82.7606, 16.4645], [127.324, 16.7979]],
+  "rail_x_idle": 213.594,
+  "rail_sag_fraction": 0.58,
+  "ceiling_light": 16.4625,
+  "ceiling_heavy": 9.45169,
+  "ceiling_decay": 12.071,
+  "knee": 3.30942,
+  "sag_attack_s": 0.01,
+  "sag_release_s": 0.06
+}
+}
