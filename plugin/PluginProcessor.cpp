@@ -83,7 +83,7 @@ Layout SasProcessor::createLayout(const std::vector<sas::AmpDef>& defs) {
     l.add(knob(ids::speaker, "Speaker dynamics", 0.0f));
     l.add(std::make_unique<juce::AudioParameterBool>(juce::ParameterID{ids::speakerIntense, kVersion}, "Speaker dynamics intense", false));
     l.add(knob(ids::bias, "Bias", 5.0f));
-    l.add(std::make_unique<juce::AudioParameterChoice>(juce::ParameterID{ids::tube, kVersion}, "Power tubes", juce::StringArray{"Tubes 1", "Tubes 2", "Tubes 3", "Tubes 4"}, 0));
+    l.add(std::make_unique<juce::AudioParameterChoice>(juce::ParameterID{ids::tube, kVersion}, "Power tubes", juce::StringArray{ids::tubeTypes[0], ids::tubeTypes[1], ids::tubeTypes[2], ids::tubeTypes[3]}, 0));
     l.add(std::make_unique<juce::AudioParameterChoice>(juce::ParameterID{ids::noise, kVersion}, "Noise and hum", juce::StringArray{"Off", "Low", "Real"}, 0));
     l.add(std::make_unique<juce::AudioParameterInt>(juce::ParameterID{ids::wear, kVersion}, "Wear", 0, 10, 0,
                                                      juce::AudioParameterIntAttributes().withStringFromValueFunction([](int v, int) { return juce::String(v * 10) + " %"; })));
@@ -135,7 +135,12 @@ sas::Condition SasProcessor::wantedCondition() const {
     const auto& def = defs_[std::size_t(selectedAmpIndex())];
     sas::Condition c;
     const int tubes = int(def.power.tubes.size());
-    c.tube = tubes > 1 ? juce::jlimit(0, tubes - 1, int(apvts.getRawParameterValue(ids::tube)->load() + 0.5f)) : 0;
+// The parameter holds a tube TYPE, not a position: every amp lists its tubes in its own order (stock first), so a position picked on
+    // one amp would mean another tube on the next. An amp that does not offer the type keeps its own tubes.
+    c.tube = 0;
+    if (const int type = juce::jlimit(0, 3, int(apvts.getRawParameterValue(ids::tube)->load() + 0.5f)); type > 0 && tubes > 1)
+        for (int k = 0; k < tubes; ++k)
+            if (def.power.tubes[std::size_t(k)].name == ids::tubeTypes[type]) c.tube = k;
     c.wear = juce::jlimit(0, 10, int(apvts.getRawParameterValue(ids::wear)->load() + 0.5f));
     c.unit = juce::jlimit(0, 9, int(apvts.getRawParameterValue(ids::unit)->load() + 0.5f));
     return c;

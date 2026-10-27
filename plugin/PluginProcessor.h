@@ -45,7 +45,8 @@ inline constexpr const char* gateOn = "gate_on";
 inline constexpr const char* gateThreshold = "gate_threshold";
 inline constexpr const char* gateRelease = "gate_release";
 inline constexpr const char* bias = "bias";    // output-tube bias, 5 = as drawn (amps with a bias supply)
-inline constexpr const char* tube = "tube";    // output tube type (index into the amp's tube list)
+inline constexpr const char* tube = "tube";    // output tube type: 0 = the amp's own, else one of tubeTypes (the amp's list may differ in order)
+inline constexpr const char* tubeTypes[] = {"Stock", "EL34", "6L6GC", "6550"};
 inline constexpr const char* noise = "noise";  // hiss and hum: Off / Low / Real
 inline constexpr const char* wear = "wear";    // 0..10 tenths of wear
 inline constexpr const char* unit = "unit";    // 0 = ideal parts, 1..9 = an individual unit

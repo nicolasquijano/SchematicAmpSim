@@ -336,9 +336,15 @@ SasEditor::SasEditor(SasProcessor& p)
     tube_.onChange = [this] {
         if (auto* param = processor_.apvts.getParameter(ids::tube)) {
             const int index = tube_.getSelectedItemIndex();
-            if (index < 0) return;
+            if (index < 0 || shownAmp_ < 0) return;
+            // The amp's own tube is "Stock"; the others are stored by type (see wantedCondition).
+            const auto& tubes = processor_.amps()[std::size_t(shownAmp_)].power.tubes;
+            int type = 0;
+            if (index > 0 && index < int(tubes.size()))
+                for (int t = 1; t < 4; ++t)
+                    if (tubes[std::size_t(index)].name == ids::tubeTypes[t]) type = t;
             param->beginChangeGesture();
-            param->setValueNotifyingHost(param->convertTo0to1(float(index)));
+            param->setValueNotifyingHost(param->convertTo0to1(float(type)));
             param->endChangeGesture();
         }
     };
@@ -498,7 +504,7 @@ void SasEditor::showAmp(int index) {
     jackCaption_.setText(juce::String(def.preamp.jackLabel), juce::dontSendNotification);
     tube_.clear(juce::dontSendNotification);
     for (std::size_t t = 0; t < def.power.tubes.size(); ++t) tube_.addItem(juce::String(def.power.tubes[t].name), int(t) + 1);
-    tube_.setSelectedItemIndex(juce::jlimit(0, std::max(0, int(def.power.tubes.size()) - 1), int(processor_.apvts.getRawParameterValue(ids::tube)->load() + 0.5f)), juce::dontSendNotification);
+    tube_.setSelectedItemIndex(processor_.wantedCondition().tube, juce::dontSendNotification);
     tube_.setEnabled(def.power.tubes.size() > 1);
     bias_.setEnabled(def.power.bias.adjustable());
     bias_.setAlpha(def.power.bias.adjustable() ? 1.0f : 0.4f);
@@ -539,7 +545,7 @@ void SasEditor::timerCallback() {
     if (jackNow < jack_.getNumItems() && jack_.getSelectedItemIndex() != jackNow)
         jack_.setSelectedItemIndex(jackNow, juce::dontSendNotification);
 
-    if (const int tubeNow = int(processor_.apvts.getRawParameterValue(ids::tube)->load() + 0.5f);
+    if (const int tubeNow = processor_.wantedCondition().tube;
         tubeNow < tube_.getNumItems() && tube_.getSelectedItemIndex() != tubeNow)
         tube_.setSelectedItemIndex(tubeNow, juce::dontSendNotification);
     {

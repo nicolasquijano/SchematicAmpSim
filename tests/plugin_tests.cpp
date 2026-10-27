@@ -144,7 +144,7 @@ TEST_CASE("choosing other output tubes or wear rebuilds the circuits and changes
         }
         return done();
     };
-    setParam(p, ids::tube, 1.0f);  // 6L6GC instead of EL34: a bigger tube, so more plate current at the same share of its rating
+    setParam(p, ids::tube, 2.0f);  // 6L6GC instead of EL34: a bigger tube, so more plate current at the same share of its rating
     CHECK(waitFor([&] { return p.idleMilliamps() > stock * 1.1f; }));
     setParam(p, ids::tube, 0.0f);
     CHECK(waitFor([&] { return std::abs(p.idleMilliamps() - stock) < stock * 0.05f; }));
@@ -156,6 +156,35 @@ TEST_CASE("choosing other output tubes or wear rebuilds the circuits and changes
     CHECK(waitFor([&] { return std::abs(p.idleMilliamps() - stock) < stock * 0.05f; }));
     setParam(p, ids::bias, 2.0f);  // hotter
     CHECK(waitFor([&] { return p.idleMilliamps() > stock * 1.15f; }));
+}
+
+TEST_CASE("the power tube choice is a type, so it means the same on every amp") {
+    JuceInit init;
+    SasProcessor p;
+    auto ampIndex = [&](const char* id) {
+        for (std::size_t i = 0; i < p.amps().size(); ++i)
+            if (p.amps()[i].id == id) return int(i);
+        FAIL("unknown amp " << id);
+        return -1;
+    };
+    auto tubeName = [&] { return p.amps()[std::size_t(p.selectedAmpIndex())].power.tubes[std::size_t(p.wantedCondition().tube)].name; };
+    // Every amp starts with its own tube.
+    for (const char* id : {"jcm800_2203", "highgain_120", "afd100", "twin_65"}) {
+        setParam(p, ids::amp, float(ampIndex(id)));
+        CHECK(p.wantedCondition().tube == 0);
+    }
+    // 6L6GC picked on the British 800 (where it is the second entry) is the stock 6L6GC of the 5050, not its second entry (an EL34).
+    setParam(p, ids::amp, float(ampIndex("jcm800_2203")));
+    setParam(p, ids::tube, 2.0f);  // 6L6GC
+    CHECK(tubeName() == "6L6GC");
+    setParam(p, ids::amp, float(ampIndex("highgain_120")));
+    CHECK(tubeName() == "6L6GC");
+    CHECK(p.wantedCondition().tube == 0);
+    setParam(p, ids::amp, float(ampIndex("afd100")));  // its list is 6550, EL34, 6L6GC
+    CHECK(tubeName() == "6L6GC");
+    // An amp with a single tube ignores the choice.
+    setParam(p, ids::amp, float(ampIndex("tweed_5e3")));
+    CHECK(p.wantedCondition().tube == 0);
 }
 
 TEST_CASE("state round trip restores parameters") {
