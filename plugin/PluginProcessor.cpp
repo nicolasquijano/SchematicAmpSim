@@ -79,6 +79,10 @@ Layout SasProcessor::createLayout(const std::vector<sas::AmpDef>& defs) {
     l.add(knob(ids::compTone, "Compressor tone", 5.0f));
     l.add(knob(ids::compLevel, "Compressor level", 7.5f));
     l.add(std::make_unique<juce::AudioParameterBool>(juce::ParameterID{ids::compFast, kVersion}, "Compressor fast release", false));
+    l.add(std::make_unique<juce::AudioParameterBool>(juce::ParameterID{ids::tunerOn, kVersion}, "Tuner", false));
+    l.add(std::make_unique<juce::AudioParameterBool>(juce::ParameterID{ids::tunerMute, kVersion}, "Tuner mutes the output", true));
+    l.add(std::make_unique<juce::AudioParameterFloat>(juce::ParameterID{ids::tunerRef, kVersion}, "Tuner reference", juce::NormalisableRange<float>(430.0f, 450.0f, 1.0f), 440.0f,
+                                                       juce::AudioParameterFloatAttributes().withLabel("Hz").withStringFromValueFunction([](float v, int) { return juce::String(v, 0); })));
     l.add(knob(ids::irBlend, "IR blend", 5.0f));
     l.add(knob(ids::speaker, "Speaker dynamics", 0.0f));
     l.add(std::make_unique<juce::AudioParameterBool>(juce::ParameterID{ids::speakerIntense, kVersion}, "Speaker dynamics intense", false));
@@ -230,6 +234,7 @@ void SasProcessor::prepareToPlay(double sampleRate, int samplesPerBlock) {
     irWasActive_ = false;
     latencyReported_ = -1;
     gate_.prepare(sampleRate);
+    tuner_.prepare(sampleRate);
 }
 
 sas::ChainSettings SasProcessor::readSettings(bool irAvailable) {
@@ -306,6 +311,8 @@ void SasProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::MidiBuff
         for (auto& slot : ir_) slot.conv.reset();
     irWasActive_ = irActive;
 
+    const bool tunerOn = apvts.getRawParameterValue(ids::tunerOn)->load() > 0.5f;
+    const bool tunerMuted = tunerOn && apvts.getRawParameterValue(ids::tunerMute)->load() > 0.5f;
     gateGain_.store(float(gate_.gain()));
     idleMa_.store(float(chain_->idleMilliamps()));
     for (int start = 0; start < numSamples; start += int(kMaxChunk)) {
@@ -320,6 +327,7 @@ void SasProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::MidiBuff
         for (int i = 0; i < n; ++i) m[i] *= inv;
         float inPeak = 0.0f;
         for (int i = 0; i < n; ++i) inPeak = std::max(inPeak, std::fabs(m[i]));
+        if (tunerOn) tuner_.push(m, std::size_t(n));  // the raw input, before the gate
         gate_.process(m, std::size_t(n));
 
         chain_->processAmp(m, m, std::size_t(n));
@@ -350,6 +358,7 @@ void SasProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::MidiBuff
             }
         }
         chain_->applyOutput(m, std::size_t(n));
+        if (tunerMuted) std::fill(m, m + n, 0.0f);  // tuning: nobody wants to hear the amp
         float outPeak = 0.0f;
         for (int i = 0; i < n; ++i) outPeak = std::max(outPeak, std::fabs(m[i]));
         if (inPeak > inputPeak_.load()) inputPeak_.store(inPeak);

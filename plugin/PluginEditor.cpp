@@ -237,6 +237,86 @@ void IrCurve::paint(juce::Graphics& g) {
     g.strokePath(path, juce::PathStrokeType(1.6f, juce::PathStrokeType::curved, juce::PathStrokeType::rounded));
 }
 
+// ------------------------------------------------------------------ tuner display
+
+void TunerDisplay::setReading(bool valid, bool active, double hz, double referenceA) {
+    valid_ = valid;
+    active_ = active;
+    hz_ = hz;
+    if (valid) {
+        note_ = sas::noteFor(hz, referenceA);
+        // The needle glides, so a trembling string does not make it jitter.
+        needle_ += 0.45f * (float(note_.cents) - needle_);
+    }
+    repaint();
+}
+
+void TunerDisplay::paint(juce::Graphics& g) {
+    auto b = getLocalBounds().toFloat();
+    auto* look = dynamic_cast<AmpLookAndFeel*>(&getLookAndFeel());
+    const auto accent = look ? look->accent() : juce::Colours::orange;
+    const auto label = look ? look->label() : juce::Colours::grey;
+    const auto text = look ? look->text() : juce::Colours::white;
+    g.setColour(juce::Colours::black.withAlpha(0.35f));
+    g.fillRoundedRectangle(b, 6.0f);
+
+    if (!active_ || !valid_) {
+        g.setColour(label);
+        g.setFont(AmpLookAndFeel::font(15.0f));
+        g.drawText(active_ ? "play a note" : "press  Tuner on  to start", b.withTrimmedBottom(40.0f), juce::Justification::centred);
+        if (active_) {
+            g.setFont(AmpLookAndFeel::font(80.0f, true));
+            g.setColour(label.withAlpha(0.25f));
+            g.drawText("-", b.withTrimmedBottom(40.0f).translated(0.0f, -20.0f), juce::Justification::centred);
+        }
+    }
+
+    const bool inTune = valid_ && std::abs(needle_) < 3.0f;
+    const auto lit = inTune ? juce::Colour::fromRGB(90, 210, 110) : accent;
+
+    // The note, big, with its octave.
+    if (active_ && valid_) {
+        auto top = b.withTrimmedBottom(b.getHeight() * 0.42f);
+        g.setColour(lit);
+        g.setFont(AmpLookAndFeel::font(std::min(110.0f, top.getHeight() * 0.95f), true));
+        const juce::String name(note_.name);
+        g.drawText(name, top.translated(-18.0f, 0.0f), juce::Justification::centred);
+        g.setColour(text.withAlpha(0.7f));
+        g.setFont(AmpLookAndFeel::font(24.0f, true));
+        g.drawText(juce::String(note_.octave), top.translated(top.getWidth() * 0.18f + (name.length() > 1 ? 24.0f : 4.0f), top.getHeight() * 0.22f), juce::Justification::centred);
+    }
+
+    // The needle meter: +-50 cents, ticks every 10, the centre mark taller.
+    auto meter = b.withTrimmedTop(b.getHeight() * 0.60f).reduced(24.0f, 0.0f).withHeight(34.0f).withY(b.getY() + b.getHeight() * 0.60f);
+    const float cx = meter.getCentreX(), half = meter.getWidth() * 0.5f;
+    for (int c = -50; c <= 50; c += 10) {
+        const float x = cx + half * float(c) / 50.0f;
+        const bool centre = c == 0;
+        g.setColour((centre ? lit : label).withAlpha(centre ? 0.95f : 0.6f));
+        g.drawLine(x, meter.getY() + (centre ? 0.0f : 8.0f), x, meter.getBottom(), centre ? 2.0f : 1.2f);
+    }
+    g.setColour(label.withAlpha(0.5f));
+    g.drawLine(meter.getX(), meter.getBottom(), meter.getRight(), meter.getBottom(), 1.0f);
+    g.setFont(AmpLookAndFeel::font(11.0f, true, 0.1f));
+    g.setColour(label);
+    g.drawText("FLAT", juce::Rectangle<float>(meter.getX(), meter.getBottom() + 4.0f, 60.0f, 14.0f), juce::Justification::centredLeft);
+    g.drawText("SHARP", juce::Rectangle<float>(meter.getRight() - 60.0f, meter.getBottom() + 4.0f, 60.0f, 14.0f), juce::Justification::centredRight);
+    if (active_ && valid_) {
+        const float x = cx + half * juce::jlimit(-50.0f, 50.0f, needle_) / 50.0f;
+        juce::Path needle;
+        needle.addTriangle(x - 8.0f, meter.getY() - 10.0f, x + 8.0f, meter.getY() - 10.0f, x, meter.getY() + 8.0f);
+        g.setColour(lit.withAlpha(0.3f));
+        g.fillEllipse(x - 14.0f, meter.getY() - 12.0f, 28.0f, 28.0f);
+        g.setColour(lit);
+        g.fillPath(needle);
+        g.setFont(AmpLookAndFeel::font(15.0f, true));
+        g.setColour(text);
+        const int cents = int(std::lround(note_.cents));
+        g.drawText(juce::String(cents > 0 ? "+" : "") + juce::String(cents) + " cents   -   " + juce::String(hz_, 1) + " Hz",
+                   juce::Rectangle<float>(b.getX(), meter.getBottom() + 22.0f, b.getWidth(), 20.0f), juce::Justification::centred);
+    }
+}
+
 // ------------------------------------------------------------------ tube glow
 
 void TubeGlow::setTubes(int count, const juce::String& name) {
@@ -311,9 +391,9 @@ SasEditor::SasEditor(SasProcessor& p)
       gateThreshold_(p.apvts, ids::gateThreshold, "THRESHOLD"), gateRelease_(p.apvts, ids::gateRelease, "RELEASE"), cable_(p.apvts, ids::cable, "CABLE m"),
       bias_(p.apvts, ids::bias, "BIAS"), wear_(p.apvts, ids::wear, "WEAR"), speaker_(p.apvts, ids::speaker, "SPEAKER"), blend_(p.apvts, ids::irBlend, "BLEND"),
       compSustain_(p.apvts, ids::compSustain, "SUSTAIN"), compBlend_(p.apvts, ids::compBlend, "BLEND"), compTone_(p.apvts, ids::compTone, "TONE"),
-      compLevel_(p.apvts, ids::compLevel, "LEVEL") {
+      compLevel_(p.apvts, ids::compLevel, "LEVEL"), tunerRef_(p.apvts, ids::tunerRef, "REF Hz") {
     setLookAndFeel(&look_);
-    for (auto* k : {&input_, &output_, &tsDrive_, &tsTone_, &tsLevel_, &gateThreshold_, &gateRelease_, &cable_, &bias_, &wear_, &speaker_, &blend_, &compSustain_, &compBlend_, &compTone_, &compLevel_}) addAndMakeVisible(*k);
+    for (auto* k : {&input_, &output_, &tsDrive_, &tsTone_, &tsLevel_, &gateThreshold_, &gateRelease_, &cable_, &bias_, &wear_, &speaker_, &blend_, &compSustain_, &compBlend_, &compTone_, &compLevel_, &tunerRef_}) addAndMakeVisible(*k);
     addAndMakeVisible(inBar_);
     addAndMakeVisible(tubes_);
     addAndMakeVisible(outBar_);
@@ -372,6 +452,11 @@ SasEditor::SasEditor(SasProcessor& p)
     tsOnAtt_ = std::make_unique<juce::AudioProcessorValueTreeState::ButtonAttachment>(p.apvts, ids::tsOn, tsOn_);
     addAndMakeVisible(gateOn_);
     gateOnAtt_ = std::make_unique<juce::AudioProcessorValueTreeState::ButtonAttachment>(p.apvts, ids::gateOn, gateOn_);
+    addAndMakeVisible(tunerDisplay_);
+    addAndMakeVisible(tunerOn_);
+    tunerOnAtt_ = std::make_unique<juce::AudioProcessorValueTreeState::ButtonAttachment>(p.apvts, ids::tunerOn, tunerOn_);
+    addAndMakeVisible(tunerMute_);
+    tunerMuteAtt_ = std::make_unique<juce::AudioProcessorValueTreeState::ButtonAttachment>(p.apvts, ids::tunerMute, tunerMute_);
     addAndMakeVisible(compOn_);
     compOnAtt_ = std::make_unique<juce::AudioProcessorValueTreeState::ButtonAttachment>(p.apvts, ids::compOn, compOn_);
     addAndMakeVisible(compFast_);
@@ -405,7 +490,7 @@ SasEditor::SasEditor(SasProcessor& p)
     clearA_.onClick = [this] { processor_.clearImpulseResponse(0); };
     clearB_.onClick = [this] { processor_.clearImpulseResponse(1); };
 
-    for (auto* t : {&ampTab_, &cabTab_, &fxTab_}) {
+    for (auto* t : {&ampTab_, &cabTab_, &fxTab_, &tunerTab_}) {
         t->setClickingTogglesState(true);
         t->setRadioGroupId(7);
         addAndMakeVisible(*t);
@@ -414,6 +499,7 @@ SasEditor::SasEditor(SasProcessor& p)
     ampTab_.onClick = [this] { setPage(0); };
     fxTab_.onClick = [this] { setPage(1); };
     cabTab_.onClick = [this] { setPage(2); };
+    tunerTab_.onClick = [this] { setPage(3); };
 
     showAmp(processor_.selectedAmpIndex());
     setResizable(true, true);
@@ -538,6 +624,7 @@ void SasEditor::pollMeters() {
 
 void SasEditor::timerCallback() {
     pollMeters();
+    if (++tunerTicks_ % 3 == 0) updateTuner();
     if (tick_++ % 8 != 0) return;  // the rest at about 4 Hz
     // Follows the amp parameter when the host or a restored state changes it.
     if (processor_.selectedAmpIndex() != shownAmp_) showAmp(processor_.selectedAmpIndex());
@@ -554,6 +641,28 @@ void SasEditor::timerCallback() {
     }
 
     updateImpulseStatus();
+}
+
+void SasEditor::updateTuner() {
+    const bool active = processor_.apvts.getRawParameterValue(ids::tunerOn)->load() > 0.5f;
+    const double ref = double(processor_.apvts.getRawParameterValue(ids::tunerRef)->load());
+    bool valid = false;
+    if (active && processor_.tunerFeed().copyLatest(tunerBuf_.data(), tunerBuf_.size())) {
+        const auto r = sas::PitchDetector::detect(tunerBuf_.data(), tunerBuf_.size(), processor_.tunerFeed().rate());
+        if (r.valid) {
+            // Take a jump of more than a semitone only after it repeats, so one bad reading does not flash a wrong note.
+            const bool jump = tunerHz_ > 0.0 && std::abs(12.0 * std::log2(r.hz / tunerHz_)) > 1.0;
+            if (!jump || ++tunerHold_ >= 2) {
+                tunerHz_ = r.hz;
+                tunerHold_ = 0;
+            }
+            valid = true;
+        } else {
+            tunerHold_ = 0;
+        }
+    }
+    if (!active) tunerHz_ = 0.0;
+    if (page_ == 3 || active) tunerDisplay_.setReading(valid && tunerHz_ > 0.0, active, tunerHz_, ref);
 }
 
 void SasEditor::updateImpulseStatus() {
@@ -680,6 +789,8 @@ void SasEditor::resized() {
     // Right: title and page tabs, then the page.
     {
         auto head = area.removeFromTop(36);
+        tunerTab_.setBounds(head.removeFromRight(70).withTrimmedTop(6).withTrimmedBottom(2));
+        head.removeFromRight(4);
         fxTab_.setBounds(head.removeFromRight(80).withTrimmedTop(6).withTrimmedBottom(2));
         head.removeFromRight(4);
         cabTab_.setBounds(head.removeFromRight(84).withTrimmedTop(6).withTrimmedBottom(2));
@@ -687,7 +798,8 @@ void SasEditor::resized() {
         ampTab_.setBounds(head.removeFromRight(70).withTrimmedTop(6).withTrimmedBottom(2));
         area.removeFromTop(4);
     }
-    const bool ampPage = page_ == 0, fxPage = page_ == 1, cabPage = page_ == 2;
+    const bool ampPage = page_ == 0, fxPage = page_ == 1, cabPage = page_ == 2, tunerPage = page_ == 3;
+    for (auto* c : std::initializer_list<juce::Component*>{&tunerDisplay_, &tunerOn_, &tunerMute_, &tunerRef_}) c->setVisible(tunerPage);
     for (auto& k : ampKnobs_) k->setVisible(ampPage);
     for (auto* c : std::initializer_list<juce::Component*>{&input_, &output_, &inBar_, &outBar_, &tubes_, &cable_, &pickup_, &pickupCaption_}) c->setVisible(ampPage);
     for (auto* c : std::initializer_list<juce::Component*>{&cabCaption_, &cab_, &speaker_, &speakerIntense_, &blend_, &blendNote_, &loadA_, &clearA_, &nameA_, &curveA_,
@@ -754,6 +866,24 @@ void SasEditor::resized() {
         tsDrive_.setBounds(in.removeFromLeft(in.getWidth() / 3));
         tsTone_.setBounds(in.removeFromLeft(in.getWidth() / 2));
         tsLevel_.setBounds(in);
+        repaint();
+        return;
+    }
+
+    if (tunerPage) {
+        // Tuner page: the display fills the page, the switches and the reference pitch sit in a column on the right.
+        auto side = area.removeFromRight(150);
+        area.removeFromRight(gap);
+        panels_.push_back({area, "CHROMATIC TUNER"});
+        tunerDisplay_.setBounds(area.reduced(10, 8).withTrimmedTop(14));
+        panels_.push_back({side, "TUNER"});
+        auto in = side.reduced(10, 6);
+        in.removeFromTop(20);
+        tunerOn_.setBounds(in.removeFromTop(26));
+        in.removeFromTop(4);
+        tunerMute_.setBounds(in.removeFromTop(26));
+        in.removeFromTop(4);
+        tunerRef_.setBounds(in);
         repaint();
         return;
     }

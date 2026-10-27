@@ -12,6 +12,7 @@
 #include "sas/chain.h"
 #include "sas/condition.h"
 #include "sas/gate.h"
+#include "sas/tuner.h"
 
 namespace ids {
 inline constexpr const char* amp = "amp";
@@ -56,6 +57,9 @@ inline constexpr const char* compBlend = "comp_blend";
 inline constexpr const char* compTone = "comp_tone";
 inline constexpr const char* compLevel = "comp_level";
 inline constexpr const char* compFast = "comp_fast";        // the pedal's Attack switch: fast release
+inline constexpr const char* tunerOn = "tuner_on";        // the chromatic tuner listens to the input
+inline constexpr const char* tunerMute = "tuner_mute";    // and silences the output while it is on
+inline constexpr const char* tunerRef = "tuner_ref";      // reference pitch of A4, 430..450 Hz
 inline constexpr const char* irBlend = "ir_blend";  // 0 = impulse response A only, 10 = B only
 inline constexpr const char* speaker = "speaker";               // speaker dynamics amount, 0..10
 inline constexpr const char* speakerIntense = "speaker_intense";  // stronger speaker dynamics
@@ -111,6 +115,8 @@ public:
     float takeInputPeak() { return inputPeak_.exchange(0.0f); }
     float takeOutputPeak() { return outputPeak_.exchange(0.0f); }
     float gateGain() const { return gateGain_.load(); }
+    // The decimated input for the tuner (filled while the tuner is on); the editor runs the pitch detection on it.
+    const sas::TunerFeed& tunerFeed() const { return tuner_; }
     // Average plate current of one output tube in mA (0 in the Lite / Eco modes).
     float idleMilliamps() const { return idleMa_.load(); }
     // The physical condition (tube, wear, unit) the "tube", "wear" and "unit" parameters ask for.
@@ -167,6 +173,7 @@ private:
     mutable juce::CriticalSection irLock_;  // guards the slots' bytes / name / curve (message thread vs state calls)
 
     sas::NoiseGate gate_;
+    sas::TunerFeed tuner_;
     std::atomic<float> inputPeak_{0.0f}, outputPeak_{0.0f}, gateGain_{1.0f}, idleMa_{0.0f};
     std::vector<float> mono_;
     sas::ChainSettings settings_;

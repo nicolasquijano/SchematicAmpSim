@@ -187,6 +187,35 @@ TEST_CASE("the power tube choice is a type, so it means the same on every amp") 
     CHECK(p.wantedCondition().tube == 0);
 }
 
+TEST_CASE("the tuner listens to the input, reads the note and silences the output while it is on") {
+    JuceInit init;
+    SasProcessor p;
+    p.prepareToPlay(48000.0, 256);
+    setParam(p, ids::quality, 2.0f);
+    // Off: nothing is collected and the amp plays.
+    CHECK(rms(run(p, 20, 110.0, 0.1)) > 1e-4);
+    std::vector<float> buf(3072);
+    CHECK_FALSE(p.tunerFeed().copyLatest(buf.data(), buf.size()));
+
+    setParam(p, ids::tunerOn, 1.0f);
+    const auto muted = run(p, 80, 110.0, 0.1);  // an A2
+    CHECK(rms(muted) == 0.0);                    // muted
+    REQUIRE(p.tunerFeed().copyLatest(buf.data(), buf.size()));
+    const auto r = sas::PitchDetector::detect(buf.data(), buf.size(), p.tunerFeed().rate());
+    REQUIRE(r.valid);
+    CHECK(std::abs(1200.0 * std::log2(r.hz / 110.0)) < 1.0);
+    const auto n = sas::noteFor(r.hz, 440.0);
+    CHECK(std::string(n.name) == "A");
+    CHECK(n.octave == 2);
+
+    // Mute off: it listens and the amp keeps playing; on again after it is switched off.
+    setParam(p, ids::tunerMute, 0.0f);
+    CHECK(rms(run(p, 20, 110.0, 0.1)) > 1e-4);
+    setParam(p, ids::tunerOn, 0.0f);
+    setParam(p, ids::tunerMute, 1.0f);
+    CHECK(rms(run(p, 20, 110.0, 0.1)) > 1e-4);
+}
+
 TEST_CASE("state round trip restores parameters") {
     JuceInit init;
     SasProcessor a, b;
@@ -618,6 +647,19 @@ TEST_CASE("the editor builds for every amp and can be rendered") {
                 for (auto* c : ed->getChildren())
                     if (auto* b = dynamic_cast<juce::TextButton*>(c); b && b->getButtonText() == "Cabinet") { b->setToggleState(true, juce::dontSendNotification); b->onClick(); }
                 const auto cabPage = ed->createComponentSnapshot(ed->getLocalBounds());
+                {
+                    // The tuner page with a note slightly flat of G3 (196 Hz is G3 exactly: 190 Hz is about 54 cents flat of it, so use 195 Hz).
+                    setParam(p, ids::tunerOn, 1.0f);
+                    run(p, 80, 195.0, 0.1);  // one continuous stretch: the sine restarts its phase on every call
+                    if (auto* editor = dynamic_cast<SasEditor*>(ed.get()))
+                        for (int i = 0; i < 10; ++i) editor->updateTuner();  // the needle glides to the reading
+                    for (auto* c : ed->getChildren())
+                        if (auto* b = dynamic_cast<juce::TextButton*>(c); b && b->getButtonText() == "Tuner") { b->setToggleState(true, juce::dontSendNotification); b->onClick(); }
+                    const auto tuner = ed->createComponentSnapshot(ed->getLocalBounds());
+                    juce::FileOutputStream o4(juce::File(dir).getChildFile("tuner.png"));
+                    if (o4.openedOk()) { o4.setPosition(0); o4.truncate(); png.writeImageToStream(tuner, o4); }
+                    setParam(p, ids::tunerOn, 0.0f);
+                }
                 juce::FileOutputStream o3(juce::File(dir).getChildFile("cab.png"));
                 if (o3.openedOk()) { o3.setPosition(0); o3.truncate(); png.writeImageToStream(cabPage, o3); }
             }

@@ -7,6 +7,7 @@
 
 #include "PluginProcessor.h"
 #include "sas/amp_def.h"
+#include "sas/tuner.h"
 
 // The editor's colours for one amp (from the amp's amp.json "theme").
 struct EditorTheme {
@@ -80,6 +81,20 @@ private:
     std::vector<float> curve_;
 };
 
+// The tuner's face: the note, how far from it in cents on a needle meter, and the frequency.
+class TunerDisplay final : public juce::Component {
+public:
+    // `valid`: a pitch was found; `active`: the tuner is on at all.
+    void setReading(bool valid, bool active, double hz, double referenceA);
+    void paint(juce::Graphics&) override;
+
+private:
+    bool valid_ = false, active_ = false;
+    double hz_ = 0.0;
+    sas::NoteInfo note_;
+    float needle_ = 0.0f;  // smoothed cents
+};
+
 // The output tubes drawn as glass envelopes whose plates glow with the plate current (the share of the tube's rating),
 // so bias, wear and how hard the amp is driven can be seen.
 class TubeGlow final : public juce::Component {
@@ -103,6 +118,7 @@ public:
     void paint(juce::Graphics&) override;
     void resized() override;
     void pollMeters();  // reads the processor's peaks into the level bars (the timer calls it)
+    void updateTuner();  // runs the pitch detection on the latest input (the timer calls it)
     void updateImpulseStatus();  // the impulse names and response curves of the Cabinet page (the timer calls it)
 
 private:
@@ -116,7 +132,7 @@ private:
     void showAmp(int index);  // rebuilds the amp-specific knobs, jack list and title
     void styleCombo(juce::ComboBox&, const char* paramId, std::unique_ptr<juce::AudioProcessorValueTreeState::ComboBoxAttachment>&);
     void styleCaption(juce::Label&, const juce::String&);
-    void setPage(int page);  // 0 = amp, 1 = effects, 2 = cabinet
+    void setPage(int page);  // 0 = amp, 1 = effects, 2 = cabinet, 3 = tuner
     void drawLogo(juce::Graphics&, juce::Rectangle<float>) const;
     void applyTheme(const sas::AmpDef&);  // colours of the shown amp
 
@@ -138,7 +154,11 @@ private:
     KnobWithLabel tsDrive_, tsTone_, tsLevel_;
     KnobWithLabel gateThreshold_, gateRelease_, cable_;
     KnobWithLabel bias_, wear_, speaker_, blend_;
-    KnobWithLabel compSustain_, compBlend_, compTone_, compLevel_;
+    KnobWithLabel compSustain_, compBlend_, compTone_, compLevel_, tunerRef_;
+    TunerDisplay tunerDisplay_;
+    std::vector<float> tunerBuf_ = std::vector<float>(3072);
+    int tunerTicks_ = 0, tunerHold_ = 0;
+    double tunerHz_ = 0.0;
     LevelBar inBar_, outBar_;
     TubeGlow tubes_;
     int tick_ = 0;
@@ -151,10 +171,11 @@ private:
     juce::ToggleButton gateOn_{"On"};
     juce::ToggleButton speakerIntense_{"Intense"};
     juce::ToggleButton compOn_{"On"}, compFast_{"Fast"};
+    juce::ToggleButton tunerOn_{"Tuner on"}, tunerMute_{"Mute output"};
     juce::ToggleButton levelMatch_{"Level match"};  // shown only for amps whose jacks differ in level
     juce::ToggleButton vibrato_{"Vibrato"};  // shown only for amps that have an optical tremolo
-    std::unique_ptr<juce::AudioProcessorValueTreeState::ButtonAttachment> tsOnAtt_, gateOnAtt_, speakerIntenseAtt_, compOnAtt_, compFastAtt_, levelMatchAtt_, vibratoAtt_;
-    juce::TextButton ampTab_{"Amp"}, cabTab_{"Cabinet"}, fxTab_{"Effects"};
+    std::unique_ptr<juce::AudioProcessorValueTreeState::ButtonAttachment> tsOnAtt_, gateOnAtt_, speakerIntenseAtt_, compOnAtt_, compFastAtt_, tunerOnAtt_, tunerMuteAtt_, levelMatchAtt_, vibratoAtt_;
+    juce::TextButton ampTab_{"Amp"}, cabTab_{"Cabinet"}, fxTab_{"Effects"}, tunerTab_{"Tuner"};
     juce::TextButton loadA_{"Load..."}, clearA_{"Clear"}, loadB_{"Load..."}, clearB_{"Clear"};
     IrCurve curveA_, curveB_;
     std::unique_ptr<juce::FileChooser> chooser_;

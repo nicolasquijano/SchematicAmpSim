@@ -16,7 +16,8 @@ add_executable(sas_tests
   test_condition.cpp
   test_speaker.cpp
   test_compressor.cpp
-  test_twin_fx.cpp)
+  test_twin_fx.cpp
+  test_tuner.cpp)
 target_compile_definitions(sas_tests PRIVATE
   SAS_GOLDEN_DIR="${CMAKE_SOURCE_DIR}/golden"
   SAS_AMPS_DIR="${CMAKE_SOURCE_DIR}/amps"
