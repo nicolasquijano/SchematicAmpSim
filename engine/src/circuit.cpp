@@ -114,6 +114,16 @@ void Circuit::opamp(Node plus, Node minus, Node out, Node vref, const OpampModel
     devices_.push_back(d);
 }
 
+void Circuit::opampLinear(Node plus, Node minus, Node out, Node vref, const OpampModel& model) {
+    const Node internal = node("opamp_internal_" + std::to_string(names_.size()));
+    vccs_.push_back({internal, plus, minus, model.gm});
+    resistor(internal, vref, model.a0 / model.gm);
+    capacitor(internal, vref, model.gm / (2.0 * kPi * model.gbw));
+    // Output: a unity buffer of the internal node behind rout.
+    resistor(out, vref, model.rout);
+    vccs_.push_back({out, internal, vref, 1.0 / model.rout});
+}
+
 SrcId Circuit::source(Node node, double ohms, double dc) {
     sources_.push_back({node, ohms, dc});
     return {sources_.size() - 1};

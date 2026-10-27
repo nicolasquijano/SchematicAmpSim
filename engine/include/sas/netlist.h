@@ -9,6 +9,7 @@
 //   P name g1 p g2 k MODEL scale   pentode, `scale` identical tubes in parallel
 //   D name anode cathode MODEL     diode    Q name b c e MODEL   NPN (forward-active)
 //   O name plus minus out vref MODEL        op-amp biased around vref
+//   U name plus minus out vref MODEL        op-amp without the output limit (linear)
 //   N name b c e MODEL                      Ebers-Moll NPN (both junctions: saturates)
 //   A name plus minus out ctrl MODEL        transconductance amplifier (OTA): output current into `out`, bias current in `ctrl`
 //   G name into cp cn gm           voltage-controlled current source

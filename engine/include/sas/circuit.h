@@ -72,6 +72,9 @@ public:
     void vccs(Node into, Node ctrlPlus, Node ctrlMinus, double gm);
     // Op-amp biased around vref; inputs draw no current.
     void opamp(Node plus, Node minus, Node out, Node vref, const OpampModel& model);
+    // The same op-amp without the output limit: a linear gm / dominant pole / buffer, so it adds no nonlinear port to the Newton system
+    // (for stages that stay well inside the supply).
+    void opampLinear(Node plus, Node minus, Node out, Node vref, const OpampModel& model);
     SrcId source(Node node, double ohms, double dc);
     SrcId supply(Node node, double volts, double ohms) { return source(node, ohms, volts); }
     void setSourceDc(SrcId id, double dc) { sources_[id.i].dc = dc; }

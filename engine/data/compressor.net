@@ -18,7 +18,10 @@
 * The source resistance RSRC stands for the guitar and its cable.
 *
 * Assumptions where the drawing is silent (change them here, not in code):
-*  - MMBT6429: beta 500, reverse beta 4, Is 1e-14; 1N914 as the stock signal diode;
+*  - MMBT6429: beta 500, reverse beta 4, Is 1e-14; 1N914 as the stock signal diode. Q1, Q2 and Q4 swing into saturation, so they
+*    are full Ebers-Moll (N); the followers Q3 and Q5 never leave the active region (Q, one junction: cheaper);
+*  - the four op-amps (U) are linear: they have no output limit here (the stages stay inside the supply in normal use; the engine
+*    puts a soft limit of +-3.3 V on the pedal's output instead), which keeps four nonlinear ports out of the Newton system;
 *  - the OTA output stage runs out of room near the rails: two clamps (VCLH, VCLL) hold node n5 between about -0.2 V and 8.1 V;
 *  - the op-amp output stages are biased around a stiff 4.5 V reference (VREF); the half-supply divider VC (R9 / R11) is a
 *    separate, high-impedance node that the resistors of the audio stages return to.
@@ -47,7 +50,7 @@ C C12 bm 0 1u
 R R22 bm b3 470k
 R R18 va c3 10k
 C C8 c3 0 1u
-N Q3 b3 c3 e3 MMBT6429
+Q Q3 b3 c3 e3 MMBT6429
 R R21 e3 0 10k
 C C11 e3 s 1u
 R R27 s 0 1M
@@ -92,14 +95,14 @@ R R20 va ra 10k
 R R58 ra env 150k
 R SWATK ra env 1e12
 C C6 env 0 10u
-N Q5 env va q5e MMBT6429
+Q Q5 env va q5e MMBT6429
 
 * Dry path: IC2A, a non-inverting stage biased by R46 / R45 (gain 1 + R30 / R31).
 C C13 in n13 22n
 R R24 n13 p2a 10k
 R R46 va p2a 1M
 R R45 p2a 0 1M
-O IC2A p2a m2a d2a vr RC4558
+U IC2A p2a m2a d2a vr RC4558
 R R31 vc m2a 27k
 R R30 m2a d2a 10k
 R R32 d2a bt 15k
@@ -113,7 +116,7 @@ C C23 xw tc 6n8
 R RTONE tc tr 50k
 R R49 tr m3a 10k
 R R50 vc p3a 12k
-O IC3A p3a m3a w3a vr RC4558
+U IC3A p3a m3a w3a vr RC4558
 R R51 m3a w3a 47k
 C C34 m3a w3a 47p
 R R34 w3a bb 15k
@@ -123,10 +126,10 @@ R RBT_TOP bt vc 5k
 R RBT_BOT vc bb 5k
 R R33 bt m6 15k
 R R35 bb m6 15k
-O IC2B vc m6 o2b vr RC4558
+U IC2B vc m6 o2b vr RC4558
 R R36 m6 o2b 100k
 R R23 o2b m3b 10k
-O IC3B vc m3b o3b vr RC4558
+U IC3B vc m3b o3b vr RC4558
 R R37 m3b o3b 10k
 R R56 o3b n20 390
 C C20 n20 lv 47n

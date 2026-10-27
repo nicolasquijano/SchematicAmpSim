@@ -214,7 +214,7 @@ struct Parser {
             if (n == "RECTIFIER_BRIDGE") { m = DiodeModel::rectifierBridge(); return true; }
             return false;
         };
-        auto bjtModel = [](const std::string& n, BjtModel& m) { if (n == "C1815") { m = BjtModel::c1815(); return true; } return false; };
+        auto bjtModel = [](const std::string& n, BjtModel& m) { if (n == "C1815") { m = BjtModel::c1815(); return true; } if (n == "MMBT6429") { m = BjtModel{1e-14, 500.0, 0.02585}; return true; } return false; };
         auto npnModel = [](const std::string& n, NpnModel& m) { if (n == "MMBT6429") { m = NpnModel::mmbt6429(); return true; } return false; };
         auto otaModel = [](const std::string& n, OtaModel& m) { if (n == "LM13700") { m = OtaModel::lm13700(); return true; } return false; };
         auto opampModel = [](const std::string& n, OpampModel& m) { if (n == "RC4558") { m = OpampModel::rc4558(); return true; } return false; };
@@ -259,6 +259,10 @@ struct Parser {
             case 'A':
                 need(t, 7, "A name plus minus out ctrl MODEL");
                 c.ota(node(t[2]), node(t[3]), node(t[4]), node(t[5]), model<OtaModel>(t[6], otaModel));
+                break;
+            case 'U':
+                need(t, 7, "U name plus minus out vref MODEL");
+                c.opampLinear(node(t[2]), node(t[3]), node(t[4]), node(t[5]), model<OpampModel>(t[6], opampModel));
                 break;
             case 'O':
                 need(t, 7, "O name plus minus out vref MODEL");

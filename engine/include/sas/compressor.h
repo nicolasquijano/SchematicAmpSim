@@ -2,6 +2,8 @@
 // The compressor pedal, solved as a circuit: engine/data/compressor.net is a transcription of the Keeley Compressor Plus schematic
 // (OTA gain cell, transistor envelope detector, feedback). The pedal runs at the host sample rate, in front of the amp.
 
+#include <cmath>
+
 #include "sas/circuit.h"
 #include "sas/netlist.h"
 
@@ -31,8 +33,10 @@ public:
     // One sample: volts in, volts out (AC coupled).
     double process(double vin) {
         solver_.process(vin);
-        return solver_.voltage(out_);
+        // The op-amps are linear here; the real ones clip near +-3.3 V around their bias, which the output limit stands for.
+        return kOutputLimit * std::tanh(solver_.voltage(out_) / kOutputLimit);
     }
+    static constexpr double kOutputLimit = 3.3;
 
     // Envelope voltage (about the supply when idle, lower the harder the compressor works) and the OTA bias current, for tests and meters.
     double envelope() const { return solver_.voltage(env_); }
