@@ -100,7 +100,23 @@ double PowerAmp::process(double vin) {
     phase_ += dphase_;
     if (phase_ > 2.0 * kPi) phase_ -= 2.0 * kPi;
     // Reservoir: charged through the bridge while |v_ac| exceeds it, drained by the load.
-    const double iRect = std::max((supply_.vacPeak * std::abs(s) - supply_.rectDrop - vHt_) / supply_.rectSourceOhms, 0.0);
+    double iRect = 0.0;
+    if (supply_.tubeVolts > 0.0) {
+        // Tube rectifier: headroom = i * Rs + a * i^(2/3). With u = i^(1/3) this is the convex cubic
+        // Rs u^3 + a u^2 = headroom, which Newton solves monotonically from any point right of the root.
+        const double headroom = supply_.vacPeak * std::abs(s) - vHt_;
+        if (headroom > 0.0) {
+            const double a = supply_.tubeVolts / std::pow(supply_.tubeAmps, 2.0 / 3.0), rs = supply_.rectSourceOhms;
+            double u = std::min(std::sqrt(headroom / a), std::cbrt(headroom / rs));
+            for (int k = 0; k < 4; ++k) {
+                const double f = (rs * u + a) * u * u - headroom;
+                u -= f / ((3.0 * rs * u + 2.0 * a) * u);
+            }
+            iRect = u * u * u;
+        }
+    } else {
+        iRect = std::max((supply_.vacPeak * std::abs(s) - supply_.rectDrop - vHt_) / supply_.rectSourceOhms, 0.0);
+    }
     const double iLoad = (vHt_ - solver_.voltage(nodeHt_)) / supply_.tieOhms;
     vHt_ += dt_ / supply_.reservoirFarads * (iRect - iLoad);
     solver_.setSource(srcHt_, vHt_);

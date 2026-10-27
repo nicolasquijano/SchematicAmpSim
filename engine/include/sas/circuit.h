@@ -37,7 +37,15 @@ public:
         OpampModel opamp{};
     };
     struct Source { Node node; double ohms; double dc; };
-    struct CoupledDef { std::vector<std::pair<Node, Node>> windings; std::vector<double> l; };
+    struct CoupledDef {
+        std::vector<std::pair<Node, Node>> windings;
+        std::vector<double> l;
+        // Core saturation (optional): across the series chain of `satWindings` an extra magnetising current
+        // (lambda / Ltot) * (|lambda| / satFlux)^satExp flows, lambda being their summed flux linkage in volt-seconds.
+        double satFlux = 0.0;
+        double satExp = 4.0;
+        std::vector<std::size_t> satWindings;
+    };
     struct Res { Node a, b; double ohms; };
     struct Cap { Node a, b; double farads; };
     struct Vccs { Node into, ctrlPlus, ctrlMinus; double gm; };
@@ -64,7 +72,8 @@ public:
     void setSourceDc(SrcId id, double dc) { sources_[id.i].dc = dc; }
     SrcId input(Node node, double ohms);
     // windings[i] = (from, to); l = full symmetric inductance matrix, row-major, henries.
-    void coupledInductors(const std::vector<std::pair<Node, Node>>& windings, const std::vector<double>& l);
+    void coupledInductors(const std::vector<std::pair<Node, Node>>& windings, const std::vector<double>& l,
+                          double satFlux = 0.0, double satExp = 4.0, const std::vector<std::size_t>& satWindings = {});
 
     std::size_t nodeCount() const { return names_.size() - 1; }
 
@@ -124,6 +133,10 @@ private:
     struct Coupled {
         std::vector<std::pair<std::size_t, std::size_t>> ends;
         std::vector<double> gl, vPrev, iPrev, h;
+        std::vector<double> l;  // inductance matrix, for the flux linkages
+        double satFlux = 0.0, satExp = 4.0, satInvL = 0.0;
+        std::vector<std::size_t> satWindings;
+        std::size_t satA = 0, satB = 0;  // series chain of the saturating windings (solver node indices)
     };
     struct SrcInst { std::size_t node; double g; double dc; };
     struct Inj { std::size_t node; double coeff; };

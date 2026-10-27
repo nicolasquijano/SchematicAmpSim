@@ -20,12 +20,21 @@ inline void useStockTriodes(std::string& text) {
     for (std::size_t at = text.find(" 12AX7"); at != std::string::npos; at = text.find(" 12AX7", at + 6)) text.replace(at + 1, 5, "ECC83");
 }
 
+// The Rust implementation had a linear output transformer: the golden data is run without the core saturation.
+inline void withoutCoreSaturation(std::string& text) {
+    for (std::size_t at = text.find(" SAT="); at != std::string::npos; at = text.find(" SAT=")) {
+        const std::size_t end = text.find('\n', at);
+        text.erase(at, end == std::string::npos ? std::string::npos : end - at);
+    }
+}
+
 inline const sas::AmpDef& jcm800() {
     static const sas::AmpDef def = [] {
         sas::AmpDef d = sas::loadAmpDefFromFolder(std::string(SAS_AMPS_DIR) + "/jcm800_2203");
         useStockTriodes(d.preamp.netlistText);
         for (auto& s : d.preamp.stages) useStockTriodes(s.netlistText);
         useStockTriodes(d.power.netlistText);
+        withoutCoreSaturation(d.power.netlistText);
         d.lite.baseGainDb = 25.72;
         d.lite.highPassHz = 21.9;
         d.lite.shelfHz = 564.0;

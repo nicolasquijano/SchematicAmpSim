@@ -158,6 +158,7 @@ struct Parser {
     bool inXfmr = false;
     std::string xfmrName;
     double xfmrL = 0;
+    double xfmrSat = 0, xfmrSatExp = 4.0;
     std::vector<Winding> windings;
     std::map<std::pair<std::string, std::string>, double> couplings;
 
@@ -287,10 +288,17 @@ struct Parser {
         } else if (d == ".nodes") {
             for (std::size_t i = 1; i < t.size(); ++i) node(t[i]);
         } else if (d == ".xfmr") {
-            if (t.size() != 3 || t[2].rfind("L=", 0) != 0) fail("expected: .xfmr name L=expr");
+            if (t.size() < 3 || t[2].rfind("L=", 0) != 0) fail("expected: .xfmr name L=expr [SAT=flux] [SATN=n]");
             inXfmr = true;
             xfmrName = t[1];
             xfmrL = value(t[2].substr(2));
+            xfmrSat = 0.0;
+            xfmrSatExp = 4.0;
+            for (std::size_t i = 3; i < t.size(); ++i) {
+                if (t[i].rfind("SAT=", 0) == 0) xfmrSat = value(t[i].substr(4));
+                else if (t[i].rfind("SATN=", 0) == 0) xfmrSatExp = value(t[i].substr(5));
+                else fail("unknown .xfmr option " + t[i]);
+            }
             windings.clear();
             couplings.clear();
         } else if (d == ".end") {
@@ -321,7 +329,11 @@ struct Parser {
                 }
                 l[i * w + j] = xfmrL * windings[i].turns * windings[j].turns * k;
             }
-        out.circuit.coupledInductors(ends, l);
+        std::vector<std::size_t> sat;
+        if (xfmrSat > 0.0)
+            for (std::size_t i = 0; i < w; ++i)
+                if (windings[i].group == "pri") sat.push_back(i);
+        out.circuit.coupledInductors(ends, l, xfmrSat, xfmrSatExp, sat);
     }
 
     void xfmrLine(const std::vector<std::string>& t) {

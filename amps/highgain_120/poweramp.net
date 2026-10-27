@@ -67,7 +67,9 @@ R R203 a s2 100/2
 R DCR_PT pt npt 40
 R DCR_PB pbm npb 40
 .param n8 = 2*1/sqrt(2200/8)
-.xfmr OT L=6
+* Core saturation: SAT is the flux (volt-seconds) where the extra magnetising current equals the linear one; ~full-power
+* plate-to-plate swing / (2 pi f), with f about 28-30 Hz for the large Marshall / Soldano / Peavey / Fender cores, 50 to 65 Hz for the small AC30 / tweed cores.
+.xfmr OT L=6 SAT=4.4
   W npt a 1 pri
   W a npb 1 pri
   W t8 0 n8 sec

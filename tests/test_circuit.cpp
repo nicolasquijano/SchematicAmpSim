@@ -92,3 +92,28 @@ TEST_CASE("common-cathode DC point satisfies KCL with the tube model") {
     REQUIRE(std::abs(vk - ip * 1.5e3) < 1e-3);
     REQUIRE((vp > 100.0 && vp < 280.0));
 }
+
+TEST_CASE("core saturation: the transformer is linear below the flux limit and draws a peaked magnetising current above it") {
+    const double fs = 96'000.0, pi = 3.14159265358979;
+    // A 1 H winding on a 100 ohm source: at 50 Hz a 20 V peak drive makes about 0.064 V*s of flux.
+    auto run = [&](double satFlux, double volts) {
+        Circuit c;
+        const Node a = c.node("a"), b = c.node("b");
+        c.input(a, 100.0);
+        c.resistor(b, GND, 1e-3 + 1.0);  // the winding's DC path / return
+        c.coupledInductors({{a, b}}, {1.0}, satFlux, 4.0, satFlux > 0.0 ? std::vector<std::size_t>{0} : std::vector<std::size_t>{});
+        Solver s(std::move(c), fs);
+        double peakV = 0.0;
+        for (int n = 0; n < int(0.2 * fs); ++n) {
+            s.process(volts * std::sin(2.0 * pi * 50.0 * n / fs));
+            if (n > int(0.1 * fs)) peakV = std::max(peakV, std::abs(s.voltage(b) - s.voltage(a)));
+        }
+        return peakV;
+    };
+    // Below the limit (flux 0.06 against a knee of 0.12) the voltage across the winding is the same with or without it.
+    const double lowLin = run(0.0, 20.0), lowSat = run(0.12, 20.0);
+    CHECK(std::abs(lowSat / lowLin - 1.0) < 0.03);
+    // Well above it (flux 0.3 against 0.12) the winding stops following the source: less voltage across it.
+    const double hiLin = run(0.0, 100.0), hiSat = run(0.12, 100.0);
+    CHECK(hiSat < 0.85 * hiLin);
+}

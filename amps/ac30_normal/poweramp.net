@@ -8,7 +8,7 @@
 *    for an HT of about 340 V at idle;
 *  - output transformer 784-413: 4k plate-to-plate onto the 16 ohm tap with the two 8 ohm speakers in series,
 *    6 H per primary half, 50 ohm per half, coupling like the other amps;
-*  - the choke CH1 is its winding resistance (100 ohm): its inductance is not modelled;
+*  - the choke CH1 is 10 H with 100 ohm of winding resistance (the drawing prints only its part number, 292-767);
 *  - the phase inverter's right grid goes to the Vib/Trem bus through C2 (4n7): taken as a ground return;
 *  - Cut: 4n7 + 220k rheostat between the two grid lines; the knob turns the resistance down.
 
@@ -53,7 +53,9 @@ R R77 b s2 100/2
 R DCR_PT pt npt 50
 R DCR_PB pbm npb 50
 .param n16 = 2*1/sqrt(4000/16)
-.xfmr OT L=6
+* Core saturation: SAT is the flux (volt-seconds) where the extra magnetising current equals the linear one; ~full-power
+* plate-to-plate swing / (2 pi f), with f about 28-30 Hz for the large Marshall / Soldano / Peavey / Fender cores, 50 to 65 Hz for the small AC30 / tweed cores.
+.xfmr OT L=6 SAT=1.6
   W npt b 1 pri
   W b npb 1 pri
   W t16 0 n16 sec
@@ -62,8 +64,11 @@ R DCR_PB pbm npb 50
 .end
 R RLOAD t16 0 16
 
-* Supply: choke (winding resistance) and 22u after the reservoir; x is HT for the preamp, RPREAMP its draw.
-R CH1 a b 100
+* Supply: the choke CH1 (10 H, 100 ohm) and 22u after the reservoir; x is HT for the preamp, RPREAMP its draw.
+R CH1 a ch 100
+.xfmr CHOKE L=10
+  W ch b 1 ch
+.end
 C C46 b 0 22u
 R RX b x 1
 R RPREAMP x 0 75k

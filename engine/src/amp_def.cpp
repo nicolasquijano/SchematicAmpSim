@@ -212,6 +212,11 @@ PowerDef parsePower(const json& j, const FileReader& read) {
     p.supply.reservoirFarads = num(s, "reservoir_farads", "power.supply");
     p.supply.tieOhms = num(s, "tie_ohms", "power.supply");
     p.supply.settleSeconds = num(s, "settle_seconds", "power.supply");
+    if (s.contains("rect_tube")) {
+        const json& t = s.at("rect_tube");
+        p.supply.tubeVolts = num(t, "volts", "power.supply.rect_tube");
+        p.supply.tubeAmps = num(t, "amps", "power.supply.rect_tube");
+    }
     return p;
 }
 

@@ -115,6 +115,10 @@ struct PreampDef {
 struct SupplyDef {
     double mainsHz = 50, vacPeak = 538, rectSourceOhms = 42, htDcSource = 490, rectDrop = 1.4,
            reservoirFarads = 100e-6, tieOhms = 1.0, settleSeconds = 0.15;
+    // Optional vacuum-tube rectifier: instead of the constant `rectDrop`, each conducting plate drops
+    // tubeVolts * (i / tubeAmps)^(2/3) (Child-Langmuir space charge), in series with rectSourceOhms.
+    // 0 = a solid-state bridge (the constant drop).
+    double tubeVolts = 0.0, tubeAmps = 0.125;
 };
 
 // A control that lives in the power amp: one resistor of its netlist set to scale * value

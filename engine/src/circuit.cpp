@@ -114,9 +114,16 @@ SrcId Circuit::input(Node node, double ohms) {
     return id;
 }
 
-void Circuit::coupledInductors(const std::vector<std::pair<Node, Node>>& windings, const std::vector<double>& l) {
+void Circuit::coupledInductors(const std::vector<std::pair<Node, Node>>& windings, const std::vector<double>& l, double satFlux,
+                               double satExp, const std::vector<std::size_t>& satWindings) {
     if (l.size() != windings.size() * windings.size()) throw std::invalid_argument("inductance matrix size");
-    coupled_.push_back({windings, l});
+    for (auto k : satWindings)
+        if (k >= windings.size()) throw std::invalid_argument("saturating winding index");
+    CoupledDef d{windings, l};
+    d.satFlux = satFlux;
+    d.satExp = satExp;
+    d.satWindings = satWindings;
+    coupled_.push_back(std::move(d));
 }
 
 // ---------------------------------------------------------------- Solver
@@ -204,6 +211,19 @@ Solver::Solver(Circuit circuit, double fs, bool useTables)
         cp.vPrev.assign(w, 0.0);
         cp.iPrev.assign(w, 0.0);
         cp.h.assign(w, 0.0);
+        cp.l = c.l;
+        if (c.satFlux > 0.0 && !c.satWindings.empty()) {
+            // The saturating windings are in series: the branch goes from the first one's start to the last one's end.
+            double ltot = 0.0;
+            for (auto a : c.satWindings)
+                for (auto b : c.satWindings) ltot += c.l[a * w + b];
+            cp.satFlux = c.satFlux;
+            cp.satExp = c.satExp;
+            cp.satInvL = 1.0 / ltot;
+            cp.satWindings = c.satWindings;
+            cp.satA = cp.ends[c.satWindings.front()].first;
+            cp.satB = cp.ends[c.satWindings.back()].second;
+        }
         coupled_.push_back(std::move(cp));
     }
 
@@ -578,6 +598,17 @@ void Solver::step() {
             set.h[i] = h;
             r_[set.ends[i].first] -= h;
             r_[set.ends[i].second] += h;
+        }
+        if (set.satFlux > 0.0) {
+            // Core saturation: the flux linkage of the previous sample sets an extra magnetising current, kept to a few
+            // multiples of the knee so the explicit update stays well below the circuit's time constants.
+            double lambda = 0.0;
+            for (auto a : set.satWindings)
+                for (std::size_t j = 0; j < w; ++j) lambda += set.l[a * w + j] * set.iPrev[j];
+            const double x = std::min(std::abs(lambda) / set.satFlux, 2.5);
+            const double isat = lambda * set.satInvL * std::pow(x, set.satExp);
+            r_[set.satA] -= isat;
+            r_[set.satB] += isat;
         }
     }
     computeSrAndP();

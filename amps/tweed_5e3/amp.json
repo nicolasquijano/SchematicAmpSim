@@ -47,10 +47,11 @@
     "load_resistor": "RLOAD",
     "supply": {
       "mains_hz": 60,
-      "vac_peak": 480,
-      "rect_source_ohms": 450,
+      "vac_peak": 469,
+      "rect_source_ohms": 120,
       "ht_dc_source": 350,
       "rect_drop": 25,
+      "rect_tube": { "volts": 60, "amps": 0.125 },
       "reservoir_farads": 16e-6,
       "tie_ohms": 15,
       "settle_seconds": 0.15
@@ -58,17 +59,17 @@
   },
 
   "lite": {
-  "base_gain_db": -1.30789,
-  "high_pass_hz": 32.0595,
+  "base_gain_db": -1.30977,
+  "high_pass_hz": 32.0576,
   "shelf_hz": 150,
   "presence_db": [0, 0, 0, 0, 0],
-  "sag_table": [[0, 0], [2.54648, 0.560107], [5.09296, 2.39239], [9.5493, 9.39809], [15.9155, 9.39809], [22.2817, 10.6638], [28.6479, 12.5741], [35.0141, 13.7309], [44.5634, 14.8039], [57.2958, 15.6443], [82.7606, 16.4645], [127.324, 16.7979]],
-  "rail_x_idle": 213.594,
+  "sag_table": [[0, 0], [2.54648, 0.54539], [5.09296, 2.32603], [9.5493, 9.09577], [15.9155, 9.09577], [22.2817, 10.1754], [28.6479, 12.0144], [35.0141, 13.1325], [44.5634, 14.1698], [57.2958, 14.9786], [82.7606, 15.7573], [127.324, 16.0495]],
+  "rail_x_idle": 213.474,
   "rail_sag_fraction": 0.58,
-  "ceiling_light": 16.4625,
-  "ceiling_heavy": 9.45169,
-  "ceiling_decay": 12.071,
-  "knee": 3.30942,
+  "ceiling_light": 16.0353,
+  "ceiling_heavy": 9.05708,
+  "ceiling_decay": 24.5553,
+  "knee": 2.24498,
   "sag_attack_s": 0.01,
   "sag_release_s": 0.06
 }

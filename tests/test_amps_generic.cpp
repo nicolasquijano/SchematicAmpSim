@@ -488,3 +488,63 @@ TEST_CASE("American Tweed (5E3): supply, cathode bias and idle current are in th
     // Tone down shunts the highs of both channels (the 5n leg is on the shared node); only the Bright channel feeds the 500p.
     CHECK(level("normal_hi", "tone", 0.0, 4000.0) < 0.6 * level("normal_hi", "tone", 1.0, 4000.0));
 }
+
+namespace {
+// The amp with its transformer's core saturation switched off, to see what it adds.
+AmpDef withoutSaturation(AmpDef def) {
+    auto& t = def.power.netlistText;
+    for (auto at = t.find(" SAT="); at != std::string::npos; at = t.find(" SAT=")) {
+        auto end = t.find('\n', at);
+        t.erase(at, end == std::string::npos ? std::string::npos : end - at);
+    }
+    return def;
+}
+}  // namespace
+
+TEST_CASE("output transformer core saturation: the small cores flatten the lows of a hard-driven amp, the large ones barely") {
+    for (const char* id : {"tweed_5e3", "ac30_normal", "jcm800_2203"}) {
+        DYNAMIC_SECTION(id) {
+            const AmpDef with = loadEmbeddedAmp(id);
+            const AmpDef without = withoutSaturation(with);
+            REQUIRE(with.power.netlistText.find(" SAT=") != std::string::npos);
+            REQUIRE(without.power.netlistText.find(" SAT=") == std::string::npos);
+            // Drive the power amp hard (well past its clipping point) at a low and a mid frequency.
+            auto lowToMid = [&](const AmpDef& d) {
+                PowerAmp p1(d, kFs), p2(d, kFs);
+                const double lo = rmsAt(p1, 40.0, 40.0, 1.0), mid = rmsAt(p2, 200.0, 40.0, 1.0);
+                return 20.0 * std::log10(lo / mid);
+            };
+            const double a = lowToMid(with), b = lowToMid(without);
+            INFO(id << ": 40 Hz relative to 200 Hz, with saturation " << a << " dB, without " << b << " dB");
+            CHECK(a <= b + 0.05);  // saturation never adds lows
+            if (std::string(id) != "jcm800_2203") CHECK(a < b - 0.3);
+        }
+    }
+}
+
+TEST_CASE("tube rectifier: the 5Y3 and GZ34 supplies sag when the amp is driven, and the sag follows from the current") {
+    for (const char* id : {"tweed_5e3", "ac30_normal"}) {
+        DYNAMIC_SECTION(id) {
+            const AmpDef def = loadEmbeddedAmp(id);
+            REQUIRE(def.power.supply.tubeVolts > 0.0);
+            PowerAmp p(def, kFs);
+            const auto net = parseNetlist(def.power.netlistText, def.power.netlist);
+            auto b = [&] { return p.solver().voltage(net.node("a")); };
+            // Average B+ over a few mains cycles at rest, then while driven hard.
+            auto average = [&](double volts) {
+                double acc = 0;
+                const std::size_t n = std::size_t(0.4 * kFs);
+                for (std::size_t i = 0; i < n; ++i) {
+                    p.process(volts * std::sin(2.0 * kPi * 440.0 * double(i) / kFs));
+                    if (i >= n / 2) acc += b();
+                }
+                return acc / double(n - n / 2);
+            };
+            const double idle = average(0.0), driven = average(60.0);
+            INFO(id << ": B+ idle " << idle << " V, driven " << driven << " V");
+            CHECK(idle - driven > 3.0);   // it sags
+            CHECK(idle - driven < 90.0);  // but it is not collapsing
+            CHECK(std::isfinite(driven));
+        }
+    }
+}
