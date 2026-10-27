@@ -108,7 +108,7 @@ private:
     class ChainBuilder;
 
     static juce::AudioProcessorValueTreeState::ParameterLayout createLayout(const std::vector<sas::AmpDef>& defs);
-    void loadImpulseResponseFromMemory(const void* data, std::size_t size, const juce::String& name);
+    bool loadImpulseResponseFromMemory(const void* data, std::size_t size, const juce::String& name);
     sas::ChainSettings readSettings(bool irAvailable);
     void swapInBuiltChain();
     int wantedKey() const;

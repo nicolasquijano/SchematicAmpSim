@@ -28,6 +28,7 @@ std::unique_ptr<juce::AudioParameterFloat> dbParam(const char* id, const char* n
 
 constexpr std::size_t kMaxChunk = 4096;
 constexpr std::size_t kMaxStoredIrBytes = 4 * 1024 * 1024;
+constexpr double kMaxIrSeconds = 4.0;
 
 }  // namespace
 
@@ -311,15 +312,33 @@ void SasProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::MidiBuff
 
 // ------------------------------------------------------------------ impulse response
 
-void SasProcessor::loadImpulseResponseFromMemory(const void* data, std::size_t size, const juce::String& name) {
-    convolution_.loadImpulseResponse(data, size, juce::dsp::Convolution::Stereo::no, juce::dsp::Convolution::Trim::yes, 0,
-                                     juce::dsp::Convolution::Normalise::yes);
+bool SasProcessor::loadImpulseResponseFromMemory(const void* data, std::size_t size, const juce::String& name) {
+    // The file is decoded here and the samples are handed over by value: JUCE's memory overload reads its source later on
+    // a background thread, after a caller's temporary buffer is gone, and then silently loads nothing.
+    juce::AudioFormatManager formats;
+    formats.registerBasicFormats();
+    std::unique_ptr<juce::AudioFormatReader> reader(formats.createReaderFor(std::make_unique<juce::MemoryInputStream>(data, size, false)));
+    if (!reader || reader->lengthInSamples <= 0 || reader->numChannels == 0 || reader->sampleRate <= 0.0) return false;
+    // A cabinet is a few hundred milliseconds; anything longer is cut to keep the convolution cheap.
+    const int length = int(std::min<juce::int64>(reader->lengthInSamples, juce::int64(reader->sampleRate * kMaxIrSeconds)));
+    juce::AudioBuffer<float> all(int(reader->numChannels), length);
+    reader->read(&all, 0, length, 0, true, true);
+    juce::AudioBuffer<float> mono(1, length);
+    mono.copyFrom(0, 0, all, 0, 0, length);  // first channel: the amp is mono
+    // Unit energy: a white signal keeps its level through the cabinet (JUCE's own normalisation is about 20 dB lower).
+    double energy = 0.0;
+    for (int i = 0; i < length; ++i) energy += double(mono.getSample(0, i)) * double(mono.getSample(0, i));
+    if (!(energy > 0.0)) return false;
+    mono.applyGain(float(1.0 / std::sqrt(energy)));
+    convolution_.loadImpulseResponse(std::move(mono), reader->sampleRate, juce::dsp::Convolution::Stereo::no, juce::dsp::Convolution::Trim::yes,
+                                     juce::dsp::Convolution::Normalise::no);
     {
         const juce::ScopedLock lock(irLock_);
         irBytes_ = juce::MemoryBlock(data, size);
         irName_ = name;
     }
     irLoaded_ = true;
+    return true;
 }
 
 bool SasProcessor::loadImpulseResponse(const juce::File& file) {
@@ -331,8 +350,7 @@ bool SasProcessor::loadImpulseResponse(const juce::File& file) {
     if (std::unique_ptr<juce::AudioFormatReader> r{fm.createReaderFor(std::make_unique<juce::MemoryInputStream>(bytes.getData(), bytes.getSize(), false))};
         !r || r->lengthInSamples <= 0)
         return false;
-    loadImpulseResponseFromMemory(bytes.getData(), bytes.getSize(), file.getFileName());
-    return true;
+    return loadImpulseResponseFromMemory(bytes.getData(), bytes.getSize(), file.getFileName());
 }
 
 void SasProcessor::clearImpulseResponse() {
@@ -371,7 +389,7 @@ void SasProcessor::setStateInformation(const void* data, int size) {
     if (tree.hasProperty("irData")) {
         juce::MemoryOutputStream out;
         if (juce::Base64::convertFromBase64(out, tree["irData"].toString()) && out.getDataSize() > 0)
-            loadImpulseResponseFromMemory(out.getData(), out.getDataSize(), tree["irName"].toString());
+            if (!loadImpulseResponseFromMemory(out.getData(), out.getDataSize(), tree["irName"].toString())) clearImpulseResponse();
     } else {
         clearImpulseResponse();
     }

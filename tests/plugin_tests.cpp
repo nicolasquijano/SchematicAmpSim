@@ -1,6 +1,7 @@
 // Headless tests of the JUCE processor: parameters, audio, state round trip and the IR loader.
 #include <catch2/catch_approx.hpp>
 #include <catch2/catch_test_macros.hpp>
+#include <catch2/generators/catch_generators.hpp>
 #include <cmath>
 #include <cstdlib>
 
@@ -197,6 +198,82 @@ TEST_CASE("an impulse response loads, survives the state, and shapes the sound")
 
     p.clearImpulseResponse();
     CHECK(p.impulseResponseName().isEmpty());
+    file.deleteFile();
+}
+
+TEST_CASE("the loaded impulse response is really convolved with the amp output") {
+    JuceInit init;
+    // A two-tap IR (1.0 now, 0.8 a hundred samples later), stereo, at the host rate so it is used as written.
+    auto file = juce::File::getSpecialLocation(juce::File::tempDirectory).getChildFile("sas_two_tap_ir.wav");
+    file.deleteFile();
+    {
+        juce::WavAudioFormat wav;
+        std::unique_ptr<juce::AudioFormatWriter> w(wav.createWriterFor(new juce::FileOutputStream(file), 48000.0, 2, 24, {}, 0));
+        juce::AudioBuffer<float> ir(2, 2048);
+        ir.clear();
+        for (int ch = 0; ch < 2; ++ch) {
+            ir.setSample(ch, 0, 1.0f);
+            ir.setSample(ch, 100, 0.8f);
+        }
+        w->writeFromAudioSampleBuffer(ir, 0, ir.getNumSamples());
+    }
+
+    auto capture = [&](SasProcessor& p, int blocks, int blockSize) {
+        std::vector<float> out;
+        juce::AudioBuffer<float> buf(2, blockSize);
+        juce::MidiBuffer midi;
+        for (int b = 0; b < blocks; ++b) {
+            fill(buf, 196.0, 0.08, 48000.0, b * blockSize);
+            p.processBlock(buf, midi);
+            for (int i = 0; i < blockSize; ++i) out.push_back(buf.getSample(0, i));
+        }
+        return out;
+    };
+    auto configure = [&](SasProcessor& p, float cabMode) {
+        setParam(p, ids::quality, 2.0f);  // Lite
+        setParam(p, ids::cab, cabMode);
+        p.prepareToPlay(48000.0, 256);
+    };
+
+    // Both orders: a file picked after the plugin is prepared, and an IR restored with a saved project before it is prepared.
+    const bool loadBeforePrepare = GENERATE(false, true);
+    INFO("IR loaded " << (loadBeforePrepare ? "before" : "after") << " prepareToPlay");
+    SasProcessor plain, withIr;
+    configure(plain, 0.0f);  // cabinet off: the raw amp
+    if (loadBeforePrepare) {
+        REQUIRE(withIr.loadImpulseResponse(file));
+        configure(withIr, 2.0f);
+    } else {
+        configure(withIr, 2.0f);
+        REQUIRE(withIr.loadImpulseResponse(file));
+    }
+    juce::Thread::sleep(500);  // the convolution engine is built in the background
+
+    const int blocks = 120, blockSize = 256;
+    const auto a = capture(plain, blocks, blockSize);
+    const auto y = capture(withIr, blocks, blockSize);
+
+    // y should be s * (a[n] + 0.8 a[n - 100]) for some gain s and a small latency: search the lag and fit s.
+    const std::size_t from = a.size() / 2, to = a.size() - 400;
+    double bestErr = 1e30, bestLag = 0, bestScale = 0, ref = 0;
+    for (std::size_t n = from; n < to; ++n) ref += double(y[n]) * y[n];
+    for (int lag = -64; lag <= 64; ++lag) {
+        double num = 0, den = 0;
+        std::vector<double> model;
+        for (std::size_t n = from; n < to; ++n) {
+            const double m = double(a[std::size_t(int(n) + lag)]) + 0.8 * double(a[std::size_t(int(n) + lag - 100)]);
+            num += m * double(y[n]);
+            den += m * m;
+            model.push_back(m);
+        }
+        const double scale = num / std::max(den, 1e-30);
+        double err = 0;
+        for (std::size_t n = from, i = 0; n < to; ++n, ++i) err += (double(y[n]) - scale * model[i]) * (double(y[n]) - scale * model[i]);
+        if (err < bestErr) { bestErr = err; bestLag = lag; bestScale = scale; }
+    }
+    INFO("best lag " << bestLag << ", gain " << bestScale << ", residual " << (bestErr / ref) << " of the output energy, output energy " << ref);
+    CHECK(ref > 1e-6);
+    CHECK(bestErr < 0.02 * ref);  // the output is the amp convolved with the IR, not just the amp
     file.deleteFile();
 }
 
