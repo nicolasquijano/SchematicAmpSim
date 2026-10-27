@@ -49,6 +49,8 @@ inline constexpr const char* tube = "tube";    // output tube type (index into t
 inline constexpr const char* noise = "noise";  // hiss and hum: Off / Low / Real
 inline constexpr const char* wear = "wear";    // 0..10 tenths of wear
 inline constexpr const char* unit = "unit";    // 0 = ideal parts, 1..9 = an individual unit
+inline constexpr const char* speaker = "speaker";               // speaker dynamics amount, 0..10
+inline constexpr const char* speakerIntense = "speaker_intense";  // stronger speaker dynamics
 }  // namespace ids
 
 // Cabinet source. Order is saved in projects: append only.

@@ -13,7 +13,8 @@ add_executable(sas_tests
   test_split.cpp
   test_tables.cpp
   test_gate.cpp
-  test_condition.cpp)
+  test_condition.cpp
+  test_speaker.cpp)
 target_compile_definitions(sas_tests PRIVATE
   SAS_GOLDEN_DIR="${CMAKE_SOURCE_DIR}/golden"
   SAS_AMPS_DIR="${CMAKE_SOURCE_DIR}/amps"

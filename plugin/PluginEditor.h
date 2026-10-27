@@ -122,7 +122,7 @@ private:
     KnobWithLabel input_, output_;
     KnobWithLabel tsDrive_, tsTone_, tsLevel_;
     KnobWithLabel gateThreshold_, gateRelease_, cable_;
-    KnobWithLabel bias_, wear_;
+    KnobWithLabel bias_, wear_, speaker_;
     LevelBar inBar_, outBar_;
     TubeGlow tubes_;
     int tick_ = 0;
@@ -133,9 +133,10 @@ private:
     juce::Label ampCaption_, qualityCaption_, jackCaption_, cabCaption_, pickupCaption_, irName_, tubeCaption_, noiseCaption_, unitCaption_, idleLabel_, conditionNote_;
     juce::ToggleButton tsOn_{"On"};
     juce::ToggleButton gateOn_{"On"};
+    juce::ToggleButton speakerIntense_{"Intense"};
     juce::ToggleButton levelMatch_{"Level match"};  // shown only for amps whose jacks differ in level
     juce::ToggleButton vibrato_{"Vibrato"};  // shown only for amps that have an optical tremolo
-    std::unique_ptr<juce::AudioProcessorValueTreeState::ButtonAttachment> tsOnAtt_, gateOnAtt_, levelMatchAtt_, vibratoAtt_;
+    std::unique_ptr<juce::AudioProcessorValueTreeState::ButtonAttachment> tsOnAtt_, gateOnAtt_, speakerIntenseAtt_, levelMatchAtt_, vibratoAtt_;
     juce::TextButton ampTab_{"Amp"}, fxTab_{"Effects"};
     juce::TextButton loadIr_{"Load IR..."}, clearIr_{"Clear"};
     std::unique_ptr<juce::FileChooser> chooser_;

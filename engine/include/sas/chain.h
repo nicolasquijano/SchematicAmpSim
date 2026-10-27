@@ -12,6 +12,7 @@
 #include "sas/amp.h"
 #include "sas/cab.h"
 #include "sas/noise.h"
+#include "sas/speaker.h"
 #include "sas/oversample.h"
 #include "sas/ts808_fast.h"
 
@@ -36,6 +37,8 @@ struct ChainSettings {
     int pickup = 0;        // guitar impedance: 0 off (plain 7k), 1 single coil, 2 humbucker, 3 P-90
     int cableMeters = 4;   // cable capacitance, 0..14 m in steps of 2 (only with a pickup selected)
     double tsDrive = 0.5, tsTone = 0.5, tsLevel = 0.5;
+    double speaker = 0.0;        // speaker dynamics amount (0 = off)
+    bool speakerIntense = false;
     double noise = 0.0;    // hiss and hum level: 0 off, 1 a typical amp
     double bias = 1.0;     // output-tube bias supply, 1 = as drawn (amps with a bias control; full circuits only)
 };
@@ -102,6 +105,7 @@ private:
     TubeScreamerFast ts2_, ts4_;
     Oversampler os2_{1}, os4_{2};
     CabFilter cab_;
+    SpeakerDynamics speaker_;   // between the amp and the cabinet
     AmpNoise noise2_, noise4_;  // at the 2x and 4x rates
     float ampTrim_ = 1.0f;  // the amp's output_db as a gain
     Quality active_ = Quality::Normal;

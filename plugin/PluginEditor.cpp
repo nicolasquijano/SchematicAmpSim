@@ -267,9 +267,9 @@ SasEditor::SasEditor(SasProcessor& p)
       input_(p.apvts, ids::input, "INPUT dB"), output_(p.apvts, ids::output, "OUTPUT dB"),
       tsDrive_(p.apvts, ids::tsDrive, "DRIVE"), tsTone_(p.apvts, ids::tsTone, "TONE"), tsLevel_(p.apvts, ids::tsLevel, "LEVEL"),
       gateThreshold_(p.apvts, ids::gateThreshold, "THRESHOLD"), gateRelease_(p.apvts, ids::gateRelease, "RELEASE"), cable_(p.apvts, ids::cable, "CABLE m"),
-      bias_(p.apvts, ids::bias, "BIAS"), wear_(p.apvts, ids::wear, "WEAR") {
+      bias_(p.apvts, ids::bias, "BIAS"), wear_(p.apvts, ids::wear, "WEAR"), speaker_(p.apvts, ids::speaker, "SPEAKER") {
     setLookAndFeel(&look_);
-    for (auto* k : {&input_, &output_, &tsDrive_, &tsTone_, &tsLevel_, &gateThreshold_, &gateRelease_, &cable_, &bias_, &wear_}) addAndMakeVisible(*k);
+    for (auto* k : {&input_, &output_, &tsDrive_, &tsTone_, &tsLevel_, &gateThreshold_, &gateRelease_, &cable_, &bias_, &wear_, &speaker_}) addAndMakeVisible(*k);
     addAndMakeVisible(inBar_);
     addAndMakeVisible(tubes_);
     addAndMakeVisible(outBar_);
@@ -322,6 +322,9 @@ SasEditor::SasEditor(SasProcessor& p)
     tsOnAtt_ = std::make_unique<juce::AudioProcessorValueTreeState::ButtonAttachment>(p.apvts, ids::tsOn, tsOn_);
     addAndMakeVisible(gateOn_);
     gateOnAtt_ = std::make_unique<juce::AudioProcessorValueTreeState::ButtonAttachment>(p.apvts, ids::gateOn, gateOn_);
+    addAndMakeVisible(speakerIntense_);
+    speakerIntense_.setTooltip("Stronger cone, heating and break-up effects");
+    speakerIntenseAtt_ = std::make_unique<juce::AudioProcessorValueTreeState::ButtonAttachment>(p.apvts, ids::speakerIntense, speakerIntense_);
     addAndMakeVisible(vibrato_);
     vibratoAtt_ = std::make_unique<juce::AudioProcessorValueTreeState::ButtonAttachment>(p.apvts, ids::vibOn, vibrato_);
     addAndMakeVisible(levelMatch_);
@@ -609,7 +612,7 @@ void SasEditor::resized() {
     }
     const bool ampPage = page_ == 0;
     for (auto& k : ampKnobs_) k->setVisible(ampPage);
-    for (auto* c : std::initializer_list<juce::Component*>{&cabCaption_, &cab_, &loadIr_, &clearIr_, &irName_, &input_, &output_, &inBar_, &outBar_, &tubes_}) c->setVisible(ampPage);
+    for (auto* c : std::initializer_list<juce::Component*>{&cabCaption_, &cab_, &loadIr_, &clearIr_, &irName_, &input_, &output_, &inBar_, &outBar_, &tubes_, &speaker_, &speakerIntense_}) c->setVisible(ampPage);
     for (auto* c : std::initializer_list<juce::Component*>{&tsOn_, &tsDrive_, &tsTone_, &tsLevel_, &gateOn_, &gateThreshold_, &gateRelease_, &cable_, &pickup_, &pickupCaption_,
                                                            &bias_, &wear_, &tube_, &noise_, &unit_, &tubeCaption_, &noiseCaption_, &unitCaption_, &idleLabel_, &conditionNote_}) c->setVisible(!ampPage);
 
@@ -695,13 +698,18 @@ void SasEditor::resized() {
     panels_.push_back({cabPanel, ""});
     {
         auto in = cabPanel.reduced(10, 6);
+        // Speaker dynamics: the amount knob with its Intense switch, on the right.
+        auto knobCol = in.removeFromRight(74);
+        in.removeFromRight(6);
+        speakerIntense_.setBounds(knobCol.removeFromBottom(20));
+        speaker_.setBounds(knobCol);
         cabCaption_.setBounds(in.removeFromTop(16));
-        cab_.setBounds(in.removeFromTop(24).removeFromLeft(std::min(220, in.getWidth())));
+        cab_.setBounds(in.removeFromTop(24));
         in.removeFromTop(6);
         auto btns = in.removeFromTop(24);
-        loadIr_.setBounds(btns.removeFromLeft(96));
+        loadIr_.setBounds(btns.removeFromLeft(78));
         btns.removeFromLeft(6);
-        clearIr_.setBounds(btns.removeFromLeft(64));
+        clearIr_.setBounds(btns.removeFromLeft(54));
         in.removeFromTop(4);
         irName_.setBounds(in.removeFromTop(18));
     }

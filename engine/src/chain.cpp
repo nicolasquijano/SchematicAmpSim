@@ -18,6 +18,7 @@ Chain::Chain(const AmpDef& def, double fs)
       eco_(std::make_unique<LiteAmp>(def, fs * 2.0, true)),
       ts2_(fs * 2.0), ts4_(fs * 4.0), cab_(float(fs)) {
     ampTrim_ = float(dbToGain(def.outputDb));
+    speaker_.prepare(fs);
     noise2_.prepare(fs * 2.0, def.power.supply.mainsHz);
     noise4_.prepare(fs * 4.0, def.power.supply.mainsHz);
     target_.knobs.resize(def.preamp.knobs.size());
@@ -61,6 +62,7 @@ void Chain::setSettings(const ChainSettings& s) {
     target_.cabFilter = s.cabFilter;
     target_.tsOn = s.tsOn;
     target_.pickup = s.pickup;
+    speaker_.setAmount(s.speaker, s.speakerIntense);
     noise2_.setLevel(s.noise);
     noise4_.setLevel(s.noise);
     noise2_.setPickup(s.pickup);
@@ -190,7 +192,8 @@ void Chain::processAmp(const float* mono, float* out, std::size_t n) {
                 });
                 break;
         }
-        float y = volts / float(kOutputFullScaleVolts) * ampTrim_;
+        // The speaker sees the real drive (before the loudness trim); the trim is applied after it.
+        float y = speaker_.process(volts / float(kOutputFullScaleVolts)) * ampTrim_;
         if (cabOn) y = cab_.process(y);
         out[i] = y;
     }

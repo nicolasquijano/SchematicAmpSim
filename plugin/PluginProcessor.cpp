@@ -73,6 +73,8 @@ Layout SasProcessor::createLayout(const std::vector<sas::AmpDef>& defs) {
                                                        juce::AudioParameterFloatAttributes().withLabel("dB").withStringFromValueFunction([](float v, int) { return juce::String(v, 0); })));
     l.add(std::make_unique<juce::AudioParameterFloat>(juce::ParameterID{ids::gateRelease, kVersion}, "Gate release", juce::NormalisableRange<float>(20.0f, 500.0f, 0.0f, 0.5f), 120.0f,
                                                        juce::AudioParameterFloatAttributes().withLabel("ms").withStringFromValueFunction([](float v, int) { return juce::String(v, 0); })));
+    l.add(knob(ids::speaker, "Speaker dynamics", 0.0f));
+    l.add(std::make_unique<juce::AudioParameterBool>(juce::ParameterID{ids::speakerIntense, kVersion}, "Speaker dynamics intense", false));
     l.add(knob(ids::bias, "Bias", 5.0f));
     l.add(std::make_unique<juce::AudioParameterChoice>(juce::ParameterID{ids::tube, kVersion}, "Power tubes", juce::StringArray{"Tubes 1", "Tubes 2", "Tubes 3", "Tubes 4"}, 0));
     l.add(std::make_unique<juce::AudioParameterChoice>(juce::ParameterID{ids::noise, kVersion}, "Noise and hum", juce::StringArray{"Off", "Low", "Real"}, 0));
@@ -243,6 +245,8 @@ sas::ChainSettings SasProcessor::readSettings(bool irAvailable) {
     s.tsTone = raw(ids::tsTone) / 10.0;
     s.tsLevel = raw(ids::tsLevel) / 10.0;
     s.bias = 0.75 + 0.05 * raw(ids::bias);
+    s.speaker = raw(ids::speaker) / 10.0;
+    s.speakerIntense = raw(ids::speakerIntense) > 0.5;
     s.noise = std::array<double, 3>{0.0, 0.5, 1.0}[std::size_t(juce::jlimit(0, 2, int(raw(ids::noise) + 0.5)))];
     return s;
 }
