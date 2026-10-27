@@ -49,6 +49,7 @@ inline constexpr const char* tube = "tube";    // output tube type (index into t
 inline constexpr const char* noise = "noise";  // hiss and hum: Off / Low / Real
 inline constexpr const char* wear = "wear";    // 0..10 tenths of wear
 inline constexpr const char* unit = "unit";    // 0 = ideal parts, 1..9 = an individual unit
+inline constexpr const char* irBlend = "ir_blend";  // 0 = impulse response A only, 10 = B only
 inline constexpr const char* speaker = "speaker";               // speaker dynamics amount, 0..10
 inline constexpr const char* speakerIntense = "speaker_intense";  // stronger speaker dynamics
 }  // namespace ids
@@ -84,9 +85,13 @@ public:
     void setStateInformation(const void*, int) override;
 
     // Cabinet impulse response. Both are message-thread calls.
-    bool loadImpulseResponse(const juce::File& file);
-    void clearImpulseResponse();
-    juce::String impulseResponseName() const;
+    // Two slots (A = 0, B = 1) that are mixed with the "ir_blend" parameter; with only one loaded it plays alone.
+    static constexpr int kIrSlots = 2;
+    bool loadImpulseResponse(const juce::File& file, int slot = 0);
+    void clearImpulseResponse(int slot = 0);
+    juce::String impulseResponseName(int slot = 0) const;
+    // Magnitude response of the loaded IR in dB (mean 0), log-spaced from 50 Hz to 10 kHz; empty when nothing is loaded.
+    std::vector<float> impulseResponseCurve(int slot = 0) const;
 
     // Amps available in this build (sorted by id) and the one the "amp" parameter selects.
     const std::vector<sas::AmpDef>& amps() const { return defs_; }
@@ -110,7 +115,8 @@ private:
     class ChainBuilder;
 
     static juce::AudioProcessorValueTreeState::ParameterLayout createLayout(const std::vector<sas::AmpDef>& defs);
-    bool loadImpulseResponseFromMemory(const void* data, std::size_t size, const juce::String& name);
+    bool loadImpulseResponseFromMemory(const void* data, std::size_t size, const juce::String& name, int slot);
+    bool anyIrLoaded() const { return ir_[0].loaded.load() || ir_[1].loaded.load(); }
     sas::ChainSettings readSettings(bool irAvailable);
     void swapInBuiltChain();
     int wantedKey() const;
@@ -140,12 +146,18 @@ private:
     std::atomic<int> requestedKey_{-1};
     std::atomic<int> activeKey_{0};  // amp + condition chain_ was built for
 
-    juce::dsp::Convolution convolution_{juce::dsp::Convolution::NonUniform{512}};
-    std::atomic<bool> irLoaded_{false};
+    struct IrSlot {
+        juce::dsp::Convolution conv{juce::dsp::Convolution::NonUniform{512}};
+        std::atomic<bool> loaded{false};
+        juce::MemoryBlock bytes;      // the file as loaded, kept for the project state
+        juce::String name;
+        std::vector<float> curve;     // magnitude response for the editor
+    };
+    IrSlot ir_[kIrSlots];
     bool irWasActive_ = false;
-    juce::MemoryBlock irBytes_;
-    juce::String irName_;
-    mutable juce::CriticalSection irLock_;  // guards irBytes_/irName_ (message thread vs state calls)
+    float blendGainA_ = 1.0f, blendGainB_ = 0.0f;  // the gains in force at the end of the last block (ramped to the new ones)
+    std::vector<float> mono2_;
+    mutable juce::CriticalSection irLock_;  // guards the slots' bytes / name / curve (message thread vs state calls)
 
     sas::NoiseGate gate_;
     std::atomic<float> inputPeak_{0.0f}, outputPeak_{0.0f}, gateGain_{1.0f}, idleMa_{0.0f};

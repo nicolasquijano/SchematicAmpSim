@@ -66,6 +66,20 @@ private:
     int clip_ = 0;
 };
 
+// A small plot of an impulse response's magnitude curve (log frequency 50 Hz..10 kHz, +-15 dB).
+class IrCurve final : public juce::Component {
+public:
+    void setCurve(std::vector<float> curve) {
+        if (curve == curve_) return;
+        curve_ = std::move(curve);
+        repaint();
+    }
+    void paint(juce::Graphics&) override;
+
+private:
+    std::vector<float> curve_;
+};
+
 // The output tubes drawn as glass envelopes whose plates glow with the plate current (the share of the tube's rating),
 // so bias, wear and how hard the amp is driven can be seen.
 class TubeGlow final : public juce::Component {
@@ -89,6 +103,7 @@ public:
     void paint(juce::Graphics&) override;
     void resized() override;
     void pollMeters();  // reads the processor's peaks into the level bars (the timer calls it)
+    void updateImpulseStatus();  // the impulse names and response curves of the Cabinet page (the timer calls it)
 
 private:
     // The amp list (a ListBox over the amp parameter's choices).
@@ -97,11 +112,11 @@ private:
     void selectedRowsChanged(int lastRow) override;
 
     void timerCallback() override;
-    void chooseImpulseResponse();
+    void chooseImpulseResponse(int slot);
     void showAmp(int index);  // rebuilds the amp-specific knobs, jack list and title
     void styleCombo(juce::ComboBox&, const char* paramId, std::unique_ptr<juce::AudioProcessorValueTreeState::ComboBoxAttachment>&);
     void styleCaption(juce::Label&, const juce::String&);
-    void setPage(int page);  // 0 = amp, 1 = effects
+    void setPage(int page);  // 0 = amp, 1 = effects, 2 = cabinet
     void drawLogo(juce::Graphics&, juce::Rectangle<float>) const;
     void applyTheme(const sas::AmpDef&);  // colours of the shown amp
 
@@ -122,7 +137,7 @@ private:
     KnobWithLabel input_, output_;
     KnobWithLabel tsDrive_, tsTone_, tsLevel_;
     KnobWithLabel gateThreshold_, gateRelease_, cable_;
-    KnobWithLabel bias_, wear_, speaker_;
+    KnobWithLabel bias_, wear_, speaker_, blend_;
     LevelBar inBar_, outBar_;
     TubeGlow tubes_;
     int tick_ = 0;
@@ -130,15 +145,16 @@ private:
     juce::ListBox ampList_{"amps", nullptr};
     juce::ComboBox quality_, jack_, cab_, pickup_, tube_, noise_, unit_;
     std::unique_ptr<juce::AudioProcessorValueTreeState::ComboBoxAttachment> qualityAtt_, cabAtt_, pickupAtt_, noiseAtt_, unitAtt_;
-    juce::Label ampCaption_, qualityCaption_, jackCaption_, cabCaption_, pickupCaption_, irName_, tubeCaption_, noiseCaption_, unitCaption_, idleLabel_, conditionNote_;
+    juce::Label ampCaption_, qualityCaption_, jackCaption_, cabCaption_, pickupCaption_, nameA_, nameB_, blendNote_, cabNote_, tubeCaption_, noiseCaption_, unitCaption_, idleLabel_, conditionNote_;
     juce::ToggleButton tsOn_{"On"};
     juce::ToggleButton gateOn_{"On"};
     juce::ToggleButton speakerIntense_{"Intense"};
     juce::ToggleButton levelMatch_{"Level match"};  // shown only for amps whose jacks differ in level
     juce::ToggleButton vibrato_{"Vibrato"};  // shown only for amps that have an optical tremolo
     std::unique_ptr<juce::AudioProcessorValueTreeState::ButtonAttachment> tsOnAtt_, gateOnAtt_, speakerIntenseAtt_, levelMatchAtt_, vibratoAtt_;
-    juce::TextButton ampTab_{"Amp"}, fxTab_{"Effects"};
-    juce::TextButton loadIr_{"Load IR..."}, clearIr_{"Clear"};
+    juce::TextButton ampTab_{"Amp"}, cabTab_{"Cabinet"}, fxTab_{"Effects"};
+    juce::TextButton loadA_{"Load..."}, clearA_{"Clear"}, loadB_{"Load..."}, clearB_{"Clear"};
+    IrCurve curveA_, curveB_;
     std::unique_ptr<juce::FileChooser> chooser_;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(SasEditor)

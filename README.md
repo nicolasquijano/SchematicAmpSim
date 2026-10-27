@@ -39,7 +39,7 @@ VST3 for Windows, built with C++17 and [JUCE](https://juce.com).
   High modes only; the Lite fit belongs to the stock amp. The hiss and hum levels, the wear laws and the
   tolerances are typical figures, not measurements of a particular amp (see `engine/include/sas/noise.h` and
   `engine/src/condition.cpp`). `tools/sas_bias_cal` computes the `bias_scale` of each alternative tube.
-- **Cabinet:** off, simple filter, or your own impulse response (stored inside the project).
+- **Cabinet page:** off, a simple filter, or two impulse responses (A and B, each with its response curve) mixed with an equal-power blend; both are stored inside the project. Speaker dynamics sit between the amp and the cabinet: cone excursion (the motor force falls and the suspension stiffens as the cone is pushed), voice-coil heating and cone break-up, with an Intense mode. The values are typical figures, tuned by ear.
 - **Tube-screamer style pedal** in front of the amp (drive, tone, level).
 - **Level matching** across amps, jacks and modes, so switching does not jump in volume.
 - Fast parameter smoothing, no allocations on the audio thread; switching amps builds the new

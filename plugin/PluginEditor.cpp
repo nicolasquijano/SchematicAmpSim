@@ -195,6 +195,48 @@ void LevelBar::paint(juce::Graphics& g) {
     }
 }
 
+// ------------------------------------------------------------------ IR curve
+
+void IrCurve::paint(juce::Graphics& g) {
+    auto b = getLocalBounds().toFloat();
+    auto* look = dynamic_cast<AmpLookAndFeel*>(&getLookAndFeel());
+    const auto accent = look ? look->accent() : juce::Colours::orange;
+    const auto label = look ? look->label() : juce::Colours::grey;
+    g.setColour(juce::Colours::black.withAlpha(0.35f));
+    g.fillRoundedRectangle(b, 4.0f);
+    const auto plot = b.reduced(6.0f, 6.0f).withTrimmedBottom(10.0f);
+    // Grid: 100 Hz, 1 kHz, 10 kHz and 0 dB, +-10 dB.
+    g.setFont(AmpLookAndFeel::font(9.0f));
+    for (double f : {100.0, 1000.0, 10000.0}) {
+        const float x = plot.getX() + plot.getWidth() * float(std::log(f / 50.0) / std::log(200.0));
+        g.setColour(label.withAlpha(0.25f));
+        g.drawVerticalLine(int(x), plot.getY(), plot.getBottom());
+        g.setColour(label.withAlpha(0.8f));
+        g.drawText(f >= 1000.0 ? juce::String(int(f / 1000.0)) + "k" : juce::String(int(f)), int(x) - 14, int(plot.getBottom()) + 1, 28, 10, juce::Justification::centred);
+    }
+    for (float db : {-10.0f, 0.0f, 10.0f}) {
+        const float y = plot.getCentreY() - db / 15.0f * plot.getHeight() * 0.5f;
+        g.setColour(label.withAlpha(db == 0.0f ? 0.35f : 0.18f));
+        g.drawHorizontalLine(int(y), plot.getX(), plot.getRight());
+    }
+    if (curve_.size() < 2) {
+        g.setColour(label);
+        g.setFont(AmpLookAndFeel::font(11.0f));
+        g.drawText("no impulse loaded", b, juce::Justification::centred);
+        return;
+    }
+    juce::Path path;
+    for (std::size_t i = 0; i < curve_.size(); ++i) {
+        const float x = plot.getX() + plot.getWidth() * float(i) / float(curve_.size() - 1);
+        const float y = plot.getCentreY() - juce::jlimit(-15.0f, 15.0f, curve_[i]) / 15.0f * plot.getHeight() * 0.5f;
+        if (i == 0) path.startNewSubPath(x, y); else path.lineTo(x, y);
+    }
+    g.setColour(accent.withAlpha(0.25f));
+    g.strokePath(path, juce::PathStrokeType(4.0f, juce::PathStrokeType::curved, juce::PathStrokeType::rounded));
+    g.setColour(accent);
+    g.strokePath(path, juce::PathStrokeType(1.6f, juce::PathStrokeType::curved, juce::PathStrokeType::rounded));
+}
+
 // ------------------------------------------------------------------ tube glow
 
 void TubeGlow::setTubes(int count, const juce::String& name) {
@@ -267,9 +309,9 @@ SasEditor::SasEditor(SasProcessor& p)
       input_(p.apvts, ids::input, "INPUT dB"), output_(p.apvts, ids::output, "OUTPUT dB"),
       tsDrive_(p.apvts, ids::tsDrive, "DRIVE"), tsTone_(p.apvts, ids::tsTone, "TONE"), tsLevel_(p.apvts, ids::tsLevel, "LEVEL"),
       gateThreshold_(p.apvts, ids::gateThreshold, "THRESHOLD"), gateRelease_(p.apvts, ids::gateRelease, "RELEASE"), cable_(p.apvts, ids::cable, "CABLE m"),
-      bias_(p.apvts, ids::bias, "BIAS"), wear_(p.apvts, ids::wear, "WEAR"), speaker_(p.apvts, ids::speaker, "SPEAKER") {
+      bias_(p.apvts, ids::bias, "BIAS"), wear_(p.apvts, ids::wear, "WEAR"), speaker_(p.apvts, ids::speaker, "SPEAKER"), blend_(p.apvts, ids::irBlend, "BLEND") {
     setLookAndFeel(&look_);
-    for (auto* k : {&input_, &output_, &tsDrive_, &tsTone_, &tsLevel_, &gateThreshold_, &gateRelease_, &cable_, &bias_, &wear_, &speaker_}) addAndMakeVisible(*k);
+    for (auto* k : {&input_, &output_, &tsDrive_, &tsTone_, &tsLevel_, &gateThreshold_, &gateRelease_, &cable_, &bias_, &wear_, &speaker_, &blend_}) addAndMakeVisible(*k);
     addAndMakeVisible(inBar_);
     addAndMakeVisible(tubes_);
     addAndMakeVisible(outBar_);
@@ -317,7 +359,7 @@ SasEditor::SasEditor(SasProcessor& p)
     styleCaption(ampCaption_, "AMP");
     styleCaption(qualityCaption_, "QUALITY");
     styleCaption(jackCaption_, "INPUT JACK");
-    styleCaption(cabCaption_, "CABINET");
+    styleCaption(cabCaption_, "SOURCE");
     addAndMakeVisible(tsOn_);
     tsOnAtt_ = std::make_unique<juce::AudioProcessorValueTreeState::ButtonAttachment>(p.apvts, ids::tsOn, tsOn_);
     addAndMakeVisible(gateOn_);
@@ -331,14 +373,26 @@ SasEditor::SasEditor(SasProcessor& p)
     levelMatch_.setTooltip("Raises the quieter jack so both play at a similar level");
     levelMatchAtt_ = std::make_unique<juce::AudioProcessorValueTreeState::ButtonAttachment>(p.apvts, ids::levelMatch, levelMatch_);
 
-    irName_.setFont(AmpLookAndFeel::font(11.0f));
-    addAndMakeVisible(irName_);
-    addAndMakeVisible(loadIr_);
-    addAndMakeVisible(clearIr_);
-    loadIr_.onClick = [this] { chooseImpulseResponse(); };
-    clearIr_.onClick = [this] { processor_.clearImpulseResponse(); };
+    for (auto* l : {&nameA_, &nameB_}) {
+        l->setFont(AmpLookAndFeel::font(11.5f));
+        addAndMakeVisible(*l);
+    }
+    blendNote_.setFont(AmpLookAndFeel::font(10.5f));
+    blendNote_.setJustificationType(juce::Justification::centred);
+    blendNote_.setText("A  <  >  B", juce::dontSendNotification);
+    addAndMakeVisible(blendNote_);
+    cabNote_.setFont(AmpLookAndFeel::font(10.5f));
+    cabNote_.setText("IR plays the impulses above (A and B, mixed by the blend).\nFilter is a simple built-in cabinet curve. Off is the raw amp.", juce::dontSendNotification);
+    addAndMakeVisible(cabNote_);
+    for (auto* b : {&loadA_, &clearA_, &loadB_, &clearB_}) addAndMakeVisible(*b);
+    addAndMakeVisible(curveA_);
+    addAndMakeVisible(curveB_);
+    loadA_.onClick = [this] { chooseImpulseResponse(0); };
+    loadB_.onClick = [this] { chooseImpulseResponse(1); };
+    clearA_.onClick = [this] { processor_.clearImpulseResponse(0); };
+    clearB_.onClick = [this] { processor_.clearImpulseResponse(1); };
 
-    for (auto* t : {&ampTab_, &fxTab_}) {
+    for (auto* t : {&ampTab_, &cabTab_, &fxTab_}) {
         t->setClickingTogglesState(true);
         t->setRadioGroupId(7);
         addAndMakeVisible(*t);
@@ -346,6 +400,7 @@ SasEditor::SasEditor(SasProcessor& p)
     ampTab_.setToggleState(true, juce::dontSendNotification);
     ampTab_.onClick = [this] { setPage(0); };
     fxTab_.onClick = [this] { setPage(1); };
+    cabTab_.onClick = [this] { setPage(2); };
 
     showAmp(processor_.selectedAmpIndex());
     setResizable(true, true);
@@ -406,7 +461,7 @@ void SasEditor::applyTheme(const sas::AmpDef& def) {
     look_.setTheme(EditorTheme::from(def.theme));
     for (auto* l : {&ampCaption_, &qualityCaption_, &jackCaption_, &cabCaption_, &pickupCaption_, &tubeCaption_, &noiseCaption_, &unitCaption_, &conditionNote_})
         l->setColour(juce::Label::textColourId, look_.label());
-    irName_.setColour(juce::Label::textColourId, look_.label());
+    for (auto* l : {&nameA_, &nameB_, &blendNote_, &cabNote_}) l->setColour(juce::Label::textColourId, look_.label());
     sendLookAndFeelChange();
     repaint();
 }
@@ -485,17 +540,24 @@ void SasEditor::timerCallback() {
         idleLabel_.setText(ma > 0.5f ? juce::String(ma, 1) + " mA per tube" : juce::String("plate current: Normal / High only"), juce::dontSendNotification);
     }
 
-    const auto name = processor_.impulseResponseName();
-    irName_.setText(name.isEmpty() ? "no IR loaded (cab filter)" : name, juce::dontSendNotification);
+    updateImpulseStatus();
 }
 
-void SasEditor::chooseImpulseResponse() {
+void SasEditor::updateImpulseStatus() {
+    for (int slot = 0; slot < 2; ++slot) {
+        const auto name = processor_.impulseResponseName(slot);
+        (slot == 0 ? nameA_ : nameB_).setText(name.isEmpty() ? juce::String("empty") : name, juce::dontSendNotification);
+        (slot == 0 ? curveA_ : curveB_).setCurve(processor_.impulseResponseCurve(slot));
+    }
+}
+
+void SasEditor::chooseImpulseResponse(int slot) {
     chooser_ = std::make_unique<juce::FileChooser>("Choose a cabinet impulse response", juce::File{}, "*.wav;*.aif;*.aiff;*.flac");
     chooser_->launchAsync(juce::FileBrowserComponent::openMode | juce::FileBrowserComponent::canSelectFiles,
-                          [this](const juce::FileChooser& fc) {
+                          [this, slot](const juce::FileChooser& fc) {
                               const auto file = fc.getResult();
                               if (file == juce::File{}) return;
-                              if (processor_.loadImpulseResponse(file)) {
+                              if (processor_.loadImpulseResponse(file, slot)) {
                                   // Switch the cabinet to IR so the load is audible right away.
                                   if (auto* cab = processor_.apvts.getParameter(ids::cab)) cab->setValueNotifyingHost(cab->convertTo0to1(2.0f));
                               } else {
@@ -607,16 +669,20 @@ void SasEditor::resized() {
         auto head = area.removeFromTop(36);
         fxTab_.setBounds(head.removeFromRight(80).withTrimmedTop(6).withTrimmedBottom(2));
         head.removeFromRight(4);
+        cabTab_.setBounds(head.removeFromRight(84).withTrimmedTop(6).withTrimmedBottom(2));
+        head.removeFromRight(4);
         ampTab_.setBounds(head.removeFromRight(70).withTrimmedTop(6).withTrimmedBottom(2));
         area.removeFromTop(4);
     }
-    const bool ampPage = page_ == 0;
+    const bool ampPage = page_ == 0, fxPage = page_ == 1, cabPage = page_ == 2;
     for (auto& k : ampKnobs_) k->setVisible(ampPage);
-    for (auto* c : std::initializer_list<juce::Component*>{&cabCaption_, &cab_, &loadIr_, &clearIr_, &irName_, &input_, &output_, &inBar_, &outBar_, &tubes_, &speaker_, &speakerIntense_}) c->setVisible(ampPage);
-    for (auto* c : std::initializer_list<juce::Component*>{&tsOn_, &tsDrive_, &tsTone_, &tsLevel_, &gateOn_, &gateThreshold_, &gateRelease_, &cable_, &pickup_, &pickupCaption_,
-                                                           &bias_, &wear_, &tube_, &noise_, &unit_, &tubeCaption_, &noiseCaption_, &unitCaption_, &idleLabel_, &conditionNote_}) c->setVisible(!ampPage);
+    for (auto* c : std::initializer_list<juce::Component*>{&input_, &output_, &inBar_, &outBar_, &tubes_, &cable_, &pickup_, &pickupCaption_}) c->setVisible(ampPage);
+    for (auto* c : std::initializer_list<juce::Component*>{&cabCaption_, &cab_, &speaker_, &speakerIntense_, &blend_, &blendNote_, &loadA_, &clearA_, &nameA_, &curveA_,
+                                                           &loadB_, &clearB_, &nameB_, &curveB_, &cabNote_}) c->setVisible(cabPage);
+    for (auto* c : std::initializer_list<juce::Component*>{&tsOn_, &tsDrive_, &tsTone_, &tsLevel_, &gateOn_, &gateThreshold_, &gateRelease_,
+                                                           &bias_, &wear_, &tube_, &noise_, &unit_, &tubeCaption_, &noiseCaption_, &unitCaption_, &idleLabel_, &conditionNote_}) c->setVisible(fxPage);
 
-    if (!ampPage) {
+    if (fxPage) {
         // Effects page: one panel per effect, side by side; only the overdrive for now.
         const int knobW = std::clamp(area.getWidth() / 8, 70, 110);
         auto fxRow = area.removeFromTop(std::min(area.getHeight(), 190));
@@ -630,16 +696,6 @@ void SasEditor::resized() {
             gateOn_.setBounds(ghead.removeFromRight(56));
             gateThreshold_.setBounds(gin.removeFromLeft(gin.getWidth() / 2));
             gateRelease_.setBounds(gin);
-        }
-        fxRow.removeFromLeft(gap);
-        auto guitarPanel = fxRow.removeFromLeft(knobW * 2 + 12);
-        panels_.push_back({guitarPanel, "GUITAR INPUT"});
-        {
-            auto gin = guitarPanel.reduced(8, 4);
-            gin.removeFromTop(18);
-            pickupCaption_.setBounds(gin.removeFromTop(16));
-            pickup_.setBounds(gin.removeFromTop(24));
-            cable_.setBounds(gin.removeFromLeft(gin.getWidth() / 2));
         }
         // Second row: the state of the amp itself.
         area.removeFromTop(gap);
@@ -674,6 +730,62 @@ void SasEditor::resized() {
         return;
     }
 
+    if (cabPage) {
+        // Cabinet page: the two impulse slots on top, each with its response curve; below, the cabinet mode, the A / B blend and the speaker.
+        auto top = area.removeFromTop(std::max(150, area.getHeight() * 52 / 100));
+        area.removeFromTop(gap);
+        auto slotA = top.removeFromLeft((top.getWidth() - gap) / 2);
+        top.removeFromLeft(gap);
+        auto slotB = top;
+        auto slot = [&](juce::Rectangle<int> panel, const char* caption, juce::TextButton& load, juce::TextButton& clear, juce::Label& name, IrCurve& curve) {
+            panels_.push_back({panel, caption});
+            auto in = panel.reduced(10, 6);
+            in.removeFromTop(18);
+            auto row = in.removeFromTop(24);
+            clear.setBounds(row.removeFromRight(54));
+            row.removeFromRight(6);
+            load.setBounds(row.removeFromRight(70));
+            row.removeFromRight(6);
+            name.setBounds(row);
+            in.removeFromTop(6);
+            curve.setBounds(in);
+        };
+        slot(slotA, "IMPULSE A", loadA_, clearA_, nameA_, curveA_);
+        slot(slotB, "IMPULSE B", loadB_, clearB_, nameB_, curveB_);
+
+        const int third = (area.getWidth() - 2 * gap) / 3;
+        auto cabPanel = area.removeFromLeft(third);
+        area.removeFromLeft(gap);
+        auto blendPanel = area.removeFromLeft(third);
+        area.removeFromLeft(gap);
+        auto speakerPanel = area;
+        panels_.push_back({cabPanel, "CABINET"});
+        {
+            auto in = cabPanel.reduced(10, 6);
+            in.removeFromTop(20);
+            cabCaption_.setBounds(in.removeFromTop(16));
+            cab_.setBounds(in.removeFromTop(24));
+            in.removeFromTop(8);
+            cabNote_.setBounds(in);
+        }
+        panels_.push_back({blendPanel, "A / B BLEND"});
+        {
+            auto in = blendPanel.reduced(6, 4);
+            in.removeFromTop(16);
+            blendNote_.setBounds(in.removeFromBottom(14));
+            blend_.setBounds(in);
+        }
+        panels_.push_back({speakerPanel, "SPEAKER DYNAMICS"});
+        {
+            auto in = speakerPanel.reduced(6, 4);
+            in.removeFromTop(16);
+            speakerIntense_.setBounds(in.removeFromBottom(20).withSizeKeepingCentre(80, 20));
+            speaker_.setBounds(in);
+        }
+        repaint();
+        return;
+    }
+
     const int bottomH = std::clamp(area.getHeight() * 38 / 100, 110, 160);
     auto bottom = area.removeFromBottom(bottomH);
     area.removeFromBottom(gap);
@@ -690,29 +802,21 @@ void SasEditor::resized() {
     const int knobW = std::clamp(bottom.getWidth() / 7, 64, 100);
     auto ioPanel = bottom.removeFromRight(knobW * 2 + 12 + 2 * 16);
     bottom.removeFromRight(gap);
-    auto tubesPanel = bottom.removeFromRight(std::clamp(bottom.getWidth() * 36 / 100, 140, 190));
-    bottom.removeFromRight(gap);
+    // The guitar (pickup and cable) is where the signal starts, so it sits with the amp.
+    auto guitarPanel = bottom.removeFromLeft(std::clamp(bottom.getWidth() * 46 / 100, 176, 210));
+    bottom.removeFromLeft(gap);
+    panels_.push_back({guitarPanel, "GUITAR INPUT"});
+    {
+        auto gin = guitarPanel.reduced(8, 4);
+        gin.removeFromTop(18);
+        cable_.setBounds(gin.removeFromRight(70));
+        gin.removeFromRight(4);
+        pickupCaption_.setBounds(gin.removeFromTop(16));
+        pickup_.setBounds(gin.removeFromTop(24));
+    }
+    auto tubesPanel = bottom;
     panels_.push_back({tubesPanel, "POWER TUBES"});
     tubes_.setBounds(tubesPanel.reduced(8, 4).withTrimmedTop(18));
-    auto cabPanel = bottom;
-    panels_.push_back({cabPanel, ""});
-    {
-        auto in = cabPanel.reduced(10, 6);
-        // Speaker dynamics: the amount knob with its Intense switch, on the right.
-        auto knobCol = in.removeFromRight(74);
-        in.removeFromRight(6);
-        speakerIntense_.setBounds(knobCol.removeFromBottom(20));
-        speaker_.setBounds(knobCol);
-        cabCaption_.setBounds(in.removeFromTop(16));
-        cab_.setBounds(in.removeFromTop(24));
-        in.removeFromTop(6);
-        auto btns = in.removeFromTop(24);
-        loadIr_.setBounds(btns.removeFromLeft(78));
-        btns.removeFromLeft(6);
-        clearIr_.setBounds(btns.removeFromLeft(54));
-        in.removeFromTop(4);
-        irName_.setBounds(in.removeFromTop(18));
-    }
     panels_.push_back({ioPanel, "LEVELS"});
     {
         auto in = ioPanel.reduced(6, 4);

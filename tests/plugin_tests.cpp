@@ -277,6 +277,105 @@ TEST_CASE("the loaded impulse response is really convolved with the amp output")
     file.deleteFile();
 }
 
+TEST_CASE("two impulse responses are mixed by the blend knob") {
+    JuceInit init;
+    auto writeIr = [](const juce::String& name, std::initializer_list<std::pair<int, float>> taps) {
+        auto file = juce::File::getSpecialLocation(juce::File::tempDirectory).getChildFile(name);
+        file.deleteFile();
+        juce::WavAudioFormat wav;
+        std::unique_ptr<juce::AudioFormatWriter> w(wav.createWriterFor(new juce::FileOutputStream(file), 48000.0, 1, 24, {}, 0));
+        juce::AudioBuffer<float> ir(1, 1024);
+        ir.clear();
+        for (auto [i, v] : taps) ir.setSample(0, i, v);
+        w->writeFromAudioSampleBuffer(ir, 0, ir.getNumSamples());
+        return file;
+    };
+    // A: a single tap (a transparent cabinet). B: a tap and an echo 60 samples later (energy 1.81, so a gain of 0.743 after the unit-energy scaling).
+    const auto fileA = writeIr("sas_blend_a.wav", {{0, 1.0f}});
+    const auto fileB = writeIr("sas_blend_b.wav", {{0, 1.0f}, {60, -0.9f}});
+
+    auto capture = [&](SasProcessor& p, int blocks) {
+        std::vector<float> out;
+        juce::AudioBuffer<float> buf(2, 256);
+        juce::MidiBuffer midi;
+        for (int b = 0; b < blocks; ++b) {
+            fill(buf, 196.0, 0.08, 48000.0, b * 256);
+            p.processBlock(buf, midi);
+            for (int i = 0; i < 256; ++i) out.push_back(buf.getSample(0, i));
+        }
+        return out;
+    };
+    auto configure = [&](SasProcessor& p, float cabMode, float blend) {
+        setParam(p, ids::quality, 2.0f);  // Lite
+        setParam(p, ids::cab, cabMode);
+        setParam(p, ids::irBlend, blend);
+        p.prepareToPlay(48000.0, 256);
+    };
+
+    SasProcessor plain;
+    configure(plain, 0.0f, 5.0f);
+    const auto a = capture(plain, 100);
+
+    // Residual (relative) of y against model(lag) with a free scale, at the best lag within +-32.
+    auto fit = [&](const std::vector<float>& y, auto model) {
+        const std::size_t from = a.size() / 2, to = a.size() - 200;
+        double ref = 0;
+        for (std::size_t n = from; n < to; ++n) ref += double(y[n]) * y[n];
+        double best = 1e30, bestScale = 0;
+        for (int lag = -32; lag <= 32; ++lag) {
+            double num = 0, den = 0;
+            for (std::size_t n = from; n < to; ++n) {
+                const double m = model(std::size_t(int(n) + lag));
+                num += m * double(y[n]);
+                den += m * m;
+            }
+            const double scale = num / std::max(den, 1e-30);
+            double err = 0;
+            for (std::size_t n = from; n < to; ++n) {
+                const double d = double(y[n]) - scale * model(std::size_t(int(n) + lag));
+                err += d * d;
+            }
+            if (err < best) { best = err; bestScale = scale; }
+        }
+        return std::pair{best / std::max(ref, 1e-30), bestScale};
+    };
+    auto modelA = [&](std::size_t n) { return double(a[n]); };
+    auto modelB = [&](std::size_t n) { return 0.7433 * (double(a[n]) - 0.9 * double(a[n - 60])); };
+    auto modelMix = [&](std::size_t n) { return 0.7071 * (modelA(n) + modelB(n)); };
+
+    for (float blend : {0.0f, 5.0f, 10.0f}) {
+        SasProcessor p;
+        configure(p, 2.0f, blend);
+        REQUIRE(p.loadImpulseResponse(fileA, 0));
+        REQUIRE(p.loadImpulseResponse(fileB, 1));
+        juce::Thread::sleep(500);
+        const auto y = capture(p, 100);
+        const auto r = blend == 0.0f ? fit(y, modelA) : blend == 10.0f ? fit(y, modelB) : fit(y, modelMix);
+        INFO("blend " << blend << ": residual " << r.first << ", gain " << r.second);
+        CHECK(r.first < 0.02);
+        CHECK(std::abs(r.second - 1.0) < 0.08);
+        CHECK(p.impulseResponseCurve(0).size() == 96);
+    }
+
+    // The slots keep their own names and curves, and both travel in the project.
+    SasProcessor p;
+    REQUIRE(p.loadImpulseResponse(fileA, 0));
+    REQUIRE(p.loadImpulseResponse(fileB, 1));
+    CHECK(p.impulseResponseName(0) == "sas_blend_a.wav");
+    CHECK(p.impulseResponseName(1) == "sas_blend_b.wav");
+    juce::MemoryBlock state;
+    p.getStateInformation(state);
+    SasProcessor q;
+    q.setStateInformation(state.getData(), int(state.getSize()));
+    CHECK(q.impulseResponseName(0) == "sas_blend_a.wav");
+    CHECK(q.impulseResponseName(1) == "sas_blend_b.wav");
+    q.clearImpulseResponse(1);
+    CHECK(q.impulseResponseName(1).isEmpty());
+    CHECK(q.impulseResponseName(0) == "sas_blend_a.wav");
+    fileA.deleteFile();
+    fileB.deleteFile();
+}
+
 TEST_CASE("the editor builds for every amp and can be rendered") {
     JuceInit juceInit;
     SasProcessor p;
@@ -301,6 +400,36 @@ TEST_CASE("the editor builds for every amp and can be rendered") {
                 const auto fx = ed->createComponentSnapshot(ed->getLocalBounds());
                 juce::FileOutputStream o2(juce::File(dir).getChildFile("fx.png"));
                 if (o2.openedOk()) { o2.setPosition(0); o2.truncate(); png.writeImageToStream(fx, o2); }
+                {
+                    // Two different synthetic cabinets (decaying noise: one dark, one bright) so the curves have something to show.
+                    auto make = [](const juce::String& name, float smoothing) {
+                        auto file = juce::File::getSpecialLocation(juce::File::tempDirectory).getChildFile(name);
+                        file.deleteFile();
+                        juce::WavAudioFormat wav;
+                        std::unique_ptr<juce::AudioFormatWriter> w(wav.createWriterFor(new juce::FileOutputStream(file), 48000.0, 1, 24, {}, 0));
+                        juce::AudioBuffer<float> ir(1, 4096);
+                        juce::Random rnd(7);
+                        float lp = 0.0f;
+                        for (int i = 0; i < ir.getNumSamples(); ++i) {
+                            const float noise = rnd.nextFloat() * 2.0f - 1.0f;
+                            lp += smoothing * (noise - lp);
+                            ir.setSample(0, i, (smoothing < 0.5f ? lp : noise - 0.6f * lp) * std::exp(-float(i) / 500.0f));
+                        }
+                        w->writeFromAudioSampleBuffer(ir, 0, ir.getNumSamples());
+                        return file;
+                    };
+                    const auto fa = make("sas_render_a.wav", 0.15f), fb = make("sas_render_b.wav", 0.8f);
+                    p.loadImpulseResponse(fa, 0);
+                    p.loadImpulseResponse(fb, 1);
+                    if (auto* editor = dynamic_cast<SasEditor*>(ed.get())) editor->updateImpulseStatus();
+                    fa.deleteFile();
+                    fb.deleteFile();
+                }
+                for (auto* c : ed->getChildren())
+                    if (auto* b = dynamic_cast<juce::TextButton*>(c); b && b->getButtonText() == "Cabinet") { b->setToggleState(true, juce::dontSendNotification); b->onClick(); }
+                const auto cabPage = ed->createComponentSnapshot(ed->getLocalBounds());
+                juce::FileOutputStream o3(juce::File(dir).getChildFile("cab.png"));
+                if (o3.openedOk()) { o3.setPosition(0); o3.truncate(); png.writeImageToStream(cabPage, o3); }
             }
         }
     }

@@ -73,6 +73,7 @@ Layout SasProcessor::createLayout(const std::vector<sas::AmpDef>& defs) {
                                                        juce::AudioParameterFloatAttributes().withLabel("dB").withStringFromValueFunction([](float v, int) { return juce::String(v, 0); })));
     l.add(std::make_unique<juce::AudioParameterFloat>(juce::ParameterID{ids::gateRelease, kVersion}, "Gate release", juce::NormalisableRange<float>(20.0f, 500.0f, 0.0f, 0.5f), 120.0f,
                                                        juce::AudioParameterFloatAttributes().withLabel("ms").withStringFromValueFunction([](float v, int) { return juce::String(v, 0); })));
+    l.add(knob(ids::irBlend, "IR blend", 5.0f));
     l.add(knob(ids::speaker, "Speaker dynamics", 0.0f));
     l.add(std::make_unique<juce::AudioParameterBool>(juce::ParameterID{ids::speakerIntense, kVersion}, "Speaker dynamics intense", false));
     l.add(knob(ids::bias, "Bias", 5.0f));
@@ -144,7 +145,7 @@ void SasProcessor::swapInBuiltChain() {
     // Start the new circuits at the current knob positions instead of ramping from their defaults.
     activeAmp_ = amp;
     activeKey_ = key;
-    built->snap(readSettings(irLoaded_.load()));
+    built->snap(readSettings(anyIrLoaded()));
     sas::Chain* old = chain_.release();
     chain_.reset(built);
     // The builder frees it; if it has not yet freed the previous one, do it here (rare).
@@ -183,6 +184,7 @@ SasProcessor::SasProcessor()
     settings_.knobs.reserve(16);  // never reallocate on the audio thread
     settings_.powerKnobs.reserve(16);
     mono_.resize(kMaxChunk);
+    mono2_.resize(kMaxChunk);
     builder_ = std::make_unique<ChainBuilder>(*this);
 }
 
@@ -210,7 +212,7 @@ void SasProcessor::prepareToPlay(double sampleRate, int samplesPerBlock) {
         chain_->reset();
     }
     juce::dsp::ProcessSpec spec{sampleRate, static_cast<juce::uint32>(std::min<int>(samplesPerBlock, (int) kMaxChunk)), 1};
-    convolution_.prepare(spec);
+    for (auto& slot : ir_) slot.conv.prepare(spec);
     irWasActive_ = false;
     latencyReported_ = -1;
     gate_.prepare(sampleRate);
@@ -266,7 +268,8 @@ void SasProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::MidiBuff
         builder_->wake();
     }
 
-    const bool irLoaded = irLoaded_.load();
+    const bool aLoaded = ir_[0].loaded.load(), bLoaded = ir_[1].loaded.load();
+    const bool irLoaded = aLoaded || bLoaded;
     const auto cabParam = static_cast<CabMode>(juce::jlimit(0, 2, int(apvts.getRawParameterValue(ids::cab)->load() + 0.5f)));
     const bool irActive = cabParam == CabMode::Ir && irLoaded;
     chain_->setSettings(readSettings(irLoaded));
@@ -274,12 +277,13 @@ void SasProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::MidiBuff
                     double(apvts.getRawParameterValue(ids::gateRelease)->load()));
 
     // Latency follows the quality and the convolution; report it when it changes.
-    const int latency = int(chain_->latencySamples()) + (irActive ? convolution_.getLatency() : 0);
+    const int latency = int(chain_->latencySamples()) + (irActive ? std::max(aLoaded ? ir_[0].conv.getLatency() : 0, bLoaded ? ir_[1].conv.getLatency() : 0) : 0);
     if (latency != latencyReported_) {
         latencyReported_ = latency;
         setLatencySamples(latency);
     }
-    if (irActive && !irWasActive_) convolution_.reset();
+    if (irActive && !irWasActive_)
+        for (auto& slot : ir_) slot.conv.reset();
     irWasActive_ = irActive;
 
     gateGain_.store(float(gate_.gain()));
@@ -300,9 +304,30 @@ void SasProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::MidiBuff
 
         chain_->processAmp(m, m, std::size_t(n));
         if (irActive) {
-            float* chans[1] = {m};
-            juce::dsp::AudioBlock<float> block(chans, 1, std::size_t(n));
-            convolution_.process(juce::dsp::ProcessContextReplacing<float>(block));
+            auto convolve = [n](IrSlot& slot, float* data) {
+                float* chans[1] = {data};
+                juce::dsp::AudioBlock<float> block(chans, 1, std::size_t(n));
+                slot.conv.process(juce::dsp::ProcessContextReplacing<float>(block));
+            };
+            if (aLoaded && bLoaded) {
+                // Both slots: equal-power blend (the IRs have unit energy), ramped over the block so a knob move does not click.
+                const double theta = juce::jlimit(0.0, 1.0, double(apvts.getRawParameterValue(ids::irBlend)->load()) / 10.0) * (juce::MathConstants<double>::pi * 0.5);
+                const float gA = float(std::cos(theta)), gB = float(std::sin(theta));
+                float* m2 = mono2_.data();
+                std::copy(m, m + n, m2);
+                convolve(ir_[0], m);
+                convolve(ir_[1], m2);
+                for (int i = 0; i < n; ++i) {
+                    const float t = float(i + 1) / float(n);
+                    m[i] = m[i] * (blendGainA_ + (gA - blendGainA_) * t) + m2[i] * (blendGainB_ + (gB - blendGainB_) * t);
+                }
+                blendGainA_ = gA;
+                blendGainB_ = gB;
+            } else {
+                convolve(aLoaded ? ir_[0] : ir_[1], m);
+                blendGainA_ = aLoaded ? 1.0f : 0.0f;  // so a second slot loaded later fades in from this state
+                blendGainB_ = aLoaded ? 0.0f : 1.0f;
+            }
         }
         chain_->applyOutput(m, std::size_t(n));
         float outPeak = 0.0f;
@@ -316,9 +341,35 @@ void SasProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::MidiBuff
 
 // ------------------------------------------------------------------ impulse response
 
-bool SasProcessor::loadImpulseResponseFromMemory(const void* data, std::size_t size, const juce::String& name) {
-    // The file is decoded here and the samples are handed over by value: JUCE's memory overload reads its source later on
-    // a background thread, after a caller's temporary buffer is gone, and then silently loads nothing.
+// Magnitude response in dB (mean 0) at 96 log-spaced frequencies from 50 Hz to 10 kHz, each the average power in a 1/6 octave band.
+static std::vector<float> responseCurve(const juce::AudioBuffer<float>& mono, double sampleRate) {
+    constexpr int order = 15, points = 96;
+    constexpr int fftSize = 1 << order;
+    juce::dsp::FFT fft(order);
+    std::vector<float> data(std::size_t(fftSize) * 2, 0.0f);
+    const int n = std::min(mono.getNumSamples(), fftSize / 2);
+    for (int i = 0; i < n; ++i) data[std::size_t(i)] = mono.getSample(0, i);
+    fft.performFrequencyOnlyForwardTransform(data.data());
+    std::vector<float> curve(points);
+    double mean = 0.0;
+    for (int k = 0; k < points; ++k) {
+        const double f = 50.0 * std::pow(200.0, double(k) / double(points - 1));
+        const double lo = f / std::pow(2.0, 1.0 / 12.0), hi = f * std::pow(2.0, 1.0 / 12.0);
+        const int b0 = std::max(1, int(lo * fftSize / sampleRate)), b1 = std::min(fftSize / 2 - 1, std::max(b0, int(hi * fftSize / sampleRate)));
+        double power = 0.0;
+        for (int b = b0; b <= b1; ++b) power += double(data[std::size_t(b)]) * data[std::size_t(b)];
+        curve[std::size_t(k)] = float(10.0 * std::log10(power / double(b1 - b0 + 1) + 1e-20));
+        mean += curve[std::size_t(k)];
+    }
+    mean /= points;
+    for (auto& v : curve) v -= float(mean);
+    return curve;
+}
+
+bool SasProcessor::loadImpulseResponseFromMemory(const void* data, std::size_t size, const juce::String& name, int slot) {
+    if (slot < 0 || slot >= kIrSlots) return false;
+    // The file is decoded here and the samples are handed over by value: the memory overload of the JUCE convolution reads its
+    // source later on a background thread, after a caller's temporary buffer is gone, and then silently loads nothing.
     juce::AudioFormatManager formats;
     formats.registerBasicFormats();
     std::unique_ptr<juce::AudioFormatReader> reader(formats.createReaderFor(std::make_unique<juce::MemoryInputStream>(data, size, false)));
@@ -329,57 +380,66 @@ bool SasProcessor::loadImpulseResponseFromMemory(const void* data, std::size_t s
     reader->read(&all, 0, length, 0, true, true);
     juce::AudioBuffer<float> mono(1, length);
     mono.copyFrom(0, 0, all, 0, 0, length);  // first channel: the amp is mono
-    // Unit energy: a white signal keeps its level through the cabinet (JUCE's own normalisation is about 20 dB lower).
+    // Unit energy: a white signal keeps its level through the cabinet (the normalisation of JUCE is about 20 dB lower).
     double energy = 0.0;
     for (int i = 0; i < length; ++i) energy += double(mono.getSample(0, i)) * double(mono.getSample(0, i));
     if (!(energy > 0.0)) return false;
     mono.applyGain(float(1.0 / std::sqrt(energy)));
-    convolution_.loadImpulseResponse(std::move(mono), reader->sampleRate, juce::dsp::Convolution::Stereo::no, juce::dsp::Convolution::Trim::yes,
-                                     juce::dsp::Convolution::Normalise::no);
+    auto curve = responseCurve(mono, reader->sampleRate);
+    ir_[slot].conv.loadImpulseResponse(std::move(mono), reader->sampleRate, juce::dsp::Convolution::Stereo::no, juce::dsp::Convolution::Trim::yes,
+                                       juce::dsp::Convolution::Normalise::no);
     {
         const juce::ScopedLock lock(irLock_);
-        irBytes_ = juce::MemoryBlock(data, size);
-        irName_ = name;
+        ir_[slot].bytes = juce::MemoryBlock(data, size);
+        ir_[slot].name = name;
+        ir_[slot].curve = std::move(curve);
     }
-    irLoaded_ = true;
+    ir_[slot].loaded = true;
     return true;
 }
 
-bool SasProcessor::loadImpulseResponse(const juce::File& file) {
+bool SasProcessor::loadImpulseResponse(const juce::File& file, int slot) {
     juce::MemoryBlock bytes;
     if (!file.existsAsFile() || !file.loadFileAsData(bytes) || bytes.getSize() == 0) return false;
-    // Reject anything JUCE cannot decode before replacing the current IR.
-    juce::AudioFormatManager fm;
-    fm.registerBasicFormats();
-    if (std::unique_ptr<juce::AudioFormatReader> r{fm.createReaderFor(std::make_unique<juce::MemoryInputStream>(bytes.getData(), bytes.getSize(), false))};
-        !r || r->lengthInSamples <= 0)
-        return false;
-    return loadImpulseResponseFromMemory(bytes.getData(), bytes.getSize(), file.getFileName());
+    return loadImpulseResponseFromMemory(bytes.getData(), bytes.getSize(), file.getFileName(), slot);
 }
 
-void SasProcessor::clearImpulseResponse() {
-    irLoaded_ = false;
+void SasProcessor::clearImpulseResponse(int slot) {
+    if (slot < 0 || slot >= kIrSlots) return;
+    ir_[slot].loaded = false;
     const juce::ScopedLock lock(irLock_);
-    irBytes_.reset();
-    irName_.clear();
+    ir_[slot].bytes.reset();
+    ir_[slot].name.clear();
+    ir_[slot].curve.clear();
 }
 
-juce::String SasProcessor::impulseResponseName() const {
+juce::String SasProcessor::impulseResponseName(int slot) const {
     const juce::ScopedLock lock(irLock_);
-    return irName_;
+    return slot >= 0 && slot < kIrSlots ? ir_[slot].name : juce::String();
+}
+
+std::vector<float> SasProcessor::impulseResponseCurve(int slot) const {
+    const juce::ScopedLock lock(irLock_);
+    return slot >= 0 && slot < kIrSlots ? ir_[slot].curve : std::vector<float>{};
 }
 
 // ------------------------------------------------------------------ state
+
+// Slot A keeps the property names of the first versions ("irData" / "irName"), so older projects still load.
+static const char* const kIrDataKey[SasProcessor::kIrSlots] = {"irData", "irDataB"};
+static const char* const kIrNameKey[SasProcessor::kIrSlots] = {"irName", "irNameB"};
 
 void SasProcessor::getStateInformation(juce::MemoryBlock& dest) {
     auto state = apvts.copyState();
     {
         const juce::ScopedLock lock(irLock_);
-        state.removeProperty("irData", nullptr);
-        state.removeProperty("irName", nullptr);
-        if (irBytes_.getSize() > 0 && irBytes_.getSize() <= kMaxStoredIrBytes) {
-            state.setProperty("irName", irName_, nullptr);
-            state.setProperty("irData", juce::Base64::toBase64(irBytes_.getData(), irBytes_.getSize()), nullptr);
+        for (int s = 0; s < kIrSlots; ++s) {
+            state.removeProperty(kIrDataKey[s], nullptr);
+            state.removeProperty(kIrNameKey[s], nullptr);
+            if (ir_[s].bytes.getSize() > 0 && ir_[s].bytes.getSize() <= kMaxStoredIrBytes) {
+                state.setProperty(kIrNameKey[s], ir_[s].name, nullptr);
+                state.setProperty(kIrDataKey[s], juce::Base64::toBase64(ir_[s].bytes.getData(), ir_[s].bytes.getSize()), nullptr);
+            }
         }
     }
     if (auto xml = state.createXml()) copyXmlToBinary(*xml, dest);
@@ -390,12 +450,14 @@ void SasProcessor::setStateInformation(const void* data, int size) {
     if (!xml || !xml->hasTagName(apvts.state.getType())) return;
     const auto tree = juce::ValueTree::fromXml(*xml);
     apvts.replaceState(tree);
-    if (tree.hasProperty("irData")) {
-        juce::MemoryOutputStream out;
-        if (juce::Base64::convertFromBase64(out, tree["irData"].toString()) && out.getDataSize() > 0)
-            if (!loadImpulseResponseFromMemory(out.getData(), out.getDataSize(), tree["irName"].toString())) clearImpulseResponse();
-    } else {
-        clearImpulseResponse();
+    for (int s = 0; s < kIrSlots; ++s) {
+        if (tree.hasProperty(kIrDataKey[s])) {
+            juce::MemoryOutputStream out;
+            if (juce::Base64::convertFromBase64(out, tree[kIrDataKey[s]].toString()) && out.getDataSize() > 0)
+                if (!loadImpulseResponseFromMemory(out.getData(), out.getDataSize(), tree[kIrNameKey[s]].toString(), s)) clearImpulseResponse(s);
+        } else {
+            clearImpulseResponse(s);
+        }
     }
 }
 
