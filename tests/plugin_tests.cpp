@@ -127,6 +127,36 @@ TEST_CASE("switching amp keeps audio flowing and swaps in the new circuits") {
     CHECK(rms(run(p, 12)) == Catch::Approx(before).epsilon(0.1));
 }
 
+TEST_CASE("choosing other output tubes or wear rebuilds the circuits and changes the plate current") {
+    JuceInit init;
+    SasProcessor p;
+    p.prepareToPlay(48000.0, 512);
+    setParam(p, ids::quality, 0.0f);  // Normal: the plate current is read from the full circuit
+    run(p, 40);
+    const float stock = p.idleMilliamps();
+    REQUIRE(stock > 10.0f);
+
+    auto waitFor = [&](auto done) {
+        for (int i = 0; i < 800 && !done(); ++i) {
+            run(p, 4);
+            juce::Thread::sleep(15);
+        }
+        return done();
+    };
+    setParam(p, ids::tube, 1.0f);  // 6L6GC instead of EL34: a bigger tube, so more plate current at the same share of its rating
+    CHECK(waitFor([&] { return p.idleMilliamps() > stock * 1.1f; }));
+    setParam(p, ids::tube, 0.0f);
+    CHECK(waitFor([&] { return std::abs(p.idleMilliamps() - stock) < stock * 0.05f; }));
+    setParam(p, ids::wear, 10.0f);
+    CHECK(waitFor([&] { return p.idleMilliamps() < stock * 0.9f; }));
+
+    // The bias control acts at once, without a rebuild.
+    setParam(p, ids::wear, 0.0f);
+    CHECK(waitFor([&] { return std::abs(p.idleMilliamps() - stock) < stock * 0.05f; }));
+    setParam(p, ids::bias, 2.0f);  // hotter
+    CHECK(waitFor([&] { return p.idleMilliamps() > stock * 1.15f; }));
+}
+
 TEST_CASE("state round trip restores parameters") {
     JuceInit init;
     SasProcessor a, b;

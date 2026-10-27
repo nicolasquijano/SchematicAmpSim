@@ -11,6 +11,7 @@
 
 #include "sas/amp.h"
 #include "sas/cab.h"
+#include "sas/noise.h"
 #include "sas/oversample.h"
 #include "sas/ts808_fast.h"
 
@@ -35,6 +36,8 @@ struct ChainSettings {
     int pickup = 0;        // guitar impedance: 0 off (plain 7k), 1 single coil, 2 humbucker, 3 P-90
     int cableMeters = 4;   // cable capacitance, 0..14 m in steps of 2 (only with a pickup selected)
     double tsDrive = 0.5, tsTone = 0.5, tsLevel = 0.5;
+    double noise = 0.0;    // hiss and hum level: 0 off, 1 a typical amp
+    double bias = 1.0;     // output-tube bias supply, 1 = as drawn (amps with a bias control; full circuits only)
 };
 
 // Linear ramp to a target over a fixed time; advance one sample or a whole control period.
@@ -75,6 +78,8 @@ public:
     // Round-trip latency in host samples for the active quality.
     double latencySamples() const;
     Quality activeQuality() const { return active_; }
+    // Average plate current of one output tube in mA (0 for amps without a bias control, and in the Lite / Eco modes).
+    double idleMilliamps() const;
     void reset();
 
     // `mono` is the host input already averaged to one channel; writes speaker volts / 100 (and
@@ -97,10 +102,11 @@ private:
     TubeScreamerFast ts2_, ts4_;
     Oversampler os2_{1}, os4_{2};
     CabFilter cab_;
+    AmpNoise noise2_, noise4_;  // at the 2x and 4x rates
     float ampTrim_ = 1.0f;  // the amp's output_db as a gain
     Quality active_ = Quality::Normal;
     std::vector<Smoother> knobs_, powerKnobs_;
-    Smoother presence_, tsDrive_, tsTone_, tsLevel_, inputDb_, outputDb_, jackCompDb_;
+    Smoother bias_, presence_, tsDrive_, tsTone_, tsLevel_, inputDb_, outputDb_, jackCompDb_;
     std::vector<double> knobScratch_, powerScratch_;
 };
 

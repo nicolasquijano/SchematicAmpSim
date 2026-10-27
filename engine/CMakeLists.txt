@@ -8,6 +8,7 @@ add_library(sas_engine STATIC
   src/spring.cpp
   src/reverb.cpp
   src/poweramp.cpp
+  src/condition.cpp
   src/chain.cpp)
 target_include_directories(sas_engine PUBLIC include)
 target_link_libraries(sas_engine PUBLIC nlohmann_json::nlohmann_json)

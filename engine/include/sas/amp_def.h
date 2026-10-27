@@ -128,8 +128,29 @@ struct PowerKnobDef {
     double scale = 100e3, minOhms = 50, def = 0.5;
 };
 
+// A power-tube type the amp can be fitted with (amp.json "power.tubes"; the first entry is the stock one).
+// `model` replaces the model name on every `P` line of the power netlist; `biasScale` multiplies the bias
+// supply so that the idle current is the same fraction of the tube's `pmaxW` rating as the stock one
+// (measured with tools/sas_bias_cal).
+struct PowerTubeDef {
+    std::string name, model;
+    double pmaxW = 25.0, biasScale = 1.0;
+};
+
+// The bias of the output tubes: with a fixed bias supply the source `source` of the power
+// netlist is scaled by the bias control (cathode-bias amps leave it empty), and the idle current of each output tube is read from the voltage
+// across the output transformer's primary resistances `idleResistors` (`tubesPerHalf` tubes share each).
+struct BiasDef {
+    std::string source;
+    std::vector<std::string> idleResistors;
+    double tubesPerHalf = 2.0;
+    bool adjustable() const { return !source.empty(); }  // cathode-bias amps have no source: they only read the idle current
+};
+
 struct PowerDef {
     std::vector<PowerKnobDef> knobs;
+    std::vector<PowerTubeDef> tubes;
+    BiasDef bias;
     std::string netlist, netlistText;
     double tolerance = 1e-4;
     std::string inputSource, htSource, htNode, railNode, outputNode, loadResistor, nfbResistor;

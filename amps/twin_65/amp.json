@@ -73,6 +73,12 @@
   ],
 
   "power": {
+    "tubes": [
+      { "name": "6L6GC", "model": "6L6GCDS", "pmax_w": 30.0, "bias_scale": 1.0 },
+      { "name": "EL34", "model": "EL34", "pmax_w": 25.0, "bias_scale": 0.8512 },
+      { "name": "6550", "model": "6550DS", "pmax_w": 35.0, "bias_scale": 1.1932 }
+    ],
+    "bias": { "source": "VBIAS", "idle_resistors": ["DCR_PT", "DCR_PB"], "tubes_per_half": 2 },
     "netlist": "poweramp.net",
     "tolerance": 1e-4,
     "input_source": "VAUDIO",

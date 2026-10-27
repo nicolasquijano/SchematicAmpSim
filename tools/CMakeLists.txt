@@ -23,3 +23,6 @@ target_link_libraries(sas_profile PRIVATE nlohmann_json::nlohmann_json)
 
 add_executable(sas_match_levels match_levels.cpp)
 target_link_libraries(sas_match_levels PRIVATE sas_engine sas_amps)
+
+add_executable(sas_bias_cal bias_cal.cpp)
+target_link_libraries(sas_bias_cal PRIVATE sas_engine sas_amps)

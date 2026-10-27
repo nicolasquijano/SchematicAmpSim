@@ -31,6 +31,14 @@ VST3 for Windows, built with C++17 and [JUCE](https://juce.com).
   | High | Full circuit, 4x oversampling |
   | Lite | Full preamp circuit, behavioural power amp fitted against the full circuit |
   | Eco | Lite plus tabulated tube curves and a lighter solver; the multi-stage preamp is split in parts |
+- **Amp condition** (Effects page): output-tube type (EL34 / 6L6GC / 6550 on the amps with a fixed bias,
+  re-biased to the same share of the tube's dissipation rating), a bias control with the plate current in mA
+  read from the circuit, noise and hum (hiss at the input, mains hum that depends on the pickup), wear
+  (emission loss of the tubes, capacitance loss of the electrolytics and the reservoir) and a "unit" number
+  that draws component tolerances. Tubes, wear and unit rebuild the circuits, so they act in the Normal and
+  High modes only; the Lite fit belongs to the stock amp. The hiss and hum levels, the wear laws and the
+  tolerances are typical figures, not measurements of a particular amp (see `engine/include/sas/noise.h` and
+  `engine/src/condition.cpp`). `tools/sas_bias_cal` computes the `bias_scale` of each alternative tube.
 - **Cabinet:** off, simple filter, or your own impulse response (stored inside the project).
 - **Tube-screamer style pedal** in front of the amp (drive, tone, level).
 - **Level matching** across amps, jacks and modes, so switching does not jump in volume.
@@ -40,7 +48,7 @@ VST3 for Windows, built with C++17 and [JUCE](https://juce.com).
 ## Parameters
 
 Amp, Volume, Volume 2, Bass, Middle, Treble, Presence, Master, Power, Input, Output, Quality,
-Cab (Off / Filter / IR), Jack (1-4), Level match, Vibrato (On, Speed, Intensity) and Reverb and Resonance (amps that have them), and the pedal controls (On, Drive, Tone, Level).
+Cab (Off / Filter / IR), Jack (1-4), Level match, Vibrato (On, Speed, Intensity) and Reverb and Resonance (amps that have them), the pedal controls (On, Drive, Tone, Level), the noise gate, the guitar input (pickup, cable) and the amp condition (Power tubes, Bias, Noise and hum, Wear, Unit).
 Which knobs apply depends on the selected amp.
 
 ## Building

@@ -35,6 +35,7 @@
   ],
 
   "power": {
+    "bias": { "idle_resistors": ["DCR_PT", "DCR_PB"], "tubes_per_half": 2 },
     "netlist": "poweramp.net",
     "tolerance": 1e-4,
     "input_source": "VAUDIO",

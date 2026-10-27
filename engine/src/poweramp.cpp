@@ -18,6 +18,10 @@ struct PowerAmp::Built {
     ResId rPres{0}, rNfb{0}, rLoad{0}, rPresBottom{0};
     bool hasPresBottom = false, hasPres = false;
     std::vector<ResId> knobResistors;
+    bool hasBias = false;
+    SrcId srcBias{0};
+    double biasNominal = 0.0;
+    std::vector<std::pair<std::pair<Node, Node>, double>> idle;
     Node x = 0, ht = 0, out = 0;
 };
 
@@ -39,6 +43,17 @@ PowerAmp::Built PowerAmp::build(const AmpDef& def) {
         b.knobResistors.push_back(b.net.resistor(k.resistor));
         // The solve for the DC point starts from the knob's default position.
         b.net.circuit.setResistor(b.knobResistors.back(), std::max(k.scale * k.def, k.minOhms));
+    }
+    if (pd.bias.adjustable()) {
+        b.hasBias = true;
+        b.srcBias = b.net.source(pd.bias.source);
+        b.biasNominal = b.net.circuit.sourceDc(b.srcBias);
+    }
+    {
+        for (const auto& name : pd.bias.idleResistors) {
+            const auto& r = b.net.circuit.resistorAt(b.net.resistor(name));
+            b.idle.push_back({{r.a, r.b}, r.ohms});
+        }
     }
     if (!pd.nfbResistor.empty()) b.rNfb = b.net.resistor(pd.nfbResistor);
     b.rLoad = b.net.resistor(pd.loadResistor);
@@ -65,7 +80,9 @@ PowerAmp::PowerAmp(Built&& b, const AmpDef& def, double fs)
           return v;
       }()),
       nodeX_(b.x), nodeHt_(b.ht), nodeOut_(b.out), vHt_(def.power.supply.htDcSource), dt_(1.0 / fs),
-      dphase_(2.0 * kPi * def.power.supply.mainsHz / fs) {
+      dphase_(2.0 * kPi * def.power.supply.mainsHz / fs), hasBias_(b.hasBias), srcBias_(b.srcBias), biasNominal_(b.biasNominal),
+      idleTubesPerHalf_(def.power.bias.tubesPerHalf), idleK_(1.0 - std::exp(-1.0 / (0.3 * fs))) {
+    for (const auto& p : b.idle) idleProbes_.push_back({p.first.first, p.first.second, p.second});
     if (!solver_.dcConverged) throw std::runtime_error("power amp DC operating point did not converge");
     // Signals here are volts to tens of volts, so a looser tolerance is inaudible (-125 dB).
     solver_.tolerance = def.power.tolerance;
@@ -122,6 +139,12 @@ double PowerAmp::process(double vin) {
     solver_.setSource(srcHt_, vHt_);
     solver_.setSource(srcAudio_, vin);
     solver_.step();
+    if (!idleProbes_.empty()) {
+        double amps = 0.0;
+        for (const auto& p : idleProbes_) amps += (solver_.voltage(p.b) - solver_.voltage(p.a)) / p.ohms;  // from the centre tap through the primary half to the plate
+        const double mA = 1000.0 * amps / (double(idleProbes_.size()) * idleTubesPerHalf_);
+        idleMa_ += idleK_ * (mA - idleMa_);
+    }
     return solver_.voltage(nodeOut_);
 }
 

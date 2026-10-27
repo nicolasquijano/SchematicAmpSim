@@ -128,9 +128,10 @@ SasEditor::SasEditor(SasProcessor& p)
     : AudioProcessorEditor(&p), processor_(p),
       input_(p.apvts, ids::input, "INPUT dB"), output_(p.apvts, ids::output, "OUTPUT dB"),
       tsDrive_(p.apvts, ids::tsDrive, "DRIVE"), tsTone_(p.apvts, ids::tsTone, "TONE"), tsLevel_(p.apvts, ids::tsLevel, "LEVEL"),
-      gateThreshold_(p.apvts, ids::gateThreshold, "THRESHOLD"), gateRelease_(p.apvts, ids::gateRelease, "RELEASE"), cable_(p.apvts, ids::cable, "CABLE m") {
+      gateThreshold_(p.apvts, ids::gateThreshold, "THRESHOLD"), gateRelease_(p.apvts, ids::gateRelease, "RELEASE"), cable_(p.apvts, ids::cable, "CABLE m"),
+      bias_(p.apvts, ids::bias, "BIAS"), wear_(p.apvts, ids::wear, "WEAR") {
     setLookAndFeel(&look_);
-    for (auto* k : {&input_, &output_, &tsDrive_, &tsTone_, &tsLevel_, &gateThreshold_, &gateRelease_, &cable_}) addAndMakeVisible(*k);
+    for (auto* k : {&input_, &output_, &tsDrive_, &tsTone_, &tsLevel_, &gateThreshold_, &gateRelease_, &cable_, &bias_, &wear_}) addAndMakeVisible(*k);
     addAndMakeVisible(inBar_);
     addAndMakeVisible(outBar_);
 
@@ -143,6 +144,28 @@ SasEditor::SasEditor(SasProcessor& p)
     styleCombo(cab_, ids::cab, cabAtt_);
     styleCombo(pickup_, ids::pickup, pickupAtt_);
     styleCaption(pickupCaption_, "PICKUP");
+    styleCombo(noise_, ids::noise, noiseAtt_);
+    styleCombo(unit_, ids::unit, unitAtt_);
+    styleCaption(noiseCaption_, "NOISE AND HUM");
+    styleCaption(unitCaption_, "UNIT");
+    styleCaption(tubeCaption_, "POWER TUBES");
+    addAndMakeVisible(tube_);
+    tube_.onChange = [this] {
+        if (auto* param = processor_.apvts.getParameter(ids::tube)) {
+            const int index = tube_.getSelectedItemIndex();
+            if (index < 0) return;
+            param->beginChangeGesture();
+            param->setValueNotifyingHost(param->convertTo0to1(float(index)));
+            param->endChangeGesture();
+        }
+    };
+    idleLabel_.setFont(juce::FontOptions(11.5f));
+    idleLabel_.setColour(juce::Label::textColourId, juce::Colours::lightgrey);
+    addAndMakeVisible(idleLabel_);
+    conditionNote_.setText("Tubes, wear and unit rebuild the circuits; they act in Normal and High quality.", juce::dontSendNotification);
+    conditionNote_.setFont(juce::FontOptions(10.5f));
+    conditionNote_.setColour(juce::Label::textColourId, juce::Colour::fromRGB(150, 128, 98));
+    addAndMakeVisible(conditionNote_);
     // The jack list depends on the amp, so it is filled by showAmp() and wired by hand.
     addAndMakeVisible(jack_);
     jack_.onChange = [this] {
@@ -265,6 +288,12 @@ void SasEditor::showAmp(int index) {
     jack_.clear(juce::dontSendNotification);
     for (std::size_t j = 0; j < def.preamp.jacks.size(); ++j) jack_.addItem(juce::String(def.preamp.jacks[j].label), int(j) + 1);
     jackCaption_.setText(juce::String(def.preamp.jackLabel), juce::dontSendNotification);
+    tube_.clear(juce::dontSendNotification);
+    for (std::size_t t = 0; t < def.power.tubes.size(); ++t) tube_.addItem(juce::String(def.power.tubes[t].name), int(t) + 1);
+    tube_.setSelectedItemIndex(juce::jlimit(0, std::max(0, int(def.power.tubes.size()) - 1), int(processor_.apvts.getRawParameterValue(ids::tube)->load() + 0.5f)), juce::dontSendNotification);
+    tube_.setEnabled(def.power.tubes.size() > 1);
+    bias_.setEnabled(def.power.bias.adjustable());
+    bias_.setAlpha(def.power.bias.adjustable() ? 1.0f : 0.4f);
     vibrato_.setVisible(def.preamp.vibrato.present);
     levelMatch_.setVisible(std::any_of(def.preamp.jacks.begin(), def.preamp.jacks.end(), [](const sas::JackDef& j) { return j.levelDb != 0.0; }));
     const int jackNow = int(processor_.apvts.getRawParameterValue(ids::jack)->load() + 0.5f);
@@ -292,6 +321,14 @@ void SasEditor::timerCallback() {
     const int jackNow = int(processor_.apvts.getRawParameterValue(ids::jack)->load() + 0.5f);
     if (jackNow < jack_.getNumItems() && jack_.getSelectedItemIndex() != jackNow)
         jack_.setSelectedItemIndex(jackNow, juce::dontSendNotification);
+
+    if (const int tubeNow = int(processor_.apvts.getRawParameterValue(ids::tube)->load() + 0.5f);
+        tubeNow < tube_.getNumItems() && tube_.getSelectedItemIndex() != tubeNow)
+        tube_.setSelectedItemIndex(tubeNow, juce::dontSendNotification);
+    {
+        const float ma = processor_.idleMilliamps();
+        idleLabel_.setText(ma > 0.5f ? juce::String(ma, 1) + " mA per tube" : juce::String("plate current: Normal / High only"), juce::dontSendNotification);
+    }
 
     const auto name = processor_.impulseResponseName();
     irName_.setText(name.isEmpty() ? "no IR loaded (cab filter)" : name, juce::dontSendNotification);
@@ -373,7 +410,8 @@ void SasEditor::resized() {
     const bool ampPage = page_ == 0;
     for (auto& k : ampKnobs_) k->setVisible(ampPage);
     for (auto* c : std::initializer_list<juce::Component*>{&cabCaption_, &cab_, &loadIr_, &clearIr_, &irName_, &input_, &output_, &inBar_, &outBar_}) c->setVisible(ampPage);
-    for (auto* c : std::initializer_list<juce::Component*>{&tsOn_, &tsDrive_, &tsTone_, &tsLevel_, &gateOn_, &gateThreshold_, &gateRelease_, &cable_, &pickup_, &pickupCaption_}) c->setVisible(!ampPage);
+    for (auto* c : std::initializer_list<juce::Component*>{&tsOn_, &tsDrive_, &tsTone_, &tsLevel_, &gateOn_, &gateThreshold_, &gateRelease_, &cable_, &pickup_, &pickupCaption_,
+                                                           &bias_, &wear_, &tube_, &noise_, &unit_, &tubeCaption_, &noiseCaption_, &unitCaption_, &idleLabel_, &conditionNote_}) c->setVisible(!ampPage);
 
     if (!ampPage) {
         // Effects page: one panel per effect, side by side; only the overdrive for now.
@@ -399,6 +437,28 @@ void SasEditor::resized() {
             pickupCaption_.setBounds(gin.removeFromTop(16));
             pickup_.setBounds(gin.removeFromTop(24));
             cable_.setBounds(gin.removeFromLeft(gin.getWidth() / 2));
+        }
+        // Second row: the state of the amp itself.
+        area.removeFromTop(gap);
+        auto condPanel = area.removeFromTop(std::min(area.getHeight(), 150));
+        panels_.push_back({condPanel, "AMP CONDITION"});
+        {
+            auto cin = condPanel.reduced(8, 4);
+            cin.removeFromTop(18);
+            conditionNote_.setBounds(cin.removeFromBottom(16));
+            auto col1 = cin.removeFromLeft(130);
+            tubeCaption_.setBounds(col1.removeFromTop(16));
+            tube_.setBounds(col1.removeFromTop(24));
+            idleLabel_.setBounds(col1.removeFromTop(20));
+            bias_.setBounds(cin.removeFromLeft(knobW));
+            auto col2 = cin.removeFromLeft(120);
+            col2.removeFromLeft(10);
+            noiseCaption_.setBounds(col2.removeFromTop(16));
+            noise_.setBounds(col2.removeFromTop(24));
+            wear_.setBounds(cin.removeFromLeft(knobW));
+            auto col3 = cin.removeFromLeft(110);
+            unitCaption_.setBounds(col3.removeFromTop(16));
+            unit_.setBounds(col3.removeFromTop(24));
         }
         panels_.push_back({tsPanel, "OVERDRIVE - TS808 STYLE"});
         auto in = tsPanel.reduced(6, 4);

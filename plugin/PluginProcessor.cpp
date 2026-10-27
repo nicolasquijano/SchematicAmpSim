@@ -1,6 +1,7 @@
 #include "PluginProcessor.h"
 
 #include <algorithm>
+#include <array>
 
 #include "PluginEditor.h"
 #include "sas/embedded_amps.h"
@@ -71,6 +72,14 @@ Layout SasProcessor::createLayout(const std::vector<sas::AmpDef>& defs) {
                                                        juce::AudioParameterFloatAttributes().withLabel("dB").withStringFromValueFunction([](float v, int) { return juce::String(v, 0); })));
     l.add(std::make_unique<juce::AudioParameterFloat>(juce::ParameterID{ids::gateRelease, kVersion}, "Gate release", juce::NormalisableRange<float>(20.0f, 500.0f, 0.0f, 0.5f), 120.0f,
                                                        juce::AudioParameterFloatAttributes().withLabel("ms").withStringFromValueFunction([](float v, int) { return juce::String(v, 0); })));
+    l.add(knob(ids::bias, "Bias", 5.0f));
+    l.add(std::make_unique<juce::AudioParameterChoice>(juce::ParameterID{ids::tube, kVersion}, "Power tubes", juce::StringArray{"Tubes 1", "Tubes 2", "Tubes 3", "Tubes 4"}, 0));
+    l.add(std::make_unique<juce::AudioParameterChoice>(juce::ParameterID{ids::noise, kVersion}, "Noise and hum", juce::StringArray{"Off", "Low", "Real"}, 0));
+    l.add(std::make_unique<juce::AudioParameterInt>(juce::ParameterID{ids::wear, kVersion}, "Wear", 0, 10, 0,
+                                                     juce::AudioParameterIntAttributes().withStringFromValueFunction([](int v, int) { return juce::String(v * 10) + " %"; })));
+    l.add(std::make_unique<juce::AudioParameterChoice>(
+        juce::ParameterID{ids::unit, kVersion}, "Unit",
+        juce::StringArray{"Ideal", "Unit 1", "Unit 2", "Unit 3", "Unit 4", "Unit 5", "Unit 6", "Unit 7", "Unit 8", "Unit 9"}, 0));
     return l;
 }
 
@@ -90,11 +99,13 @@ public:
             wait(-1);
             if (threadShouldExit()) break;
             delete owner_.retired_.exchange(nullptr);  // chains the audio thread has swapped out
-            const int amp = owner_.requestedAmp_.exchange(-1);
-            if (amp < 0 || amp >= int(owner_.defs_.size()) || owner_.sampleRate_ <= 0.0) continue;
+            const int key = owner_.requestedKey_.exchange(-1);
+            const int amp = key & 31;
+            if (key < 0 || amp >= int(owner_.defs_.size()) || owner_.sampleRate_ <= 0.0) continue;
             try {
-                auto* built = new sas::Chain(owner_.defs_[std::size_t(amp)], owner_.sampleRate_);
-                owner_.readyAmp_.store(amp);
+                const sas::Condition cond{(key >> 5) & 7, (key >> 8) & 15, key >> 12};
+                auto* built = new sas::Chain(sas::applyCondition(owner_.defs_[std::size_t(amp)], cond), owner_.sampleRate_);
+                owner_.readyKey_.store(key);
                 delete owner_.ready_.exchange(built);  // replaces a build nobody picked up
             } catch (const std::exception&) {
                 // A broken amp definition leaves the current amp running.
@@ -110,12 +121,26 @@ int SasProcessor::selectedAmpIndex() const {
     return juce::jlimit(0, int(defs_.size()) - 1, int(apvts.getRawParameterValue(ids::amp)->load() + 0.5f));
 }
 
+sas::Condition SasProcessor::wantedCondition() const {
+    const auto& def = defs_[std::size_t(selectedAmpIndex())];
+    sas::Condition c;
+    const int tubes = int(def.power.tubes.size());
+    c.tube = tubes > 1 ? juce::jlimit(0, tubes - 1, int(apvts.getRawParameterValue(ids::tube)->load() + 0.5f)) : 0;
+    c.wear = juce::jlimit(0, 10, int(apvts.getRawParameterValue(ids::wear)->load() + 0.5f));
+    c.unit = juce::jlimit(0, 9, int(apvts.getRawParameterValue(ids::unit)->load() + 0.5f));
+    return c;
+}
+
+int SasProcessor::wantedKey() const { return makeKey(selectedAmpIndex(), wantedCondition()); }
+
 void SasProcessor::swapInBuiltChain() {
     sas::Chain* built = ready_.exchange(nullptr);
     if (!built) return;
-    const int amp = readyAmp_.load();
+    const int key = readyKey_.load();
+    const int amp = key & 31;
     // Start the new circuits at the current knob positions instead of ramping from their defaults.
     activeAmp_ = amp;
+    activeKey_ = key;
     built->snap(readSettings(irLoaded_.load()));
     sas::Chain* old = chain_.release();
     chain_.reset(built);
@@ -171,12 +196,13 @@ bool SasProcessor::isBusesLayoutSupported(const BusesLayout& layouts) const {
 }
 
 void SasProcessor::prepareToPlay(double sampleRate, int samplesPerBlock) {
-    const int wanted = selectedAmpIndex();
-    if (!chain_ || sampleRate != sampleRate_ || wanted != activeAmp_) {
+    const int wanted = wantedKey();
+    if (!chain_ || sampleRate != sampleRate_ || wanted != activeKey_) {
         sampleRate_ = sampleRate;
         delete ready_.exchange(nullptr);
-        chain_ = std::make_unique<sas::Chain>(defs_[std::size_t(wanted)], sampleRate);  // heavy: solves the DC points
-        activeAmp_ = wanted;
+        chain_ = std::make_unique<sas::Chain>(sas::applyCondition(defs_[std::size_t(wanted & 31)], wantedCondition()), sampleRate);  // heavy: solves the DC points
+        activeAmp_ = wanted & 31;
+        activeKey_ = wanted;
     } else {
         chain_->reset();
     }
@@ -215,6 +241,8 @@ sas::ChainSettings SasProcessor::readSettings(bool irAvailable) {
     s.tsDrive = raw(ids::tsDrive) / 10.0;
     s.tsTone = raw(ids::tsTone) / 10.0;
     s.tsLevel = raw(ids::tsLevel) / 10.0;
+    s.bias = 0.75 + 0.05 * raw(ids::bias);
+    s.noise = std::array<double, 3>{0.0, 0.5, 1.0}[std::size_t(juce::jlimit(0, 2, int(raw(ids::noise) + 0.5)))];
     return s;
 }
 
@@ -227,9 +255,9 @@ void SasProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::MidiBuff
     // Another amp was chosen: ask the builder, and swap in its circuits once they are ready. The
     // old amp keeps playing meanwhile.
     swapInBuiltChain();
-    const int wanted = selectedAmpIndex();
-    if (wanted != activeAmp_ && requestedAmp_.load() != wanted && ready_.load() == nullptr) {
-        requestedAmp_.store(wanted);
+    const int wanted = wantedKey();
+    if (wanted != activeKey_ && requestedKey_.load() != wanted && ready_.load() == nullptr) {
+        requestedKey_.store(wanted);
         builder_->wake();
     }
 
@@ -250,6 +278,7 @@ void SasProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::MidiBuff
     irWasActive_ = irActive;
 
     gateGain_.store(float(gate_.gain()));
+    idleMa_.store(float(chain_->idleMilliamps()));
     for (int start = 0; start < numSamples; start += int(kMaxChunk)) {
         const int n = std::min<int>(int(kMaxChunk), numSamples - start);
         float* m = mono_.data();

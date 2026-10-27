@@ -203,6 +203,21 @@ PowerDef parsePower(const json& j, const FileReader& read) {
             kd.def = num(k, "default", path);
             p.knobs.push_back(std::move(kd));
         }
+    if (j.contains("tubes"))
+        for (const auto& t : j.at("tubes")) {
+            PowerTubeDef td;
+            td.name = str(t, "name", "power.tubes");
+            td.model = str(t, "model", "power.tubes");
+            td.pmaxW = num(t, "pmax_w", "power.tubes");
+            td.biasScale = numOr(t, "bias_scale", 1.0);
+            p.tubes.push_back(std::move(td));
+        }
+    if (j.contains("bias")) {
+        const json& b = j.at("bias");
+        if (b.contains("source")) p.bias.source = str(b, "source", "power.bias");
+        for (const auto& r : need(b, "idle_resistors", "power.bias")) p.bias.idleResistors.push_back(r.get<std::string>());
+        p.bias.tubesPerHalf = num(b, "tubes_per_half", "power.bias");
+    }
     const json& s = need(j, "supply", "power");
     p.supply.mainsHz = num(s, "mains_hz", "power.supply");
     p.supply.vacPeak = num(s, "vac_peak", "power.supply");

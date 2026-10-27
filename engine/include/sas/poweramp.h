@@ -22,6 +22,13 @@ public:
     // Feedback resistor (100k stock in the 2203): larger = less negative feedback.
     void setNfbOhms(double ohms) { solver_.setResistor(rNfb_, ohms); solver_.refresh(); }
 
+    // Bias control: multiplies the bias supply of the netlist (1 = as drawn). The bias filter cap settles
+    // in a few tens of milliseconds, like turning the trim pot of a real amp.
+    bool hasBias() const { return hasBias_; }
+    void setBias(double scale) { if (hasBias_) solver_.setSource(srcBias_, biasNominal_ * scale); }
+    // Average plate current of one output tube, in mA (smoothed over about a third of a second).
+    double idleMilliamps() const { return idleMa_; }
+
     // One sample: phase-inverter input volts in, speaker volts out.
     double process(double vin);
 
@@ -53,6 +60,12 @@ private:
     double vHt_;  // reservoir voltage
     double dt_;
     double phase_ = 0.0, dphase_;
+    bool hasBias_ = false;
+    SrcId srcBias_{0};
+    double biasNominal_ = 0.0;
+    struct IdleProbe { Node a, b; double ohms; };
+    std::vector<IdleProbe> idleProbes_;
+    double idleTubesPerHalf_ = 2.0, idleMa_ = 0.0, idleK_ = 0.0;
     double presence_ = 0.5;
 };
 

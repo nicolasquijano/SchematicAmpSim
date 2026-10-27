@@ -10,6 +10,7 @@
 
 #include "sas/amp_def.h"
 #include "sas/chain.h"
+#include "sas/condition.h"
 #include "sas/gate.h"
 
 namespace ids {
@@ -43,6 +44,11 @@ inline constexpr const char* cable = "cable";    // cable length in metres
 inline constexpr const char* gateOn = "gate_on";
 inline constexpr const char* gateThreshold = "gate_threshold";
 inline constexpr const char* gateRelease = "gate_release";
+inline constexpr const char* bias = "bias";    // output-tube bias, 5 = as drawn (amps with a bias supply)
+inline constexpr const char* tube = "tube";    // output tube type (index into the amp's tube list)
+inline constexpr const char* noise = "noise";  // hiss and hum: Off / Low / Real
+inline constexpr const char* wear = "wear";    // 0..10 tenths of wear
+inline constexpr const char* unit = "unit";    // 0 = ideal parts, 1..9 = an individual unit
 }  // namespace ids
 
 // Cabinet source. Order is saved in projects: append only.
@@ -91,6 +97,10 @@ public:
     float takeInputPeak() { return inputPeak_.exchange(0.0f); }
     float takeOutputPeak() { return outputPeak_.exchange(0.0f); }
     float gateGain() const { return gateGain_.load(); }
+    // Average plate current of one output tube in mA (0 in the Lite / Eco modes).
+    float idleMilliamps() const { return idleMa_.load(); }
+    // The physical condition (tube, wear, unit) the "tube", "wear" and "unit" parameters ask for.
+    sas::Condition wantedCondition() const;
 
     juce::AudioProcessorValueTreeState apvts;
 
@@ -101,6 +111,8 @@ private:
     void loadImpulseResponseFromMemory(const void* data, std::size_t size, const juce::String& name);
     sas::ChainSettings readSettings(bool irAvailable);
     void swapInBuiltChain();
+    int wantedKey() const;
+    static int makeKey(int amp, const sas::Condition& c) { return amp + 32 * (c.tube + 8 * (c.wear + 16 * c.unit)); }
 
     std::vector<sas::AmpDef> defs_;
 
@@ -121,9 +133,10 @@ private:
     // A chain for another amp is built off the audio thread and swapped in between blocks.
     std::unique_ptr<ChainBuilder> builder_;
     std::atomic<sas::Chain*> ready_{nullptr};
-    std::atomic<int> readyAmp_{-1};
+    std::atomic<int> readyKey_{-1};
     std::atomic<sas::Chain*> retired_{nullptr};
-    std::atomic<int> requestedAmp_{-1};
+    std::atomic<int> requestedKey_{-1};
+    std::atomic<int> activeKey_{0};  // amp + condition chain_ was built for
 
     juce::dsp::Convolution convolution_{juce::dsp::Convolution::NonUniform{512}};
     std::atomic<bool> irLoaded_{false};
@@ -133,7 +146,7 @@ private:
     mutable juce::CriticalSection irLock_;  // guards irBytes_/irName_ (message thread vs state calls)
 
     sas::NoiseGate gate_;
-    std::atomic<float> inputPeak_{0.0f}, outputPeak_{0.0f}, gateGain_{1.0f};
+    std::atomic<float> inputPeak_{0.0f}, outputPeak_{0.0f}, gateGain_{1.0f}, idleMa_{0.0f};
     std::vector<float> mono_;
     sas::ChainSettings settings_;
 
