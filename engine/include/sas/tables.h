@@ -117,4 +117,98 @@ private:
     double gridScale_;
 };
 
+// The same idea for Koren's pentode / beam tetrode:
+//   E = (vg2 / kp)^ex * softplus(x)^ex,  x = kp (1/mu + vg1 / vg2),   ig2 = E / kg2,   ip = 2 E atan(vpk / kvb) / kg1,
+// and the grid current gg * softplus(cg vg1)^xi / cg^xi. The two powers, the softplus and the arctangent become four one-variable
+// tables (A(vg2), B(x), the grid's G, atan), so an evaluation is a few lookups instead of two exp, two log1p, two pow and an atan.
+class PentodeTable {
+public:
+    explicit PentodeTable(const PentodeModel& m)
+        : m_(m),
+          b_(-45.0, 70.0, 9201, [&](double x) { return std::pow(softplusValue(x), m.ex); },
+             [&](double x) { return m.ex * std::pow(softplusValue(x), m.ex - 1.0) * logistic(x); }),
+          a_(0.0, 900.0, 9001, [&](double v) { return std::pow(v / m.kp, m.ex); },
+             [&](double v) { return v > 0 ? m.ex / m.kp * std::pow(v / m.kp, m.ex - 1.0) : 0.0; }),
+          grid_(-16.0, 70.0, 6881, [&](double x) { return std::pow(softplusValue(x), m.xi); },
+                [&](double x) { return m.xi * std::pow(softplusValue(x), m.xi - 1.0) * logistic(x); }),
+          atan_(0.0, 100.0, 20001, [](double u) { return std::atan(u); }, [](double u) { return 1.0 / (1.0 + u * u); }),
+          gridScale_(m.gg / std::pow(m.cg, m.xi)) {}
+
+    PentodeModel::Eval eval(double vg1k, double vpk, double vg2k) const {
+        PentodeModel::Eval r{};
+        const double xg = m_.cg * vg1k;
+        if (xg >= grid_.lo()) {
+            double g, dg;
+            if (xg > grid_.hi()) {
+                g = std::pow(xg, m_.xi);
+                dg = m_.xi * std::pow(xg, m_.xi - 1.0);
+            } else {
+                grid_.eval(xg, g, dg);
+            }
+            r.cur[0] = gridScale_ * g;
+            r.d[0][0] = gridScale_ * dg * m_.cg;
+        }
+        if (vg2k <= 1e-6) return r;
+        const double x = m_.kp * (1.0 / m_.mu + vg1k / vg2k);
+        if (x < b_.lo()) return r;
+        double b, db;
+        if (x > b_.hi()) {
+            b = std::pow(x, m_.ex);
+            db = m_.ex * std::pow(x, m_.ex - 1.0);
+        } else {
+            b_.eval(x, b, db);
+        }
+        double a, da;
+        if (vg2k < a_.hi()) {
+            a_.eval(vg2k, a, da);
+        } else {
+            a = std::pow(vg2k / m_.kp, m_.ex);
+            da = m_.ex / m_.kp * std::pow(vg2k / m_.kp, m_.ex - 1.0);
+        }
+        const double e = a * b;
+        if (e <= 1e-14) return r;
+        const double dxDg1 = m_.kp / vg2k;
+        const double dEDg1 = a * db * dxDg1;
+        const double dEDg2 = da * b - a * db * m_.kp * vg1k / (vg2k * vg2k);
+        const double invKg2 = 1.0 / m_.kg2;
+        r.cur[2] = e * invKg2;
+        r.d[2][0] = dEDg1 * invKg2;
+        r.d[2][2] = dEDg2 * invKg2;
+        if (vpk > 0.0) {
+            const double u = vpk / m_.kvb;
+            double at, dat;  // atan(u) and its derivative with respect to u
+            if (u < atan_.hi()) {
+                atan_.eval(u, at, dat);
+            } else {
+                at = std::atan(u);
+                dat = 1.0 / (1.0 + u * u);
+            }
+            const double k = 2.0 / m_.kg1;
+            r.cur[1] = k * e * at;
+            r.d[1][0] = k * dEDg1 * at;
+            r.d[1][1] = k * e * dat / m_.kvb;
+            r.d[1][2] = k * dEDg2 * at;
+        }
+        return r;
+    }
+
+    const PentodeModel& model() const { return m_; }
+
+private:
+    static double softplusValue(double x) {
+        double sp, sig;
+        softplus(x, sp, sig);
+        return sp;
+    }
+    static double logistic(double x) {
+        double sp, sig;
+        softplus(x, sp, sig);
+        return sig;
+    }
+
+    PentodeModel m_;
+    HermiteTable b_, a_, grid_, atan_;
+    double gridScale_;
+};
+
 }  // namespace sas

@@ -186,7 +186,16 @@ Solver::Solver(Circuit circuit, double fs, bool useTables)
                 table = tables_.back().get();
             }
         }
-        devs_.push_back({d, brA_.size(), np, derLen, table});
+        const PentodeTable* ptable = nullptr;
+        if (useTables && d.kind == Circuit::Kind::Pentode) {
+            for (const auto& tb : ptables_)
+                if (std::memcmp(&tb->model(), &d.pentode, sizeof(PentodeModel)) == 0) ptable = tb.get();
+            if (!ptable) {
+                ptables_.push_back(std::make_unique<PentodeTable>(d.pentode));
+                ptable = ptables_.back().get();
+            }
+        }
+        devs_.push_back({d, brA_.size(), np, derLen, table, ptable});
         derLen += np * np;
         for (const auto& port : ports) {
             brA_.push_back(gx(port.a));
@@ -374,7 +383,7 @@ double Solver::eval(bool useTrial) {
                 break;
             }
             case Circuit::Kind::Pentode: {
-                const auto e = d.dev.pentode.eval(xs[b], xs[b + 1], xs[b + 2]);
+                const auto e = d.ptable ? d.ptable->eval(xs[b], xs[b + 1], xs[b + 2]) : d.dev.pentode.eval(xs[b], xs[b + 1], xs[b + 2]);
                 const double sc = d.dev.scale;
                 for (std::size_t m = 0; m < 3; ++m) {
                     ivec_[b + m] = e.cur[m] * sc;

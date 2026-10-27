@@ -15,6 +15,9 @@ add_executable(sas_profile EXCLUDE_FROM_ALL bench.cpp
   ${CMAKE_SOURCE_DIR}/engine/src/amp_def.cpp
   ${CMAKE_SOURCE_DIR}/engine/src/preamp.cpp
   ${CMAKE_SOURCE_DIR}/engine/src/poweramp.cpp
+  ${CMAKE_SOURCE_DIR}/engine/src/vibrato.cpp
+  ${CMAKE_SOURCE_DIR}/engine/src/spring.cpp
+  ${CMAKE_SOURCE_DIR}/engine/src/reverb.cpp
   ${CMAKE_BINARY_DIR}/amps/embedded_amp_files.cpp
   ${CMAKE_SOURCE_DIR}/amps/embedded_amps.cpp)
 target_compile_definitions(sas_profile PRIVATE SAS_PROFILE)

@@ -93,6 +93,7 @@ private:
 };
 
 class TriodeTable;
+class PentodeTable;
 
 class Solver {
 public:
@@ -131,7 +132,7 @@ public:
 private:
     static constexpr std::size_t NONE = static_cast<std::size_t>(-1);
 
-    struct DevInst { Circuit::Dev dev; std::size_t base, np, derOff; const TriodeTable* table = nullptr; };
+    struct DevInst { Circuit::Dev dev; std::size_t base, np, derOff; const TriodeTable* table = nullptr; const PentodeTable* ptable = nullptr; };
     struct Coupled {
         std::vector<std::pair<std::size_t, std::size_t>> ends;
         std::vector<double> gl, vPrev, iPrev, h;
@@ -161,6 +162,7 @@ private:
     std::size_t n_, p_;
     double fs_;
     std::vector<std::unique_ptr<TriodeTable>> tables_;  // one per distinct triode model
+    std::vector<std::unique_ptr<PentodeTable>> ptables_;  // one per distinct pentode model
     bool fast_ = false;  // the cheap modes: tables and the pivot-free Jacobian factorisation
 
     std::vector<Circuit::Res> res_;

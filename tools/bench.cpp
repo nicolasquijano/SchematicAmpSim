@@ -69,17 +69,27 @@ int main() {
                 if (def.preamp.knobs[i].name == "master") knobs[i] = c.master;
             const auto in = signal(c.amp, n, fs);
 #ifdef SAS_PROFILE
-            // Lite runs only the preamp solver, so the counters isolate it.
+            // Lite runs only the preamp solver, so the counters isolate it; the full amp adds the power amp.
             {
-                sas::LiteAmp l(def, fs, true);
+                auto report = [&](const char* what, double total) {
+                    std::printf("  %-7s %-9s cycles/sample %6.0f: eval %2.0f%%  factor %2.0f%%  lu-solve %2.0f%%  S*r %2.0f%%  v=S*r-K*i %2.0f%%\n", c.name, what, total / double(n),
+                                100 * double(sas::g_profile[sas::ProfEval]) / total, 100 * double(sas::g_profile[sas::ProfFactor]) / total,
+                                100 * double(sas::g_profile[sas::ProfSolve]) / total, 100 * double(sas::g_profile[sas::ProfMatvec]) / total,
+                                100 * double(sas::g_profile[sas::ProfReconstruct]) / total);
+                };
+                sas::LiteAmp l(def, fs, false, true);
                 l.setKnobs(knobs, def.power.presenceDefault);
                 for (auto& v : sas::g_profile) v = 0;
                 for (double x : in) sink += l.process(x);
-                const double total = double(sas::g_profile[sas::ProfStep]);
-                std::printf("  %-7s preamp cycles/sample %.0f: eval %2.0f%%  factor %2.0f%%  lu-solve %2.0f%%  S*r %2.0f%%  v=S*r-K*i %2.0f%%\n", c.name,
-                            total / double(n), 100 * double(sas::g_profile[sas::ProfEval]) / total, 100 * double(sas::g_profile[sas::ProfFactor]) / total,
-                            100 * double(sas::g_profile[sas::ProfSolve]) / total, 100 * double(sas::g_profile[sas::ProfMatvec]) / total,
-                            100 * double(sas::g_profile[sas::ProfReconstruct]) / total);
+                const double preTotal = double(sas::g_profile[sas::ProfStep]);
+                report("preamp", preTotal);
+                sas::FullAmp f(def, fs, false, true);
+                f.setKnobs(knobs, def.power.presenceDefault);
+                for (auto& v : sas::g_profile) v = 0;
+                for (double x : in) sink += f.process(x);
+                const double fullTotal = double(sas::g_profile[sas::ProfStep]);
+                report("full amp", fullTotal);
+                std::printf("  %-7s power amp is %.0f%% of the solver cycles\n", c.name, 100.0 * (fullTotal - preTotal) / fullTotal);
             }
 #endif
             sas::FullAmp full(def, fs);

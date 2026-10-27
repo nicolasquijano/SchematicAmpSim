@@ -56,3 +56,24 @@ TEST_CASE("table edge cases match the formulas") {
     const auto hi = t.plate(5.0, 800.0), ref = m.plate(5.0, 800.0);  // outside the A table's range
     CHECK(std::abs(hi.ip - ref.ip) / ref.ip < 1e-6);
 }
+
+TEST_CASE("pentode tables reproduce Koren's formulas and their derivatives") {
+    using namespace sas;
+    const PentodeModel models[] = {PentodeModel::el34(), PentodeModel::el6l6gcFit(), PentodeModel::el6550Fit(), PentodeModel::el84(), PentodeModel::el6v6()};
+    for (const auto& m : models) {
+        const PentodeTable t(m);
+        double worst = 0.0, scale = 0.0;
+        for (double vg1 : {-90.0, -60.0, -40.0, -25.0, -12.0, -3.0, 0.0, 2.0, 8.0})
+            for (double vpk : {-5.0, 0.5, 5.0, 40.0, 150.0, 300.0, 480.0, 700.0})
+                for (double vg2 : {0.0, 0.5, 20.0, 150.0, 250.0, 400.0, 520.0, 650.0}) {
+                    const auto a = m.eval(vg1, vpk, vg2), b = t.eval(vg1, vpk, vg2);
+                    for (int i = 0; i < 3; ++i) {
+                        scale = std::max(scale, std::abs(a.cur[std::size_t(i)]));
+                        worst = std::max(worst, std::abs(a.cur[std::size_t(i)] - b.cur[std::size_t(i)]));
+                        for (int j = 0; j < 3; ++j) worst = std::max(worst, std::abs(a.d[std::size_t(i)][std::size_t(j)] - b.d[std::size_t(i)][std::size_t(j)]) * 1e-2);
+                    }
+                }
+        INFO("worst " << worst << " of scale " << scale);
+        CHECK(worst < 1e-7 * scale + 1e-12);
+    }
+}
