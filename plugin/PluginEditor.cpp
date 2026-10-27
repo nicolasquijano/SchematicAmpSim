@@ -427,6 +427,40 @@ void SasEditor::chooseImpulseResponse() {
                           });
 }
 
+// The product mark: a triode symbol (envelope, plate, dashed grid, cathode) in the accent colour, and the name beside it.
+void SasEditor::drawLogo(juce::Graphics& g, juce::Rectangle<float> r) const {
+    const float size = std::min(r.getHeight(), 38.0f);
+    const auto c = juce::Point<float>(r.getX() + size * 0.5f + 2.0f, r.getCentreY());
+    const float u = size / 38.0f;  // the drawing below is laid out for a 38 px box
+    const auto accent = look_.accent();
+
+    g.setColour(accent.withAlpha(0.16f));  // soft glow behind the mark
+    g.fillEllipse(c.x - 17.0f * u, c.y - 17.0f * u, 34.0f * u, 34.0f * u);
+    g.setColour(accent);
+    g.drawEllipse(c.x - 14.0f * u, c.y - 14.0f * u, 28.0f * u, 28.0f * u, 1.8f);
+    // Plate with its lead, dashed grid with its lead, cathode with its lead.
+    g.drawLine(c.x - 6.0f * u, c.y - 7.0f * u, c.x + 6.0f * u, c.y - 7.0f * u, 2.4f);
+    g.drawLine(c.x, c.y - 7.0f * u, c.x, c.y - 17.0f * u, 1.6f);
+    for (int i = 0; i < 4; ++i) {
+        const float x0 = c.x - 7.0f * u + float(i) * 4.0f * u;
+        g.drawLine(x0, c.y, x0 + 2.4f * u, c.y, 1.6f);
+    }
+    g.drawLine(c.x - 7.0f * u, c.y, c.x - 17.0f * u, c.y, 1.6f);
+    juce::Path cathode;
+    cathode.startNewSubPath(c.x - 5.0f * u, c.y + 8.0f * u);
+    cathode.quadraticTo(c.x, c.y + 3.5f * u, c.x + 5.0f * u, c.y + 8.0f * u);
+    g.strokePath(cathode, juce::PathStrokeType(1.8f));
+    g.drawLine(c.x, c.y + 6.0f * u, c.x, c.y + 17.0f * u, 1.6f);
+
+    const float tx = c.x + 20.0f * u;
+    g.setColour(look_.text());
+    g.setFont(AmpLookAndFeel::font(14.0f, true, 0.14f));
+    g.drawText("SCHEMATIC", juce::Rectangle<float>(tx, r.getY() + 3.0f, r.getRight() - tx, 16.0f), juce::Justification::centredLeft);
+    g.setColour(accent);
+    g.setFont(AmpLookAndFeel::font(14.0f, true, 0.30f));
+    g.drawText("AMP SIM", juce::Rectangle<float>(tx, r.getY() + 19.0f, r.getRight() - tx, 16.0f), juce::Justification::centredLeft);
+}
+
 void SasEditor::paint(juce::Graphics& g) {
     const auto bg = look_.background();
     g.setGradientFill(juce::ColourGradient(bg.brighter(0.18f), 0.0f, 0.0f, bg.darker(0.35f), 0.0f, float(getHeight()), false));
@@ -454,14 +488,13 @@ void SasEditor::paint(juce::Graphics& g) {
         }
     }
 
-    // Title of the amp, with the product name small above it, and a thin accent line under both.
+    drawLogo(g, logoBounds_.toFloat());
+
+    // Title of the amp, with a thin accent line under it.
     const int left = 12 + 176;
-    g.setColour(look_.label());
-    g.setFont(AmpLookAndFeel::font(10.0f, true, 0.30f));
-    g.drawText("SCHEMATIC AMP SIM", left, 8, 300, 14, juce::Justification::centredLeft);
     g.setColour(look_.accent());
-    g.setFont(AmpLookAndFeel::font(24.0f, true, 0.02f));
-    g.drawText(title_, left, 20, getWidth() - left - 12, 30, juce::Justification::centredLeft);
+    g.setFont(AmpLookAndFeel::font(26.0f, true, 0.02f));
+    g.drawText(title_, left, 12, getWidth() - left - 12 - 160, 34, juce::Justification::centredLeft);
     g.setGradientFill(juce::ColourGradient(look_.accent().withAlpha(0.7f), float(left), 0.0f, look_.accent().withAlpha(0.0f), float(getWidth() - 12), 0.0f, false));
     g.fillRect(float(left), 49.0f, float(getWidth() - 12 - left), 1.0f);
 }
@@ -475,7 +508,9 @@ void SasEditor::resized() {
     {
         auto col = area.removeFromLeft(leftW);
         area.removeFromLeft(gap);
-        ampCaption_.setBounds(col.removeFromTop(16));
+        logoBounds_ = col.removeFromTop(40);
+        col.removeFromTop(10);
+        ampCaption_.setVisible(false);  // the logo and the list say what this is
         const int rows = std::max(1, ampNames_.size());
         ampList_.setBounds(col.removeFromTop(rows * 26 + 2));
         col.removeFromTop(gap);

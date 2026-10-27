@@ -87,6 +87,7 @@ private:
     void styleCombo(juce::ComboBox&, const char* paramId, std::unique_ptr<juce::AudioProcessorValueTreeState::ComboBoxAttachment>&);
     void styleCaption(juce::Label&, const juce::String&);
     void setPage(int page);  // 0 = amp, 1 = effects
+    void drawLogo(juce::Graphics&, juce::Rectangle<float>) const;
     void applyTheme(const sas::AmpDef&);  // colours of the shown amp
 
     SasProcessor& processor_;
@@ -99,6 +100,7 @@ private:
         juce::Rectangle<int> bounds;
         juce::String caption;
     };
+    juce::Rectangle<int> logoBounds_;  // the product mark and name, top of the left column
     std::vector<Panel> panels_;  // drawn behind the controls, set by resized()
 
     std::vector<std::unique_ptr<KnobWithLabel>> ampKnobs_;  // first row, from the amp's "ui" block
