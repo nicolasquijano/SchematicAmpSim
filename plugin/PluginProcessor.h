@@ -12,6 +12,7 @@
 #include "sas/chain.h"
 #include "sas/condition.h"
 #include "sas/gate.h"
+#include "sas/stereo.h"
 #include "sas/tuner.h"
 
 namespace ids {
@@ -60,6 +61,9 @@ inline constexpr const char* compFast = "comp_fast";        // the pedal's Attac
 inline constexpr const char* tunerOn = "tuner_on";        // the chromatic tuner listens to the input
 inline constexpr const char* tunerMute = "tuner_mute";    // and silences the output while it is on
 inline constexpr const char* tunerRef = "tuner_ref";      // reference pitch of A4, 430..450 Hz
+inline constexpr const char* irWidth = "ir_width";        // 0 = A and B blended in both ears, 10 = A on the left and B on the right
+inline constexpr const char* doubleAmount = "double_amount";  // automatic double tracking: how much of the second take
+inline constexpr const char* doubleTime = "double_time";      // its delay, 8..30 ms
 inline constexpr const char* irBlend = "ir_blend";  // 0 = impulse response A only, 10 = B only
 inline constexpr const char* speaker = "speaker";               // speaker dynamics amount, 0..10
 inline constexpr const char* speakerIntense = "speaker_intense";  // stronger speaker dynamics
@@ -169,7 +173,9 @@ private:
     IrSlot ir_[kIrSlots];
     bool irWasActive_ = false;
     float blendGainA_ = 1.0f, blendGainB_ = 0.0f;  // the gains in force at the end of the last block (ramped to the new ones)
-    std::vector<float> mono2_;
+    std::vector<float> mono2_, monoR_;  // the second IR's signal, and the right channel
+    float widthNow_ = 0.0f;             // the A / B width in force at the end of the last block
+    sas::StereoDouble double_;
     mutable juce::CriticalSection irLock_;  // guards the slots' bytes / name / curve (message thread vs state calls)
 
     sas::NoiseGate gate_;

@@ -93,6 +93,8 @@ public:
     void processAmp(const float* mono, float* out, std::size_t n);
     // Output gain and NaN guard.
     void applyOutput(float* buf, std::size_t n);
+    // The same, for a stereo pair (one gain ramp for both channels).
+    void applyOutputStereo(float* l, float* r, std::size_t n);
 
     static constexpr double kOutputFullScaleVolts = 100.0;  // a clean 100 W swing is ~57 V peak
     static constexpr double kTsOutputOhms = 600.0;          // source resistance behind the pedal's buffer

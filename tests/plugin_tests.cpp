@@ -595,6 +595,138 @@ TEST_CASE("an impulse response is applied for any IR rate, host rate, load order
     }
 }
 
+TEST_CASE("stereo: identical channels by default, A left and B right with the width, a wider pair with the double tracking") {
+    JuceInit init;
+    auto writeIr = [](const juce::String& name, std::initializer_list<std::pair<int, float>> taps) {
+        auto file = juce::File::getSpecialLocation(juce::File::tempDirectory).getChildFile(name);
+        file.deleteFile();
+        juce::WavAudioFormat wav;
+        std::unique_ptr<juce::AudioFormatWriter> w(wav.createWriterFor(new juce::FileOutputStream(file), 48000.0, 1, 24, {}, 0));
+        juce::AudioBuffer<float> ir(1, 1024);
+        ir.clear();
+        for (auto [i, v] : taps) ir.setSample(0, i, v);
+        for (int i = 400; i < ir.getNumSamples(); ++i) ir.setSample(0, i, 0.01f * std::exp(-float(i - 400) / 100.0f) * std::sin(0.9f * float(i)));  // a tail
+        w->writeFromAudioSampleBuffer(ir, 0, ir.getNumSamples());
+        return file;
+    };
+    const auto fileA = writeIr("sas_stereo_a.wav", {{0, 1.0f}});
+    const auto fileB = writeIr("sas_stereo_b.wav", {{0, 1.0f}, {60, -0.9f}});
+
+    // Both output channels of `blocks` blocks of the same 196 Hz tone.
+    auto capture = [](SasProcessor& p, int blocks, std::vector<float>& left, std::vector<float>& right, double hz = 196.0) {
+        left.clear();
+        right.clear();
+        juce::AudioBuffer<float> buf(2, 256);
+        juce::MidiBuffer midi;
+        for (int b = 0; b < blocks; ++b) {
+            fill(buf, hz, 0.08, 48000.0, b * 256);
+            p.processBlock(buf, midi);
+            for (int i = 0; i < 256; ++i) { left.push_back(buf.getSample(0, i)); right.push_back(buf.getSample(1, i)); }
+        }
+    };
+    auto configure = [&](SasProcessor& p, float cab) {
+        setParam(p, ids::quality, 2.0f);  // Lite
+        setParam(p, ids::cab, cab);
+        p.prepareToPlay(48000.0, 256);
+    };
+    auto similarity = [](const std::vector<float>& a, const std::vector<float>& b, std::size_t from) {
+        double ab = 0, aa = 0, bb = 0;
+        for (std::size_t i = from; i < a.size(); ++i) { ab += double(a[i]) * b[i]; aa += double(a[i]) * a[i]; bb += double(b[i]) * b[i]; }
+        return ab / std::sqrt(aa * bb + 1e-30);
+    };
+
+    SECTION("the default is the same signal in both ears, exactly") {
+        SasProcessor p;
+        configure(p, 1.0f);
+        std::vector<float> l, r;
+        capture(p, 60, l, r);
+        CHECK(l == r);
+        double e = 0;
+        for (float v : l) e += double(v) * v;
+        CHECK(e > 1e-6);
+    }
+
+    SECTION("with the width up, the left ear is IR A and the right ear IR B") {
+        SasProcessor plain, p;
+        configure(plain, 0.0f);
+        configure(p, 2.0f);
+        REQUIRE(p.loadImpulseResponse(fileA, 0));
+        REQUIRE(p.loadImpulseResponse(fileB, 1));
+        setParam(p, ids::irWidth, 10.0f);
+        juce::Thread::sleep(500);
+        std::vector<float> a, ar, l, r;
+        capture(plain, 100, a, ar);
+        capture(p, 100, l, r);
+        const std::size_t from = a.size() / 2, to = a.size() - 200;
+        // y ~ s * model, the best lag within +-32 and a free scale: how much of y the model leaves unexplained.
+        auto residual = [&](const std::vector<float>& y, auto model) {
+            double ref = 0;
+            for (std::size_t n = from; n < to; ++n) ref += double(y[n]) * y[n];
+            double best = 1e30;
+            for (int lag = -32; lag <= 32; ++lag) {
+                double num = 0, den = 0;
+                for (std::size_t n = from; n < to; ++n) { const double m = model(std::size_t(int(n) + lag)); num += m * double(y[n]); den += m * m; }
+                const double scale = num / std::max(den, 1e-30);
+                double err = 0;
+                for (std::size_t n = from; n < to; ++n) { const double d = double(y[n]) - scale * model(std::size_t(int(n) + lag)); err += d * d; }
+                best = std::min(best, err);
+            }
+            return best / std::max(ref, 1e-30);
+        };
+        auto modelA = [&](std::size_t n) { return double(a[n]); };
+        auto modelB = [&](std::size_t n) { return double(a[n]) - 0.9 * double(a[n - 60]); };
+        INFO("left vs A " << residual(l, modelA) << ", right vs B " << residual(r, modelB) << ", left vs B " << residual(l, modelB));
+        CHECK(residual(l, modelA) < 0.03);
+        CHECK(residual(r, modelB) < 0.03);
+        CHECK(residual(l, modelB) > 0.1);  // and they really are different
+    }
+
+    SECTION("the width at 0 gives the same blend in both ears") {
+        SasProcessor p;
+        configure(p, 2.0f);
+        REQUIRE(p.loadImpulseResponse(fileA, 0));
+        REQUIRE(p.loadImpulseResponse(fileB, 1));
+        juce::Thread::sleep(500);
+        std::vector<float> l, r;
+        capture(p, 100, l, r);
+        CHECK(l == r);
+    }
+
+    SECTION("the double tracking makes the two ears different and keeps everything finite") {
+        SasProcessor p;
+        configure(p, 1.0f);
+        setParam(p, ids::doubleAmount, 10.0f);
+        std::vector<float> l, r;
+        capture(p, 120, l, r, 110.0);  // a tone, so the two delays show as a phase difference (with music the spectrum is wide and the ears decorrelate more)
+        for (std::size_t i = 0; i < l.size(); ++i) { REQUIRE(std::isfinite(l[i])); REQUIRE(std::isfinite(r[i])); }
+        const double sim = similarity(l, r, l.size() / 2);
+        INFO("similarity of the two ears " << sim);
+        CHECK(sim < 0.95);
+        double e = 0;
+        for (float v : r) e += double(v) * v;
+        CHECK(e > 1e-6);
+    }
+
+    fileA.deleteFile();
+    fileB.deleteFile();
+}
+
+TEST_CASE("a mono guitar track can feed the stereo output") {
+    JuceInit init;
+    SasProcessor p;
+    juce::AudioProcessor::BusesLayout layout;
+    layout.inputBuses.add(juce::AudioChannelSet::mono());
+    layout.outputBuses.add(juce::AudioChannelSet::stereo());
+    CHECK(p.isBusesLayoutSupported(layout));
+    layout.inputBuses.set(0, juce::AudioChannelSet::stereo());
+    CHECK(p.isBusesLayoutSupported(layout));
+    layout.outputBuses.set(0, juce::AudioChannelSet::mono());
+    layout.inputBuses.set(0, juce::AudioChannelSet::mono());
+    CHECK(p.isBusesLayoutSupported(layout));
+    layout.outputBuses.set(0, juce::AudioChannelSet::create5point1());
+    CHECK_FALSE(p.isBusesLayoutSupported(layout));
+}
+
 TEST_CASE("the editor builds for every amp and can be rendered") {
     JuceInit juceInit;
     SasProcessor p;

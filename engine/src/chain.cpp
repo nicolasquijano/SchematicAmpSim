@@ -206,6 +206,15 @@ void Chain::processAmp(const float* mono, float* out, std::size_t n) {
     }
 }
 
+void Chain::applyOutputStereo(float* l, float* r, std::size_t n) {
+    for (std::size_t i = 0; i < n; ++i) {
+        const float g = float(dbToGain(outputDb_.next()));
+        const float yl = l[i] * g, yr = r[i] * g;
+        l[i] = std::isfinite(yl) ? yl : 0.0f;
+        r[i] = std::isfinite(yr) ? yr : 0.0f;
+    }
+}
+
 void Chain::applyOutput(float* buf, std::size_t n) {
     for (std::size_t i = 0; i < n; ++i) {
         float y = buf[i] * float(dbToGain(outputDb_.next()));

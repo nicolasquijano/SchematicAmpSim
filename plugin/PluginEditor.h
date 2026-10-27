@@ -154,7 +154,7 @@ private:
     KnobWithLabel tsDrive_, tsTone_, tsLevel_;
     KnobWithLabel gateThreshold_, gateRelease_, cable_;
     KnobWithLabel bias_, wear_, speaker_, blend_;
-    KnobWithLabel compSustain_, compBlend_, compTone_, compLevel_, tunerRef_;
+    KnobWithLabel compSustain_, compBlend_, compTone_, compLevel_, tunerRef_, stereoWidth_, doubleAmount_, doubleTime_;
     TunerDisplay tunerDisplay_;
     std::vector<float> tunerBuf_ = std::vector<float>(3072);
     int tunerTicks_ = 0, tunerHold_ = 0;

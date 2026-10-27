@@ -83,6 +83,9 @@ Layout SasProcessor::createLayout(const std::vector<sas::AmpDef>& defs) {
     l.add(std::make_unique<juce::AudioParameterBool>(juce::ParameterID{ids::tunerMute, kVersion}, "Tuner mutes the output", true));
     l.add(std::make_unique<juce::AudioParameterFloat>(juce::ParameterID{ids::tunerRef, kVersion}, "Tuner reference", juce::NormalisableRange<float>(430.0f, 450.0f, 1.0f), 440.0f,
                                                        juce::AudioParameterFloatAttributes().withLabel("Hz").withStringFromValueFunction([](float v, int) { return juce::String(v, 0); })));
+    l.add(knob(ids::irWidth, "IR stereo width", 0.0f));
+    l.add(knob(ids::doubleAmount, "Double tracking", 0.0f));
+    l.add(knob(ids::doubleTime, "Double tracking time", 5.0f));
     l.add(knob(ids::irBlend, "IR blend", 5.0f));
     l.add(knob(ids::speaker, "Speaker dynamics", 0.0f));
     l.add(std::make_unique<juce::AudioParameterBool>(juce::ParameterID{ids::speakerIntense, kVersion}, "Speaker dynamics intense", false));
@@ -200,6 +203,7 @@ SasProcessor::SasProcessor()
     settings_.powerKnobs.reserve(16);
     mono_.resize(kMaxChunk);
     mono2_.resize(kMaxChunk);
+    monoR_.resize(kMaxChunk);
     builder_ = std::make_unique<ChainBuilder>(*this);
 }
 
@@ -211,8 +215,11 @@ SasProcessor::~SasProcessor() {
 
 bool SasProcessor::isBusesLayoutSupported(const BusesLayout& layouts) const {
     const auto& out = layouts.getMainOutputChannelSet();
+    // Mono or stereo in, mono or stereo out: a mono guitar track can feed the stereo output (the amp is mono inside, the cabinet and the
+    // double tracking make the stereo).
+    const auto& in = layouts.getMainInputChannelSet();
     return (out == juce::AudioChannelSet::mono() || out == juce::AudioChannelSet::stereo())
-           && out == layouts.getMainInputChannelSet();
+           && (in == juce::AudioChannelSet::mono() || in == juce::AudioChannelSet::stereo());
 }
 
 void SasProcessor::prepareToPlay(double sampleRate, int samplesPerBlock) {
@@ -235,6 +242,7 @@ void SasProcessor::prepareToPlay(double sampleRate, int samplesPerBlock) {
     latencyReported_ = -1;
     gate_.prepare(sampleRate);
     tuner_.prepare(sampleRate);
+    double_.prepare(sampleRate);
 }
 
 sas::ChainSettings SasProcessor::readSettings(bool irAvailable) {
@@ -318,9 +326,11 @@ void SasProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::MidiBuff
     for (int start = 0; start < numSamples; start += int(kMaxChunk)) {
         const int n = std::min<int>(int(kMaxChunk), numSamples - start);
         float* m = mono_.data();
-        const float inv = 1.0f / float(numCh);
+        // Only the channels the host really feeds (with a mono input and a stereo output the extra buffer channel is not input).
+        const int inCh = std::max(1, std::min(getTotalNumInputChannels(), numCh));
+        const float inv = 1.0f / float(inCh);
         for (int i = 0; i < n; ++i) m[i] = 0.0f;
-        for (int ch = 0; ch < numCh; ++ch) {
+        for (int ch = 0; ch < inCh; ++ch) {
             const float* in = buffer.getReadPointer(ch) + start;
             for (int i = 0; i < n; ++i) m[i] += in[i];
         }
@@ -331,6 +341,8 @@ void SasProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::MidiBuff
         gate_.process(m, std::size_t(n));
 
         chain_->processAmp(m, m, std::size_t(n));
+        float* mR = monoR_.data();  // the right channel; the left one is m
+        bool haveR = false;
         if (irActive) {
             auto convolve = [n](IrSlot& slot, float* data) {
                 float* chans[1] = {data};
@@ -338,33 +350,56 @@ void SasProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::MidiBuff
                 slot.conv.process(juce::dsp::ProcessContextReplacing<float>(block));
             };
             if (aLoaded && bLoaded) {
-                // Both slots: equal-power blend (the IRs have unit energy), ramped over the block so a knob move does not click.
+                // Both slots: an equal-power blend, and the width that separates them: at 0 both ears get the blend, at 10 the left ear gets A and the
+                // right ear B (two microphones, one on each side). Ramped over the block so a knob move does not click.
                 const double theta = juce::jlimit(0.0, 1.0, double(apvts.getRawParameterValue(ids::irBlend)->load()) / 10.0) * (juce::MathConstants<double>::pi * 0.5);
                 const float gA = float(std::cos(theta)), gB = float(std::sin(theta));
+                const float width = juce::jlimit(0.0f, 1.0f, apvts.getRawParameterValue(ids::irWidth)->load() / 10.0f);
                 float* m2 = mono2_.data();
                 std::copy(m, m + n, m2);
                 convolve(ir_[0], m);
                 convolve(ir_[1], m2);
                 for (int i = 0; i < n; ++i) {
                     const float t = float(i + 1) / float(n);
-                    m[i] = m[i] * (blendGainA_ + (gA - blendGainA_) * t) + m2[i] * (blendGainB_ + (gB - blendGainB_) * t);
+                    const float ga = blendGainA_ + (gA - blendGainA_) * t, gb = blendGainB_ + (gB - blendGainB_) * t;
+                    const float w = widthNow_ + (width - widthNow_) * t;
+                    const float a = m[i], b = m2[i];
+                    const float blend = a * ga + b * gb;
+                    m[i] = (1.0f - w) * blend + w * a;
+                    mR[i] = (1.0f - w) * blend + w * b;
                 }
                 blendGainA_ = gA;
                 blendGainB_ = gB;
+                widthNow_ = width;
+                haveR = true;
             } else {
                 convolve(aLoaded ? ir_[0] : ir_[1], m);
                 blendGainA_ = aLoaded ? 1.0f : 0.0f;  // so a second slot loaded later fades in from this state
                 blendGainB_ = aLoaded ? 0.0f : 1.0f;
             }
         }
-        chain_->applyOutput(m, std::size_t(n));
-        if (tunerMuted) std::fill(m, m + n, 0.0f);  // tuning: nobody wants to hear the amp
+        if (!haveR) std::copy(m, m + n, mR);
+        // Automatic double tracking widens whatever the cabinet left (identical channels, or the A / B pair).
+        double_.setAmount(double(apvts.getRawParameterValue(ids::doubleAmount)->load()) / 10.0,
+                          8.0 + 22.0 * double(apvts.getRawParameterValue(ids::doubleTime)->load()) / 10.0);
+        double_.process(m, mR, std::size_t(n));
+        chain_->applyOutputStereo(m, mR, std::size_t(n));
+        if (tunerMuted) {  // tuning: nobody wants to hear the amp
+            std::fill(m, m + n, 0.0f);
+            std::fill(mR, mR + n, 0.0f);
+        }
         float outPeak = 0.0f;
-        for (int i = 0; i < n; ++i) outPeak = std::max(outPeak, std::fabs(m[i]));
+        for (int i = 0; i < n; ++i) outPeak = std::max(outPeak, std::max(std::fabs(m[i]), std::fabs(mR[i])));
         if (inPeak > inputPeak_.load()) inputPeak_.store(inPeak);
         if (outPeak > outputPeak_.load()) outputPeak_.store(outPeak);
 
-        for (int ch = 0; ch < numCh; ++ch) std::copy(m, m + n, buffer.getWritePointer(ch) + start);
+        for (int ch = 0; ch < numCh; ++ch) {
+            float* out = buffer.getWritePointer(ch) + start;
+            if (numCh == 1)
+                for (int i = 0; i < n; ++i) out[i] = 0.5f * (m[i] + mR[i]);  // a mono output: the two ears summed
+            else
+                std::copy(ch % 2 == 0 ? m : mR, (ch % 2 == 0 ? m : mR) + n, out);
+        }
     }
 }
 

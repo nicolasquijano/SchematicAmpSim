@@ -391,9 +391,10 @@ SasEditor::SasEditor(SasProcessor& p)
       gateThreshold_(p.apvts, ids::gateThreshold, "THRESHOLD"), gateRelease_(p.apvts, ids::gateRelease, "RELEASE"), cable_(p.apvts, ids::cable, "CABLE m"),
       bias_(p.apvts, ids::bias, "BIAS"), wear_(p.apvts, ids::wear, "WEAR"), speaker_(p.apvts, ids::speaker, "SPEAKER"), blend_(p.apvts, ids::irBlend, "BLEND"),
       compSustain_(p.apvts, ids::compSustain, "SUSTAIN"), compBlend_(p.apvts, ids::compBlend, "BLEND"), compTone_(p.apvts, ids::compTone, "TONE"),
-      compLevel_(p.apvts, ids::compLevel, "LEVEL"), tunerRef_(p.apvts, ids::tunerRef, "REF Hz") {
+      compLevel_(p.apvts, ids::compLevel, "LEVEL"), tunerRef_(p.apvts, ids::tunerRef, "REF Hz"),
+      stereoWidth_(p.apvts, ids::irWidth, "WIDTH"), doubleAmount_(p.apvts, ids::doubleAmount, "DOUBLE"), doubleTime_(p.apvts, ids::doubleTime, "TIME") {
     setLookAndFeel(&look_);
-    for (auto* k : {&input_, &output_, &tsDrive_, &tsTone_, &tsLevel_, &gateThreshold_, &gateRelease_, &cable_, &bias_, &wear_, &speaker_, &blend_, &compSustain_, &compBlend_, &compTone_, &compLevel_, &tunerRef_}) addAndMakeVisible(*k);
+    for (auto* k : {&input_, &output_, &tsDrive_, &tsTone_, &tsLevel_, &gateThreshold_, &gateRelease_, &cable_, &bias_, &wear_, &speaker_, &blend_, &compSustain_, &compBlend_, &compTone_, &compLevel_, &tunerRef_, &stereoWidth_, &doubleAmount_, &doubleTime_}) addAndMakeVisible(*k);
     addAndMakeVisible(inBar_);
     addAndMakeVisible(tubes_);
     addAndMakeVisible(outBar_);
@@ -480,7 +481,7 @@ SasEditor::SasEditor(SasProcessor& p)
     blendNote_.setText("A  <  >  B", juce::dontSendNotification);
     addAndMakeVisible(blendNote_);
     cabNote_.setFont(AmpLookAndFeel::font(10.5f));
-    cabNote_.setText("IR plays the impulses above (A and B, mixed by the blend).\nFilter is a simple built-in cabinet curve. Off is the raw amp.", juce::dontSendNotification);
+    cabNote_.setText("IR plays the impulses above, mixed by the blend. Filter is a simple cabinet curve; Off is the raw amp.", juce::dontSendNotification);
     addAndMakeVisible(cabNote_);
     for (auto* b : {&loadA_, &clearA_, &loadB_, &clearB_}) addAndMakeVisible(*b);
     addAndMakeVisible(curveA_);
@@ -803,7 +804,7 @@ void SasEditor::resized() {
     for (auto& k : ampKnobs_) k->setVisible(ampPage);
     for (auto* c : std::initializer_list<juce::Component*>{&input_, &output_, &inBar_, &outBar_, &tubes_, &cable_, &pickup_, &pickupCaption_}) c->setVisible(ampPage);
     for (auto* c : std::initializer_list<juce::Component*>{&cabCaption_, &cab_, &speaker_, &speakerIntense_, &blend_, &blendNote_, &loadA_, &clearA_, &nameA_, &curveA_,
-                                                           &loadB_, &clearB_, &nameB_, &curveB_, &cabNote_}) c->setVisible(cabPage);
+                                                           &loadB_, &clearB_, &nameB_, &curveB_, &cabNote_, &stereoWidth_, &doubleAmount_, &doubleTime_}) c->setVisible(cabPage);
     for (auto* c : std::initializer_list<juce::Component*>{&compOn_, &compFast_, &compSustain_, &compBlend_, &compTone_, &compLevel_, &tsOn_, &tsDrive_, &tsTone_, &tsLevel_, &gateOn_, &gateThreshold_, &gateRelease_,
                                                            &bias_, &wear_, &tube_, &noise_, &unit_, &tubeCaption_, &noiseCaption_, &unitCaption_, &idleLabel_, &conditionNote_}) c->setVisible(fxPage);
 
@@ -911,12 +912,14 @@ void SasEditor::resized() {
         slot(slotA, "IMPULSE A", loadA_, clearA_, nameA_, curveA_);
         slot(slotB, "IMPULSE B", loadB_, clearB_, nameB_, curveB_);
 
-        const int third = (area.getWidth() - 2 * gap) / 3;
-        auto cabPanel = area.removeFromLeft(third);
+        // Bottom row: where the sound comes from, the A / B blend, the speaker, and the stereo.
+        auto cabPanel = area.removeFromLeft(140);
         area.removeFromLeft(gap);
-        auto blendPanel = area.removeFromLeft(third);
+        auto blendPanel = area.removeFromLeft(96);
         area.removeFromLeft(gap);
-        auto speakerPanel = area;
+        auto speakerPanel = area.removeFromLeft(118);
+        area.removeFromLeft(gap);
+        auto stereoPanel = area;
         panels_.push_back({cabPanel, "CABINET"});
         {
             auto in = cabPanel.reduced(10, 6);
@@ -933,12 +936,21 @@ void SasEditor::resized() {
             blendNote_.setBounds(in.removeFromBottom(14));
             blend_.setBounds(in);
         }
-        panels_.push_back({speakerPanel, "SPEAKER DYNAMICS"});
+        panels_.push_back({speakerPanel, "SPEAKER"});
         {
             auto in = speakerPanel.reduced(6, 4);
             in.removeFromTop(16);
             speakerIntense_.setBounds(in.removeFromBottom(20).withSizeKeepingCentre(80, 20));
             speaker_.setBounds(in);
+        }
+        panels_.push_back({stereoPanel, "STEREO"});
+        {
+            auto in = stereoPanel.reduced(6, 4);
+            in.removeFromTop(16);
+            const int w = in.getWidth() / 3;
+            stereoWidth_.setBounds(in.removeFromLeft(w));
+            doubleAmount_.setBounds(in.removeFromLeft(w));
+            doubleTime_.setBounds(in);
         }
         repaint();
         return;
