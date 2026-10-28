@@ -878,6 +878,16 @@ TEST_CASE("the editor builds for every amp and can be rendered") {
             if (amp == 0) {  // the effects page
                 for (auto* c : ed->getChildren())
                     if (auto* b = dynamic_cast<juce::TextButton*>(c); b && b->getButtonText() == "Effects") { b->setToggleState(true, juce::dontSendNotification); b->onClick(); }
+                for (auto* c : ed->getChildren())
+                    if (auto* b = dynamic_cast<juce::TextButton*>(c); b && b->getButtonText() == "Pitch") { setParam(p, ids::pitch, -2.0f); b->setToggleState(true, juce::dontSendNotification); b->onClick(); }
+                {
+                    const auto px = ed->createComponentSnapshot(ed->getLocalBounds());
+                    juce::FileOutputStream o3(juce::File(dir).getChildFile("pitch.png"));
+                    if (o3.openedOk()) { o3.setPosition(0); o3.truncate(); png.writeImageToStream(px, o3); }
+                    setParam(p, ids::pitch, 0.0f);
+                }
+                for (auto* c : ed->getChildren())
+                    if (auto* b = dynamic_cast<juce::TextButton*>(c); b && b->getButtonText() == "Effects") { b->setToggleState(true, juce::dontSendNotification); b->onClick(); }
                 const auto fx = ed->createComponentSnapshot(ed->getLocalBounds());
                 juce::FileOutputStream o2(juce::File(dir).getChildFile("fx.png"));
                 if (o2.openedOk()) { o2.setPosition(0); o2.truncate(); png.writeImageToStream(fx, o2); }
@@ -927,4 +937,28 @@ TEST_CASE("the editor builds for every amp and can be rendered") {
             }
         }
     }
+}
+
+TEST_CASE("pitch shift: off by default with no delay, on it adds its latency and still plays; a semitone and a few cents are separate parameters") {
+    JuceInit init;
+    SasProcessor p;
+    p.prepareToPlay(48000.0, 512);
+    setParam(p, ids::quality, 2.0f);
+    CHECK(p.apvts.getParameter(ids::pitch) != nullptr);
+    CHECK(p.apvts.getParameter(ids::pitchFine) != nullptr);
+    run(p, 6);
+    const int latencyOff = p.getLatencySamples();
+    setParam(p, ids::pitch, -2.0f);  // a whole tone down
+    const auto out = run(p, 20);
+    for (int i = 0; i < out.getNumSamples(); ++i) REQUIRE(std::isfinite(out.getSample(0, i)));
+    CHECK(rms(out) > 1e-4);
+    const int latencyOn = p.getLatencySamples();
+    CHECK(latencyOn - latencyOff > 400);  // about 12 ms at 48 kHz
+    CHECK(latencyOn - latencyOff < 800);
+    setParam(p, ids::pitch, 0.0f);
+    run(p, 6);
+    CHECK(p.getLatencySamples() == latencyOff);
+    setParam(p, ids::pitchFine, 20.0f);  // cents alone also count
+    run(p, 6);
+    CHECK(p.getLatencySamples() > latencyOff + 400);
 }

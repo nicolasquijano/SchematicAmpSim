@@ -6,6 +6,8 @@ version numbers follow [Semantic Versioning](https://semver.org/) (see [docs/REL
 ## [Unreleased]
 
 ### Added
+- A pitch shifter on its own Pitch page: -12 to +12 semitones and -50 to +50 cents, in front of the whole chain (the tuner still listens to the raw input). It is the
+  granular two-head shifter of the earlier Rust octave plugin, with a 20 ms grain; it adds about 12 ms of delay, reported to the host, only while a shift is set.
 - A new amp, British Saturated, from a 1970s 120 W head schematic (preamp, output amp and power supply drawings): the Orange tone circuit, a six-position FAC
   switch (shown as the input list), four EL34 and 15k feedback with a BOOST control. Which EL34 pair drives which end of the transformer is not drawn;
   it is chosen so the feedback is negative. The jack levels of the FAC positions are only partly matched (the amp is saturated). See `amps/orange_or120/*.net`.

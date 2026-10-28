@@ -12,6 +12,7 @@
 #include "sas/chain.h"
 #include "sas/condition.h"
 #include "sas/gate.h"
+#include "sas/pitch_shifter.h"
 #include "sas/stereo.h"
 #include "sas/tuner.h"
 
@@ -43,6 +44,8 @@ inline constexpr const char* tsTone = "ts_tone";
 inline constexpr const char* tsLevel = "ts_level";
 inline constexpr const char* pickup = "pickup";  // guitar impedance: Off / single coil / humbucker / P-90
 inline constexpr const char* cable = "cable";    // cable length in metres
+inline constexpr const char* pitch = "pitch";            // pitch shift in semitones (0 = off)
+inline constexpr const char* pitchFine = "pitch_fine";   // and in cents
 inline constexpr const char* gateOn = "gate_on";
 inline constexpr const char* gateThreshold = "gate_threshold";
 inline constexpr const char* gateRelease = "gate_release";
@@ -179,6 +182,8 @@ private:
     mutable juce::CriticalSection irLock_;  // guards the slots' bytes / name / curve (message thread vs state calls)
 
     sas::NoiseGate gate_;
+    sas::PitchShifter pitch_;
+    bool pitchWasActive_ = false;
     sas::TunerFeed tuner_;
     std::atomic<float> inputPeak_{0.0f}, outputPeak_{0.0f}, gateGain_{1.0f}, idleMa_{0.0f};
     std::vector<float> mono_;

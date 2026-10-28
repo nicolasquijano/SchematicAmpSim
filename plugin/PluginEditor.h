@@ -133,7 +133,7 @@ private:
     void showAmp(int index);  // rebuilds the amp-specific knobs, jack list and title
     void styleCombo(juce::ComboBox&, const char* paramId, std::unique_ptr<juce::AudioProcessorValueTreeState::ComboBoxAttachment>&);
     void styleCaption(juce::Label&, const juce::String&);
-    void setPage(int page);  // 0 = amp, 1 = effects, 2 = cabinet, 3 = tuner
+    void setPage(int page);  // 0 = amp, 1 = effects, 2 = cabinet, 3 = tuner, 4 = pitch
     void drawLogo(juce::Graphics&, juce::Rectangle<float>) const;
     void applyTheme(const sas::AmpDef&);  // colours of the shown amp
 
@@ -155,7 +155,12 @@ private:
     KnobWithLabel tsDrive_, tsTone_, tsLevel_;
     KnobWithLabel gateThreshold_, gateRelease_, cable_;
     KnobWithLabel bias_, wear_, speaker_, blend_;
-    KnobWithLabel compSustain_, compBlend_, compTone_, compLevel_, tunerRef_, stereoWidth_, doubleAmount_, doubleTime_;
+    KnobWithLabel compSustain_, compBlend_, compTone_, compLevel_, tunerRef_, stereoWidth_, doubleAmount_, doubleTime_, pitchFine_;
+    juce::Slider pitchSlider_{juce::Slider::LinearHorizontal, juce::Slider::NoTextBox};
+    juce::Label pitchValue_, pitchNote_;
+    juce::TextButton pitchDown12_{"-12"}, pitchDown1_{"-1"}, pitchUp1_{"+1"}, pitchUp12_{"+12"}, pitchZero_{"0"};
+    std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> pitchAtt_;
+    void updatePitchLabels();
     TunerDisplay tunerDisplay_;
     std::vector<float> tunerBuf_ = std::vector<float>(3072);
     int tunerTicks_ = 0, tunerHold_ = 0;
@@ -178,7 +183,7 @@ private:
     juce::ToggleButton levelMatch_{"Level match"};  // shown only for amps whose jacks differ in level
     juce::ToggleButton vibrato_{"Vibrato"};  // shown only for amps that have an optical tremolo
     std::unique_ptr<juce::AudioProcessorValueTreeState::ButtonAttachment> tsOnAtt_, gateOnAtt_, speakerIntenseAtt_, compOnAtt_, compFastAtt_, tunerOnAtt_, tunerMuteAtt_, levelMatchAtt_, vibratoAtt_;
-    juce::TextButton ampTab_{"Amp"}, cabTab_{"Cabinet"}, fxTab_{"Effects"}, tunerTab_{"Tuner"};
+    juce::TextButton ampTab_{"Amp"}, cabTab_{"Cabinet"}, fxTab_{"Effects"}, pitchTab_{"Pitch"}, tunerTab_{"Tuner"};
     juce::TextButton loadA_{"Load..."}, clearA_{"Clear"}, loadB_{"Load..."}, clearB_{"Clear"};
     IrCurve curveA_, curveB_;
     std::unique_ptr<juce::FileChooser> chooser_;

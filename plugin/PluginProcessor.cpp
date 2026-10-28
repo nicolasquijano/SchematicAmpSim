@@ -68,6 +68,8 @@ Layout SasProcessor::createLayout(const std::vector<sas::AmpDef>& defs) {
         juce::ParameterID{ids::pickup, kVersion}, "Guitar pickup", juce::StringArray{"Off", "Single coil", "Humbucker", "P-90"}, 0));
     l.add(std::make_unique<juce::AudioParameterFloat>(juce::ParameterID{ids::cable, kVersion}, "Guitar cable", juce::NormalisableRange<float>(0.0f, 14.0f, 2.0f), 4.0f,
                                                        juce::AudioParameterFloatAttributes().withLabel("m").withStringFromValueFunction([](float v, int) { return juce::String(v, 0); })));
+    l.add(std::make_unique<juce::AudioParameterInt>(juce::ParameterID{ids::pitch, kVersion}, "Pitch", -12, 12, 0, juce::AudioParameterIntAttributes().withLabel("st")));
+    l.add(std::make_unique<juce::AudioParameterInt>(juce::ParameterID{ids::pitchFine, kVersion}, "Pitch fine", -50, 50, 0, juce::AudioParameterIntAttributes().withLabel("cents")));
     l.add(std::make_unique<juce::AudioParameterBool>(juce::ParameterID{ids::gateOn, kVersion}, "Noise gate", false));
     l.add(std::make_unique<juce::AudioParameterFloat>(juce::ParameterID{ids::gateThreshold, kVersion}, "Gate threshold", juce::NormalisableRange<float>(-80.0f, -20.0f, 0.0f), -60.0f,
                                                        juce::AudioParameterFloatAttributes().withLabel("dB").withStringFromValueFunction([](float v, int) { return juce::String(v, 0); })));
@@ -241,6 +243,8 @@ void SasProcessor::prepareToPlay(double sampleRate, int samplesPerBlock) {
     irWasActive_ = false;
     latencyReported_ = -1;
     gate_.prepare(sampleRate);
+    pitch_.prepare(sampleRate);
+    pitchWasActive_ = false;
     tuner_.prepare(sampleRate);
     double_.prepare(sampleRate);
 }
@@ -309,8 +313,15 @@ void SasProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::MidiBuff
     gate_.setParams(apvts.getRawParameterValue(ids::gateOn)->load() > 0.5f, double(apvts.getRawParameterValue(ids::gateThreshold)->load()),
                     double(apvts.getRawParameterValue(ids::gateRelease)->load()));
 
-    // Latency follows the quality and the convolution; report it when it changes.
-    const int latency = int(chain_->latencySamples()) + (irActive ? std::max(aLoaded ? ir_[0].conv.getLatency() : 0, bLoaded ? ir_[1].conv.getLatency() : 0) : 0);
+    // The pitch shifter sits in front of everything and adds its own delay only while it is shifting.
+    const double pitchSemitones = double(apvts.getRawParameterValue(ids::pitch)->load()) + double(apvts.getRawParameterValue(ids::pitchFine)->load()) / 100.0;
+    const bool pitchActive = std::fabs(pitchSemitones) > 1e-6;
+    if (pitchActive && !pitchWasActive_) pitch_.reset();
+    pitchWasActive_ = pitchActive;
+    const double pitchRatio = sas::PitchShifter::ratioFromSemitones(pitchSemitones);
+
+    // Latency follows the quality, the convolution and the pitch shifter; report it when it changes.
+    const int latency = int(chain_->latencySamples()) + (pitchActive ? int(pitch_.latencySamples()) : 0) + (irActive ? std::max(aLoaded ? ir_[0].conv.getLatency() : 0, bLoaded ? ir_[1].conv.getLatency() : 0) : 0);
     if (latency != latencyReported_) {
         latencyReported_ = latency;
         setLatencySamples(latency);
@@ -337,7 +348,8 @@ void SasProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::MidiBuff
         for (int i = 0; i < n; ++i) m[i] *= inv;
         float inPeak = 0.0f;
         for (int i = 0; i < n; ++i) inPeak = std::max(inPeak, std::fabs(m[i]));
-        if (tunerOn) tuner_.push(m, std::size_t(n));  // the raw input, before the gate
+        if (tunerOn) tuner_.push(m, std::size_t(n));  // the raw input, before the pitch shifter and the gate
+        if (pitchActive) pitch_.process(m, m, std::size_t(n), pitchRatio);
         gate_.process(m, std::size_t(n));
 
         chain_->processAmp(m, m, std::size_t(n));

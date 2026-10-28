@@ -45,6 +45,9 @@ void AmpLookAndFeel::setTheme(const EditorTheme& t) {
     setColour(juce::ToggleButton::tickColourId, t.accent);
     setColour(juce::ListBox::backgroundColourId, t.panel);
     setColour(juce::ListBox::outlineColourId, t.edge);
+    setColour(juce::Slider::thumbColourId, t.accent);
+    setColour(juce::Slider::trackColourId, t.accent.withAlpha(0.45f));
+    setColour(juce::Slider::backgroundColourId, t.edge);
     setColour(juce::TextEditor::backgroundColourId, body);
     setColour(juce::TextEditor::outlineColourId, t.edge);
     setColour(juce::TextEditor::focusedOutlineColourId, t.accent);
@@ -401,7 +404,7 @@ SasEditor::SasEditor(SasProcessor& p)
       bias_(p.apvts, ids::bias, "BIAS"), wear_(p.apvts, ids::wear, "WEAR"), speaker_(p.apvts, ids::speaker, "DYNAMICS"), blend_(p.apvts, ids::irBlend, "BLEND"),
       compSustain_(p.apvts, ids::compSustain, "SUSTAIN"), compBlend_(p.apvts, ids::compBlend, "BLEND"), compTone_(p.apvts, ids::compTone, "TONE"),
       compLevel_(p.apvts, ids::compLevel, "LEVEL"), tunerRef_(p.apvts, ids::tunerRef, "REF Hz"),
-      stereoWidth_(p.apvts, ids::irWidth, "WIDTH"), doubleAmount_(p.apvts, ids::doubleAmount, "DOUBLE"), doubleTime_(p.apvts, ids::doubleTime, "TIME") {
+      stereoWidth_(p.apvts, ids::irWidth, "WIDTH"), doubleAmount_(p.apvts, ids::doubleAmount, "DOUBLE"), doubleTime_(p.apvts, ids::doubleTime, "TIME"), pitchFine_(p.apvts, ids::pitchFine, "FINE cents") {
     setLookAndFeel(&look_);
     for (auto* k : {&input_, &output_, &tsDrive_, &tsTone_, &tsLevel_, &gateThreshold_, &gateRelease_, &cable_, &bias_, &wear_, &speaker_, &blend_, &compSustain_, &compBlend_, &compTone_, &compLevel_, &tunerRef_, &stereoWidth_, &doubleAmount_, &doubleTime_}) addAndMakeVisible(*k);
     addAndMakeVisible(inBar_);
@@ -510,7 +513,28 @@ SasEditor::SasEditor(SasProcessor& p)
     clearA_.onClick = [this] { processor_.clearImpulseResponse(0); };
     clearB_.onClick = [this] { processor_.clearImpulseResponse(1); };
 
-    for (auto* t : {&ampTab_, &cabTab_, &fxTab_, &tunerTab_}) {
+    addAndMakeVisible(pitchFine_);
+    addAndMakeVisible(pitchSlider_);
+    pitchSlider_.setRange(-12.0, 12.0, 1.0);
+    pitchSlider_.setDoubleClickReturnValue(true, 0.0);
+    pitchAtt_ = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment>(p.apvts, ids::pitch, pitchSlider_);
+    pitchSlider_.onValueChange = [this] { updatePitchLabels(); };
+    pitchValue_.setJustificationType(juce::Justification::centred);
+    pitchValue_.setFont(AmpLookAndFeel::font(44.0f, true, 0.01f));
+    pitchValue_.setColour(juce::Label::textColourId, look_.accent());
+    pitchNote_.setJustificationType(juce::Justification::centred);
+    pitchNote_.setFont(AmpLookAndFeel::font(13.0f, false, 0.01f));
+    pitchNote_.setColour(juce::Label::textColourId, look_.text().withAlpha(0.6f));
+    for (auto* c : std::initializer_list<juce::Component*>{&pitchValue_, &pitchNote_}) addAndMakeVisible(*c);
+    for (auto* b : {&pitchDown12_, &pitchDown1_, &pitchUp1_, &pitchUp12_, &pitchZero_}) addAndMakeVisible(*b);
+    pitchDown12_.onClick = [this] { pitchSlider_.setValue(-12.0); };
+    pitchDown1_.onClick = [this] { pitchSlider_.setValue(pitchSlider_.getValue() - 1.0); };
+    pitchUp1_.onClick = [this] { pitchSlider_.setValue(pitchSlider_.getValue() + 1.0); };
+    pitchUp12_.onClick = [this] { pitchSlider_.setValue(12.0); };
+    pitchZero_.onClick = [this] { pitchSlider_.setValue(0.0); };
+    updatePitchLabels();
+
+    for (auto* t : {&ampTab_, &cabTab_, &fxTab_, &pitchTab_, &tunerTab_}) {
         t->setClickingTogglesState(true);
         t->setRadioGroupId(7);
         addAndMakeVisible(*t);
@@ -520,6 +544,7 @@ SasEditor::SasEditor(SasProcessor& p)
     fxTab_.onClick = [this] { setPage(1); };
     cabTab_.onClick = [this] { setPage(2); };
     tunerTab_.onClick = [this] { setPage(3); };
+    pitchTab_.onClick = [this] { setPage(4); };
 
     showAmp(processor_.selectedAmpIndex());
     setResizable(true, true);
@@ -604,6 +629,18 @@ void SasEditor::applyTheme(const sas::AmpDef& def) {
     for (auto* l : {&nameA_, &nameB_, &blendNote_, &cabNote_}) l->setColour(juce::Label::textColourId, look_.label());
     sendLookAndFeelChange();
     repaint();
+}
+
+void SasEditor::updatePitchLabels() {
+    const int st = int(std::lround(pitchSlider_.getValue()));
+    pitchValue_.setText(juce::String(st >= 0 ? "+" : "") + juce::String(st) + " st", juce::dontSendNotification);
+    const int cents = int(processor_.apvts.getRawParameterValue(ids::pitchFine)->load() + (processor_.apvts.getRawParameterValue(ids::pitchFine)->load() >= 0 ? 0.5f : -0.5f));
+    juce::String text = st == 0 ? juce::String("pitch unchanged") : st == 12 ? juce::String("one octave up") : st == -12 ? juce::String("one octave down")
+                                                                       : st > 0 ? juce::String(st) + " semitones up" : juce::String(-st) + " semitones down";
+    if (cents != 0) text += juce::String(", ") + (cents > 0 ? "+" : "") + juce::String(cents) + " cents";
+    const bool active = st != 0 || cents != 0;
+    text += active ? juce::String("   -   adds about 12 ms of delay") : juce::String("   -   off, no delay");
+    pitchNote_.setText(text, juce::dontSendNotification);
 }
 
 void SasEditor::setPage(int page) {
@@ -831,6 +868,8 @@ void SasEditor::resized() {
         auto head = area.removeFromTop(36);
         tunerTab_.setBounds(head.removeFromRight(70).withTrimmedTop(6).withTrimmedBottom(2));
         head.removeFromRight(4);
+        pitchTab_.setBounds(head.removeFromRight(66).withTrimmedTop(6).withTrimmedBottom(2));
+        head.removeFromRight(4);
         fxTab_.setBounds(head.removeFromRight(80).withTrimmedTop(6).withTrimmedBottom(2));
         head.removeFromRight(4);
         cabTab_.setBounds(head.removeFromRight(84).withTrimmedTop(6).withTrimmedBottom(2));
@@ -838,7 +877,8 @@ void SasEditor::resized() {
         ampTab_.setBounds(head.removeFromRight(70).withTrimmedTop(6).withTrimmedBottom(2));
         area.removeFromTop(4);
     }
-    const bool ampPage = page_ == 0, fxPage = page_ == 1, cabPage = page_ == 2, tunerPage = page_ == 3;
+    const bool ampPage = page_ == 0, fxPage = page_ == 1, cabPage = page_ == 2, tunerPage = page_ == 3, pitchPage = page_ == 4;
+    for (auto* c : std::initializer_list<juce::Component*>{&pitchSlider_, &pitchValue_, &pitchNote_, &pitchDown12_, &pitchDown1_, &pitchUp1_, &pitchUp12_, &pitchZero_, &pitchFine_}) c->setVisible(pitchPage);
     for (auto* c : std::initializer_list<juce::Component*>{&tunerDisplay_, &tunerOn_, &tunerMute_, &tunerRef_}) c->setVisible(tunerPage);
     for (auto& k : ampKnobs_) k->setVisible(ampPage);
     for (auto* c : std::initializer_list<juce::Component*>{&input_, &output_, &inBar_, &outBar_, &tubes_, &cable_, &pickup_, &pickupCaption_}) c->setVisible(ampPage);
@@ -906,6 +946,31 @@ void SasEditor::resized() {
         tsDrive_.setBounds(in.removeFromLeft(in.getWidth() / 3));
         tsTone_.setBounds(in.removeFromLeft(in.getWidth() / 2));
         tsLevel_.setBounds(in);
+        repaint();
+        return;
+    }
+
+    if (pitchPage) {
+        // Pitch page: the shift in semitones (big readout, step buttons and a slider) and, on the right, the fine tuning in cents.
+        auto side = area.removeFromRight(130);
+        area.removeFromRight(gap);
+        panels_.push_back({area, "PITCH SHIFT"});
+        panels_.push_back({side, "FINE TUNING"});
+        pitchFine_.setBounds(side.reduced(6, 4).withTrimmedTop(16));
+        auto in = area.reduced(14, 8);
+        in.removeFromTop(16);
+        pitchValue_.setBounds(in.removeFromTop(58));
+        pitchNote_.setBounds(in.removeFromTop(20));
+        in.removeFromTop(10);
+        auto buttons = in.removeFromTop(30);
+        const int bw = 62, bgap = 8, total = bw * 5 + bgap * 4;
+        buttons = buttons.withSizeKeepingCentre(std::min(total, buttons.getWidth()), 30);
+        for (auto* b : {&pitchDown12_, &pitchDown1_, &pitchZero_, &pitchUp1_, &pitchUp12_}) {
+            b->setBounds(buttons.removeFromLeft(bw));
+            buttons.removeFromLeft(bgap);
+        }
+        in.removeFromTop(14);
+        pitchSlider_.setBounds(in.removeFromTop(26));
         repaint();
         return;
     }
