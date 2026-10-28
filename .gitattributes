@@ -1,0 +1,4 @@
+# Scripts and workflows must keep LF line endings even when committed from Windows: a CRLF in a shell script breaks it on macOS and Linux.
+*.sh text eol=lf
+*.yml text eol=lf
+*.yaml text eol=lf
