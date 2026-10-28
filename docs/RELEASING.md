@@ -56,5 +56,5 @@ Build output (`build/`, `build-*/`, `dist/`) and the dependencies fetched into `
 uninstaller. The `AppId` GUID in it identifies the product so that a newer installer replaces the older install: never change it. The installer
 is not code-signed, so Windows SmartScreen may warn when it is run for the first time.
 
-To test it without touching your plugin folder: `SchematicAmpSim-<version>-win64-setup.exe /VERYSILENT /CURRENTUSER /DIR="C:	emp	est.vst3"`, then run
+To test it without touching your plugin folder: `SchematicAmpSim-<version>-win64-setup.exe /VERYSILENT /CURRENTUSER /DIR="C:\temp\test.vst3"`, then run
 the `unins000.exe` it leaves there.
