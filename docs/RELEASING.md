@@ -36,7 +36,7 @@ If something has to break, bump MAJOR (or MINOR while 0.x) and say so in the cha
 3. **Changelog**: in `CHANGELOG.md` add a section `## [x.y.z] - YYYY-MM-DD` with what changed (Added, Changed, Fixed, Known limitations), and the
    link at the bottom of the file.
 4. **Commit**: `git commit -am "Release x.y.z"`.
-5. **Package**: `package.cmd` builds, runs the tests and writes `dist\`: the zip of the VST3 bundle, the installer (when Inno Setup 6 is
+5. **Package**: `package.cmd` builds, runs the tests and writes `dist\`: the zip of the VST3 bundle, the installer (when Inno Setup 6 or 7 is
    installed) and `SHA256SUMS.txt`. Try the installer on a machine or in a DAW that does not have the plugin yet.
 6. **Tag**: `git tag -a vx.y.z -m "Schematic Amp Sim x.y.z"`.
 7. **Push**: `git push origin master --tags`.
@@ -50,6 +50,11 @@ Build output (`build/`, `build-*/`, `dist/`) and the dependencies fetched into `
 
 ## The installer
 
-`installer/schematic-amp-sim.iss` (Inno Setup 6) installs the bundle into `C:\Program Files\Common Files\VST3\Schematic Amp Sim.vst3`, shows
-the license, and registers an uninstaller. The `AppId` GUID in it identifies the product so that a newer installer replaces the older install:
-never change it. The installer is not code-signed, so Windows SmartScreen may warn when it is run for the first time.
+`installer/schematic-amp-sim.iss` (Inno Setup 6 or 7) installs the bundle into the VST3 folder: for all users
+(`C:\Program Files\Common Files\VST3\Schematic Amp Sim.vst3`, needs an administrator) or only for the current user
+(`%LOCALAPPDATA%\Programs\Common\VST3\Schematic Amp Sim.vst3`, no administrator); the setup asks which. It shows the license and registers an
+uninstaller. The `AppId` GUID in it identifies the product so that a newer installer replaces the older install: never change it. The installer
+is not code-signed, so Windows SmartScreen may warn when it is run for the first time.
+
+To test it without touching your plugin folder: `SchematicAmpSim-<version>-win64-setup.exe /VERYSILENT /CURRENTUSER /DIR="C:	emp	est.vst3"`, then run
+the `unins000.exe` it leaves there.

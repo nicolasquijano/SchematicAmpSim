@@ -1,6 +1,6 @@
 # Builds the Release plugin, runs the tests and packages it into dist\:
 #   SchematicAmpSim-<version>-win64.zip          the VST3 bundle (copy it to your VST3 folder)
-#   SchematicAmpSim-<version>-win64-setup.exe    the installer, when Inno Setup 6 is installed
+#   SchematicAmpSim-<version>-win64-setup.exe    the installer, when Inno Setup 6 or 7 is installed
 #   SHA256SUMS.txt                               checksums of both
 # Usage: package.cmd [-SkipTests]
 param([switch]$SkipTests)
@@ -28,7 +28,9 @@ if (Test-Path $zip) { Remove-Item $zip }
 Compress-Archive -Path $bundle, 'LICENSE', 'README.md' -DestinationPath $zip
 Write-Host "  $zip"
 
-$iscc = @("$env:ProgramFiles\Inno Setup 6\ISCC.exe", "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe", "$env:LOCALAPPDATA\Programs\Inno Setup 6\ISCC.exe") | Where-Object { Test-Path $_ } | Select-Object -First 1
+$roots = @($env:ProgramFiles, ${env:ProgramFiles(x86)}, "$env:LOCALAPPDATA\Programs")
+$iscc = foreach ($v in 7, 6) { foreach ($r in $roots) { "$r\Inno Setup $v\ISCC.exe" } }
+$iscc = $iscc | Where-Object { Test-Path $_ } | Select-Object -First 1
 $files = @($zip)
 if ($iscc) {
     & $iscc "/DAppVersion=$version" "/DAppVersionFull=$full" 'installer\schematic-amp-sim.iss'
@@ -37,7 +39,7 @@ if ($iscc) {
     Write-Host "  $setup"
     $files += $setup
 } else {
-    Write-Warning 'Inno Setup 6 is not installed: only the zip was built (https://jrsoftware.org/isinfo.php).'
+    Write-Warning 'Inno Setup (6 or 7) is not installed: only the zip was built (https://jrsoftware.org/isinfo.php).'
 }
 
 # SHA-256 with .NET (Get-FileHash is not available in every PowerShell)
