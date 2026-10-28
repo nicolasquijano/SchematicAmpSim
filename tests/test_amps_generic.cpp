@@ -582,3 +582,99 @@ TEST_CASE("guitar input: a pickup's impedance makes a resonance that the cable l
         }
     }
 }
+TEST_CASE("Triple Stack: supply, bias and the first plates are in the range the drawing shows") {
+    const AmpDef def = loadEmbeddedAmp("triplestack_3ch");
+    PowerAmp power(def, kFs);
+    const auto net = parseNetlist(def.power.netlistText, def.power.netlist);
+    CHECK(power.solver().dcConverged);
+    auto v = [&](const char* n) { return power.solver().voltage(net.node(n)); };
+    CHECK(std::abs(v("a") - 475.0) < 25.0);      // node A of the drawing
+    CHECK(std::abs(v("cb") + 52.0) < 6.0);       // bias -52 V
+    const double idleMa = (v("a") - v("pt")) / 40.0 / 2.0 * 1e3;  // per tube
+    CHECK(idleMa > 28.0);
+    CHECK(idleMa < 50.0);
+    Preamp pre(def, kFs, power.railX());
+    const auto pnet = parseNetlist(def.preamp.netlistText, def.preamp.netlist);
+    auto p = [&](const char* n) { return pre.solver().voltage(pnet.node(n)); };
+    const double p1a = p("p1a"), p2a = p("p2a");
+    INFO("V1A plate " << p1a << " V, V2A plate " << p2a << " V");
+    CHECK(std::abs(p1a - 207.0) < 25.0);
+    CHECK(std::abs(p2a - 277.0) < 30.0);
+}
+
+TEST_CASE("Triple Stack: channel 1 is the clean one, channels 2 and 3 have much more gain, the tone controls and master act") {
+    const AmpDef def = loadEmbeddedAmp("triplestack_3ch");
+    auto level = [&](const char* jack, const char* knob, double v, double hz, double peak = 0.0005) {
+        FullAmp amp(def, kFs);
+        auto k = defaultKnobs(def);
+        if (knob) k[def.knobIndex(knob)] = v;
+        amp.setKnobs(k, 0.5);
+        amp.setJack(def.jackIndex(jack));
+        return rmsAt(amp, hz, peak);
+    };
+    const double clean = level("ch1_clean", nullptr, 0, 500.0), pushed = level("ch1_pushed", nullptr, 0, 500.0);
+    const double raw2 = level("ch2_raw", nullptr, 0, 500.0), raw3 = level("ch3_raw", nullptr, 0, 500.0);
+    INFO("clean " << clean << " pushed " << pushed << " ch2 " << raw2 << " ch3 " << raw3);
+    CHECK(pushed > 1.3 * clean);
+    CHECK(raw2 > 3.0 * clean);
+    CHECK(std::abs(raw2 / raw3 - 1.0) < 0.1);
+    // The gain pot and the tone stack act on the selected channel.
+    for (const char* jack : {"ch1_clean", "ch2_raw", "ch3_vintage"}) {
+        INFO(jack);
+        CHECK(level(jack, "gain", 0.8, 500.0, 0.00005) > 1.3 * level(jack, "gain", 0.3, 500.0, 0.00005));
+        CHECK(level(jack, "treble", 1.0, 4000.0) > 1.3 * level(jack, "treble", 0.0, 4000.0));
+        CHECK(level(jack, "bass", 1.0, 80.0) > 1.3 * level(jack, "bass", 0.0, 80.0));
+        CHECK(level(jack, "master", 0.8, 500.0, 0.00005) > 1.3 * level(jack, "master", 0.3, 500.0, 0.00005));
+    }
+    // Vintage is the smoother voicing: less level than Raw.
+    CHECK(level("ch2_vintage", nullptr, 0, 500.0) < 0.9 * raw2);
+}
+
+TEST_CASE("Bassman 5F6-A: supply, bias and the preamp plates are in the range of the drawing; the #2 inputs are 6 dB down") {
+    const AmpDef def = loadEmbeddedAmp("bassman_5f6a");
+    PowerAmp power(def, kFs);
+    const auto net = parseNetlist(def.power.netlistText, def.power.netlist);
+    CHECK(power.solver().dcConverged);
+    auto v = [&](const char* n) { return power.solver().voltage(net.node(n)); };
+    CHECK(std::abs(v("a") - 450.0) < 30.0);      // +450 V after the rectifier
+    CHECK(std::abs(v("bias") + 48.0) < 6.0);     // bias -48 V
+    Preamp pre(def, kFs, power.railX());
+    const auto pnet = parseNetlist(def.preamp.netlistText, def.preamp.netlist);
+    auto p = [&](const char* n) { return pre.solver().voltage(pnet.node(n)); };
+    CHECK(std::abs(p("pb") - 150.0) < 25.0);     // V1 plates +150 V
+    CHECK(std::abs(p("k2a") - 1.2) < 0.4);       // V2a cathode +1.2 V
+    auto level = [&](const char* jack, double peak) {
+        FullAmp amp(def, kFs);
+        amp.setKnobs(defaultKnobs(def), 0.5);
+        amp.setJack(def.jackIndex(jack));
+        return rmsAt(amp, 500.0, peak);
+    };
+    const double r = level("bright2", 0.0005) / level("bright1", 0.0005);
+    INFO("#2 / #1 = " << r);
+    CHECK(r > 0.4);
+    CHECK(r < 0.62);
+}
+
+TEST_CASE("Bassman 5F6-A: the bright channel is brighter at low volume, the jumper adds gain, and the tone stack and presence act") {
+    const AmpDef def = loadEmbeddedAmp("bassman_5f6a");
+    auto level = [&](const char* jack, const char* knob, double v, double hz, double peak = 0.0005, double presence = 0.5) {
+        FullAmp amp(def, kFs);
+        auto k = defaultKnobs(def);
+        if (knob) k[def.knobIndex(knob)] = v;
+        amp.setKnobs(k, presence);
+        amp.setJack(def.jackIndex(jack));
+        return rmsAt(amp, hz, peak);
+    };
+    auto knobsLow = [&](const char* jack, const char* vol, double hz) { return level(jack, vol, 0.3, hz); };
+    // At a low volume the 100p bright cap lifts the treble of the bright channel, not the normal one's.
+    const double brightTilt = knobsLow("bright1", "bright_volume", 4000.0) / knobsLow("bright1", "bright_volume", 200.0);
+    const double normalTilt = knobsLow("normal1", "normal_volume", 4000.0) / knobsLow("normal1", "normal_volume", 200.0);
+    INFO("tilt bright " << brightTilt << " normal " << normalTilt);
+    CHECK(brightTilt > 1.5 * normalTilt);
+    CHECK(level("jumpered", nullptr, 0, 500.0) > 1.3 * level("bright1", nullptr, 0, 500.0));
+    // Each volume only acts on its own channel's jack.
+    CHECK(level("bright1", "bright_volume", 0.8, 500.0) > 1.5 * level("bright1", "bright_volume", 0.3, 500.0));
+    CHECK(std::abs(level("bright1", "normal_volume", 0.1, 500.0) / level("bright1", "normal_volume", 0.9, 500.0) - 1.0) < 0.3);
+    CHECK(level("normal1", "treble", 1.0, 4000.0) > 1.3 * level("normal1", "treble", 0.0, 4000.0));
+    CHECK(level("normal1", "bass", 1.0, 80.0) > 1.3 * level("normal1", "bass", 0.0, 80.0));
+}

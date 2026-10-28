@@ -1,0 +1,78 @@
+* Three-channel, 4 x 6L6 head (Dual / Triple Rectifier style) power amp: the 12AX7 long-tailed phase inverter (V5A, V5B) with its
+* negative feedback network (47k, 0.1u and the presence shaping), four 6L6GC as two parallel pairs on fixed bias, the output
+* transformer, and the HV supply with the node C filter. B+ (node a) is the rectifier / reservoir, integrated by the engine.
+* It is the same family of circuit as the other 4 x 6L6 amp, with the values of this drawing (B+ 475 V, bias -52 V, 1k5 grid
+* stoppers, 1k screen resistors, 82k / 91k phase inverter loads with 120p across them, node C through 2k7).
+*
+* Assumptions where the drawing is silent or ambiguous (change them here, not in code):
+*  - feedback: the 8 ohm tap drives 47k and 0.1u into the phase inverter's 4.7k node; the resonance network of the other amp
+*    is not there, the presence control shapes the feedback like in that amp (the drawing's per-channel presence is replaced by one);
+*  - output transformer: 2.2k plate-to-plate onto the 8 ohm tap, 6 H per primary half, 40 ohm per half;
+*  - bias: -52 V behind 3k with 10u, near 40 mA per tube with the stock 6L6GC;
+*  - the Slave Level, the cross-coupling 75p and the standby switch are left out (standby closed);
+*  - the supply: silicon rectifier, node C (V2B..V5) from B+ through 2k7 with 10u, RPREAMP stands for what the preamp draws from it.
+
+S VAUDIO pin 32k 0
+S VHT a 1 475
+S VBIAS cb 3k -52
+C C41 cb 0 10u
+
+* V3 rail: 4.7k from B+, 47u, and the preamp's load (V2 / V1 stages are inside the preamp netlist).
+R R59 a x 2k7
+C C36 x 0 10u
+R RPREAMP x 0 33k
+
+* Phase inverter. P (pp) is the input node: the 0.022u (C49) is in the preamp (stage 3), so a large coupling cap here only sets the DC of the grid network; 100k to V4B's grid, 1M to the cathode
+* node kk. V4A's grid sits behind 0.047u on node na (4.7k to ground, the feedback node) and 1M to kk.
+C CIN pin pp 10u
+R R48 pp gb 100k
+R R50 pp kk 1M
+R R53 kk ga 1M
+R R51 kk na 10k
+R R52 kk kc 470
+R R57 na 0 4k7
+C C31 na ga 47n
+T V4B gb pb kc 12AX7
+T V4A ga pa kc 12AX7
+R R46 x pb 82k
+C C120B x pb 120p
+R R58 x pa 91k
+C C120A x pa 120p
+
+* Negative feedback and its resonance / presence shaping (t8 is the 8 ohm tap).
+R R56 t8 na 47k
+C C30 na nb 0.1u
+C C8 nb pr 0.1u
+R VR9_T pr wp 5k
+R VR9_B wp 0 5k
+C C62 nb wp 33n
+
+* Output stage: 0.047u couplings, 220k grid returns to the bias, 2.2k stoppers (two tubes per half),
+* 100p to ground.
+C C29 pb pga 47n
+C C28 pa pgb 47n
+R R55 pga cb 220k
+R R54 pgb cb 220k
+R R206 pga g1 1k5/2
+R R202 pgb g2 1k5/2
+C C202 pga 0 100p
+C C201 pgb 0 100p
+P V5 g1 pt s1 0 6L6GCDS 2
+P V6 g2 pbm s2 0 6L6GCDS 2
+R R207 a s1 1k/2
+R R203 a s2 1k/2
+
+* Output transformer T2: primary halves around the B+ centre tap, one secondary for the 8 ohm tap.
+R DCR_PT pt npt 40
+R DCR_PB pbm npb 40
+.param n8 = 2*1/sqrt(2200/8)
+* Core saturation: SAT is the flux (volt-seconds) where the extra magnetising current equals the linear one; ~full-power
+* plate-to-plate swing / (2 pi f), with f about 28-30 Hz for the large Marshall / Soldano / Peavey / Fender cores, 50 to 65 Hz for the small AC30 / tweed cores.
+.xfmr OT L=6 SAT=4.4
+  W npt a 1 pri
+  W a npb 1 pri
+  W t8 0 n8 sec
+  K pri pri 0.9998
+  K pri sec 0.9993
+.end
+R RLOAD t8 0 8

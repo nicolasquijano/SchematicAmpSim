@@ -6,12 +6,18 @@ version numbers follow [Semantic Versioning](https://semver.org/) (see [docs/REL
 ## [Unreleased]
 
 ### Added
+- A new amp, American Bass 50, from the 5F6-A tweed bass head schematic (Kuehnel's redrawing): bright and normal channels with #1 and #2 inputs,
+  two 6L6GC, tube rectifier and choke. The bias source and the rectifier are tuned, not read, because the drawing prints no idle current.
+- A new amp, American Triple Stack, from a three-channel solo head schematic (preliminary drawing): channel 1 Clean / Pushed, channels 2 and 3 with
+  Raw / Vintage / Modern voicings, four 6L6GC. The relays, the effects loop and the per-channel presence feedback are not modelled; the voicings
+  are interpretations of the drawing (see the comments in `amps/triplestack_3ch/*.net`).
 - A macOS build (VST3 and Audio Unit, one universal binary for Apple Silicon and Intel, macOS 11 or later), packaged by `package-macos.sh`.
   Not tried on a real Mac yet and not notarized.
 - GitHub Actions: `ci.yml` builds and tests on Windows and macOS on every push; `release.yml` builds both and creates a draft release when a
   `v*` tag is pushed.
 
 ### Changed
+- The input jack selector has 8 positions (it had 4); saved projects keep their selection. Amps list order is unchanged, the new amp is last.
 - Strict floating point (`-ffp-contract=off`) on clang and gcc, as `/fp:precise` on MSVC.
 
 ## [0.1.0-beta] - 2026-10-27

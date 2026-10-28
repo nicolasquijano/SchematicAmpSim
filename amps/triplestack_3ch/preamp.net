@@ -1,0 +1,105 @@
+* Three-channel, 4 x 6L6 head (Dual / Triple Rectifier style, 3 channel solo head, preliminary drawing), preamp stage 1 of 2:
+* the input, V1A, the three channel networks that follow it (selected by the relays) and V2A, which all three channels share.
+* Stage 2 (stage2.net) takes V2A's plate through a link source (VLNK); its load, the V1B / V2B coupling, is repeated here.
+*
+* Relay contacts are the SW_ resistors (1 ohm = closed, 1e12 = open); the jacks in amp.json set them:
+*   SW_C1 / SW_C23   V1A plate to the channel 1 stack, or to the channel 2/3 input network (RY1a)
+*   SW_G1 SW_G2 SW_G3 and SW_T2 SW_T3   which gain pot reaches V2A (RY1b, RY3a, RY3b)
+*   SW_PUSH          channel 1 Pushed (RY5): 2n across the 150k slope resistor
+*   SW_RY6           channel 2/3 680k || 2n to ground (RY6): Vintage and Modern, off in Raw
+*   SW_K15           the 15u across V2A's cathode (RY1'a): channels 2 and 3 only
+* Assumptions where the drawing is silent or ambiguous (change them here, not in code):
+*  - V1A's plate feeds the channel 1 tone stack directly (the stack's own capacitors block the DC);
+*  - the Pushed switch puts 2n across the 150k, the 10M is always there;
+*  - the J175 / 6426 current source on V2A's grid network is left out; V2A's grid sees 475k from the selected gain pot;
+*  - the ferrite bead on the input is 100 ohm;
+*  - the front-end gain pots are 500k (the drawing has 1M on channel 1 and 250k on channels 2 and 3): one value serves the three.
+*
+* The V1 / V2 plate supplies (nodes E and D of the drawing) are fixed sources at their idle values.
+
+V VRAIL x3 100 435
+V VE xe 50 413
+V VD xd 50 394
+I VIN gin 1
+R RSRC gin in 7k
+* The guitar behind its source impedance (see the other amps for the pickup model).
+R RPU1 gin pkb1 1e12
+.xfmr LPU1 L=2.5
+  W pkb1 in 1 pu
+.end
+R RPU2 gin pkb2 1e12
+.xfmr LPU2 L=5
+  W pkb2 in 1 pu
+.end
+C CPU gin in 110p
+R RPL gin in 1e12
+R SWK1 in pkk1 1e12
+C CCAB1 pkk1 0 200p
+R SWK2 in pkk2 1e12
+C CCAB2 pkk2 0 400p
+R SWK4 in pkk4 1e12
+C CCAB4 pkk4 0 800p
+R RBEAD in g1 100
+R R1M g1 0 1M
+
+* V1A: 220k plate load, 1k8 cathode with 1u in series with 100.
+T V1A g1 p1a k1a 12AX7
+R R220 xe p1a 220k
+R RK1 k1a 0 1k8
+C CK1 k1a kx 1u
+R RK1B kx 0 100
+
+* Channel 1 (green): 1n to ground, the tone stack before the gain pot (250p treble, 150k slope, 0.1 bass, 0.047 mid),
+* then the 1M gain pot with its 120p bright cap.
+R SW_C1 p1a a1 1
+C CT1 a1 0 1n
+C C250 a1 tt1 250p
+R R150 a1 bb1 150k
+C C100 bb1 tb1 0.1u
+C C47 bb1 mb1 0.047u
+R R10M a1 bb1 10M
+R SW_PUSH a1 pp1 1e12
+C CPUSH pp1 bb1 2n
+R VRT1_T tt1 tw1 1
+R VRT1_B tw1 tb1 1
+R VRB1 tb1 mb1 1
+R VRM1 mb1 0 1
+R GAIN1_T tw1 gw1 1
+R GAIN1_B gw1 0 1
+C C120 tw1 gw1 120p
+
+* Channels 2 and 3 (orange, red): 0.02 coupling, 82p || 2M2 between two 2M2 shunts, the Raw / Vintage / Modern 680k || 2n,
+* then each channel's own gain pot with its 1n bright cap.
+R SW_C23 p1a b23 1
+C C02 b23 n2 20n
+R R2M2A n2 0 2M2
+R R2M2B n2 m 2M2
+C C82 n2 m 82p
+R SW_RY6 m n6 1e12
+R R680 n6 0 680k
+C C2N n6 0 2n
+R SW_T2 m t2 1e12
+R GAIN2_T t2 gw2 1
+R GAIN2_B gw2 0 1
+C CB2 t2 gw2 1n
+R SW_T3 m t3 1e12
+R GAIN3_T t3 gw3 1
+R GAIN3_B gw3 0 1
+C CB3 t3 gw3 1n
+
+* Whichever gain pot is selected reaches V2A's grid through 475k.
+R SW_G1 gw1 gm 1
+R SW_G2 gw2 gm 1e12
+R SW_G3 gw3 gm 1e12
+R R475 gm g2a 475k
+T V2A g2a p2a k2a 12AX7
+R RV2 xd p2a 100k
+R RK2 k2a 0 1k8
+C CK2 k2a kx2 1u
+R RK2B kx2 0 100
+C CK2C k2a ky 15u
+R SW_K15 ky 0 1e12
+
+* Load of V2A's plate: the V1B coupling (stage 2 repeats it behind the link source).
+C CL p2a gl 47n
+R RLD gl 0 330k

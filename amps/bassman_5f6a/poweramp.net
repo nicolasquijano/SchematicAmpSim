@@ -1,0 +1,84 @@
+* Fender Bassman 5F6-A power amp (Kuehnel's drawing): long-tailed 12AX7 phase inverter (82k / 100k plate loads, 47p between the
+* plates) with the 27k negative feedback and the presence control, two 5881 / 6L6 in push-pull with 1k5 grid stoppers, 100 ohm
+* screen resistors and fixed bias, the 45249 output transformer (4k plate-to-plate, 2 ohm secondary), and the supply: GZ34
+* (the schematic prints an 83) into 20u (node a, integrated by the engine), the 4k7 to the 385 V node (x) and the choke to the plates.
+*
+* Assumptions where the drawing is silent or ambiguous (change them here, not in code):
+*  - phase inverter: the tail is 470 ohm to the node f1 that has the 10k to ground and the two 1M grid returns; the presence network
+*    is the same as the Marshall copy's (5k pot from the feedback node, wiper to ground through 0.1u);
+*  - the 27k feedback comes from the 2 ohm secondary (four 8 ohm speakers in parallel are the load);
+*  - output transformer: 6 H per primary half, 45 ohm per half, coupling like the other amps;
+*  - the choke is 8 H with 100 ohm; the plates are fed after it, the screens straight from the first 20u;
+*  - bias: diode, 8u / 15k / 8u and 56k to ground, as a Thevenin source behind 1k set to -60 V: the node is at about -47 V (the drawing prints
+*    -48 V) and this tube model idles near 39 mA.
+
+.nodes pin ga kc f1 f2 gb pa pb dt db bias g1 g2 s1 s2 pt pbm npt npb a ch b t2 x x1 pr
+
+S VAUDIO pin 60k 0
+S VHT a 1 452
+S VBIAS x1 1k -60
+
+* Phase inverter: input on the first grid, feedback node f2 on the second grid's coupling cap.
+C C9 pin ga 20n
+R R17 ga f1 1M
+R R16 kc f1 470
+R R19 f1 gb 1M
+C C15 gb f2 0.1u
+R R20 f1 f2 10k
+T V3A ga pa kc 12AX7
+T V3B gb pb kc 12AX7
+R R18 x pa 82k
+R R21 x pb 100k
+C C47P pa pb 47p
+C C14 pa dt 0.1u
+C C16 pb db 0.1u
+
+* Presence: 5k pot from the NFB node to ground, wiper to ground through 0.1u. VR_PT / VR_PB are the two sections.
+R VR_PT f2 pr 2.5k
+R VR_PB pr 0 2.5k
+C C_PRES pr 0 0.1u
+
+* Bias supply: 15k from the source, 8u at each end, 56k to ground; 220k grid leaks.
+R R15K x1 bias 15k
+C C8A x1 0 8u
+C C8B bias 0 8u
+R R56K bias 0 56k
+R R220A dt bias 220k
+R R220B bias db 220k
+
+* 5881 / 6L6s: 1k5 grid stoppers, 100 ohm screen resistors from the first 20u.
+R R1K5_A dt g1 1500
+R R1K5_B db g2 1500
+P V4 g1 pt s1 0 6L6GC 1
+P V5 g2 pbm s2 0 6L6GC 1
+R RS1 a s1 100
+R RS2 a s2 100
+
+* Output transformer 45249: plates are fed from node b (after the choke); 4k plate-to-plate onto the 2 ohm secondary.
+R DCR_PT pt npt 45
+R DCR_PB pbm npb 45
+.param n2 = 2*1/sqrt(4000/2)
+* Core saturation: SAT is the flux (volt-seconds) where the extra magnetising current equals the linear one; ~full-power
+* plate-to-plate swing / (2 pi f), with f about 28-30 Hz for the large Marshall / Soldano / Peavey / Fender cores, 50 to 65 Hz for the small AC30 / tweed cores.
+.xfmr OT L=6 SAT=2.6
+  W npt b 1 pri
+  W b npb 1 pri
+  W t2 0 n2 sec
+  K pri pri 0.9998
+  K pri sec 0.9993
+.end
+R RLOAD t2 0 2
+
+* Negative feedback from the 2 ohm secondary to the phase-inverter feedback node.
+R R_NFB t2 f2 27k
+
+* Supply after the first 20u (node a): the choke to the plates (b, 40u), and 4k7 to the 385 V node x (20u) that feeds the
+* phase inverter and, through 10k, the preamp (RPREAMP stands for what the preamp draws from it).
+R RCH a ch 100
+.xfmr CHOKE L=8
+  W ch b 1 ch
+.end
+C C40U b 0 40u
+R R4K7 a x 4k7
+C C20X x 0 20u
+R RPREAMP x 0 90k

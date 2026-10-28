@@ -1,0 +1,100 @@
+* Fender Bassman 5F6-A (tweed, 1959) preamp, from the schematic in R. Kuehnel's "The Fender Bassman 5F6-A Circuit" (Pentode Press):
+* V1 12AY7 (two independent stages, bright and normal channel, each with a full #1 and a -6 dB #2 input), their volume pots
+* mixed through 270k into V2a (12AX7, 820 cathode), V2b cathode follower, and the 5F6-A tone stack (250p, 56k, two 0.02 caps,
+* 250k treble, 1M bass, 25k middle). The long-tailed phase inverter and the presence control are in poweramp.net.
+*
+* Assumptions where the drawing is silent or ambiguous (change them here, not in code):
+*  - the jacks: the grid sits behind a 68k stopper from the #1 jack (1M to ground there); the #2 jack goes through another 68k and
+*    the unplugged #1 jack grounds its contact: a 136k input, 6 dB down (SW_ resistors, set by the jack modes in amp.json);
+*  - "Jumpered" feeds the same signal into both #1 jacks;
+*  - V1's two cathodes share one 820 ohm with 250u; V2a's 820 is bypassed with 0.68u (the drawing prints a cap there, the text says
+*    it is not a large one, the Marshall copy uses 0.68u);
+*  - supply: the 385 V node (x) comes from the power amp; 10k and 8u make the 325 V rail of V1 and V2.
+
+.nodes x nb gin in jb1 jb2 jn1 jn2 gb gn pb pn kk cb cn wb wn g2 p2a k2a k2b m t o u v wm
+
+* The 385 V node (driven from the power amp at run time; 385 V is the standalone default).
+V VRAIL x 100 385
+R R10K x nb 10k
+C C8U nb 0 8u
+* The guitar behind a variable source resistance, then the jack switches.
+I VIN gin 1
+R RSRC gin in 7k
+* The guitar behind its source impedance. RSRC is the plain 7k source: the "Off" setting, and what a pedal in front of the amp
+* looks like. A pickup replaces it with its own impedance as seen from the open-circuit voltage (the recording): the
+* coil (winding resistance RPU + inductance) in parallel with its winding capacitance CPU and an eddy-current loss resistor
+* RPL, then the cable capacitance (200 pF per 2 m, switched in steps of 200, 400 and 800 pF). The engine sets the values:
+* single coil = coil 1 (2.5 H), humbucker and P-90 = coil 2 (5 H) with their own resistances; open = 1e12.
+R RPU1 gin pkb1 1e12
+.xfmr LPU1 L=2.5
+  W pkb1 in 1 pu
+.end
+R RPU2 gin pkb2 1e12
+.xfmr LPU2 L=5
+  W pkb2 in 1 pu
+.end
+C CPU gin in 110p
+R RPL gin in 1e12
+R SWK1 in pkk1 1e12
+C CCAB1 pkk1 0 200p
+R SWK2 in pkk2 1e12
+C CCAB2 pkk2 0 400p
+R SWK4 in pkk4 1e12
+C CCAB4 pkk4 0 800p
+
+* Jacks, bright channel. SW_BJ1 / SW_BJ2: the plug is in #1 / #2; SW_BGND: the unplugged #1 contact grounds its node.
+R SW_BJ1 in jb1 1
+R RLEAK_B jb1 0 1M
+R SW_BGND jb1 0 1e12
+R R68_B1 jb1 gb 68k
+R SW_BJ2 in jb2 1e12
+R R68_B2 jb2 gb 68k
+* Jacks, normal channel.
+R SW_NJ1 in jn1 1e12
+R RLEAK_N jn1 0 1M
+R SW_NGND jn1 0 1
+R R68_N1 jn1 gn 68k
+R SW_NJ2 in jn2 1e12
+R R68_N2 jn2 gn 68k
+
+* V1: two 12AY7 triodes, 100k plate loads, one shared 820 / 250u cathode.
+T V1B gb pb kk 12AY7
+T V1A gn pn kk 12AY7
+R R_PB nb pb 100k
+R R_PN nb pn 100k
+R RK1 kk 0 820
+C CK1 kk 0 250u
+
+* Bright channel: 0.02 coupling, 1M volume with the 100p bright cap across its top, 270k mixing resistor.
+C C_B pb cb 20n
+R VR_BT cb wb 1
+R VR_BB wb 0 1
+C C_BRIGHT cb wb 100p
+R R270_B wb g2 270k
+* Normal channel.
+C C_N pn cn 20n
+R VR_NT cn wn 1
+R VR_NB wn 0 1
+R R270_N wn g2 270k
+
+* V2a (100k load, 820 cathode with 0.68u) and V2b, the cathode follower (100k cathode load).
+T V2A g2 p2a k2a 12AX7
+R R_P2A nb p2a 100k
+R RK2A k2a 0 820
+C CK2A k2a 0 0.68u
+T V2B p2a nb k2b 12AX7
+R R100K k2b 0 100k
+
+* Tone stack: 250p and 56k from the follower, treble 250k pot (wiper = output), bass 1M rheostat, middle 25k pot, two 0.02 caps.
+R R56K k2b m 56k
+C C250T k2b t 250p
+R VR_TT t o 1
+R VR_TB o u 1
+C C02A m u 20n
+R VR_BASS u v 1
+R VR_MT v wm 1
+R VR_MB wm 0 1
+C C02B m wm 20n
+
+* Load of the phase-inverter input network.
+R RPI o 0 1M

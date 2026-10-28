@@ -1,0 +1,523 @@
+{
+  "id": "triplestack_3ch",
+  "order": 7,
+  "output_db": 7.2,
+  "name": "American Triple Stack",
+  "theme": {
+    "background": "#0a0908",
+    "panel": "#151210",
+    "edge": "#38302a",
+    "accent": "#e8892b",
+    "label": "#9a8e82",
+    "text": "#ebe4dc",
+    "knob_top": "#3a342f",
+    "knob_bottom": "#100e0c",
+    "pointer": "#fff1de"
+  },
+  "preamp": {
+    "netlist": "preamp.net",
+    "stages": [
+      {
+        "netlist": "stage2.net",
+        "link_from": "p2a",
+        "link_source": "VLNK"
+      }
+    ],
+    "tolerance": 2e-06,
+    "rail_source": "VRAIL",
+    "input_source": "VIN",
+    "output_node": "o",
+    "pot_min_ohms": 100,
+    "jack_label": "CHANNEL / MODE",
+    "knobs": [
+      {
+        "name": "gain",
+        "default": 0.5,
+        "pot": {
+          "type": "wiper",
+          "top": "GAIN1_T",
+          "bottom": "GAIN1_B",
+          "total": 500000.0,
+          "taper": "log",
+          "also": [
+            {
+              "top": "GAIN2_T",
+              "bottom": "GAIN2_B"
+            },
+            {
+              "top": "GAIN3_T",
+              "bottom": "GAIN3_B"
+            }
+          ]
+        }
+      },
+      {
+        "name": "treble",
+        "default": 0.5,
+        "pot": {
+          "type": "wiper",
+          "top": "VRT1_T",
+          "bottom": "VRT1_B",
+          "total": 250000.0,
+          "taper": "linear",
+          "also": [
+            {
+              "top": "VRT2_T",
+              "bottom": "VRT2_B"
+            },
+            {
+              "top": "VRT3_T",
+              "bottom": "VRT3_B"
+            }
+          ]
+        }
+      },
+      {
+        "name": "bass",
+        "default": 0.5,
+        "pot": {
+          "type": "variable",
+          "resistor": "VRB1",
+          "total": 500000.0,
+          "taper": "log",
+          "also": [
+            {
+              "resistor": "VRB2"
+            },
+            {
+              "resistor": "VRB3"
+            }
+          ]
+        }
+      },
+      {
+        "name": "mid",
+        "default": 0.5,
+        "pot": {
+          "type": "variable",
+          "resistor": "VRM1",
+          "total": 25000.0,
+          "taper": "linear",
+          "also": [
+            {
+              "resistor": "VRM2"
+            },
+            {
+              "resistor": "VRM3"
+            }
+          ]
+        }
+      },
+      {
+        "name": "master",
+        "default": 0.5,
+        "pot": {
+          "type": "wiper",
+          "top": "MS1_T",
+          "bottom": "MS1_B",
+          "total": 1000000.0,
+          "taper": "log",
+          "also": [
+            {
+              "top": "MS2_T",
+              "bottom": "MS2_B"
+            },
+            {
+              "top": "MS3_T",
+              "bottom": "MS3_B"
+            }
+          ]
+        }
+      }
+    ],
+    "source_ohms": {
+      "resistors": [
+        "RSRC"
+      ],
+      "default": 7000,
+      "min": 10
+    },
+    "jacks": [
+      {
+        "name": "ch1_clean",
+        "label": "Ch1 Clean",
+        "drive": "VIN",
+        "resistors": {
+          "SW_C1": 1,
+          "SW_C23": 1000000000000.0,
+          "SW_PUSH": 1000000000000.0,
+          "SW_RY6": 1000000000000.0,
+          "SW_T2": 1000000000000.0,
+          "SW_T3": 1000000000000.0,
+          "SW_G1": 1,
+          "SW_G2": 1000000000000.0,
+          "SW_G3": 1000000000000.0,
+          "SW_K15": 1000000000000.0,
+          "SW_BR1": 1,
+          "SW_BR23": 1000000000000.0,
+          "SW_RP": 1000000000000.0,
+          "SW_S2": 1000000000000.0,
+          "SW_S3": 1000000000000.0,
+          "SW_R7": 1000000000000.0,
+          "SW_R7B": 1000000000000.0,
+          "SW_O1": 1,
+          "SW_O2": 1000000000000.0,
+          "SW_O3": 1000000000000.0
+        },
+        "level_db": 13.5
+      },
+      {
+        "name": "ch1_pushed",
+        "label": "Ch1 Pushed",
+        "drive": "VIN",
+        "resistors": {
+          "SW_C1": 1,
+          "SW_C23": 1000000000000.0,
+          "SW_PUSH": 1,
+          "SW_RY6": 1000000000000.0,
+          "SW_T2": 1000000000000.0,
+          "SW_T3": 1000000000000.0,
+          "SW_G1": 1,
+          "SW_G2": 1000000000000.0,
+          "SW_G3": 1000000000000.0,
+          "SW_K15": 1000000000000.0,
+          "SW_BR1": 1,
+          "SW_BR23": 1000000000000.0,
+          "SW_RP": 1,
+          "SW_S2": 1000000000000.0,
+          "SW_S3": 1000000000000.0,
+          "SW_R7": 1000000000000.0,
+          "SW_R7B": 1000000000000.0,
+          "SW_O1": 1,
+          "SW_O2": 1000000000000.0,
+          "SW_O3": 1000000000000.0
+        },
+        "level_db": 0.4
+      },
+      {
+        "name": "ch2_raw",
+        "label": "Ch2 Raw",
+        "drive": "VIN",
+        "resistors": {
+          "SW_C1": 1000000000000.0,
+          "SW_C23": 1,
+          "SW_PUSH": 1000000000000.0,
+          "SW_RY6": 1000000000000.0,
+          "SW_T2": 1,
+          "SW_T3": 1000000000000.0,
+          "SW_G1": 1000000000000.0,
+          "SW_G2": 1,
+          "SW_G3": 1000000000000.0,
+          "SW_K15": 1,
+          "SW_BR1": 1000000000000.0,
+          "SW_BR23": 1,
+          "SW_RP": 1000000000000.0,
+          "SW_S2": 1,
+          "SW_S3": 1000000000000.0,
+          "SW_R7": 1000000000000.0,
+          "SW_R7B": 1000000000000.0,
+          "SW_O1": 1000000000000.0,
+          "SW_O2": 1,
+          "SW_O3": 1000000000000.0
+        },
+        "level_db": -15.8
+      },
+      {
+        "name": "ch2_vintage",
+        "label": "Ch2 Vintage",
+        "drive": "VIN",
+        "resistors": {
+          "SW_C1": 1000000000000.0,
+          "SW_C23": 1,
+          "SW_PUSH": 1000000000000.0,
+          "SW_RY6": 1,
+          "SW_T2": 1,
+          "SW_T3": 1000000000000.0,
+          "SW_G1": 1000000000000.0,
+          "SW_G2": 1,
+          "SW_G3": 1000000000000.0,
+          "SW_K15": 1,
+          "SW_BR1": 1000000000000.0,
+          "SW_BR23": 1,
+          "SW_RP": 1000000000000.0,
+          "SW_S2": 1,
+          "SW_S3": 1000000000000.0,
+          "SW_R7": 1000000000000.0,
+          "SW_R7B": 1000000000000.0,
+          "SW_O1": 1000000000000.0,
+          "SW_O2": 1,
+          "SW_O3": 1000000000000.0
+        },
+        "level_db": -10.8
+      },
+      {
+        "name": "ch2_modern",
+        "label": "Ch2 Modern",
+        "drive": "VIN",
+        "resistors": {
+          "SW_C1": 1000000000000.0,
+          "SW_C23": 1,
+          "SW_PUSH": 1000000000000.0,
+          "SW_RY6": 1000000000000.0,
+          "SW_T2": 1,
+          "SW_T3": 1000000000000.0,
+          "SW_G1": 1000000000000.0,
+          "SW_G2": 1,
+          "SW_G3": 1000000000000.0,
+          "SW_K15": 1,
+          "SW_BR1": 1000000000000.0,
+          "SW_BR23": 1,
+          "SW_RP": 1000000000000.0,
+          "SW_S2": 1,
+          "SW_S3": 1000000000000.0,
+          "SW_R7": 1000000000000.0,
+          "SW_R7B": 1,
+          "SW_O1": 1000000000000.0,
+          "SW_O2": 1,
+          "SW_O3": 1000000000000.0
+        },
+        "level_db": -16.3
+      },
+      {
+        "name": "ch3_raw",
+        "label": "Ch3 Raw",
+        "drive": "VIN",
+        "resistors": {
+          "SW_C1": 1000000000000.0,
+          "SW_C23": 1,
+          "SW_PUSH": 1000000000000.0,
+          "SW_RY6": 1000000000000.0,
+          "SW_T2": 1000000000000.0,
+          "SW_T3": 1,
+          "SW_G1": 1000000000000.0,
+          "SW_G2": 1000000000000.0,
+          "SW_G3": 1,
+          "SW_K15": 1,
+          "SW_BR1": 1000000000000.0,
+          "SW_BR23": 1,
+          "SW_RP": 1000000000000.0,
+          "SW_S2": 1000000000000.0,
+          "SW_S3": 1,
+          "SW_R7": 1000000000000.0,
+          "SW_R7B": 1000000000000.0,
+          "SW_O1": 1000000000000.0,
+          "SW_O2": 1000000000000.0,
+          "SW_O3": 1
+        },
+        "level_db": -15.8
+      },
+      {
+        "name": "ch3_vintage",
+        "label": "Ch3 Vintage",
+        "drive": "VIN",
+        "resistors": {
+          "SW_C1": 1000000000000.0,
+          "SW_C23": 1,
+          "SW_PUSH": 1000000000000.0,
+          "SW_RY6": 1,
+          "SW_T2": 1000000000000.0,
+          "SW_T3": 1,
+          "SW_G1": 1000000000000.0,
+          "SW_G2": 1000000000000.0,
+          "SW_G3": 1,
+          "SW_K15": 1,
+          "SW_BR1": 1000000000000.0,
+          "SW_BR23": 1,
+          "SW_RP": 1000000000000.0,
+          "SW_S2": 1000000000000.0,
+          "SW_S3": 1,
+          "SW_R7": 1000000000000.0,
+          "SW_R7B": 1000000000000.0,
+          "SW_O1": 1000000000000.0,
+          "SW_O2": 1000000000000.0,
+          "SW_O3": 1
+        },
+        "level_db": -10.8
+      },
+      {
+        "name": "ch3_modern",
+        "label": "Ch3 Modern",
+        "drive": "VIN",
+        "resistors": {
+          "SW_C1": 1000000000000.0,
+          "SW_C23": 1,
+          "SW_PUSH": 1000000000000.0,
+          "SW_RY6": 1000000000000.0,
+          "SW_T2": 1000000000000.0,
+          "SW_T3": 1,
+          "SW_G1": 1000000000000.0,
+          "SW_G2": 1000000000000.0,
+          "SW_G3": 1,
+          "SW_K15": 1,
+          "SW_BR1": 1000000000000.0,
+          "SW_BR23": 1,
+          "SW_RP": 1000000000000.0,
+          "SW_S2": 1000000000000.0,
+          "SW_S3": 1,
+          "SW_R7": 1,
+          "SW_R7B": 1000000000000.0,
+          "SW_O1": 1000000000000.0,
+          "SW_O2": 1000000000000.0,
+          "SW_O3": 1
+        },
+        "level_db": -16.3
+      }
+    ]
+  },
+  "ui": [
+    {
+      "param": "volume",
+      "knob": "gain",
+      "label": "GAIN"
+    },
+    {
+      "param": "bass",
+      "knob": "bass",
+      "label": "BASS"
+    },
+    {
+      "param": "middle",
+      "knob": "mid",
+      "label": "MID"
+    },
+    {
+      "param": "treble",
+      "knob": "treble",
+      "label": "TREBLE"
+    },
+    {
+      "param": "master",
+      "knob": "master",
+      "label": "MASTER"
+    },
+    {
+      "param": "presence",
+      "label": "PRESENCE"
+    }
+  ],
+  "power": {
+    "tubes": [
+      {
+        "name": "6L6GC",
+        "model": "6L6GCDS",
+        "pmax_w": 30.0,
+        "bias_scale": 1.0
+      },
+      {
+        "name": "EL34",
+        "model": "EL34",
+        "pmax_w": 25.0,
+        "bias_scale": 0.8375
+      },
+      {
+        "name": "6550",
+        "model": "6550DS",
+        "pmax_w": 35.0,
+        "bias_scale": 1.1874
+      }
+    ],
+    "bias": {
+      "source": "VBIAS",
+      "idle_resistors": [
+        "DCR_PT",
+        "DCR_PB"
+      ],
+      "tubes_per_half": 2
+    },
+    "netlist": "poweramp.net",
+    "tolerance": 0.0001,
+    "input_source": "VAUDIO",
+    "ht_source": "VHT",
+    "ht_node": "a",
+    "rail_node": "x",
+    "output_node": "t8",
+    "load_resistor": "RLOAD",
+    "presence": {
+      "resistor": "VR9_B",
+      "complement": "VR9_T",
+      "scale": 10000.0,
+      "min_ohms": 50,
+      "default": 0.5
+    },
+    "supply": {
+      "mains_hz": 60,
+      "vac_peak": 497,
+      "rect_source_ohms": 18,
+      "ht_dc_source": 475,
+      "rect_drop": 2.8,
+      "reservoir_farads": 0.00011,
+      "tie_ohms": 1.0,
+      "settle_seconds": 0.15
+    }
+  },
+  "lite": {
+    "base_gain_db": 17.4356,
+    "high_pass_hz": 20.2516,
+    "shelf_hz": 2119.35,
+    "presence_db": [
+      0,
+      0.392092,
+      1.0894,
+      2.41668,
+      5.87768
+    ],
+    "sag_table": [
+      [
+        0,
+        0
+      ],
+      [
+        2.54648,
+        0.616214
+      ],
+      [
+        5.09296,
+        2.38435
+      ],
+      [
+        9.5493,
+        7.63831
+      ],
+      [
+        15.9155,
+        17.8862
+      ],
+      [
+        22.2817,
+        29.1904
+      ],
+      [
+        28.6479,
+        38.7384
+      ],
+      [
+        35.0141,
+        42.2536
+      ],
+      [
+        44.5634,
+        45.3993
+      ],
+      [
+        57.2958,
+        48.0157
+      ],
+      [
+        82.7606,
+        50.8339
+      ],
+      [
+        127.324,
+        53.3537
+      ]
+    ],
+    "rail_x_idle": 425.701,
+    "rail_sag_fraction": 0.58,
+    "ceiling_light": 67.5816,
+    "ceiling_heavy": 39.023,
+    "ceiling_decay": 15.622,
+    "knee": 9.28241,
+    "sag_attack_s": 0.01,
+    "sag_release_s": 0.06
+  }
+}

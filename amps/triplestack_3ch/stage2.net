@@ -1,0 +1,97 @@
+* Three-channel, 4 x 6L6 head, preamp stage 2 of 2: what follows V2A. V2A's plate arrives through the link source VLNK (the Thevenin
+* resistance is its 100k load in parallel with the tube).
+*   Channel 1: V1B (1k5 cathode), then 0.047, 220k and the 1M5 series element (the Pushed 330k bypasses most of it) into the master.
+*   Channels 2 and 3: V2B (39k cathode), V3A (gain) and V3B (cathode follower) feed each channel's own tone stack
+*   (500p, 47k slope, two 0.02 caps, a 1M bass and a 25k mid pot) and its master.
+* The selected master reaches the power amp through the relays; `o` is the node the power amp's phase inverter takes.
+*   SW_BR1 / SW_BR23   V2A's plate to V1B, or to V2B (RY1'b)
+*   SW_S2 SW_S3        the cathode follower to the channel 2 or 3 stack (RY4b)
+*   SW_RP              channel 1 Pushed: 330k || 47p across the 1M5
+*   SW_R7 SW_R7B       180p across the stack's 500p of channel 3 / 2 (RY7a, the Modern voicing; the drawing shows it on channel 3 only)
+*   SW_O1 SW_O2 SW_O3  the channel master to the output (RY4a)
+* Assumptions: the per-channel presence networks and the feedback they take from the output transformer are replaced by the
+* power amp's own presence control; the FX loop and the mute circuits are left out (the loop bypassed).
+
+V VRAIL x3 100 435
+V VD xd 50 394
+V VC xc 50 435
+S VLNK p2a 40k 0
+
+* The load of the V2A plate: its own coupling into V1B.
+C CLV p2a gl 47n
+R RLD gl 0 330k
+
+* Channel 1: V1B. Coupling 0.047 into a 330k grid leak.
+R SW_BR1 p2a c1 1
+C CV1 c1 g1b 47n
+R RG1B g1b 0 330k
+T V1B g1b p1b k1b 12AX7
+R RV1B xd p1b 100k
+R RKV1B k1b 0 1k5
+C CO1 p1b q1 47n
+R R220A q1 m1 220k
+R R1M5 m1 mt1 1M5
+R SW_RP m1 mx 1e12
+R R330 mx mt1 330k
+C C47P mx mt1 47p
+C C2N1 mt1 0 2n
+C C250P mt1 0 250p
+R MS1_T mt1 mw1 1
+R MS1_B mw1 0 1
+
+* Channels 2 and 3: V2B, V3A and the V3B cathode follower.
+R SW_BR23 p2a c23 1e12
+C CV2 c23 g2s 20n
+R R475B g2s g2b 475k
+R R1M2 g2b 0 1M
+T V2B g2b p2b k2b 12AX7
+R RV2B xd p2b 100k
+R RK2B k2b 0 39k
+C CV3 p2b c3 20n
+R R330B c3 0 330k
+R R220B c3 g3a 220k
+T V3A g3a p3a k3a 12AX7
+R RV3A xc p3a 220k
+R RK3A k3a 0 1k8
+C CK3 k3a kx3 1u
+R RK3B kx3 0 100
+T V3B p3a xc k3b 12AX7
+R RK3C k3b 0 100k
+
+* Channel 2 stack and master.
+R SW_S2 k3b i2 1e12
+C C500_2 i2 tt2 500p
+R SW_R7B i2 b7b 1e12
+C C180_2 b7b tt2 180p
+R R10M_2 i2 tt2 10M
+R R47_2 i2 bb2 47k
+C C02A_2 bb2 tb2 0.02u
+C C02B_2 bb2 mb2 0.02u
+R VRT2_T tt2 tw2 1
+R VRT2_B tw2 tb2 1
+R VRB2 tb2 mb2 1
+R VRM2 mb2 0 1
+R MS2_T tw2 mw2 1
+R MS2_B mw2 0 1
+
+* Channel 3 stack and master (the Modern voicing adds 180p across the 500p; 10M is always across it).
+R SW_S3 k3b i3 1e12
+C C500_3 i3 tt3 500p
+R SW_R7 i3 b7 1e12
+C C180_3 b7 tt3 180p
+R R10M_3 i3 tt3 10M
+R R47_3 i3 bb3 47k
+C C02A_3 bb3 tb3 0.02u
+C C02B_3 bb3 mb3 0.02u
+R VRT3_T tt3 tw3 1
+R VRT3_B tw3 tb3 1
+R VRB3 tb3 mb3 1
+R VRM3 mb3 0 1
+R MS3_T tw3 mw3 1
+R MS3_B mw3 0 1
+
+* The relays to the output and its load (the phase inverter's 0.02 and 1M in the power amp, repeated).
+R SW_O1 mw1 o 1
+R SW_O2 mw2 o 1e12
+R SW_O3 mw3 o 1e12
+R RLOAD2 o 0 1M

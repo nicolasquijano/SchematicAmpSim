@@ -12,7 +12,7 @@ VST3 for Windows, built with C++20 and [JUCE](https://juce.com).
 
 ## Screenshots
 
-Every amp has its own colours (the amp list is on the left). Four of the seven:
+Every amp has its own colours (the amp list is on the left). Four of the nine:
 
 <p align="center">
   <img src="docs/images/amps.png" alt="American Twin, American Tweed, American 5050 and British Class A" width="800">
@@ -48,7 +48,7 @@ still change between 0.x versions. Versioning and the steps of a release are in 
 - **Amps are data, not code.** Each amp is a folder with a netlist and an `amp.json` that maps
   knobs, input jacks, presence, supply and output level onto circuit elements. Adding an amp means
   adding files; nothing is recompiled except to embed them.
-- **Seven amps included** (display names are deliberately generic):
+- **Nine amps included** (display names are deliberately generic):
   | Name | Circuit |
   |---|---|
   | British 800 | Cascading-gain preamp, 100 W-class EL34 power amp, High and Low input jacks |
@@ -56,6 +56,8 @@ still change between 0.x versions. Versioning and the steps of a release are in 
   | SLSH 100W | Modern 100 W head, 6550 output stage, two modes |
   | American Twin | Two-channel 85 W+ blackface-style amp, 12AT7 phase inverter, four 6L6GC on fixed bias with its optical vibrato and spring reverb (driver and recovery tubes as circuit, the spring tank behavioural) |
   | American 5050 | Modern high-gain 120 W head: two channels (Rhythm with a Crunch voicing, Lead) through six gain stages, Marshall-type tone stack, 12AX7 phase inverter with presence and resonance in the feedback loop, four 6L6GC |
+  | American Triple Stack | Three-channel modern high-gain 100 W+ head: a clean channel with a Pushed voicing and two high-gain channels each with Raw, Vintage and Modern voicings, three tone stacks, a shared 12AX7 gain chain with a cathode follower, four 6L6GC, silicon rectifier. Presence in the feedback loop; the effects loop and the channel switching are not modelled |
+  | American Bass 50 | 1959-style 50 W tweed bass head: bright and normal channels with #1 and #2 inputs (jumpered or not), 12AY7 / 12AX7 preamp with cathode follower, the 250p / 56k tone stack, long-tailed phase inverter with 27k negative feedback and presence, two 6L6GC with fixed bias, GZ34 rectifier and choke |
   | British Class A | Class A 30 W combo-style amp (Top Boost reissue drawing): Normal channel straight to the phase inverter, Brilliant channel through the Treble / Bass network, Cut control, four cathode-biased EL84 with no negative feedback (no vibrato or reverb) |
   | American Tweed | 1950s-style 12 W tweed combo: two channels with interactive volume pots and a tone control, 12AY7 / 12AX7 preamp, cathodyne phase inverter, two cathode-biased 6V6GT, no negative feedback, high-impedance 5Y3GT rectifier supply |
 - **Quality modes**

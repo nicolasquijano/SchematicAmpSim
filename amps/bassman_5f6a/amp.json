@@ -1,0 +1,322 @@
+{
+  "id": "bassman_5f6a",
+  "order": 8,
+  "output_db": 13.9,
+  "name": "American Bass 50",
+  "theme": {
+    "background": "#0f0c08",
+    "panel": "#241c11",
+    "edge": "#54422a",
+    "accent": "#d9c28a",
+    "label": "#a8946b",
+    "text": "#f0e6cf",
+    "knob_top": "#4a3d2a",
+    "knob_bottom": "#17120b",
+    "pointer": "#fff3d0"
+  },
+  "preamp": {
+    "netlist": "preamp.net",
+    "tolerance": 2e-06,
+    "rail_source": "VRAIL",
+    "input_source": "VIN",
+    "output_node": "o",
+    "pot_min_ohms": 100,
+    "jack_label": "INPUT JACK",
+    "knobs": [
+      {
+        "name": "bright_volume",
+        "default": 0.5,
+        "pot": {
+          "type": "wiper",
+          "top": "VR_BT",
+          "bottom": "VR_BB",
+          "total": 1000000.0,
+          "taper": "log"
+        }
+      },
+      {
+        "name": "normal_volume",
+        "default": 0.5,
+        "pot": {
+          "type": "wiper",
+          "top": "VR_NT",
+          "bottom": "VR_NB",
+          "total": 1000000.0,
+          "taper": "log"
+        }
+      },
+      {
+        "name": "bass",
+        "default": 0.5,
+        "pot": {
+          "type": "variable",
+          "resistor": "VR_BASS",
+          "total": 1000000.0,
+          "taper": "log"
+        }
+      },
+      {
+        "name": "middle",
+        "default": 0.6,
+        "pot": {
+          "type": "wiper",
+          "top": "VR_MT",
+          "bottom": "VR_MB",
+          "total": 25000.0,
+          "taper": "linear"
+        }
+      },
+      {
+        "name": "treble",
+        "default": 0.6,
+        "pot": {
+          "type": "wiper",
+          "top": "VR_TT",
+          "bottom": "VR_TB",
+          "total": 250000.0,
+          "taper": "linear"
+        }
+      }
+    ],
+    "source_ohms": {
+      "resistors": [
+        "RSRC"
+      ],
+      "default": 7000,
+      "min": 10
+    },
+    "jacks": [
+      {
+        "name": "bright1",
+        "label": "Bright 1",
+        "drive": "VIN",
+        "resistors": {
+          "SW_BJ1": 1,
+          "SW_BJ2": 1000000000000.0,
+          "SW_BGND": 1000000000000.0,
+          "SW_NJ1": 1000000000000.0,
+          "SW_NJ2": 1000000000000.0,
+          "SW_NGND": 1
+        },
+        "level_db": 3.7
+      },
+      {
+        "name": "bright2",
+        "label": "Bright 2",
+        "drive": "VIN",
+        "resistors": {
+          "SW_BJ1": 1000000000000.0,
+          "SW_BJ2": 1,
+          "SW_BGND": 1,
+          "SW_NJ1": 1000000000000.0,
+          "SW_NJ2": 1000000000000.0,
+          "SW_NGND": 1
+        },
+        "level_db": 9.6
+      },
+      {
+        "name": "normal1",
+        "label": "Normal 1",
+        "drive": "VIN",
+        "resistors": {
+          "SW_BJ1": 1000000000000.0,
+          "SW_BJ2": 1000000000000.0,
+          "SW_BGND": 1,
+          "SW_NJ1": 1,
+          "SW_NJ2": 1000000000000.0,
+          "SW_NGND": 1000000000000.0
+        },
+        "level_db": 3.7
+      },
+      {
+        "name": "normal2",
+        "label": "Normal 2",
+        "drive": "VIN",
+        "resistors": {
+          "SW_BJ1": 1000000000000.0,
+          "SW_BJ2": 1000000000000.0,
+          "SW_BGND": 1,
+          "SW_NJ1": 1000000000000.0,
+          "SW_NJ2": 1,
+          "SW_NGND": 1
+        },
+        "level_db": 9.7
+      },
+      {
+        "name": "jumpered",
+        "label": "Jumpered",
+        "drive": "VIN",
+        "resistors": {
+          "SW_BJ1": 1,
+          "SW_BJ2": 1000000000000.0,
+          "SW_BGND": 1000000000000.0,
+          "SW_NJ1": 1,
+          "SW_NJ2": 1000000000000.0,
+          "SW_NGND": 1000000000000.0
+        },
+        "level_db": -1.2
+      }
+    ]
+  },
+  "ui": [
+    {
+      "param": "volume",
+      "knob": "bright_volume",
+      "label": "BRIGHT"
+    },
+    {
+      "param": "volume2",
+      "knob": "normal_volume",
+      "label": "NORMAL"
+    },
+    {
+      "param": "bass",
+      "knob": "bass",
+      "label": "BASS"
+    },
+    {
+      "param": "middle",
+      "knob": "middle",
+      "label": "MIDDLE"
+    },
+    {
+      "param": "treble",
+      "knob": "treble",
+      "label": "TREBLE"
+    },
+    {
+      "param": "presence",
+      "label": "PRESENCE"
+    }
+  ],
+  "power": {
+    "tubes": [
+      {
+        "name": "6L6GC",
+        "model": "6L6GC",
+        "pmax_w": 30.0,
+        "bias_scale": 1.0
+      },
+      {
+        "name": "EL34",
+        "model": "EL34",
+        "pmax_w": 25.0,
+        "bias_scale": 0.8753
+      },
+      {
+        "name": "6550",
+        "model": "6550DS",
+        "pmax_w": 35.0,
+        "bias_scale": 1.2148
+      }
+    ],
+    "bias": {
+      "source": "VBIAS",
+      "idle_resistors": [
+        "DCR_PT",
+        "DCR_PB"
+      ],
+      "tubes_per_half": 1
+    },
+    "netlist": "poweramp.net",
+    "tolerance": 0.0001,
+    "input_source": "VAUDIO",
+    "ht_source": "VHT",
+    "ht_node": "a",
+    "rail_node": "x",
+    "output_node": "t2",
+    "load_resistor": "RLOAD",
+    "nfb_resistor": "R_NFB",
+    "presence": {
+      "resistor": "VR_PT",
+      "complement": "VR_PB",
+      "scale": 5000.0,
+      "min_ohms": 50,
+      "default": 0.5
+    },
+    "supply": {
+      "mains_hz": 60,
+      "vac_peak": 510,
+      "rect_source_ohms": 60,
+      "ht_dc_source": 452,
+      "rect_drop": 10,
+      "rect_tube": {
+        "volts": 25,
+        "amps": 0.25
+      },
+      "reservoir_farads": 2e-05,
+      "tie_ohms": 1.0,
+      "settle_seconds": 0.5
+    }
+  },
+  "lite": {
+    "base_gain_db": 10.8702,
+    "high_pass_hz": 3.04127,
+    "shelf_hz": 477.821,
+    "presence_db": [
+      0,
+      1.26271,
+      2.90623,
+      5.11416,
+      8.2467
+    ],
+    "sag_table": [
+      [
+        0,
+        0
+      ],
+      [
+        2.54648,
+        9.06866
+      ],
+      [
+        5.09296,
+        31.5683
+      ],
+      [
+        9.5493,
+        75.4743
+      ],
+      [
+        15.9155,
+        85.495
+      ],
+      [
+        22.2817,
+        92.8608
+      ],
+      [
+        28.6479,
+        96.7588
+      ],
+      [
+        35.0141,
+        99.0349
+      ],
+      [
+        44.5634,
+        101.151
+      ],
+      [
+        57.2958,
+        102.786
+      ],
+      [
+        82.7606,
+        104.427
+      ],
+      [
+        127.324,
+        105.557
+      ]
+    ],
+    "rail_x_idle": 406.53,
+    "rail_sag_fraction": 0.58,
+    "ceiling_light": 14.6381,
+    "ceiling_heavy": 10.2759,
+    "ceiling_decay": 49.4065,
+    "knee": 5.46147,
+    "sag_attack_s": 0.01,
+    "sag_release_s": 0.06
+  }
+}
