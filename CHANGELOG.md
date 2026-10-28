@@ -5,10 +5,18 @@ version numbers follow [Semantic Versioning](https://semver.org/) (see [docs/REL
 
 ## [Unreleased]
 
+## [0.2.0-beta] - 2026-10-28
+
 ### Added
+- A harmonic exciter ("maximizer") on the EQ page, after the EQ: a BASS amount adds harmonics of the lowest band (under 140 Hz) and a TREBLE amount adds harmonics of the
+  highest (over 3.5 kHz), each with a gentle shelf. The harmonics follow the band's own level, so they are the same percentage at any playing level. Both at 0 is bit-exact bypass.
+  It does not do the time alignment of the three bands that a hardware maximizer does.
+- A post equaliser on its own EQ page: five bands (low shelf, three bells, high shelf) plus a high-pass and a low-pass, after the cabinet and the double tracking, with a curve to drag
+  (position = frequency and gain, wheel = Q, double click = gain 0). Flat means bypassed and bit-exact; the parameters glide over 15 ms.
+- The Orange-style amp is now called British Or.
 - A pitch shifter on its own Pitch page: -12 to +12 semitones and -50 to +50 cents, in front of the whole chain (the tuner still listens to the raw input). It is the
   granular two-head shifter of the earlier Rust octave plugin, with a 20 ms grain; it adds about 12 ms of delay, reported to the host, only while a shift is set.
-- A new amp, British Saturated, from a 1970s 120 W head schematic (preamp, output amp and power supply drawings): the Orange tone circuit, a six-position FAC
+- A new amp, British Or, from a 1970s 120 W head schematic (preamp, output amp and power supply drawings): the Orange tone circuit, a six-position FAC
   switch (shown as the input list), four EL34 and 15k feedback with a BOOST control. Which EL34 pair drives which end of the transformer is not drawn;
   it is chosen so the feedback is negative. The jack levels of the FAC positions are only partly matched (the amp is saturated). See `amps/orange_or120/*.net`.
 - The amp list is scrollable and has a search box above it.
@@ -76,4 +84,5 @@ The first public release: a Windows VST3 with seven circuit-level amplifiers.
 - While the compressor or the overdrive is on, the pickup and cable of the Guitar Input panel have no effect.
 - The saved-project format may still change between 0.x versions.
 
+[0.2.0-beta]: https://github.com/nicolasquijano/SchematicAmpSim/releases/tag/v0.2.0-beta
 [0.1.0-beta]: https://github.com/nicolasquijano/SchematicAmpSim/releases/tag/v0.1.0-beta

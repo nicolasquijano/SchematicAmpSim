@@ -6,7 +6,7 @@ if(APPLE)
   set(CMAKE_OSX_DEPLOYMENT_TARGET "11.0" CACHE STRING "Oldest macOS the plugin runs on")
 endif()
 
-project(SchematicAmpSim VERSION 0.1.0 LANGUAGES C CXX)
+project(SchematicAmpSim VERSION 0.2.0 LANGUAGES C CXX)
 
 # The version lives here and nowhere else: bump VERSION above (and the suffix below) for a release, see docs/RELEASING.md.
 # "-beta" while the saved-project format may still change; empty for a stable 1.0 and later.

@@ -68,6 +68,32 @@ Layout SasProcessor::createLayout(const std::vector<sas::AmpDef>& defs) {
         juce::ParameterID{ids::pickup, kVersion}, "Guitar pickup", juce::StringArray{"Off", "Single coil", "Humbucker", "P-90"}, 0));
     l.add(std::make_unique<juce::AudioParameterFloat>(juce::ParameterID{ids::cable, kVersion}, "Guitar cable", juce::NormalisableRange<float>(0.0f, 14.0f, 2.0f), 4.0f,
                                                        juce::AudioParameterFloatAttributes().withLabel("m").withStringFromValueFunction([](float v, int) { return juce::String(v, 0); })));
+    {
+        // The post equaliser. Frequencies and Q are on log scales; every gain starts at 0, so a new instance is flat.
+        const sas::EqParams def;
+        const float lo[5] = {20.0f, 60.0f, 200.0f, 1000.0f, 1000.0f}, hi[5] = {500.0f, 1500.0f, 6000.0f, 12000.0f, 16000.0f};
+        auto logRange = [](float a, float b) {
+            juce::NormalisableRange<float> r(a, b);
+            r.setSkewForCentre(std::sqrt(a * b));
+            return r;
+        };
+        l.add(knob(ids::excLow, "Maximizer bass", 0.0f));
+    l.add(knob(ids::excHigh, "Maximizer treble", 0.0f));
+    l.add(std::make_unique<juce::AudioParameterBool>(juce::ParameterID{ids::eqOn, kVersion}, "EQ", true));
+        l.add(std::make_unique<juce::AudioParameterFloat>(juce::ParameterID{ids::eqHpf, kVersion}, "EQ high-pass", logRange(20.0f, 500.0f), 20.0f,
+                                                           juce::AudioParameterFloatAttributes().withLabel("Hz").withStringFromValueFunction([](float v, int) { return v <= 20.5f ? juce::String("off") : juce::String(v, 0); })));
+        l.add(std::make_unique<juce::AudioParameterFloat>(juce::ParameterID{ids::eqLpf, kVersion}, "EQ low-pass", logRange(2000.0f, 20000.0f), 20000.0f,
+                                                           juce::AudioParameterFloatAttributes().withLabel("Hz").withStringFromValueFunction([](float v, int) { return v >= 19500.0f ? juce::String("off") : juce::String(v, 0); })));
+        for (int b = 0; b < 5; ++b) {
+            const juce::String n(b + 1);
+            l.add(std::make_unique<juce::AudioParameterFloat>(juce::ParameterID{ids::eqFreq[b], kVersion}, "EQ " + n + " frequency", logRange(lo[b], hi[b]), float(def.band[std::size_t(b)].freq),
+                                                               juce::AudioParameterFloatAttributes().withLabel("Hz").withStringFromValueFunction([](float v, int) { return juce::String(v, 0); })));
+            l.add(std::make_unique<juce::AudioParameterFloat>(juce::ParameterID{ids::eqGain[b], kVersion}, "EQ " + n + " gain", juce::NormalisableRange<float>(-15.0f, 15.0f, 0.1f), 0.0f,
+                                                               juce::AudioParameterFloatAttributes().withLabel("dB").withStringFromValueFunction([](float v, int) { return juce::String(v, 1); })));
+            l.add(std::make_unique<juce::AudioParameterFloat>(juce::ParameterID{ids::eqQ[b], kVersion}, "EQ " + n + " Q", logRange(0.3f, 5.0f), float(def.band[std::size_t(b)].q),
+                                                               juce::AudioParameterFloatAttributes().withStringFromValueFunction([](float v, int) { return juce::String(v, 2); })));
+        }
+    }
     l.add(std::make_unique<juce::AudioParameterInt>(juce::ParameterID{ids::pitch, kVersion}, "Pitch", -12, 12, 0, juce::AudioParameterIntAttributes().withLabel("st")));
     l.add(std::make_unique<juce::AudioParameterInt>(juce::ParameterID{ids::pitchFine, kVersion}, "Pitch fine", -50, 50, 0, juce::AudioParameterIntAttributes().withLabel("cents")));
     l.add(std::make_unique<juce::AudioParameterBool>(juce::ParameterID{ids::gateOn, kVersion}, "Noise gate", false));
@@ -244,6 +270,8 @@ void SasProcessor::prepareToPlay(double sampleRate, int samplesPerBlock) {
     latencyReported_ = -1;
     gate_.prepare(sampleRate);
     pitch_.prepare(sampleRate);
+    eq_.prepare(sampleRate);
+    exc_.prepare(sampleRate);
     pitchWasActive_ = false;
     tuner_.prepare(sampleRate);
     double_.prepare(sampleRate);
@@ -313,6 +341,19 @@ void SasProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::MidiBuff
     gate_.setParams(apvts.getRawParameterValue(ids::gateOn)->load() > 0.5f, double(apvts.getRawParameterValue(ids::gateThreshold)->load()),
                     double(apvts.getRawParameterValue(ids::gateRelease)->load()));
 
+    {
+        sas::EqParams eq;
+        eq.on = apvts.getRawParameterValue(ids::eqOn)->load() > 0.5f;
+        eq.hpfHz = double(apvts.getRawParameterValue(ids::eqHpf)->load());
+        eq.lpfHz = double(apvts.getRawParameterValue(ids::eqLpf)->load());
+        for (int b = 0; b < 5; ++b) {
+            eq.band[std::size_t(b)].freq = double(apvts.getRawParameterValue(ids::eqFreq[b])->load());
+            eq.band[std::size_t(b)].gainDb = double(apvts.getRawParameterValue(ids::eqGain[b])->load());
+            eq.band[std::size_t(b)].q = double(apvts.getRawParameterValue(ids::eqQ[b])->load());
+        }
+        eq_.setParams(eq);
+        exc_.setAmounts(double(apvts.getRawParameterValue(ids::excLow)->load()) / 10.0, double(apvts.getRawParameterValue(ids::excHigh)->load()) / 10.0);
+    }
     // The pitch shifter sits in front of everything and adds its own delay only while it is shifting.
     const double pitchSemitones = double(apvts.getRawParameterValue(ids::pitch)->load()) + double(apvts.getRawParameterValue(ids::pitchFine)->load()) / 100.0;
     const bool pitchActive = std::fabs(pitchSemitones) > 1e-6;
@@ -395,6 +436,8 @@ void SasProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::MidiBuff
         double_.setAmount(double(apvts.getRawParameterValue(ids::doubleAmount)->load()) / 10.0,
                           8.0 + 22.0 * double(apvts.getRawParameterValue(ids::doubleTime)->load()) / 10.0);
         double_.process(m, mR, std::size_t(n));
+        eq_.process(m, mR, std::size_t(n));  // the post equaliser, on the stereo pair after the cabinet and the doubling
+        exc_.process(m, mR, std::size_t(n));  // then the bass and treble harmonic exciter
         chain_->applyOutputStereo(m, mR, std::size_t(n));
         if (tunerMuted) {  // tuning: nobody wants to hear the amp
             std::fill(m, m + n, 0.0f);

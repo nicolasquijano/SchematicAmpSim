@@ -876,6 +876,16 @@ TEST_CASE("the editor builds for every amp and can be rendered") {
             juce::FileOutputStream out(juce::File(dir).getChildFile("amp" + juce::String(amp) + ".png"));
             if (out.openedOk()) { out.setPosition(0); out.truncate(); png.writeImageToStream(img, out); }
             if (amp == 0) {  // the effects page
+                setParam(p, ids::eqGain[0], 5.0f); setParam(p, ids::eqGain[2], -6.0f); setParam(p, ids::eqFreq[2], 650.0f); setParam(p, ids::eqGain[3], 7.0f); setParam(p, ids::eqHpf, 90.0f);
+                for (auto* c : ed->getChildren())
+                    if (auto* b = dynamic_cast<juce::TextButton*>(c); b && b->getButtonText() == "EQ") { b->setToggleState(true, juce::dontSendNotification); b->onClick(); }
+                {
+                    const auto ex = ed->createComponentSnapshot(ed->getLocalBounds());
+                    juce::FileOutputStream o4(juce::File(dir).getChildFile("eq.png"));
+                    if (o4.openedOk()) { o4.setPosition(0); o4.truncate(); png.writeImageToStream(ex, o4); }
+                    for (int b = 0; b < 5; ++b) setParam(p, ids::eqGain[b], 0.0f);
+                    setParam(p, ids::eqHpf, 20.0f); setParam(p, ids::eqFreq[2], 1000.0f);
+                }
                 for (auto* c : ed->getChildren())
                     if (auto* b = dynamic_cast<juce::TextButton*>(c); b && b->getButtonText() == "Effects") { b->setToggleState(true, juce::dontSendNotification); b->onClick(); }
                 for (auto* c : ed->getChildren())
@@ -961,4 +971,43 @@ TEST_CASE("pitch shift: off by default with no delay, on it adds its latency and
     setParam(p, ids::pitchFine, 20.0f);  // cents alone also count
     run(p, 6);
     CHECK(p.getLatencySamples() > latencyOff + 400);
+}
+
+TEST_CASE("eq: flat by default, and the post equaliser acts on the output") {
+    JuceInit init;
+    SasProcessor p;
+    p.prepareToPlay(48000.0, 512);
+    setParam(p, ids::quality, 2.0f);
+    for (int b = 0; b < 5; ++b) {
+        CHECK(p.apvts.getParameter(ids::eqFreq[b]) != nullptr);
+        CHECK(p.apvts.getRawParameterValue(ids::eqGain[b])->load() == 0.0f);
+    }
+    CHECK(p.apvts.getRawParameterValue(ids::eqOn)->load() > 0.5f);
+    run(p, 12);
+    const double flat = rms(run(p, 6));
+    setParam(p, ids::eqHpf, 500.0f);  // a 500 Hz high-pass takes most of a 220 Hz note and its low harmonics
+    run(p, 8);
+    const double cut = rms(run(p, 6));
+    INFO("flat " << flat << " with the high-pass " << cut);
+    CHECK(cut < 0.7 * flat);
+    setParam(p, ids::eqOn, 0.0f);  // switched off: back to the flat level
+    run(p, 8);
+    CHECK(std::fabs(rms(run(p, 6)) / flat - 1.0) < 0.02);
+}
+
+TEST_CASE("maximizer: off by default, and turned up it adds high-frequency content to the output") {
+    JuceInit init;
+    SasProcessor p;
+    p.prepareToPlay(48000.0, 512);
+    setParam(p, ids::quality, 2.0f);
+    CHECK(p.apvts.getRawParameterValue(ids::excLow)->load() == 0.0f);
+    CHECK(p.apvts.getRawParameterValue(ids::excHigh)->load() == 0.0f);
+    run(p, 12, 5000.0, 0.003);
+    const double flat = rms(run(p, 6, 5000.0, 0.003));
+    setParam(p, ids::excHigh, 10.0f);
+    run(p, 8, 5000.0, 0.003);
+    const double on = rms(run(p, 6, 5000.0, 0.003));
+    INFO("flat " << flat << " with the treble exciter " << on);
+    CHECK(on > 1.1 * flat);
+    CHECK(std::isfinite(on));
 }

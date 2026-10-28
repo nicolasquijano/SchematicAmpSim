@@ -7,6 +7,7 @@
 
 #include "PluginProcessor.h"
 #include "sas/amp_def.h"
+#include "sas/eq.h"
 #include "sas/tuner.h"
 
 // The editor's colours for one amp (from the amp's amp.json "theme").
@@ -81,6 +82,35 @@ private:
     std::vector<float> curve_;
 };
 
+// The equaliser's curve: the response of the five bands, the high-pass and the low-pass on a log frequency axis, with a draggable node per
+// band (left / right = frequency, up / down = gain, wheel = Q, double click = gain back to 0).
+class EqCurve final : public juce::Component {
+public:
+    explicit EqCurve(juce::AudioProcessorValueTreeState& apvts);
+    void paint(juce::Graphics&) override;
+    void mouseDown(const juce::MouseEvent&) override;
+    void mouseDrag(const juce::MouseEvent&) override;
+    void mouseUp(const juce::MouseEvent&) override;
+    void mouseDoubleClick(const juce::MouseEvent&) override;
+    void mouseWheelMove(const juce::MouseEvent&, const juce::MouseWheelDetails&) override;
+
+    int selected() const { return selected_; }
+    void select(int band);
+    std::function<void(int)> onSelect;
+
+private:
+    sas::EqParams params() const;
+    float xOf(double hz) const;
+    float yOf(double db) const;
+    double hzAt(float x) const;
+    double dbAt(float y) const;
+    int nodeAt(juce::Point<float> p) const;
+    void setPlain(const char* id, double value, bool gesture);
+
+    juce::AudioProcessorValueTreeState& apvts_;
+    int selected_ = 2, dragging_ = -1;
+};
+
 // The tuner's face: the note, how far from it in cents on a needle meter, and the frequency.
 class TunerDisplay final : public juce::Component {
 public:
@@ -133,7 +163,7 @@ private:
     void showAmp(int index);  // rebuilds the amp-specific knobs, jack list and title
     void styleCombo(juce::ComboBox&, const char* paramId, std::unique_ptr<juce::AudioProcessorValueTreeState::ComboBoxAttachment>&);
     void styleCaption(juce::Label&, const juce::String&);
-    void setPage(int page);  // 0 = amp, 1 = effects, 2 = cabinet, 3 = tuner, 4 = pitch
+    void setPage(int page);  // 0 = amp, 1 = effects, 2 = cabinet, 3 = tuner, 4 = pitch, 5 = EQ
     void drawLogo(juce::Graphics&, juce::Rectangle<float>) const;
     void applyTheme(const sas::AmpDef&);  // colours of the shown amp
 
@@ -155,7 +185,14 @@ private:
     KnobWithLabel tsDrive_, tsTone_, tsLevel_;
     KnobWithLabel gateThreshold_, gateRelease_, cable_;
     KnobWithLabel bias_, wear_, speaker_, blend_;
-    KnobWithLabel compSustain_, compBlend_, compTone_, compLevel_, tunerRef_, stereoWidth_, doubleAmount_, doubleTime_, pitchFine_;
+    KnobWithLabel compSustain_, compBlend_, compTone_, compLevel_, tunerRef_, stereoWidth_, doubleAmount_, doubleTime_, pitchFine_, eqHpf_, eqLpf_, excLow_, excHigh_;
+    EqCurve eqCurve_;
+    juce::ToggleButton eqOn_{"On"};
+    juce::TextButton eqReset_{"Reset"};
+    juce::Label eqBandLabel_;
+    std::unique_ptr<juce::AudioProcessorValueTreeState::ButtonAttachment> eqOnAtt_;
+    std::unique_ptr<KnobWithLabel> eqKnobs_[5][3];  // frequency, gain, Q of each band; only the selected band's are shown
+    void selectEqBand(int band);
     juce::Slider pitchSlider_{juce::Slider::LinearHorizontal, juce::Slider::NoTextBox};
     juce::Label pitchValue_, pitchNote_;
     juce::TextButton pitchDown12_{"-12"}, pitchDown1_{"-1"}, pitchUp1_{"+1"}, pitchUp12_{"+12"}, pitchZero_{"0"};
@@ -183,7 +220,7 @@ private:
     juce::ToggleButton levelMatch_{"Level match"};  // shown only for amps whose jacks differ in level
     juce::ToggleButton vibrato_{"Vibrato"};  // shown only for amps that have an optical tremolo
     std::unique_ptr<juce::AudioProcessorValueTreeState::ButtonAttachment> tsOnAtt_, gateOnAtt_, speakerIntenseAtt_, compOnAtt_, compFastAtt_, tunerOnAtt_, tunerMuteAtt_, levelMatchAtt_, vibratoAtt_;
-    juce::TextButton ampTab_{"Amp"}, cabTab_{"Cabinet"}, fxTab_{"Effects"}, pitchTab_{"Pitch"}, tunerTab_{"Tuner"};
+    juce::TextButton ampTab_{"Amp"}, cabTab_{"Cabinet"}, fxTab_{"Effects"}, pitchTab_{"Pitch"}, eqTab_{"EQ"}, tunerTab_{"Tuner"};
     juce::TextButton loadA_{"Load..."}, clearA_{"Clear"}, loadB_{"Load..."}, clearB_{"Clear"};
     IrCurve curveA_, curveB_;
     std::unique_ptr<juce::FileChooser> chooser_;

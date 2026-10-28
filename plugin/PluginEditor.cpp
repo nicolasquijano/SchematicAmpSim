@@ -404,7 +404,7 @@ SasEditor::SasEditor(SasProcessor& p)
       bias_(p.apvts, ids::bias, "BIAS"), wear_(p.apvts, ids::wear, "WEAR"), speaker_(p.apvts, ids::speaker, "DYNAMICS"), blend_(p.apvts, ids::irBlend, "BLEND"),
       compSustain_(p.apvts, ids::compSustain, "SUSTAIN"), compBlend_(p.apvts, ids::compBlend, "BLEND"), compTone_(p.apvts, ids::compTone, "TONE"),
       compLevel_(p.apvts, ids::compLevel, "LEVEL"), tunerRef_(p.apvts, ids::tunerRef, "REF Hz"),
-      stereoWidth_(p.apvts, ids::irWidth, "WIDTH"), doubleAmount_(p.apvts, ids::doubleAmount, "DOUBLE"), doubleTime_(p.apvts, ids::doubleTime, "TIME"), pitchFine_(p.apvts, ids::pitchFine, "FINE cents") {
+      stereoWidth_(p.apvts, ids::irWidth, "WIDTH"), doubleAmount_(p.apvts, ids::doubleAmount, "DOUBLE"), doubleTime_(p.apvts, ids::doubleTime, "TIME"), pitchFine_(p.apvts, ids::pitchFine, "FINE cents"), eqHpf_(p.apvts, ids::eqHpf, "HIGH-PASS"), eqLpf_(p.apvts, ids::eqLpf, "LOW-PASS"), excLow_(p.apvts, ids::excLow, "BASS"), excHigh_(p.apvts, ids::excHigh, "TREBLE"), eqCurve_(p.apvts) {
     setLookAndFeel(&look_);
     for (auto* k : {&input_, &output_, &tsDrive_, &tsTone_, &tsLevel_, &gateThreshold_, &gateRelease_, &cable_, &bias_, &wear_, &speaker_, &blend_, &compSustain_, &compBlend_, &compTone_, &compLevel_, &tunerRef_, &stereoWidth_, &doubleAmount_, &doubleTime_}) addAndMakeVisible(*k);
     addAndMakeVisible(inBar_);
@@ -514,6 +514,26 @@ SasEditor::SasEditor(SasProcessor& p)
     clearB_.onClick = [this] { processor_.clearImpulseResponse(1); };
 
     addAndMakeVisible(pitchFine_);
+    for (auto* c : std::initializer_list<juce::Component*>{&eqHpf_, &eqLpf_, &eqCurve_, &eqOn_, &eqReset_, &eqBandLabel_, &excLow_, &excHigh_}) addAndMakeVisible(*c);
+    eqOnAtt_ = std::make_unique<juce::AudioProcessorValueTreeState::ButtonAttachment>(p.apvts, ids::eqOn, eqOn_);
+    for (int b = 0; b < 5; ++b) {
+        eqKnobs_[b][0] = std::make_unique<KnobWithLabel>(p.apvts, ids::eqFreq[b], "FREQ Hz");
+        eqKnobs_[b][1] = std::make_unique<KnobWithLabel>(p.apvts, ids::eqGain[b], "GAIN dB");
+        eqKnobs_[b][2] = std::make_unique<KnobWithLabel>(p.apvts, ids::eqQ[b], "Q");
+        for (auto& k : eqKnobs_[b]) addChildComponent(*k);
+    }
+    eqBandLabel_.setJustificationType(juce::Justification::centredLeft);
+    eqBandLabel_.setFont(AmpLookAndFeel::font(13.0f, true, 0.05f));
+    eqBandLabel_.setColour(juce::Label::textColourId, look_.text().withAlpha(0.85f));
+    eqCurve_.onSelect = [this](int band) { selectEqBand(band); };
+    eqReset_.onClick = [this] {
+        for (auto* id : {ids::eqHpf, ids::eqLpf})
+            if (auto* q = processor_.apvts.getParameter(id)) { q->beginChangeGesture(); q->setValueNotifyingHost(q->getDefaultValue()); q->endChangeGesture(); }
+        for (int b = 0; b < 5; ++b)
+            for (auto* id : {ids::eqFreq[b], ids::eqGain[b], ids::eqQ[b]})
+                if (auto* q = processor_.apvts.getParameter(id)) { q->beginChangeGesture(); q->setValueNotifyingHost(q->getDefaultValue()); q->endChangeGesture(); }
+    };
+    selectEqBand(2);
     addAndMakeVisible(pitchSlider_);
     pitchSlider_.setRange(-12.0, 12.0, 1.0);
     pitchSlider_.setDoubleClickReturnValue(true, 0.0);
@@ -534,7 +554,7 @@ SasEditor::SasEditor(SasProcessor& p)
     pitchZero_.onClick = [this] { pitchSlider_.setValue(0.0); };
     updatePitchLabels();
 
-    for (auto* t : {&ampTab_, &cabTab_, &fxTab_, &pitchTab_, &tunerTab_}) {
+    for (auto* t : {&ampTab_, &cabTab_, &fxTab_, &pitchTab_, &eqTab_, &tunerTab_}) {
         t->setClickingTogglesState(true);
         t->setRadioGroupId(7);
         addAndMakeVisible(*t);
@@ -545,6 +565,7 @@ SasEditor::SasEditor(SasProcessor& p)
     cabTab_.onClick = [this] { setPage(2); };
     tunerTab_.onClick = [this] { setPage(3); };
     pitchTab_.onClick = [this] { setPage(4); };
+    eqTab_.onClick = [this] { setPage(5); };
 
     showAmp(processor_.selectedAmpIndex());
     setResizable(true, true);
@@ -631,6 +652,155 @@ void SasEditor::applyTheme(const sas::AmpDef& def) {
     repaint();
 }
 
+void SasEditor::selectEqBand(int band) {
+    static const char* names[5] = {"LOW SHELF", "LOW MID", "MID", "HIGH MID", "HIGH SHELF"};
+    band = juce::jlimit(0, 4, band);
+    eqCurve_.select(band);
+    eqBandLabel_.setText(juce::String(band + 1) + "  " + names[band], juce::dontSendNotification);
+    for (int b = 0; b < 5; ++b)
+        for (auto& k : eqKnobs_[b]) k->setVisible(page_ == 5 && b == band);
+    repaint();
+}
+
+// ------------------------------------------------------------------ equaliser curve
+
+EqCurve::EqCurve(juce::AudioProcessorValueTreeState& apvts) : apvts_(apvts) { setRepaintsOnMouseActivity(true); }
+
+sas::EqParams EqCurve::params() const {
+    sas::EqParams p;
+    p.on = apvts_.getRawParameterValue(ids::eqOn)->load() > 0.5f;
+    p.hpfHz = double(apvts_.getRawParameterValue(ids::eqHpf)->load());
+    p.lpfHz = double(apvts_.getRawParameterValue(ids::eqLpf)->load());
+    for (int b = 0; b < 5; ++b) {
+        p.band[std::size_t(b)].freq = double(apvts_.getRawParameterValue(ids::eqFreq[b])->load());
+        p.band[std::size_t(b)].gainDb = double(apvts_.getRawParameterValue(ids::eqGain[b])->load());
+        p.band[std::size_t(b)].q = double(apvts_.getRawParameterValue(ids::eqQ[b])->load());
+    }
+    return p;
+}
+
+constexpr double kEqRangeDb = 18.0;
+float EqCurve::xOf(double hz) const { return float(std::log10(hz / 20.0) / 3.0 * double(getWidth() - 1)); }
+float EqCurve::yOf(double db) const { return float((1.0 - (db + kEqRangeDb) / (2.0 * kEqRangeDb)) * double(getHeight() - 1)); }
+double EqCurve::hzAt(float x) const { return 20.0 * std::pow(10.0, 3.0 * double(x) / double(std::max(1, getWidth() - 1))); }
+double EqCurve::dbAt(float y) const { return (1.0 - double(y) / double(std::max(1, getHeight() - 1))) * 2.0 * kEqRangeDb - kEqRangeDb; }
+
+void EqCurve::select(int band) {
+    selected_ = juce::jlimit(0, 4, band);
+    repaint();
+}
+
+int EqCurve::nodeAt(juce::Point<float> p) const {
+    const auto prm = params();
+    int best = -1;
+    float bestD = 16.0f;
+    for (int b = 0; b < 5; ++b) {
+        const float d = p.getDistanceFrom({xOf(prm.band[std::size_t(b)].freq), yOf(prm.band[std::size_t(b)].gainDb)});
+        if (d < bestD) { bestD = d; best = b; }
+    }
+    return best;
+}
+
+void EqCurve::setPlain(const char* id, double value, bool gesture) {
+    if (auto* q = apvts_.getParameter(id)) {
+        if (gesture) q->beginChangeGesture();
+        q->setValueNotifyingHost(q->convertTo0to1(float(value)));
+        if (gesture) q->endChangeGesture();
+    }
+}
+
+void EqCurve::mouseDown(const juce::MouseEvent& e) {
+    const int hit = nodeAt(e.position);
+    if (hit >= 0) {
+        dragging_ = hit;
+        selected_ = hit;
+        if (onSelect) onSelect(hit);
+        for (auto* id : {ids::eqFreq[hit], ids::eqGain[hit]})
+            if (auto* q = apvts_.getParameter(id)) q->beginChangeGesture();
+    }
+}
+
+void EqCurve::mouseDrag(const juce::MouseEvent& e) {
+    if (dragging_ < 0) return;
+    const auto fr = apvts_.getParameterRange(ids::eqFreq[dragging_]), gr = apvts_.getParameterRange(ids::eqGain[dragging_]);
+    setPlain(ids::eqFreq[dragging_], juce::jlimit(double(fr.start), double(fr.end), hzAt(e.position.x)), false);
+    setPlain(ids::eqGain[dragging_], juce::jlimit(double(gr.start), double(gr.end), dbAt(e.position.y)), false);
+}
+
+void EqCurve::mouseUp(const juce::MouseEvent&) {
+    if (dragging_ < 0) return;
+    for (auto* id : {ids::eqFreq[dragging_], ids::eqGain[dragging_]})
+        if (auto* q = apvts_.getParameter(id)) q->endChangeGesture();
+    dragging_ = -1;
+}
+
+void EqCurve::mouseDoubleClick(const juce::MouseEvent& e) {
+    const int hit = nodeAt(e.position);
+    if (hit >= 0) setPlain(ids::eqGain[hit], 0.0, true);
+}
+
+void EqCurve::mouseWheelMove(const juce::MouseEvent& e, const juce::MouseWheelDetails& w) {
+    int band = nodeAt(e.position);
+    if (band < 0) band = selected_;
+    const auto r = apvts_.getParameterRange(ids::eqQ[band]);
+    const double q = double(apvts_.getRawParameterValue(ids::eqQ[band])->load()) * std::pow(1.25, double(w.deltaY) * 4.0);
+    setPlain(ids::eqQ[band], juce::jlimit(double(r.start), double(r.end), q), true);
+}
+
+void EqCurve::paint(juce::Graphics& g) {
+    const auto* look = dynamic_cast<AmpLookAndFeel*>(&getLookAndFeel());
+    const auto accent = look ? look->accent() : juce::Colours::orange, text = look ? look->text() : juce::Colours::white, edge = look ? look->panelEdge() : juce::Colours::grey;
+    const auto b = getLocalBounds().toFloat();
+    g.setColour(juce::Colours::black.withAlpha(0.30f));
+    g.fillRoundedRectangle(b, 5.0f);
+    // Grid: the usual guitar frequencies, 6 dB steps.
+    g.setFont(AmpLookAndFeel::font(10.0f, false, 0.02f));
+    for (double hz : {50.0, 100.0, 200.0, 500.0, 1000.0, 2000.0, 5000.0, 10000.0}) {
+        const float x = xOf(hz);
+        g.setColour(edge.withAlpha(hz == 100.0 || hz == 1000.0 || hz == 10000.0 ? 0.55f : 0.25f));
+        g.drawVerticalLine(int(x), 0.0f, b.getHeight());
+        g.setColour(text.withAlpha(0.45f));
+        g.drawText(hz >= 1000.0 ? juce::String(int(hz / 1000.0)) + "k" : juce::String(int(hz)), int(x) + 3, int(b.getBottom()) - 14, 34, 12, juce::Justification::left);
+    }
+    for (double db = -12.0; db <= 12.0; db += 6.0) {
+        g.setColour(edge.withAlpha(db == 0.0 ? 0.7f : 0.25f));
+        g.drawHorizontalLine(int(yOf(db)), 0.0f, b.getWidth());
+        g.setColour(text.withAlpha(0.45f));
+        g.drawText(juce::String(int(db)), 3, int(yOf(db)) - 12, 24, 12, juce::Justification::left);
+    }
+    // The curve, filled to the 0 dB line.
+    sas::ParametricEq eq;
+    eq.prepare(48000.0);
+    const auto prm = params();
+    eq.setParams(prm);
+    juce::Path curve;
+    for (int x = 0; x < getWidth(); ++x) {
+        const double db = juce::jlimit(-kEqRangeDb, kEqRangeDb, prm.on ? eq.responseDb(hzAt(float(x))) : 0.0);
+        if (x == 0) curve.startNewSubPath(0.0f, yOf(db)); else curve.lineTo(float(x), yOf(db));
+    }
+    juce::Path fill(curve);
+    fill.lineTo(b.getRight(), yOf(0.0));
+    fill.lineTo(0.0f, yOf(0.0));
+    fill.closeSubPath();
+    g.setColour(accent.withAlpha(prm.on ? 0.16f : 0.05f));
+    g.fillPath(fill);
+    g.setColour(accent.withAlpha(prm.on ? 1.0f : 0.4f));
+    g.strokePath(curve, juce::PathStrokeType(2.0f));
+    // The nodes.
+    for (int i = 0; i < 5; ++i) {
+        const juce::Point<float> p(xOf(prm.band[std::size_t(i)].freq), yOf(prm.band[std::size_t(i)].gainDb));
+        const bool sel = i == selected_;
+        const float r = sel ? 9.0f : 7.0f;
+        g.setColour(juce::Colours::black.withAlpha(0.6f));
+        g.fillEllipse(p.x - r, p.y - r, 2.0f * r, 2.0f * r);
+        g.setColour(sel ? accent : accent.withAlpha(0.75f));
+        g.drawEllipse(p.x - r, p.y - r, 2.0f * r, 2.0f * r, sel ? 2.5f : 1.5f);
+        g.setFont(AmpLookAndFeel::font(10.0f, true));
+        g.setColour(text);
+        g.drawText(juce::String(i + 1), int(p.x) - 8, int(p.y) - 6, 16, 12, juce::Justification::centred);
+    }
+}
+
 void SasEditor::updatePitchLabels() {
     const int st = int(std::lround(pitchSlider_.getValue()));
     pitchValue_.setText(juce::String(st >= 0 ? "+" : "") + juce::String(st) + " st", juce::dontSendNotification);
@@ -697,6 +867,7 @@ void SasEditor::pollMeters() {
 
 void SasEditor::timerCallback() {
     pollMeters();
+    if (page_ == 5) eqCurve_.repaint();  // follows the parameters when the host or an automation moves them
     if (++tunerTicks_ % 3 == 0) updateTuner();
     if (tick_++ % 8 != 0) return;  // the rest at about 4 Hz
     // Follows the amp parameter when the host or a restored state changes it.
@@ -866,18 +1037,23 @@ void SasEditor::resized() {
     // Right: title and page tabs, then the page.
     {
         auto head = area.removeFromTop(36);
-        tunerTab_.setBounds(head.removeFromRight(70).withTrimmedTop(6).withTrimmedBottom(2));
+        tunerTab_.setBounds(head.removeFromRight(58).withTrimmedTop(6).withTrimmedBottom(2));
+        head.removeFromRight(3);
+        eqTab_.setBounds(head.removeFromRight(42).withTrimmedTop(6).withTrimmedBottom(2));
+        head.removeFromRight(3);
+        pitchTab_.setBounds(head.removeFromRight(54).withTrimmedTop(6).withTrimmedBottom(2));
+        head.removeFromRight(3);
+        fxTab_.setBounds(head.removeFromRight(70).withTrimmedTop(6).withTrimmedBottom(2));
         head.removeFromRight(4);
-        pitchTab_.setBounds(head.removeFromRight(66).withTrimmedTop(6).withTrimmedBottom(2));
+        cabTab_.setBounds(head.removeFromRight(74).withTrimmedTop(6).withTrimmedBottom(2));
         head.removeFromRight(4);
-        fxTab_.setBounds(head.removeFromRight(80).withTrimmedTop(6).withTrimmedBottom(2));
-        head.removeFromRight(4);
-        cabTab_.setBounds(head.removeFromRight(84).withTrimmedTop(6).withTrimmedBottom(2));
-        head.removeFromRight(4);
-        ampTab_.setBounds(head.removeFromRight(70).withTrimmedTop(6).withTrimmedBottom(2));
+        ampTab_.setBounds(head.removeFromRight(54).withTrimmedTop(6).withTrimmedBottom(2));
         area.removeFromTop(4);
     }
-    const bool ampPage = page_ == 0, fxPage = page_ == 1, cabPage = page_ == 2, tunerPage = page_ == 3, pitchPage = page_ == 4;
+    const bool ampPage = page_ == 0, fxPage = page_ == 1, cabPage = page_ == 2, tunerPage = page_ == 3, pitchPage = page_ == 4, eqPage = page_ == 5;
+    for (auto* c : std::initializer_list<juce::Component*>{&eqCurve_, &eqOn_, &eqReset_, &eqBandLabel_, &eqHpf_, &eqLpf_, &excLow_, &excHigh_}) c->setVisible(eqPage);
+    for (int b = 0; b < 5; ++b)
+        for (auto& k : eqKnobs_[b]) k->setVisible(eqPage && b == eqCurve_.selected());
     for (auto* c : std::initializer_list<juce::Component*>{&pitchSlider_, &pitchValue_, &pitchNote_, &pitchDown12_, &pitchDown1_, &pitchUp1_, &pitchUp12_, &pitchZero_, &pitchFine_}) c->setVisible(pitchPage);
     for (auto* c : std::initializer_list<juce::Component*>{&tunerDisplay_, &tunerOn_, &tunerMute_, &tunerRef_}) c->setVisible(tunerPage);
     for (auto& k : ampKnobs_) k->setVisible(ampPage);
@@ -946,6 +1122,57 @@ void SasEditor::resized() {
         tsDrive_.setBounds(in.removeFromLeft(in.getWidth() / 3));
         tsTone_.setBounds(in.removeFromLeft(in.getWidth() / 2));
         tsLevel_.setBounds(in);
+        repaint();
+        return;
+    }
+
+    if (eqPage) {
+        // EQ page: the curve on top; below, the two filters, the selected band's three knobs, and the switches.
+        auto bottom = area.removeFromBottom(std::min(110, area.getHeight() / 2));
+        area.removeFromBottom(gap);
+        auto maxi = area.removeFromRight(104);
+        area.removeFromRight(gap);
+        panels_.push_back({area, "EQUALISER - after the cabinet"});
+        eqCurve_.setBounds(area.reduced(8, 4).withTrimmedTop(16));
+        panels_.push_back({maxi, "MAXIMIZER"});
+        {
+            auto in = maxi.reduced(6, 4);
+            in.removeFromTop(16);
+            excLow_.setBounds(in.removeFromTop(in.getHeight() / 2));
+            excHigh_.setBounds(in);
+        }
+        auto filters = bottom.removeFromLeft(150);
+        bottom.removeFromLeft(gap);
+        auto switches = bottom.removeFromRight(86);
+        bottom.removeFromRight(gap);
+        panels_.push_back({filters, "FILTERS"});
+        {
+            auto in = filters.reduced(6, 4);
+            in.removeFromTop(16);
+            eqHpf_.setBounds(in.removeFromLeft(in.getWidth() / 2));
+            eqLpf_.setBounds(in);
+        }
+        panels_.push_back({bottom, "BAND"});
+        {
+            auto in = bottom.reduced(6, 4);
+            in.removeFromTop(16);
+            eqBandLabel_.setBounds(in.removeFromLeft(86).withTrimmedLeft(4));
+            const int w = in.getWidth() / 3;
+            for (int b = 0; b < 5; ++b) {
+                auto r = in;
+                eqKnobs_[b][0]->setBounds(r.removeFromLeft(w));
+                eqKnobs_[b][1]->setBounds(r.removeFromLeft(w));
+                eqKnobs_[b][2]->setBounds(r);
+            }
+        }
+        panels_.push_back({switches, "EQ"});
+        {
+            auto in = switches.reduced(8, 6);
+            in.removeFromTop(20);
+            eqOn_.setBounds(in.removeFromTop(26));
+            in.removeFromTop(8);
+            eqReset_.setBounds(in.removeFromTop(26));
+        }
         repaint();
         return;
     }
