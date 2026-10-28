@@ -4,6 +4,7 @@
 #include <array>
 
 #include "PluginEditor.h"
+#include "EqPresets.h"
 #include "sas/embedded_amps.h"
 
 namespace {
@@ -77,9 +78,7 @@ Layout SasProcessor::createLayout(const std::vector<sas::AmpDef>& defs) {
             r.setSkewForCentre(std::sqrt(a * b));
             return r;
         };
-        l.add(knob(ids::excLow, "Maximizer bass", 0.0f));
-    l.add(knob(ids::excHigh, "Maximizer treble", 0.0f));
-    l.add(std::make_unique<juce::AudioParameterBool>(juce::ParameterID{ids::eqOn, kVersion}, "EQ", true));
+        l.add(std::make_unique<juce::AudioParameterBool>(juce::ParameterID{ids::eqOn, kVersion}, "EQ", true));
         l.add(std::make_unique<juce::AudioParameterFloat>(juce::ParameterID{ids::eqHpf, kVersion}, "EQ high-pass", logRange(20.0f, 500.0f), 20.0f,
                                                            juce::AudioParameterFloatAttributes().withLabel("Hz").withStringFromValueFunction([](float v, int) { return v <= 20.5f ? juce::String("off") : juce::String(v, 0); })));
         l.add(std::make_unique<juce::AudioParameterFloat>(juce::ParameterID{ids::eqLpf, kVersion}, "EQ low-pass", logRange(2000.0f, 20000.0f), 20000.0f,
@@ -271,7 +270,6 @@ void SasProcessor::prepareToPlay(double sampleRate, int samplesPerBlock) {
     gate_.prepare(sampleRate);
     pitch_.prepare(sampleRate);
     eq_.prepare(sampleRate);
-    exc_.prepare(sampleRate);
     pitchWasActive_ = false;
     tuner_.prepare(sampleRate);
     double_.prepare(sampleRate);
@@ -352,7 +350,6 @@ void SasProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::MidiBuff
             eq.band[std::size_t(b)].q = double(apvts.getRawParameterValue(ids::eqQ[b])->load());
         }
         eq_.setParams(eq);
-        exc_.setAmounts(double(apvts.getRawParameterValue(ids::excLow)->load()) / 10.0, double(apvts.getRawParameterValue(ids::excHigh)->load()) / 10.0);
     }
     // The pitch shifter sits in front of everything and adds its own delay only while it is shifting.
     const double pitchSemitones = double(apvts.getRawParameterValue(ids::pitch)->load()) + double(apvts.getRawParameterValue(ids::pitchFine)->load()) / 100.0;
@@ -437,7 +434,6 @@ void SasProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::MidiBuff
                           8.0 + 22.0 * double(apvts.getRawParameterValue(ids::doubleTime)->load()) / 10.0);
         double_.process(m, mR, std::size_t(n));
         eq_.process(m, mR, std::size_t(n));  // the post equaliser, on the stereo pair after the cabinet and the doubling
-        exc_.process(m, mR, std::size_t(n));  // then the bass and treble harmonic exciter
         chain_->applyOutputStereo(m, mR, std::size_t(n));
         if (tunerMuted) {  // tuning: nobody wants to hear the amp
             std::fill(m, m + n, 0.0f);
@@ -588,6 +584,26 @@ void SasProcessor::setStateInformation(const void* data, int size) {
         } else {
             clearImpulseResponse(s);
         }
+    }
+}
+
+void SasProcessor::applyEqPreset(int index) {
+    if (index < 0 || index >= kEqPresetCount) return;
+    const EqPreset& p = kEqPresets[index];
+    auto set = [this](const char* id, double value) {
+        if (auto* q = apvts.getParameter(id)) {
+            q->beginChangeGesture();
+            q->setValueNotifyingHost(q->convertTo0to1(float(value)));
+            q->endChangeGesture();
+        }
+    };
+    set(ids::eqOn, 1.0);
+    set(ids::eqHpf, p.hpfHz);
+    set(ids::eqLpf, p.lpfHz);
+    for (int b = 0; b < 5; ++b) {
+        set(ids::eqFreq[b], p.band[std::size_t(b)].freq);
+        set(ids::eqGain[b], p.band[std::size_t(b)].gainDb);
+        set(ids::eqQ[b], p.band[std::size_t(b)].q);
     }
 }
 

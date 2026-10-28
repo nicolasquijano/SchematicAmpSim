@@ -1,4 +1,5 @@
 #include "PluginEditor.h"
+#include "EqPresets.h"
 
 #include <cmath>
 
@@ -404,7 +405,7 @@ SasEditor::SasEditor(SasProcessor& p)
       bias_(p.apvts, ids::bias, "BIAS"), wear_(p.apvts, ids::wear, "WEAR"), speaker_(p.apvts, ids::speaker, "DYNAMICS"), blend_(p.apvts, ids::irBlend, "BLEND"),
       compSustain_(p.apvts, ids::compSustain, "SUSTAIN"), compBlend_(p.apvts, ids::compBlend, "BLEND"), compTone_(p.apvts, ids::compTone, "TONE"),
       compLevel_(p.apvts, ids::compLevel, "LEVEL"), tunerRef_(p.apvts, ids::tunerRef, "REF Hz"),
-      stereoWidth_(p.apvts, ids::irWidth, "WIDTH"), doubleAmount_(p.apvts, ids::doubleAmount, "DOUBLE"), doubleTime_(p.apvts, ids::doubleTime, "TIME"), pitchFine_(p.apvts, ids::pitchFine, "FINE cents"), eqHpf_(p.apvts, ids::eqHpf, "HIGH-PASS"), eqLpf_(p.apvts, ids::eqLpf, "LOW-PASS"), excLow_(p.apvts, ids::excLow, "BASS"), excHigh_(p.apvts, ids::excHigh, "TREBLE"), eqCurve_(p.apvts) {
+      stereoWidth_(p.apvts, ids::irWidth, "WIDTH"), doubleAmount_(p.apvts, ids::doubleAmount, "DOUBLE"), doubleTime_(p.apvts, ids::doubleTime, "TIME"), pitchFine_(p.apvts, ids::pitchFine, "FINE cents"), eqHpf_(p.apvts, ids::eqHpf, "HIGH-PASS"), eqLpf_(p.apvts, ids::eqLpf, "LOW-PASS"), eqCurve_(p.apvts) {
     setLookAndFeel(&look_);
     for (auto* k : {&input_, &output_, &tsDrive_, &tsTone_, &tsLevel_, &gateThreshold_, &gateRelease_, &cable_, &bias_, &wear_, &speaker_, &blend_, &compSustain_, &compBlend_, &compTone_, &compLevel_, &tunerRef_, &stereoWidth_, &doubleAmount_, &doubleTime_}) addAndMakeVisible(*k);
     addAndMakeVisible(inBar_);
@@ -514,7 +515,7 @@ SasEditor::SasEditor(SasProcessor& p)
     clearB_.onClick = [this] { processor_.clearImpulseResponse(1); };
 
     addAndMakeVisible(pitchFine_);
-    for (auto* c : std::initializer_list<juce::Component*>{&eqHpf_, &eqLpf_, &eqCurve_, &eqOn_, &eqReset_, &eqBandLabel_, &excLow_, &excHigh_}) addAndMakeVisible(*c);
+    for (auto* c : std::initializer_list<juce::Component*>{&eqHpf_, &eqLpf_, &eqCurve_, &eqOn_, &eqReset_, &eqBandLabel_}) addAndMakeVisible(*c);
     eqOnAtt_ = std::make_unique<juce::AudioProcessorValueTreeState::ButtonAttachment>(p.apvts, ids::eqOn, eqOn_);
     for (int b = 0; b < 5; ++b) {
         eqKnobs_[b][0] = std::make_unique<KnobWithLabel>(p.apvts, ids::eqFreq[b], "FREQ Hz");
@@ -526,12 +527,14 @@ SasEditor::SasEditor(SasProcessor& p)
     eqBandLabel_.setFont(AmpLookAndFeel::font(13.0f, true, 0.05f));
     eqBandLabel_.setColour(juce::Label::textColourId, look_.text().withAlpha(0.85f));
     eqCurve_.onSelect = [this](int band) { selectEqBand(band); };
+    eqReset_.setButtonText("Presets");
     eqReset_.onClick = [this] {
-        for (auto* id : {ids::eqHpf, ids::eqLpf})
-            if (auto* q = processor_.apvts.getParameter(id)) { q->beginChangeGesture(); q->setValueNotifyingHost(q->getDefaultValue()); q->endChangeGesture(); }
-        for (int b = 0; b < 5; ++b)
-            for (auto* id : {ids::eqFreq[b], ids::eqGain[b], ids::eqQ[b]})
-                if (auto* q = processor_.apvts.getParameter(id)) { q->beginChangeGesture(); q->setValueNotifyingHost(q->getDefaultValue()); q->endChangeGesture(); }
+        // The EQ's own presets (EqPresets.h): the first one is flat, which is also the way to reset it.
+        juce::PopupMenu menu;
+        for (int i = 0; i < kEqPresetCount; ++i) menu.addItem(i + 1, i == 0 ? juce::String("Flat (reset)") : juce::String(kEqPresets[i].name));
+        menu.showMenuAsync(juce::PopupMenu::Options().withTargetComponent(&eqReset_), [this](int choice) {
+            if (choice > 0) processor_.applyEqPreset(choice - 1);
+        });
     };
     selectEqBand(2);
     addAndMakeVisible(presets_);
@@ -1100,7 +1103,7 @@ void SasEditor::resized() {
         area.removeFromTop(4);
     }
     const bool ampPage = page_ == 0, fxPage = page_ == 1, cabPage = page_ == 2, tunerPage = page_ == 3, pitchPage = page_ == 4, eqPage = page_ == 5;
-    for (auto* c : std::initializer_list<juce::Component*>{&eqCurve_, &eqOn_, &eqReset_, &eqBandLabel_, &eqHpf_, &eqLpf_, &excLow_, &excHigh_}) c->setVisible(eqPage);
+    for (auto* c : std::initializer_list<juce::Component*>{&eqCurve_, &eqOn_, &eqReset_, &eqBandLabel_, &eqHpf_, &eqLpf_}) c->setVisible(eqPage);
     for (int b = 0; b < 5; ++b)
         for (auto& k : eqKnobs_[b]) k->setVisible(eqPage && b == eqCurve_.selected());
     for (auto* c : std::initializer_list<juce::Component*>{&pitchSlider_, &pitchValue_, &pitchNote_, &pitchDown12_, &pitchDown1_, &pitchUp1_, &pitchUp12_, &pitchZero_, &pitchFine_}) c->setVisible(pitchPage);
@@ -1179,17 +1182,8 @@ void SasEditor::resized() {
         // EQ page: the curve on top; below, the two filters, the selected band's three knobs, and the switches.
         auto bottom = area.removeFromBottom(std::min(110, area.getHeight() / 2));
         area.removeFromBottom(gap);
-        auto maxi = area.removeFromRight(104);
-        area.removeFromRight(gap);
         panels_.push_back({area, "EQUALISER - after the cabinet"});
         eqCurve_.setBounds(area.reduced(8, 4).withTrimmedTop(16));
-        panels_.push_back({maxi, "MAXIMIZER"});
-        {
-            auto in = maxi.reduced(6, 4);
-            in.removeFromTop(16);
-            excLow_.setBounds(in.removeFromTop(in.getHeight() / 2));
-            excHigh_.setBounds(in);
-        }
         auto filters = bottom.removeFromLeft(150);
         bottom.removeFromLeft(gap);
         auto switches = bottom.removeFromRight(86);

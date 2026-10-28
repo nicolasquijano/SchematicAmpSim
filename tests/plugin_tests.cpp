@@ -8,6 +8,7 @@
 #include <juce_audio_formats/juce_audio_formats.h>
 
 #include "PluginEditor.h"
+#include "EqPresets.h"
 
 namespace {
 
@@ -876,15 +877,15 @@ TEST_CASE("the editor builds for every amp and can be rendered") {
             juce::FileOutputStream out(juce::File(dir).getChildFile("amp" + juce::String(amp) + ".png"));
             if (out.openedOk()) { out.setPosition(0); out.truncate(); png.writeImageToStream(img, out); }
             if (amp == 0) {  // the effects page
-                setParam(p, ids::eqGain[0], 5.0f); setParam(p, ids::eqGain[2], -6.0f); setParam(p, ids::eqFreq[2], 650.0f); setParam(p, ids::eqGain[3], 7.0f); setParam(p, ids::eqHpf, 90.0f);
+                p.applyEqPreset(3);
                 for (auto* c : ed->getChildren())
                     if (auto* b = dynamic_cast<juce::TextButton*>(c); b && b->getButtonText() == "EQ") { b->setToggleState(true, juce::dontSendNotification); b->onClick(); }
                 {
                     const auto ex = ed->createComponentSnapshot(ed->getLocalBounds());
                     juce::FileOutputStream o4(juce::File(dir).getChildFile("eq.png"));
                     if (o4.openedOk()) { o4.setPosition(0); o4.truncate(); png.writeImageToStream(ex, o4); }
-                    for (int b = 0; b < 5; ++b) setParam(p, ids::eqGain[b], 0.0f);
-                    setParam(p, ids::eqHpf, 20.0f); setParam(p, ids::eqFreq[2], 1000.0f);
+                    p.applyEqPreset(0);
+                    
                 }
                 for (auto* c : ed->getChildren())
                     if (auto* b = dynamic_cast<juce::TextButton*>(c); b && b->getButtonText() == "Effects") { b->setToggleState(true, juce::dontSendNotification); b->onClick(); }
@@ -995,23 +996,6 @@ TEST_CASE("eq: flat by default, and the post equaliser acts on the output") {
     CHECK(std::fabs(rms(run(p, 6)) / flat - 1.0) < 0.02);
 }
 
-TEST_CASE("maximizer: off by default, and turned up it adds high-frequency content to the output") {
-    JuceInit init;
-    SasProcessor p;
-    p.prepareToPlay(48000.0, 512);
-    setParam(p, ids::quality, 2.0f);
-    CHECK(p.apvts.getRawParameterValue(ids::excLow)->load() == 0.0f);
-    CHECK(p.apvts.getRawParameterValue(ids::excHigh)->load() == 0.0f);
-    run(p, 12, 5000.0, 0.003);
-    const double flat = rms(run(p, 6, 5000.0, 0.003));
-    setParam(p, ids::excHigh, 10.0f);
-    run(p, 8, 5000.0, 0.003);
-    const double on = rms(run(p, 6, 5000.0, 0.003));
-    INFO("flat " << flat << " with the treble exciter " << on);
-    CHECK(on > 1.1 * flat);
-    CHECK(std::isfinite(on));
-}
-
 TEST_CASE("presets: saving and loading a preset restores the knobs, the EQ and the pitch") {
     JuceInit init;
     SasProcessor p;
@@ -1036,4 +1020,53 @@ TEST_CASE("presets: saving and loading a preset restores the knobs, the EQ and t
     CHECK(!p.loadPreset(juce::File("C:/does/not/exist.sasp")));
     file.deleteFile();
     bad.deleteFile();
+}
+
+TEST_CASE("eq presets: each factory preset sets the EQ parameters, stays within sane gains, and shapes the sound as its name says") {
+    JuceInit init;
+    SasProcessor p;
+    p.prepareToPlay(48000.0, 512);
+    REQUIRE(kEqPresetCount == 6);  // flat and the five guitar presets
+    auto response = [&](double hz) {
+        sas::EqParams eq;
+        eq.on = p.apvts.getRawParameterValue(ids::eqOn)->load() > 0.5f;
+        eq.hpfHz = double(p.apvts.getRawParameterValue(ids::eqHpf)->load());
+        eq.lpfHz = double(p.apvts.getRawParameterValue(ids::eqLpf)->load());
+        for (int b = 0; b < 5; ++b) {
+            eq.band[std::size_t(b)].freq = double(p.apvts.getRawParameterValue(ids::eqFreq[b])->load());
+            eq.band[std::size_t(b)].gainDb = double(p.apvts.getRawParameterValue(ids::eqGain[b])->load());
+            eq.band[std::size_t(b)].q = double(p.apvts.getRawParameterValue(ids::eqQ[b])->load());
+        }
+        sas::ParametricEq e;
+        e.prepare(48000.0);
+        e.setParams(eq);
+        return e.responseDb(hz);
+    };
+    auto at = [&](int preset, double hz) { p.applyEqPreset(preset); return response(hz); };
+    for (int i = 0; i < kEqPresetCount; ++i) {
+        INFO(kEqPresets[i].name);
+        p.applyEqPreset(i);
+        CHECK(p.apvts.getRawParameterValue(ids::eqOn)->load() > 0.5f);
+        CHECK(std::fabs(p.apvts.getRawParameterValue(ids::eqHpf)->load() - float(kEqPresets[i].hpfHz)) < 0.5f);
+        for (int b = 0; b < 5; ++b) {
+            CHECK(std::fabs(p.apvts.getRawParameterValue(ids::eqGain[b])->load() - float(kEqPresets[i].band[std::size_t(b)].gainDb)) < 0.11f);
+            CHECK(std::fabs(p.apvts.getRawParameterValue(ids::eqFreq[b])->load() / float(kEqPresets[i].band[std::size_t(b)].freq) - 1.0f) < 0.01f);
+        }
+        double lo = 0.0, hi = 0.0;
+        for (double f = 25.0; f < 12000.0; f *= 1.1) { const double r = response(f); lo = std::min(lo, r); hi = std::max(hi, r); }
+        CHECK(hi < 8.0);    // no preset makes the signal much louder anywhere
+        CHECK(lo > -30.0);
+    }
+    CHECK(std::fabs(at(0, 1000.0)) < 0.01);                                        // flat
+    CHECK(at(1, 10000.0) > 1.5);                                                   // clean sparkle: air
+    CHECK(at(1, 250.0) < -1.0);                                                    // ...and the mud out
+    CHECK(at(2, 8000.0) < -3.0);                                                   // warm blues: the top rolled off
+    CHECK(at(2, 150.0) > at(2, 1000.0) + 1.0);                                     // ...and weight in the lows
+    CHECK(at(3, 40.0) < -12.0);                                                    // tight rhythm: nothing under the low E
+    CHECK(at(3, 300.0) < -2.0);
+    CHECK(at(3, 3500.0) > 0.5);
+    CHECK(at(4, 2200.0) > 2.0);                                                    // lead: the upper mids
+    CHECK(at(4, 800.0) > 2.0);
+    CHECK(at(5, 8000.0) < -4.0);                                                   // de-fizz
+    CHECK(at(5, 4500.0) < -2.0);
 }

@@ -185,7 +185,7 @@ private:
     KnobWithLabel tsDrive_, tsTone_, tsLevel_;
     KnobWithLabel gateThreshold_, gateRelease_, cable_;
     KnobWithLabel bias_, wear_, speaker_, blend_;
-    KnobWithLabel compSustain_, compBlend_, compTone_, compLevel_, tunerRef_, stereoWidth_, doubleAmount_, doubleTime_, pitchFine_, eqHpf_, eqLpf_, excLow_, excHigh_;
+    KnobWithLabel compSustain_, compBlend_, compTone_, compLevel_, tunerRef_, stereoWidth_, doubleAmount_, doubleTime_, pitchFine_, eqHpf_, eqLpf_;
     EqCurve eqCurve_;
     juce::ToggleButton eqOn_{"On"};
     juce::TextButton eqReset_{"Reset"};

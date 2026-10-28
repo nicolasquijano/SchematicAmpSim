@@ -12,7 +12,6 @@
 #include "sas/chain.h"
 #include "sas/condition.h"
 #include "sas/eq.h"
-#include "sas/exciter.h"
 #include "sas/gate.h"
 #include "sas/pitch_shifter.h"
 #include "sas/stereo.h"
@@ -47,8 +46,6 @@ inline constexpr const char* tsLevel = "ts_level";
 inline constexpr const char* pickup = "pickup";  // guitar impedance: Off / single coil / humbucker / P-90
 inline constexpr const char* cable = "cable";    // cable length in metres
 inline constexpr const char* eqOn = "eq_on";  // the post equaliser: five bands, a high-pass and a low-pass
-inline constexpr const char* excLow = "exc_low";    // the harmonic exciter ("maximizer") after the EQ: bass and treble amounts, 0..10
-inline constexpr const char* excHigh = "exc_high";
 inline constexpr const char* eqHpf = "eq_hpf";
 inline constexpr const char* eqLpf = "eq_lpf";
 inline constexpr const char* eqFreq[5] = {"eq1_freq", "eq2_freq", "eq3_freq", "eq4_freq", "eq5_freq"};
@@ -120,6 +117,8 @@ public:
     static juce::File presetFolder();
     bool savePreset(const juce::File& file);
     bool loadPreset(const juce::File& file);
+    // One of the factory presets of the equaliser (EqPresets.h; 0 = flat): sets only the EQ parameters and switches the EQ on.
+    void applyEqPreset(int index);
     void clearImpulseResponse(int slot = 0);
     juce::String impulseResponseName(int slot = 0) const;
     // Magnitude response of the loaded IR in dB (mean 0), log-spaced from 50 Hz to 10 kHz; empty when nothing is loaded.
@@ -198,7 +197,6 @@ private:
     sas::NoiseGate gate_;
     sas::PitchShifter pitch_;
     sas::ParametricEq eq_;
-    sas::HarmonicExciter exc_;
     bool pitchWasActive_ = false;
     sas::TunerFeed tuner_;
     std::atomic<float> inputPeak_{0.0f}, outputPeak_{0.0f}, gateGain_{1.0f}, idleMa_{0.0f};
