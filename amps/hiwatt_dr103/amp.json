@@ -1,0 +1,292 @@
+{
+ "id": "hiwatt_dr103",
+ "order": 9,
+ "output_db": 2.8,
+ "name": "British Clean",
+ "theme": {
+  "background": "#0b0f13",
+  "panel": "#161e26",
+  "edge": "#33475a",
+  "accent": "#8fc1e6",
+  "label": "#7c93a8",
+  "text": "#e2edf6",
+  "knob_top": "#34414e",
+  "knob_bottom": "#0e141a",
+  "pointer": "#d6ecff"
+ },
+ "preamp": {
+  "netlist": "preamp.net",
+  "tolerance": 2e-06,
+  "rail_source": "VRAIL",
+  "input_source": "VIN",
+  "output_node": "o",
+  "pot_min_ohms": 100,
+  "jack_label": "CHANNEL",
+  "knobs": [
+   {
+    "name": "brilliant_volume",
+    "default": 0.5,
+    "pot": {
+     "type": "wiper",
+     "top": "VR_BT",
+     "bottom": "VR_BB",
+     "total": 470000.0,
+     "taper": "log"
+    }
+   },
+   {
+    "name": "normal_volume",
+    "default": 0.5,
+    "pot": {
+     "type": "wiper",
+     "top": "VR_NT",
+     "bottom": "VR_NB",
+     "total": 470000.0,
+     "taper": "log"
+    }
+   },
+   {
+    "name": "bass",
+    "default": 0.5,
+    "pot": {
+     "type": "variable",
+     "resistor": "VR_BASS",
+     "total": 470000.0,
+     "taper": "log"
+    }
+   },
+   {
+    "name": "middle",
+    "default": 0.5,
+    "pot": {
+     "type": "variable",
+     "resistor": "VR_MID",
+     "total": 100000.0,
+     "taper": "linear"
+    }
+   },
+   {
+    "name": "treble",
+    "default": 0.6,
+    "pot": {
+     "type": "wiper",
+     "top": "VR_TT",
+     "bottom": "VR_TB",
+     "total": 220000.0,
+     "taper": "linear"
+    }
+   },
+   {
+    "name": "master",
+    "default": 0.7,
+    "pot": {
+     "type": "wiper",
+     "top": "VR_MT",
+     "bottom": "VR_MB",
+     "total": 220000.0,
+     "taper": "linear"
+    }
+   }
+  ],
+  "source_ohms": {
+   "resistors": [
+    "RSRC"
+   ],
+   "default": 7000,
+   "min": 10
+  },
+  "jacks": [
+   {
+    "name": "brilliant",
+    "label": "Brilliant",
+    "level_db": 5.2,
+    "drive": "VIN",
+    "resistors": {
+     "SW_BRIL": 1,
+     "SW_NORM": 1000000000000.0
+    }
+   },
+   {
+    "name": "normal",
+    "label": "Normal",
+    "level_db": -3.1,
+    "drive": "VIN",
+    "resistors": {
+     "SW_BRIL": 1000000000000.0,
+     "SW_NORM": 1
+    }
+   },
+   {
+    "name": "jumpered",
+    "label": "Jumpered",
+    "level_db": -5.0,
+    "drive": "VIN",
+    "resistors": {
+     "SW_BRIL": 1,
+     "SW_NORM": 1
+    }
+   }
+  ]
+ },
+ "ui": [
+  {
+   "param": "volume",
+   "knob": "brilliant_volume",
+   "label": "BRILLIANT"
+  },
+  {
+   "param": "volume2",
+   "knob": "normal_volume",
+   "label": "NORMAL"
+  },
+  {
+   "param": "bass",
+   "knob": "bass",
+   "label": "BASS"
+  },
+  {
+   "param": "middle",
+   "knob": "middle",
+   "label": "MIDDLE"
+  },
+  {
+   "param": "treble",
+   "knob": "treble",
+   "label": "TREBLE"
+  },
+  {
+   "param": "master",
+   "knob": "master",
+   "label": "MASTER"
+  },
+  {
+   "param": "presence",
+   "label": "PRESENCE"
+  }
+ ],
+ "power": {
+  "tubes": [
+   {
+    "name": "EL34",
+    "model": "EL34",
+    "pmax_w": 25.0,
+    "bias_scale": 1.0
+   },
+   {
+    "name": "6L6GC",
+    "model": "6L6GCDS",
+    "pmax_w": 30.0,
+    "bias_scale": 1.1603
+   },
+   {
+    "name": "6550",
+    "model": "6550DS",
+    "pmax_w": 35.0,
+    "bias_scale": 1.3969
+   }
+  ],
+  "bias": {
+   "source": "VBIAS",
+   "idle_resistors": [
+    "DCR_PT",
+    "DCR_PB"
+   ],
+   "tubes_per_half": 2
+  },
+  "netlist": "poweramp.net",
+  "tolerance": 0.0001,
+  "input_source": "VAUDIO",
+  "ht_source": "VHT",
+  "ht_node": "a",
+  "rail_node": "x",
+  "output_node": "t16",
+  "load_resistor": "RLOAD",
+  "nfb_resistor": "R_NFB",
+  "presence": {
+   "resistor": "VR_PT",
+   "scale": 100000.0,
+   "min_ohms": 100,
+   "default": 0.5
+  },
+  "supply": {
+   "mains_hz": 50,
+   "vac_peak": 555,
+   "rect_source_ohms": 70,
+   "ht_dc_source": 480,
+   "rect_drop": 2.8,
+   "reservoir_farads": 0.00011,
+   "tie_ohms": 1.0,
+   "settle_seconds": 0.5
+  }
+ },
+ "lite": {
+  "base_gain_db": 13.919,
+  "high_pass_hz": 1,
+  "shelf_hz": 665.318,
+  "presence_db": [
+   0,
+   0.0276691,
+   0.0825976,
+   0.244108,
+   7.59061
+  ],
+  "sag_table": [
+   [
+    0,
+    0
+   ],
+   [
+    2.54648,
+    0.715408
+   ],
+   [
+    5.09296,
+    2.86422
+   ],
+   [
+    9.5493,
+    10.0522
+   ],
+   [
+    15.9155,
+    26.7524
+   ],
+   [
+    22.2817,
+    46.2584
+   ],
+   [
+    28.6479,
+    63.8984
+   ],
+   [
+    35.0141,
+    75.3923
+   ],
+   [
+    44.5634,
+    92.6882
+   ],
+   [
+    57.2958,
+    117.831
+   ],
+   [
+    82.7606,
+    140.333
+   ],
+   [
+    127.324,
+    152.007
+   ]
+  ],
+  "rail_x_idle": 473.468,
+  "rail_sag_fraction": 0.58,
+  "ceiling_light": 54.4016,
+  "ceiling_heavy": 54.4016,
+  "ceiling_decay": 206.524,
+  "knee": 3.10955,
+  "sag_attack_s": 0.01,
+  "sag_release_s": 0.06
+ }
+}

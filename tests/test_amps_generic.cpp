@@ -678,3 +678,54 @@ TEST_CASE("Bassman 5F6-A: the bright channel is brighter at low volume, the jump
     CHECK(level("normal1", "treble", 1.0, 4000.0) > 1.3 * level("normal1", "treble", 0.0, 4000.0));
     CHECK(level("normal1", "bass", 1.0, 80.0) > 1.3 * level("normal1", "bass", 0.0, 80.0));
 }
+
+TEST_CASE("Hiwatt DR103: supply, bias, the inverter and the preamp plates are in the range of the drawing") {
+    const AmpDef def = loadEmbeddedAmp("hiwatt_dr103");
+    PowerAmp power(def, kFs);
+    const auto net = parseNetlist(def.power.netlistText, def.power.netlist);
+    CHECK(power.solver().dcConverged);
+    auto v = [&](const char* n) { return power.solver().voltage(net.node(n)); };
+    CHECK(std::abs(v("a") - 475.0) < 30.0);      // HT supply 1
+    CHECK(std::abs(v("bias") + 43.0) < 6.0);     // set for ~38 mA (the drawing prints -38 V)
+    const double idleMa = (v("a") - v("pt")) / 30.0 / 2.0 * 1e3;  // per tube, 30 ohm per primary half
+    INFO("idle " << idleMa << " mA per EL34");
+    CHECK(idleMa > 30.0);
+    CHECK(idleMa < 46.0);
+    // The V3b follower holds the inverter's grids and cathodes near +85 V.
+    CHECK(std::abs(v("nref") - 85.0) < 12.0);
+    CHECK(std::abs(v("kc") - v("nref")) < 4.0);
+    Preamp pre(def, kFs, power.railX());
+    const auto pnet = parseNetlist(def.preamp.netlistText, def.preamp.netlist);
+    auto p = [&](const char* n) { return pre.solver().voltage(pnet.node(n)); };
+    INFO("V1 plate " << p("pn") << " V, V2 plate " << p("p2") << " V");
+    CHECK(std::abs(p("pn") - 160.0) < 90.0);     // the drawing prints 160 V; the tube model draws less and sits higher
+    CHECK(std::abs(p("p2") - 140.0) < 45.0);     // 140 V, same reason
+}
+
+TEST_CASE("Hiwatt DR103: the brilliant channel is thinner, each volume acts on its own channel, tone, master and presence act") {
+    const AmpDef def = loadEmbeddedAmp("hiwatt_dr103");
+    auto level = [&](const char* jack, const char* knob, double v, double hz, double peak = 0.0005, double presence = 0.5) {
+        FullAmp amp(def, kFs);
+        auto k = defaultKnobs(def);
+        if (knob) k[def.knobIndex(knob)] = v;
+        amp.setKnobs(k, presence);
+        amp.setJack(def.jackIndex(jack));
+        return rmsAt(amp, hz, peak);
+    };
+    // The 1000p coupling of the brilliant channel against the normal one's 22n: less bass.
+    const double brilTilt = level("brilliant", nullptr, 0, 4000.0) / level("brilliant", nullptr, 0, 100.0);
+    const double normTilt = level("normal", nullptr, 0, 4000.0) / level("normal", nullptr, 0, 100.0);
+    INFO("tilt brilliant " << brilTilt << " normal " << normTilt);
+    CHECK(brilTilt > 1.5 * normTilt);
+    CHECK(level("brilliant", "brilliant_volume", 0.8, 500.0) > 1.5 * level("brilliant", "brilliant_volume", 0.3, 500.0));
+    CHECK(std::abs(level("brilliant", "normal_volume", 0.1, 500.0) / level("brilliant", "normal_volume", 0.9, 500.0) - 1.0) < 0.3);
+    CHECK(level("normal", "normal_volume", 0.8, 500.0) > 1.5 * level("normal", "normal_volume", 0.3, 500.0));
+    for (const char* jack : {"brilliant", "normal"}) {
+        INFO(jack);
+        CHECK(level(jack, "treble", 1.0, 4000.0) > 1.3 * level(jack, "treble", 0.0, 4000.0));
+        CHECK(level(jack, "bass", 1.0, 80.0) > 1.3 * level(jack, "bass", 0.0, 80.0));
+        CHECK(level(jack, "middle", 1.0, 500.0) > 1.3 * level(jack, "middle", 0.0, 500.0));
+        CHECK(level(jack, "master", 0.8, 500.0) > 1.3 * level(jack, "master", 0.3, 500.0));
+        CHECK(level(jack, nullptr, 0, 3150.0, 0.0005, 1.0) > 1.5 * level(jack, nullptr, 0, 3150.0, 0.0005, 0.0));
+    }
+}

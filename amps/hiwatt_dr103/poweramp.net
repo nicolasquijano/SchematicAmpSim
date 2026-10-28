@@ -1,0 +1,97 @@
+* Hiwatt DR103 power amp (owner's manual drawings: preamp issue 4, output stage issue 1, power supply issue 3): the long-tailed
+* phase inverter V4 with the feedback injected where its 22k and 2k2 tail resistors meet, the V3b cathode follower that sets the
+* inverter's DC level, four EL34 as two parallel pairs (22k grid stoppers, 100k leaks to the bias, 100R screen resistors and
+* a 470R to HT supply 2), the TH7549/2 output transformer with its 16 / 8 / 4 ohm taps, and the supply: the 1N5408 bridge
+* into two 220u in series (node a is HT supply 1, integrated by the engine), 100R to HT supply 2 and 1k to HT supply 3.
+*
+* Assumptions where the drawing is silent or ambiguous (change them here, not in code):
+*  - V4 is a 12AX7 (the drawing says ECC83; the specification page lists an ECC81);
+*  - the feedback comes from the 16 ohm tap through 10k to the tail junction (node c1), which also has 470R + 10n to ground and
+*    the presence network: 100n, the 100k pot (a rheostat here: the 100pF at its far end, to V3a's plate, is left out) and its
+*    wiper to ground through 470R;
+*  - output transformer: 1.9k plate to plate (four EL34), 8 H per primary half, 30 ohm per half, a large core (SAT 7);
+*  - the filter pairs 50u / 220u in series are taken as 40.7u on each of HT supply 2 and 3;
+*  - bias: the 1k / 1N5408 / 100u / 47k supply as a Thevenin source behind 1k. The drawing prints -38 V, but with this tube model
+*    that idles 53 mA per EL34 (25 W, the full rating), so the source is set for -43 V (about 38 mA), like the Marshall 100 W copies.
+
+.nodes pin ga gb kc pa pb dt db bias g45 g67 s45 s67 sc h2 pt pbm npt npb a t16 t8 bk x c1 f10 pr w nref gv3 xb xa
+
+S VAUDIO pin 1 0
+S VHT a 1 480
+S VBIAS bias 1k -43.9
+
+* Phase inverter V4: the preamp's coupling 47n (and its 100k) are in preamp.net, so a large cap carries the signal here.
+* The grids sit on the V3b follower (node nref) through 100k (V4a) and 1M (V4b); V4b's grid is held to the tail junction by 100n.
+C C9 pin ga 100u
+R R100G ga nref 100k
+R R1MG gb nref 1M
+C C100N gb c1 100n
+T V4A ga pa kc 12AX7
+T V4B gb pb kc 12AX7
+R R82 x pa 82k
+R R91 x pb 91k
+R R22K kc c1 22k
+R R2K2 c1 0 2k2
+C C47A pa dt 47n
+C C47B pb db 47n
+
+* V3b: cathode follower, grid on a 1M / 220k divider from its supply, 220k cathode load (the DC level of the inverter's grids).
+* Its supply is HT supply 3 through the same 10k / 32u and 10k / 16u as the preamp.
+R R10X x xb 10k
+C C32X xb 0 32u
+R R10Y xb xa 10k
+C C16X xa 0 16u
+T V3B gv3 xa nref 12AX7
+R R1MV xa gv3 1M
+R R220V gv3 0 220k
+R R220C nref 0 220k
+
+* Feedback and presence: 10k from the 16 ohm tap, 470R + 10n to ground, 100n and the presence rheostat, wiper to ground through 470R.
+R R_NFB t16 c1 10k
+R R470F c1 f10 470
+C C10N f10 0 10n
+C C100P c1 pr 100n
+R VR_PT pr w 50k
+R R470W w 0 470
+
+* Bias supply: 100u and 47k to ground, 100k grid leaks, 22k stoppers (two EL34 per pair, so 11k).
+C C100U bias 0 100u
+R R47K bias 0 47k
+R R100A dt bias 100k
+R R100B db bias 100k
+R R22A dt g45 11k
+R R22B db g67 11k
+
+* EL34s: each pair shares its stopper, screen resistor (100R each, so 50R per pair) and plate load; the 470R is common.
+P V4P g45 pt s45 0 EL34 2
+P V5P g67 pbm s67 0 EL34 2
+R RS45 sc s45 50
+R RS67 sc s67 50
+R R470S h2 sc 470
+
+* Output transformer: plates are fed from node a (the centre tap, HT supply 1); windings are the primary halves, then the 16R, 8R
+* and 4R sections of the secondary (turns relative to a half).
+R DCR_PT pt npt 30
+R DCR_PB pbm npb 30
+.param n16 = 2*1/sqrt(1900/16)
+* Core saturation: SAT is the flux (volt-seconds) where the extra magnetising current equals the linear one; ~full-power
+* plate-to-plate swing / (2 pi f), here with f about 20 Hz for the oversized Hiwatt core.
+.xfmr OT L=8 SAT=7
+  W npt a 1 pri
+  W a npb 1 pri
+  W t16 t8 0.2929*n16 sec
+  W t8 bk 0.2071*n16 sec
+  W bk 0 0.5*n16 sec
+  K pri pri 0.9999
+  K pri sec 0.9995
+  K sec sec 0.9999
+.end
+R RLOAD t16 0 16
+
+* HT supply 2 (100R from HT 1, 50u / 220u in series) and HT supply 3 (1k from HT 2, the same filter); RPREAMP is what the preamp
+* (V1 to V3a) draws from HT 3.
+R R100H a h2 100
+C C41A h2 0 40.7u
+R R1KH h2 x 1k
+C C41B x 0 40.7u
+R RPREAMP x 0 60k

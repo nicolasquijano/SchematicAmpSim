@@ -1,0 +1,104 @@
+* Hiwatt DR103 100 W preamp (owner's manual drawing, issue 4, serial AB0309 onwards): V1a normal and V1b brilliant input stages
+* (one shared 1k5 / 100u cathode), their volume pots feeding the two halves of V2 (plates joined, one 100k load; the normal
+* half has an unbypassed 1k cathode, the brilliant half 1k with 47n), the passive Hiwatt tone stack (1000p + 220p treble, 100k lin
+* middle, 470k log bass, two 47n and a 100k), the 220k master volume and V3a (100k load, 1k5 cathode). The coupling 47n to the
+* phase inverter and its 100k are drawn here so the preamp's output is already AC; the inverter, the V3b DC reference and
+* the presence network are in poweramp.net.
+*
+* Assumptions where the drawing is silent or ambiguous (change them here, not in code):
+*  - the input jacks: 1M to ground and nothing else (the drawing shows the grids wired straight to the jacks);
+*    "Jumpered" feeds the same signal into both channels;
+*  - all four valves are 12AX7 (the drawing says ECC83 for V1 to V4; the specification page lists V4 as an ECC81);
+*  - the capacitor between V3a's plate and the presence pot (printed "100pF", cut by the page fold) is left out: the preamp and
+*    the power amp are solved separately and at 100 pF its effect is tiny;
+*  - supply: the node x is HT supply 3, 10k and 32u make the V2 rail, another 10k and 16u the V1 / V3 rail.
+
+.nodes x nb na gin in jb jn pb pn kk cb cn wb wn p2 k2a k2b ta tb tc tw u1 m l2 mt wm p3 k3 o
+
+* HT supply 3 (node x): driven from the power amp at run time; 410 V is the standalone default.
+V VRAIL x 100 410
+R R10A x nb 10k
+C C32U nb 0 32u
+R R10B nb na 10k
+C C16U na 0 16u
+
+* The guitar behind a variable source resistance, then the jack switches.
+I VIN gin 1
+R RSRC gin in 7k
+* The guitar behind its source impedance. RSRC is the plain 7k source: the "Off" setting, and what a pedal in front of the amp
+* looks like. A pickup replaces it with its own impedance as seen from the open-circuit voltage (the recording): the
+* coil (winding resistance RPU + inductance) in parallel with its winding capacitance CPU and an eddy-current loss resistor
+* RPL, then the cable capacitance (200 pF per 2 m, switched in steps of 200, 400 and 800 pF). The engine sets the values:
+* single coil = coil 1 (2.5 H), humbucker and P-90 = coil 2 (5 H) with their own resistances; open = 1e12.
+R RPU1 gin pkb1 1e12
+.xfmr LPU1 L=2.5
+  W pkb1 in 1 pu
+.end
+R RPU2 gin pkb2 1e12
+.xfmr LPU2 L=5
+  W pkb2 in 1 pu
+.end
+C CPU gin in 110p
+R RPL gin in 1e12
+R SWK1 in pkk1 1e12
+C CCAB1 pkk1 0 200p
+R SWK2 in pkk2 1e12
+C CCAB2 pkk2 0 400p
+R SWK4 in pkk4 1e12
+C CCAB4 pkk4 0 800p
+
+* Jacks. SW_* are the channel selector (closed 1 ohm / open 1e12), set by the jack modes. jb / jn are the V1b / V1a grids.
+R SW_BRIL in jb 1
+R RLEAK_B jb 0 1M
+R SW_NORM in jn 1e12
+R RLEAK_N jn 0 1M
+
+* V1: two 220k plate loads from the V1 rail, one shared 1k5 / 100u cathode.
+T V1B jb pb kk 12AX7
+T V1A jn pn kk 12AX7
+R R220B na pb 220k
+R R220N na pn 220k
+R RK1 kk 0 1k5
+C CK1 kk 0 100u
+
+* Brilliant channel: 1000p coupling into the 470k log volume (V2b grid). Normal channel: 22n into its 470k log volume (V2a grid).
+C C_B pb cb 1n
+R VR_BT cb wb 1
+R VR_BB wb 0 1
+C C_N pn cn 22n
+R VR_NT cn wn 1
+R VR_NB wn 0 1
+
+* V2: plates joined onto 100k, 1k cathodes (the brilliant half bypassed with 47n).
+T V2A wn p2 k2a 12AX7
+T V2B wb p2 k2b 12AX7
+R R100P nb p2 100k
+R RK2A k2a 0 1k
+R RK2B k2b 0 1k
+C CK2B k2b 0 47n
+
+* Tone stack: 1000p and 220p in series to the 220k lin treble pot (its bottom is tc, 220k from their junction), 22k to the
+* middle (100k lin rheostat, 1000p across it), the bass (470k log rheostat to ground) and the 100k / 47n / 47n network.
+C C1000T p2 ta 1n
+C C220T ta tb 220p
+R R220 ta tc 220k
+R VR_TT tb tw 1
+R VR_TB tw tc 1
+R R22A tc u1 22k
+R VR_MID u1 m 1
+C C1000M u1 m 1n
+R VR_BASS m 0 1
+R R100L p2 l2 100k
+C C47A l2 m 47n
+C C47B l2 0 47n
+
+* Master volume (220k lin) behind 22k from the treble wiper, then V3a.
+R R22M tw mt 22k
+R VR_MT mt wm 1
+R VR_MB wm 0 1
+T V3A wm p3 k3 12AX7
+R R100V na p3 100k
+R RK3 k3 0 1k5
+* Coupling 47n into the phase inverter (100k to the V3b DC reference).
+C C47O p3 o 47n
+R RPI o 0 100k

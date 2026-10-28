@@ -6,6 +6,10 @@ version numbers follow [Semantic Versioning](https://semver.org/) (see [docs/REL
 ## [Unreleased]
 
 ### Added
+- A new amp, British Clean, from a 100 W clean head owner's manual (preamp issue 4, output stage, power supply): brilliant and normal channels, passive
+  tone stack with master volume, four EL34 and a silicon bridge supply. The printed -38 V bias idles 53 mA per tube with this tube model, so the source
+  is set for -43 V (about 38 mA). The plate voltages printed on the preamp are 40 to 75 V lower than the model's; the 100 pF between the preamp's
+  last plate and the presence pot is left out (see the comments in `amps/hiwatt_dr103/*.net`).
 - A new amp, American Bass 50, from the 5F6-A tweed bass head schematic (Kuehnel's redrawing): bright and normal channels with #1 and #2 inputs,
   two 6L6GC, tube rectifier and choke. The bias source and the rectifier are tuned, not read, because the drawing prints no idle current.
 - A new amp, American Triple Stack, from a three-channel solo head schematic (preliminary drawing): channel 1 Clean / Pushed, channels 2 and 3 with
