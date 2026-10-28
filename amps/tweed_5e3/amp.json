@@ -1,7 +1,7 @@
 {
   "id": "tweed_5e3",
   "order": 6,
-  "output_db": 14.6,
+  "output_db": 12.3,
   "name": "American Tweed",
 
   "theme": {
@@ -49,6 +49,7 @@
   ],
 
   "power": {
+    "transformer_parasitics": { "primary_pf": 150, "core_loss_ohms": 168000 },
     "tubes": [ { "name": "6V6GT", "model": "6V6GT", "pmax_w": 14.0, "bias_scale": 1.0 } ],
     "bias": { "idle_resistors": ["DCR_PT", "DCR_PB"], "tubes_per_half": 1 },
     "netlist": "poweramp.net",
@@ -73,17 +74,17 @@
   },
 
   "lite": {
-  "base_gain_db": -1.30977,
-  "high_pass_hz": 32.0576,
+  "base_gain_db": 0.859337,
+  "high_pass_hz": 46.2727,
   "shelf_hz": 150,
   "presence_db": [0, 0, 0, 0, 0],
-  "sag_table": [[0, 0], [2.54648, 0.54539], [5.09296, 2.32603], [9.5493, 9.09577], [15.9155, 9.09577], [22.2817, 10.1754], [28.6479, 12.0144], [35.0141, 13.1325], [44.5634, 14.1698], [57.2958, 14.9786], [82.7606, 15.7573], [127.324, 16.0495]],
+  "sag_table": [[0, 0], [2.54648, 0.326278], [5.09296, 1.35824], [9.5493, 5.26125], [15.9155, 12.1625], [22.2817, 12.1625], [28.6479, 12.1625], [35.0141, 12.1625], [44.5634, 12.1625], [57.2958, 13.1853], [82.7606, 14.4127], [127.324, 15.2527]],
   "rail_x_idle": 213.474,
   "rail_sag_fraction": 0.58,
-  "ceiling_light": 16.0353,
-  "ceiling_heavy": 9.05708,
-  "ceiling_decay": 24.5553,
-  "knee": 2.24498,
+  "ceiling_light": 19.4352,
+  "ceiling_heavy": 10.0706,
+  "ceiling_decay": 35.2214,
+  "knee": 1.748,
   "sag_attack_s": 0.01,
   "sag_release_s": 0.06
 }

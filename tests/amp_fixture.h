@@ -45,6 +45,8 @@ inline const sas::AmpDef& jcm800() {
         for (auto& s : d.preamp.stages) useStockTriodes(s.netlistText);
         useStockTriodes(d.power.netlistText);
         withoutCoreSaturation(d.power.netlistText);
+        d.power.speakerLoad.enabled = false;  // the Rust circuit has a plain resistor load
+        d.power.transformer.enabled = false;  // ...and an ideal transformer without winding capacitance
         d.lite.baseGainDb = 25.72;
         d.lite.highPassHz = 21.9;
         d.lite.shelfHz = 564.0;

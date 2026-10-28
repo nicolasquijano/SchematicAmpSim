@@ -1,7 +1,7 @@
 {
   "id": "ac30_normal",
   "order": 5,
-  "output_db": 7.3,
+  "output_db": 5.6,
   "name": "British Class A",
 
   "theme": {
@@ -47,6 +47,7 @@
   ],
 
   "power": {
+    "transformer_parasitics": { "primary_pf": 150, "core_loss_ohms": 84000 },
     "tubes": [ { "name": "EL84", "model": "EL84", "pmax_w": 12.0, "bias_scale": 1.0 } ],
     "bias": { "idle_resistors": ["DCR_PT", "DCR_PB"], "tubes_per_half": 2 },
     "netlist": "poweramp.net",
@@ -72,17 +73,17 @@
   },
 
   "lite": {
-  "base_gain_db": 39.0016,
-  "high_pass_hz": 22.5097,
-  "shelf_hz": 2950.99,
-  "presence_db": [0, -0.652392, -1.8335, -4.6516, -19.7469],
-  "sag_table": [[0, 0], [2.54648, 0.0859343], [5.09296, 0.344178], [9.5493, 1.21542], [15.9155, 3.42162], [22.2817, 6.79823], [28.6479, 11.0775], [35.0141, 14.3843], [44.5634, 14.3843], [57.2958, 14.3843], [82.7606, 14.3843], [127.324, 14.3843]],
+  "base_gain_db": 41.3909,
+  "high_pass_hz": 37.0371,
+  "shelf_hz": 3482.17,
+  "presence_db": [0, -0.669765, -1.89891, -4.86284, -20.514],
+  "sag_table": [[0, 0], [2.54648, 0.0418636], [5.09296, 0.166478], [9.5493, 0.573608], [15.9155, 1.51967], [22.2817, 2.8424], [28.6479, 4.59651], [35.0141, 6.80003], [44.5634, 9.76417], [57.2958, 9.76417], [82.7606, 9.76417], [127.324, 9.76417]],
   "rail_x_idle": 311.166,
   "rail_sag_fraction": 0.58,
-  "ceiling_light": 242.849,
-  "ceiling_heavy": 26.2687,
-  "ceiling_decay": 3.23843,
-  "knee": 4.60163,
+  "ceiling_light": 46.1644,
+  "ceiling_heavy": 29.1931,
+  "ceiling_decay": 0.61561,
+  "knee": 2.71887,
   "sag_attack_s": 0.01,
   "sag_release_s": 0.06
 }

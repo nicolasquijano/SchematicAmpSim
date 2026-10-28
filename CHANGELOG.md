@@ -25,6 +25,12 @@ version numbers follow [Semantic Versioning](https://semver.org/) (see [docs/REL
   `v*` tag is pushed.
 
 ### Changed
+- The output transformers have winding capacitance (150 pF across the primary) and core loss (about 21 times the plate-to-plate impedance), set per amp in
+  `transformer_parasitics`: a roll-off and a resonance in the treble. The core loss also damps the resonance: without it the 120 W high-gain amp rings at rest
+  with its feedback loop, and 300 pF rings even with it.
+- The power amps drive a reactive speaker load (voice-coil resistance and inductance, cone resonance) instead of a plain resistor: the output now has a bass bump, a mid dip
+  and a rising top like a tube amp into a real speaker. The Lite fits and the output levels of every amp were redone. Lite cannot reproduce the bump and the dip
+  (worst fit error about 9 dB on the small amps). Each amp can opt out with `speaker_load.enabled = false`.
 - The input jack selector has 8 positions (it had 4); saved projects keep their selection. Amps list order is unchanged, the new amp is last.
 - Strict floating point (`-ffp-contract=off`) on clang and gcc, as `/fp:precise` on MSVC.
 

@@ -57,6 +57,28 @@ PowerAmp::Built PowerAmp::build(const AmpDef& def) {
     }
     if (!pd.nfbResistor.empty()) b.rNfb = b.net.resistor(pd.nfbResistor);
     b.rLoad = b.net.resistor(pd.loadResistor);
+    if (pd.transformer.enabled && pd.bias.idleResistors.size() >= 2) {
+        // The primary's two ends are where the plates' DC resistors meet the winding.
+        Circuit& c = b.net.circuit;
+        const Node top = c.resistorAt(b.net.resistor(pd.bias.idleResistors[0])).b, bottom = c.resistorAt(b.net.resistor(pd.bias.idleResistors[1])).b;
+        if (pd.transformer.primaryPf > 0.0) c.capacitor(top, bottom, pd.transformer.primaryPf * 1e-12);
+        if (pd.transformer.coreLossOhms > 0.0) c.resistor(top, bottom, pd.transformer.coreLossOhms);
+    }
+    if (pd.speakerLoad.enabled) {
+        // The load resistor becomes the voice coil's DC resistance; behind it come its inductance and the cone resonance.
+        const auto& sl = pd.speakerLoad;
+        Circuit& c = b.net.circuit;
+        const Circuit::Res load = c.resistorAt(b.rLoad);
+        const double z = load.ohms;
+        const Node sp = c.node("spk_coil"), spm = c.node("spk_cone");
+        c.moveResistor(b.rLoad, load.a, sp);
+        c.setResistor(b.rLoad, sl.reFraction * z);
+        c.coupledInductors({{sp, spm}}, {sl.leMhPerOhm * 1e-3 * z});
+        const double rres = sl.peakFraction * z, w0 = 2.0 * kPi * sl.resonanceHz;
+        c.resistor(spm, load.b, rres);
+        c.capacitor(spm, load.b, sl.q / (w0 * rres));
+        c.coupledInductors({{spm, load.b}}, {rres / (sl.q * w0)});
+    }
     b.x = b.net.node(pd.railNode);
     b.ht = b.net.node(pd.htNode);
     b.out = b.net.node(pd.outputNode);

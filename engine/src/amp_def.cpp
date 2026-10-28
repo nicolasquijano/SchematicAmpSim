@@ -231,6 +231,21 @@ PowerDef parsePower(const json& j, const FileReader& read) {
         for (const auto& r : need(b, "idle_resistors", "power.bias")) p.bias.idleResistors.push_back(r.get<std::string>());
         p.bias.tubesPerHalf = num(b, "tubes_per_half", "power.bias");
     }
+    if (j.contains("transformer_parasitics")) {
+        const json& tp = j.at("transformer_parasitics");
+        if (tp.contains("enabled")) p.transformer.enabled = tp.at("enabled").get<bool>();
+        p.transformer.primaryPf = numOr(tp, "primary_pf", p.transformer.primaryPf);
+        p.transformer.coreLossOhms = numOr(tp, "core_loss_ohms", p.transformer.coreLossOhms);
+    }
+    if (j.contains("speaker_load")) {
+        const json& sl = j.at("speaker_load");
+        if (sl.contains("enabled")) p.speakerLoad.enabled = sl.at("enabled").get<bool>();
+        p.speakerLoad.reFraction = numOr(sl, "re_fraction", p.speakerLoad.reFraction);
+        p.speakerLoad.leMhPerOhm = numOr(sl, "le_mh_per_ohm", p.speakerLoad.leMhPerOhm);
+        p.speakerLoad.peakFraction = numOr(sl, "peak_fraction", p.speakerLoad.peakFraction);
+        p.speakerLoad.resonanceHz = numOr(sl, "resonance_hz", p.speakerLoad.resonanceHz);
+        p.speakerLoad.q = numOr(sl, "q", p.speakerLoad.q);
+    }
     const json& s = need(j, "supply", "power");
     p.supply.mainsHz = num(s, "mains_hz", "power.supply");
     p.supply.vacPeak = num(s, "vac_peak", "power.supply");

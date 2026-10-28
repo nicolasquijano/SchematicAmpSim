@@ -58,6 +58,7 @@ public:
     Node node(const std::string& name);
     ResId resistor(Node a, Node b, double ohms);
     void setResistor(ResId id, double ohms) { res_[id.i].ohms = ohms; }
+    void moveResistor(ResId id, Node a, Node b) { res_[id.i].a = a; res_[id.i].b = b; }
     void capacitor(Node a, Node b, double farads);
     // `scale` identical triodes in parallel (grids, plates and cathodes tied): currents and
     // interelectrode capacitances scale, the Newton problem stays the size of one triode.

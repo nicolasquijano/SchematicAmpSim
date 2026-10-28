@@ -148,6 +148,26 @@ struct BiasDef {
     bool adjustable() const { return !source.empty(); }  // cathode-bias amps have no source: they only read the idle current
 };
 
+// The loudspeaker as the output transformer sees it: the voice coil's resistance and inductance in series with the cone's mechanical
+// resonance (a parallel R-L-C). Everything scales with the load resistor of the power netlist (its nominal impedance), so one set of
+// fractions serves every tap. Typical figures of a 12 inch guitar speaker, not measurements of a particular one.
+struct SpeakerLoadDef {
+    bool enabled = true;
+    double reFraction = 0.78;      // DC resistance / nominal impedance
+    double leMhPerOhm = 0.09;      // voice-coil inductance, millihenries per ohm of nominal impedance
+    double peakFraction = 3.5;     // impedance added by the resonance at its peak, / nominal impedance
+    double resonanceHz = 80.0;
+    double q = 4.0;                // mechanical Q of the resonance
+};
+
+// Parasitics of the output transformer's primary, across its two halves (plate to plate): the winding capacitance, which makes the
+// transformer resonate in the treble, and the core loss, a resistor in parallel. Typical figures of a guitar output transformer.
+struct TransformerParasiticsDef {
+    bool enabled = true;
+    double primaryPf = 150.0;      // winding capacitance across the whole primary, picofarads
+    double coreLossOhms = 40e3;    // equivalent core-loss resistance across the primary: about 21 times the plate-to-plate impedance (it also damps the winding resonance)
+};
+
 struct PowerDef {
     std::vector<PowerKnobDef> knobs;
     std::vector<PowerTubeDef> tubes;
@@ -160,6 +180,8 @@ struct PowerDef {
     std::string presenceComplement;
     double presenceScale = 22e3, presenceMinOhms = 50, presenceDefault = 0.5;
     SupplyDef supply;
+    SpeakerLoadDef speakerLoad;
+    TransformerParasiticsDef transformer;
 };
 
 // Behavioural power amp fitted to measurements of the full circuit (see poweramp_lite.h).
