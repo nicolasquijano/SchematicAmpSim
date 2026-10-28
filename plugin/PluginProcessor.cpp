@@ -591,6 +591,28 @@ void SasProcessor::setStateInformation(const void* data, int size) {
     }
 }
 
+juce::File SasProcessor::presetFolder() {
+    return juce::File::getSpecialLocation(juce::File::userApplicationDataDirectory).getChildFile("Schematic Amp Sim").getChildFile("Presets");
+}
+
+bool SasProcessor::savePreset(const juce::File& file) {
+    juce::MemoryBlock state;
+    getStateInformation(state);
+    const std::unique_ptr<juce::XmlElement> xml(getXmlFromBinary(state.getData(), int(state.getSize())));
+    if (!xml) return false;
+    file.getParentDirectory().createDirectory();
+    return file.replaceWithText(xml->toString());
+}
+
+bool SasProcessor::loadPreset(const juce::File& file) {
+    const std::unique_ptr<juce::XmlElement> xml(juce::XmlDocument::parse(file));
+    if (!xml || !xml->hasTagName(apvts.state.getType())) return false;
+    juce::MemoryBlock state;
+    copyXmlToBinary(*xml, state);
+    setStateInformation(state.getData(), int(state.getSize()));
+    return true;
+}
+
 juce::AudioProcessorEditor* SasProcessor::createEditor() { return new SasEditor(*this); }
 
 juce::AudioProcessor* JUCE_CALLTYPE createPluginFilter() { return new SasProcessor(); }

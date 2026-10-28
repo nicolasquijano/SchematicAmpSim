@@ -1011,3 +1011,29 @@ TEST_CASE("maximizer: off by default, and turned up it adds high-frequency conte
     CHECK(on > 1.1 * flat);
     CHECK(std::isfinite(on));
 }
+
+TEST_CASE("presets: saving and loading a preset restores the knobs, the EQ and the pitch") {
+    JuceInit init;
+    SasProcessor p;
+    p.prepareToPlay(48000.0, 512);
+    setParam(p, ids::volume, 7.5f);
+    setParam(p, ids::eqGain[2], 6.0f);
+    setParam(p, ids::pitch, -3.0f);
+    const auto file = juce::File::getSpecialLocation(juce::File::tempDirectory).getChildFile("sas_test_preset.sasp");
+    file.deleteFile();
+    REQUIRE(p.savePreset(file));
+    CHECK(file.loadFileAsString().contains("<"));  // a text (XML) file
+    setParam(p, ids::volume, 2.0f);
+    setParam(p, ids::eqGain[2], 0.0f);
+    setParam(p, ids::pitch, 0.0f);
+    REQUIRE(p.loadPreset(file));
+    CHECK(std::fabs(p.apvts.getRawParameterValue(ids::volume)->load() - 7.5f) < 0.01f);
+    CHECK(std::fabs(p.apvts.getRawParameterValue(ids::eqGain[2])->load() - 6.0f) < 0.01f);
+    CHECK(std::fabs(p.apvts.getRawParameterValue(ids::pitch)->load() + 3.0f) < 0.01f);
+    const auto bad = juce::File::getSpecialLocation(juce::File::tempDirectory).getChildFile("sas_test_bad.sasp");
+    bad.replaceWithText("not a preset");
+    CHECK(!p.loadPreset(bad));
+    CHECK(!p.loadPreset(juce::File("C:/does/not/exist.sasp")));
+    file.deleteFile();
+    bad.deleteFile();
+}

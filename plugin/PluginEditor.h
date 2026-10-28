@@ -193,6 +193,8 @@ private:
     std::unique_ptr<juce::AudioProcessorValueTreeState::ButtonAttachment> eqOnAtt_;
     std::unique_ptr<KnobWithLabel> eqKnobs_[5][3];  // frequency, gain, Q of each band; only the selected band's are shown
     void selectEqBand(int band);
+    juce::TextButton presets_{"Presets"};
+    void showPresetMenu();
     juce::Slider pitchSlider_{juce::Slider::LinearHorizontal, juce::Slider::NoTextBox};
     juce::Label pitchValue_, pitchNote_;
     juce::TextButton pitchDown12_{"-12"}, pitchDown1_{"-1"}, pitchUp1_{"+1"}, pitchUp12_{"+12"}, pitchZero_{"0"};

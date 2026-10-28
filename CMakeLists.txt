@@ -43,6 +43,22 @@ FetchContent_Declare(nlohmann_json
   GIT_SHALLOW    TRUE)
 FetchContent_MakeAvailable(JUCE Catch2 nlohmann_json)
 
+# ASIO (Windows, low-latency audio for the standalone application). Steinberg's ASIO SDK is offered under the Steinberg ASIO License or
+# under the GPL version 3; this project uses it under the GPL version 3 (the project is AGPL-3.0, which allows it). The SDK is fetched
+# at configure time into third_party/ and is never copied into the repository. Turn it off with -DSAS_ENABLE_ASIO=OFF.
+option(SAS_ENABLE_ASIO "Build the standalone application with ASIO support (Windows)" ON)
+set(SAS_ASIO_SDK_DIR "")
+if(WIN32 AND SAS_ENABLE_ASIO)
+  FetchContent_Declare(asiosdk
+    URL https://download.steinberg.net/sdk_downloads/ASIO-SDK_2.3.4_2025-10-15.zip
+    URL_HASH SHA256=d5ebf0c20dd2c5f43771fd0c1418f4b361bf52434ee670097cfa6b3a335e2eca)
+  FetchContent_MakeAvailable(asiosdk)
+  set(SAS_ASIO_SDK_DIR "${asiosdk_SOURCE_DIR}/common")
+  if(NOT EXISTS "${SAS_ASIO_SDK_DIR}/iasiodrv.h")
+    message(FATAL_ERROR "the ASIO SDK was fetched but ${SAS_ASIO_SDK_DIR}/iasiodrv.h is missing")
+  endif()
+endif()
+
 include(CTest)
 
 add_subdirectory(engine)

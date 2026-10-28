@@ -1,5 +1,5 @@
-# VST3 everywhere, plus Audio Unit on macOS (Logic, GarageBand).
-set(SAS_PLUGIN_FORMATS VST3)
+# VST3 and a standalone application everywhere (no DAW needed), plus Audio Unit on macOS (Logic, GarageBand).
+set(SAS_PLUGIN_FORMATS VST3 Standalone)
 if(APPLE)
   list(APPEND SAS_PLUGIN_FORMATS AU)
 endif()
@@ -33,6 +33,11 @@ target_compile_definitions(SchematicAmpSim PUBLIC
   JUCE_USE_CURL=0
   JUCE_VST3_CAN_REPLACE_VST2=0
   JUCE_DISPLAY_SPLASH_SCREEN=0)
+
+if(SAS_ASIO_SDK_DIR)
+  target_include_directories(SchematicAmpSim PRIVATE "${SAS_ASIO_SDK_DIR}")
+  target_compile_definitions(SchematicAmpSim PUBLIC JUCE_ASIO=1)
+endif()
 
 target_link_libraries(SchematicAmpSim
   PRIVATE

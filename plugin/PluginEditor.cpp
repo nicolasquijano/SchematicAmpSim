@@ -534,6 +534,8 @@ SasEditor::SasEditor(SasProcessor& p)
                 if (auto* q = processor_.apvts.getParameter(id)) { q->beginChangeGesture(); q->setValueNotifyingHost(q->getDefaultValue()); q->endChangeGesture(); }
     };
     selectEqBand(2);
+    addAndMakeVisible(presets_);
+    presets_.onClick = [this] { showPresetMenu(); };
     addAndMakeVisible(pitchSlider_);
     pitchSlider_.setRange(-12.0, 12.0, 1.0);
     pitchSlider_.setDoubleClickReturnValue(true, 0.0);
@@ -917,6 +919,51 @@ void SasEditor::updateImpulseStatus() {
     }
 }
 
+// The Presets button: save the current state, load a file, or pick one of the presets saved in the presets folder.
+void SasEditor::showPresetMenu() {
+    const auto folder = SasProcessor::presetFolder();
+    juce::PopupMenu menu;
+    menu.addItem(1, "Save preset...");
+    menu.addItem(2, "Load preset file...");
+    menu.addItem(3, "Open the presets folder");
+    juce::Array<juce::File> files;
+    folder.findChildFiles(files, juce::File::findFiles, false, "*.sasp");
+    files.sort();
+    if (!files.isEmpty()) {
+        menu.addSeparator();
+        for (int i = 0; i < files.size() && i < 200; ++i) menu.addItem(100 + i, files[i].getFileNameWithoutExtension());
+    }
+    menu.showMenuAsync(juce::PopupMenu::Options().withTargetComponent(&presets_), [this, folder, files](int choice) {
+        auto load = [this](const juce::File& f) {
+            if (!processor_.loadPreset(f))
+                juce::AlertWindow::showMessageBoxAsync(juce::MessageBoxIconType::WarningIcon, "Schematic Amp Sim", "Could not read that preset.");
+        };
+        if (choice == 1) {
+            folder.createDirectory();
+            chooser_ = std::make_unique<juce::FileChooser>("Save the preset", folder.getChildFile("My preset.sasp"), "*.sasp");
+            chooser_->launchAsync(juce::FileBrowserComponent::saveMode | juce::FileBrowserComponent::canSelectFiles | juce::FileBrowserComponent::warnAboutOverwriting,
+                                  [this](const juce::FileChooser& fc) {
+                                      auto file = fc.getResult();
+                                      if (file == juce::File{}) return;
+                                      if (!file.hasFileExtension("sasp")) file = file.withFileExtension("sasp");
+                                      if (!processor_.savePreset(file))
+                                          juce::AlertWindow::showMessageBoxAsync(juce::MessageBoxIconType::WarningIcon, "Schematic Amp Sim", "Could not write that file.");
+                                  });
+        } else if (choice == 2) {
+            chooser_ = std::make_unique<juce::FileChooser>("Load a preset", folder, "*.sasp");
+            chooser_->launchAsync(juce::FileBrowserComponent::openMode | juce::FileBrowserComponent::canSelectFiles, [load](const juce::FileChooser& fc) {
+                const auto file = fc.getResult();
+                if (file != juce::File{}) load(file);
+            });
+        } else if (choice == 3) {
+            folder.createDirectory();
+            folder.revealToUser();
+        } else if (choice >= 100 && choice - 100 < files.size()) {
+            load(files[choice - 100]);
+        }
+    });
+}
+
 void SasEditor::chooseImpulseResponse(int slot) {
     chooser_ = std::make_unique<juce::FileChooser>("Choose a cabinet impulse response", juce::File{}, "*.wav;*.aif;*.aiff;*.flac");
     chooser_->launchAsync(juce::FileBrowserComponent::openMode | juce::FileBrowserComponent::canSelectFiles,
@@ -1022,7 +1069,7 @@ void SasEditor::resized() {
         ampCaption_.setVisible(false);  // the logo and the list say what this is
         ampSearch_.setBounds(col.removeFromTop(24));
         col.removeFromTop(4);
-        ampList_.setBounds(col.removeFromTop(6 * 26 + 14));  // six rows and a bit of the next: it scrolls
+        ampList_.setBounds(col.removeFromTop(5 * 26 + 14));  // five rows and a bit of the next: it scrolls
         col.removeFromTop(gap);
         jackCaption_.setBounds(col.removeFromTop(16));
         jack_.setBounds(col.removeFromTop(24));
@@ -1032,6 +1079,8 @@ void SasEditor::resized() {
         col.removeFromTop(4);
         qualityCaption_.setBounds(col.removeFromTop(16));
         quality_.setBounds(col.removeFromTop(24));
+        col.removeFromTop(6);
+        presets_.setBounds(col.removeFromTop(24));
     }
 
     // Right: title and page tabs, then the page.

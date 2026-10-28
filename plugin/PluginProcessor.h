@@ -116,6 +116,10 @@ public:
     // Two slots (A = 0, B = 1) that are mixed with the "ir_blend" parameter; with only one loaded it plays alone.
     static constexpr int kIrSlots = 2;
     bool loadImpulseResponse(const juce::File& file, int slot = 0);
+    // Presets: the whole state (amp, knobs, effects, EQ, pitch, impulse responses) as a text file, so a standalone session can keep its settings.
+    static juce::File presetFolder();
+    bool savePreset(const juce::File& file);
+    bool loadPreset(const juce::File& file);
     void clearImpulseResponse(int slot = 0);
     juce::String impulseResponseName(int slot = 0) const;
     // Magnitude response of the loaded IR in dB (mean 0), log-spaced from 50 Hz to 10 kHz; empty when nothing is loaded.

@@ -1,5 +1,6 @@
 # Builds the Release plugin, runs the tests and packages it into dist\:
 #   SchematicAmpSim-<version>-win64.zip          the VST3 bundle (copy it to your VST3 folder)
+#   SchematicAmpSim-<version>-win64-standalone.zip   the standalone application (no DAW needed)
 #   SchematicAmpSim-<version>-win64-setup.exe    the installer, when Inno Setup 6 or 7 is installed
 #   SHA256SUMS.txt                               checksums of both
 # Usage: package.cmd [-SkipTests] [-SkipBuild]   (-SkipBuild: only package the plugin that is already in build\, as the CI does)
@@ -25,15 +26,23 @@ $bundle = 'build\plugin\SchematicAmpSim_artefacts\Release\VST3\Schematic Amp Sim
 if (-not (Test-Path $bundle)) { throw "the plugin bundle is missing: $bundle" }
 New-Item -ItemType Directory -Force dist | Out-Null
 
+$standalone = 'build\plugin\SchematicAmpSim_artefacts\Release\Standalone\Schematic Amp Sim.exe'
+if (-not (Test-Path $standalone)) { throw "the standalone application is missing: $standalone" }
+
 $zip = "dist\SchematicAmpSim-$full-win64.zip"
 if (Test-Path $zip) { Remove-Item $zip }
 Compress-Archive -Path $bundle, 'LICENSE', 'README.md' -DestinationPath $zip
 Write-Host "  $zip"
 
+$zipStandalone = "dist\SchematicAmpSim-$full-win64-standalone.zip"
+if (Test-Path $zipStandalone) { Remove-Item $zipStandalone }
+Compress-Archive -Path $standalone, 'LICENSE', 'README.md' -DestinationPath $zipStandalone
+Write-Host "  $zipStandalone"
+
 $roots = @($env:ProgramFiles, ${env:ProgramFiles(x86)}, "$env:LOCALAPPDATA\Programs")
 $iscc = foreach ($v in 7, 6) { foreach ($r in $roots) { "$r\Inno Setup $v\ISCC.exe" } }
 $iscc = $iscc | Where-Object { Test-Path $_ } | Select-Object -First 1
-$files = @($zip)
+$files = @($zip, $zipStandalone)
 if ($iscc) {
     & $iscc "/DAppVersion=$version" "/DAppVersionFull=$full" 'installer\schematic-amp-sim.iss'
     if ($LASTEXITCODE -ne 0) { throw 'Inno Setup failed' }

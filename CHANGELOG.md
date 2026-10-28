@@ -5,6 +5,12 @@ version numbers follow [Semantic Versioning](https://semver.org/) (see [docs/REL
 
 ## [Unreleased]
 
+### Added
+- A standalone application (`Schematic Amp Sim.exe`) that runs without a DAW: it opens its own audio device (the gear button in its window opens the audio settings) and uses the same engine and
+  editor as the plugin. It is built with the plugin, packaged as its own zip and offered by the installer as an option (Start menu entry). It supports ASIO (low latency with an audio interface that has an ASIO driver, or ASIO4ALL): Steinberg's ASIO SDK is fetched at build time and used under its GPL version 3 option, and is not part of the repository.
+- A Presets menu in the editor (left column): save the whole state (amp, knobs, effects, EQ, pitch, impulse responses) to a `.sasp` text file, load one, or pick from the presets folder
+  (`%APPDATA%\Schematic Amp Sim\Presets`). It works in the plugin too.
+
 ## [0.2.0-beta] - 2026-10-28
 
 ### Added

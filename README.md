@@ -65,6 +65,7 @@ still change between 0.x versions. Versioning and the steps of a release are in 
 - **The loudspeaker is part of the circuit**: the output transformer drives a voice-coil resistance and inductance and the cone's mechanical resonance (typical 12 inch values scaled to each amp's load), so the amp's output voltage has the bass bump, the mid dip and the rising top of a tube amp into a real speaker. It can be turned off per amp with `"speaker_load": {"enabled": false}` in its `amp.json`. The output transformer also has winding capacitance and core loss (`transformer_parasitics`). The Lite mode does not reproduce the bump, the dip or the treble resonance.
 - **Pitch shift** (Pitch tab): -12 to +12 semitones and fine tuning in cents, for dropped tunings, octaves or tuning the recording. A granular two-head shifter that works on chords; it adds about 12 ms of delay only while a shift is set.
 - **Post equaliser** (EQ tab): five bands (low shelf, three bells, high shelf), a high-pass and a low-pass, with a draggable response curve; it works on the final stereo signal, after the cabinet, so it shapes the result without changing how the amp distorts. Next to the curve, a bass and treble harmonic exciter (maximizer) adds harmonics of each end.
+- **Standalone application and presets**: besides the VST3, `Schematic Amp Sim.exe` runs without a DAW (the gear button opens the audio settings: pick the ASIO driver of your interface (or Windows Audio exclusive mode) and the input channel of the guitar; the input starts muted to avoid feedback, unmute it once the monitoring is safe). The Presets button saves and loads the whole state as `.sasp` files in `%APPDATA%\Schematic Amp Sim\Presets`.
 - **Quality modes**
   | Mode | What it does |
   |---|---|
@@ -156,3 +157,5 @@ transcriptions made for educational and research purposes, and the amp names are
 Free software, licensed under the [GNU Affero General Public License v3.0](LICENSE). Contributions
 are welcome under the same license. The plugin is built on JUCE (used under AGPLv3), Catch2 (BSL-1.0)
 and nlohmann/json (MIT).
+
+ASIO is a trademark and software of Steinberg Media Technologies GmbH. The Windows standalone application is built with Steinberg's ASIO SDK, used under the GNU General Public License version 3.
