@@ -6,7 +6,11 @@ version numbers follow [Semantic Versioning](https://semver.org/) (see [docs/REL
 ## [Unreleased]
 
 ### Added
-- A new amp, British Clean, from a 100 W clean head owner's manual (preamp issue 4, output stage, power supply): brilliant and normal channels, passive
+- A new amp, British Saturated, from a 1970s 120 W head schematic (preamp, output amp and power supply drawings): the Orange tone circuit, a six-position FAC
+  switch (shown as the input list), four EL34 and 15k feedback with a BOOST control. Which EL34 pair drives which end of the transformer is not drawn;
+  it is chosen so the feedback is negative. The jack levels of the FAC positions are only partly matched (the amp is saturated). See `amps/orange_or120/*.net`.
+- The amp list is scrollable and has a search box above it.
+- A new amp, British Hi-Fi, from a 100 W high-headroom head owner's manual (preamp issue 4, output stage, power supply): brilliant and normal channels, passive
   tone stack with master volume, four EL34 and a silicon bridge supply. The printed -38 V bias idles 53 mA per tube with this tube model, so the source
   is set for -43 V (about 38 mA). The plate voltages printed on the preamp are 40 to 75 V lower than the model's; the 100 pF between the preamp's
   last plate and the presence pot is left out (see the comments in `amps/hiwatt_dr103/*.net`).

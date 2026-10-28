@@ -1,0 +1,93 @@
+* Orange OR120 Graphic Mk II power amp (same drawings: output amp and power supply): the first ECC83 triode as the voltage amplifier
+* (the 15k negative feedback comes in at its cathode, where a 1k pot with a 2 mH / 0.47u branch makes the BOOST control), the second as a
+* cathodyne (100k plate load, 1k5 + 100k cathode load) driving four EL34 as two parallel pairs (2k4 stoppers, 220k leaks to the bias,
+* 1k screen resistors from B+), the output transformer with its 16 / 8 / 4 ohm taps, and the supply: eight 1N4005 as a bridge into
+* two 100u in series (node a is A+, integrated by the engine), the choke to B+ (screens), 33k + 16u to C+ (inverter) and 33k + 16u to D+ (preamp).
+*
+* Assumptions where the drawing is silent or ambiguous (change them here, not in code):
+*  - the reverb return is left open (its 100k and 220k go nowhere); the send takes the preamp's output, which has 100k to ground;
+*  - the BOOST pot is 1k between the cathode and ground, the wiper going through the choke and the 0.47u to ground;
+*  - which pair of EL34 feeds which end of the output transformer is not drawn: the pair driven from the plate is on the end that makes
+*    the feedback negative;
+*  - output transformer: 1.9k plate to plate (four EL34), 5 H per primary half, 35 ohm per half;
+*  - the choke is 5 H with 100 ohm; the two 100k across the 32u pair balance them (the pair is 16u);
+*  - bias: half-wave 1N4005, 22u / 1k / 22u and 22k to ground, as a Thevenin source behind 100 ohm; the source is set so that the EL34 idle near 38 mA.
+
+.nodes pin gl pl kl gr pr kr m w lc ug lg g1 g2 s1 s2 pt pbm npt npb a b ch c x t16 t8 bk bias bx
+
+S VAUDIO pin 1 0
+S VHT a 1 490
+S VBIAS bx 100 -43.5
+
+* First triode: 100k into its grid (the reverb return's 100k is unused), 100k plate load from C+ with 1n across it, 1k5 cathode, the 15k
+* feedback and the BOOST pot with its 2 mH / 0.47u branch.
+R R100G pin gl 100k
+T VL gl pl kl 12AX7
+R R100PL c pl 100k
+C C1N c pl 1n
+R RK1K5 kl 0 1k5
+R R_NFB t16 kl 15k
+R VR_XT kl w 1
+R VR_XB w 0 1
+.xfmr BOOSTL L=2m
+  W w lc 1 bl
+.end
+C C047 lc 0 0.47u
+
+* Cathodyne: 68n into the grid with 1M to the cathode load's junction; plate 100k, cathode 1k5 + 100k; 68n to each pair's grids.
+C C68P pl gr 68n
+R R1MG gr m 1M
+T VR gr pr kr 12AX7
+R R100PR c pr 100k
+R RK1K5B kr m 1k5
+R R100K m 0 100k
+C C68U pr ug 68n
+C C68L m lg 68n
+R R220U ug bias 220k
+R R220L lg bias 220k
+
+* Bias supply: 22u, 1k, 22u and 22k to ground.
+C C22A bx 0 22u
+R R1K bx bias 1k
+C C22B bias 0 22u
+R R22KB bias 0 22k
+
+* EL34s: each pair shares its stopper (2k4 each, so 1k2), screen resistor (1k each, so 500) and plate load.
+R R2K4_U ug g1 1k2
+R R2K4_L lg g2 1k2
+P V4 g1 pbm s1 0 EL34 2
+P V5 g2 pt s2 0 EL34 2
+R RS1 b s1 500
+R RS2 b s2 500
+
+* Output transformer: plates are fed from node a (the centre tap, A+); windings are the primary halves, then the 16R, 8R and 4R sections of
+* the secondary (turns relative to a half).
+R DCR_PT pt npt 35
+R DCR_PB pbm npb 35
+.param n16 = 2*1/sqrt(1900/16)
+* Core saturation: SAT is the flux (volt-seconds) where the extra magnetising current equals the linear one; ~full-power
+* plate-to-plate swing / (2 pi f), here with f about 25 Hz.
+.xfmr OT L=5 SAT=5.5
+  W npt a 1 pri
+  W a npb 1 pri
+  W t16 t8 0.2929*n16 sec
+  W t8 bk 0.2071*n16 sec
+  W bk 0 0.5*n16 sec
+  K pri pri 0.9998
+  K pri sec 0.9993
+  K sec sec 0.9998
+.end
+R RLOAD t16 0 16
+
+* Supply after the first 100u pair (node a): the choke to B+ (16u), 33k + 16u to C+, 33k + 16u to D+ (node x); RPREAMP is what the preamp
+* draws from D+.
+R RCH a ch 100
+.xfmr CHOKE L=5
+  W ch b 1 ch
+.end
+C C16B b 0 16u
+R R33A b c 33k
+C C16C c 0 16u
+R R33B c x 33k
+C C16D x 0 16u
+R RPREAMP x 0 150k

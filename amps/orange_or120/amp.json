@@ -1,0 +1,301 @@
+{
+ "id": "orange_or120",
+ "order": 10,
+ "output_db": 3.8,
+ "name": "British Saturated",
+ "theme": {
+  "background": "#120a05",
+  "panel": "#25150a",
+  "edge": "#5a3414",
+  "accent": "#ff8a1f",
+  "label": "#b08052",
+  "text": "#f6e1c8",
+  "knob_top": "#4f3419",
+  "knob_bottom": "#1a0e06",
+  "pointer": "#ffd9a6"
+ },
+ "preamp": {
+  "netlist": "preamp.net",
+  "tolerance": 2e-06,
+  "rail_source": "VRAIL",
+  "input_source": "VIN",
+  "output_node": "o",
+  "pot_min_ohms": 100,
+  "jack_label": "FAC",
+  "knobs": [
+   {
+    "name": "gain",
+    "default": 0.5,
+    "pot": {
+     "type": "wiper",
+     "top": "VR_GT",
+     "bottom": "VR_GB",
+     "total": 1000000.0,
+     "taper": "log"
+    }
+   },
+   {
+    "name": "bass",
+    "default": 0.5,
+    "pot": {
+     "type": "wiper",
+     "top": "VR_BB",
+     "bottom": "VR_BT",
+     "total": 1000000.0,
+     "taper": "log"
+    }
+   },
+   {
+    "name": "treble",
+    "default": 0.5,
+    "pot": {
+     "type": "wiper",
+     "top": "VR_TT",
+     "bottom": "VR_TB",
+     "total": 1000000.0,
+     "taper": "log"
+    }
+   }
+  ],
+  "source_ohms": {
+   "resistors": [
+    "RSRC"
+   ],
+   "default": 7000,
+   "min": 10
+  },
+  "jacks": [
+   {
+    "name": "fac1",
+    "label": "FAC 1",
+    "drive": "VIN",
+    "resistors": {
+     "SW_F1": 1,
+     "SW_F2": 1000000000000.0,
+     "SW_F3": 1000000000000.0,
+     "SW_F4": 1000000000000.0,
+     "SW_F5": 1000000000000.0,
+     "SW_F6": 1000000000000.0
+    },
+    "level_db": -11.4
+   },
+   {
+    "name": "fac2",
+    "label": "FAC 2",
+    "drive": "VIN",
+    "resistors": {
+     "SW_F1": 1000000000000.0,
+     "SW_F2": 1,
+     "SW_F3": 1000000000000.0,
+     "SW_F4": 1000000000000.0,
+     "SW_F5": 1000000000000.0,
+     "SW_F6": 1000000000000.0
+    },
+    "level_db": -10.0
+   },
+   {
+    "name": "fac3",
+    "label": "FAC 3",
+    "drive": "VIN",
+    "resistors": {
+     "SW_F1": 1000000000000.0,
+     "SW_F2": 1000000000000.0,
+     "SW_F3": 1,
+     "SW_F4": 1000000000000.0,
+     "SW_F5": 1000000000000.0,
+     "SW_F6": 1000000000000.0
+    },
+    "level_db": -7.8
+   },
+   {
+    "name": "fac4",
+    "label": "FAC 4",
+    "drive": "VIN",
+    "resistors": {
+     "SW_F1": 1000000000000.0,
+     "SW_F2": 1000000000000.0,
+     "SW_F3": 1000000000000.0,
+     "SW_F4": 1,
+     "SW_F5": 1000000000000.0,
+     "SW_F6": 1000000000000.0
+    },
+    "level_db": -5.7
+   },
+   {
+    "name": "fac5",
+    "label": "FAC 5",
+    "drive": "VIN",
+    "resistors": {
+     "SW_F1": 1000000000000.0,
+     "SW_F2": 1000000000000.0,
+     "SW_F3": 1000000000000.0,
+     "SW_F4": 1000000000000.0,
+     "SW_F5": 1,
+     "SW_F6": 1000000000000.0
+    },
+    "level_db": -1.8
+   },
+   {
+    "name": "fac6",
+    "label": "FAC 6",
+    "drive": "VIN",
+    "resistors": {
+     "SW_F1": 1000000000000.0,
+     "SW_F2": 1000000000000.0,
+     "SW_F3": 1000000000000.0,
+     "SW_F4": 1000000000000.0,
+     "SW_F5": 1000000000000.0,
+     "SW_F6": 1
+    },
+    "level_db": 15.0
+   }
+  ]
+ },
+ "ui": [
+  {
+   "param": "volume",
+   "knob": "gain",
+   "label": "GAIN"
+  },
+  {
+   "param": "bass",
+   "knob": "bass",
+   "label": "BASS"
+  },
+  {
+   "param": "treble",
+   "knob": "treble",
+   "label": "TREBLE"
+  },
+  {
+   "param": "presence",
+   "label": "BOOST"
+  }
+ ],
+ "power": {
+  "tubes": [
+   {
+    "name": "EL34",
+    "model": "EL34",
+    "pmax_w": 25.0,
+    "bias_scale": 1.0
+   },
+   {
+    "name": "6L6GC",
+    "model": "6L6GCDS",
+    "pmax_w": 30.0,
+    "bias_scale": 1.1688
+   },
+   {
+    "name": "6550",
+    "model": "6550DS",
+    "pmax_w": 35.0,
+    "bias_scale": 1.3895
+   }
+  ],
+  "bias": {
+   "source": "VBIAS",
+   "idle_resistors": [
+    "DCR_PT",
+    "DCR_PB"
+   ],
+   "tubes_per_half": 2
+  },
+  "netlist": "poweramp.net",
+  "tolerance": 0.0001,
+  "input_source": "VAUDIO",
+  "ht_source": "VHT",
+  "ht_node": "a",
+  "rail_node": "x",
+  "output_node": "t16",
+  "load_resistor": "RLOAD",
+  "nfb_resistor": "R_NFB",
+  "presence": {
+   "resistor": "VR_XT",
+   "complement": "VR_XB",
+   "scale": 1000.0,
+   "min_ohms": 10,
+   "default": 0.5
+  },
+  "supply": {
+   "mains_hz": 50,
+   "vac_peak": 520,
+   "rect_source_ohms": 80,
+   "ht_dc_source": 490,
+   "rect_drop": 4.5,
+   "reservoir_farads": 5e-05,
+   "tie_ohms": 1.0,
+   "settle_seconds": 0.5
+  }
+ },
+ "lite": {
+  "base_gain_db": 25.108,
+  "high_pass_hz": 1,
+  "shelf_hz": 477.821,
+  "presence_db": [
+   0,
+   1.01581,
+   2.47513,
+   4.77279,
+   8.61136
+  ],
+  "sag_table": [
+   [
+    0,
+    0
+   ],
+   [
+    2.54648,
+    0.404531
+   ],
+   [
+    5.09296,
+    1.60181
+   ],
+   [
+    9.5493,
+    5.42391
+   ],
+   [
+    15.9155,
+    13.3331
+   ],
+   [
+    22.2817,
+    22.0793
+   ],
+   [
+    28.6479,
+    30.6157
+   ],
+   [
+    35.0141,
+    37.8574
+   ],
+   [
+    44.5634,
+    37.8574
+   ],
+   [
+    57.2958,
+    37.8574
+   ],
+   [
+    82.7606,
+    40.1361
+   ],
+   [
+    127.324,
+    45.9663
+   ]
+  ],
+  "rail_x_idle": 260.166,
+  "rail_sag_fraction": 0.58,
+  "ceiling_light": 45.3622,
+  "ceiling_heavy": 45.3622,
+  "ceiling_decay": 173.814,
+  "knee": 17.2286,
+  "sag_attack_s": 0.01,
+  "sag_release_s": 0.06
+ }
+}

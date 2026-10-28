@@ -45,6 +45,13 @@ void AmpLookAndFeel::setTheme(const EditorTheme& t) {
     setColour(juce::ToggleButton::tickColourId, t.accent);
     setColour(juce::ListBox::backgroundColourId, t.panel);
     setColour(juce::ListBox::outlineColourId, t.edge);
+    setColour(juce::TextEditor::backgroundColourId, body);
+    setColour(juce::TextEditor::outlineColourId, t.edge);
+    setColour(juce::TextEditor::focusedOutlineColourId, t.accent);
+    setColour(juce::TextEditor::textColourId, t.text);
+    setColour(juce::TextEditor::highlightColourId, t.accent.withAlpha(0.4f));
+    setColour(juce::TextEditor::highlightedTextColourId, t.text);
+    setColour(juce::CaretComponent::caretColourId, t.accent);
 }
 
 void AmpLookAndFeel::drawRotarySlider(juce::Graphics& g, int x, int y, int w, int h, float pos, float startAngle,
@@ -405,6 +412,16 @@ SasEditor::SasEditor(SasProcessor& p)
     ampList_.setModel(this);
     ampList_.setRowHeight(26);
     addAndMakeVisible(ampList_);
+    ampSearch_.setTextToShowWhenEmpty("Search amps", look_.text().withAlpha(0.45f));
+    ampSearch_.setFont(AmpLookAndFeel::font(13.0f, false, 0.01f));
+    ampSearch_.setMultiLine(false);
+    ampSearch_.setReturnKeyStartsNewLine(false);
+    ampSearch_.setEscapeAndReturnKeysConsumed(true);
+    ampSearch_.setIndents(8, 0);
+    ampSearch_.onTextChange = [this] { refreshAmpList(); };
+    ampSearch_.onEscapeKey = [this] { ampSearch_.clear(); refreshAmpList(); };
+    addAndMakeVisible(ampSearch_);
+    refreshAmpList();
 
     styleCombo(quality_, ids::quality, qualityAtt_);
     styleCombo(cab_, ids::cab, cabAtt_);
@@ -519,10 +536,29 @@ SasEditor::~SasEditor() {
 
 // ------------------------------------------------------------------ amp list
 
-int SasEditor::getNumRows() { return ampNames_.size(); }
+int SasEditor::getNumRows() { return int(shown_.size()); }
+
+void SasEditor::refreshAmpList() {
+    const auto query = ampSearch_.getText().trim();
+    shown_.clear();
+    for (int i = 0; i < ampNames_.size(); ++i)
+        if (query.isEmpty() || ampNames_[i].containsIgnoreCase(query)) shown_.push_back(i);
+    ampList_.updateContent();
+    juce::SparseSet<int> sel;
+    const auto it = std::find(shown_.begin(), shown_.end(), processor_.selectedAmpIndex());
+    if (it != shown_.end()) {
+        const int row = int(it - shown_.begin());
+        sel.addRange(juce::Range<int>(row, row + 1));
+        ampList_.setSelectedRows(sel, juce::dontSendNotification);
+        ampList_.scrollToEnsureRowIsOnscreen(row);
+    } else {
+        ampList_.setSelectedRows(sel, juce::dontSendNotification);
+    }
+    ampList_.repaint();
+}
 
 void SasEditor::paintListBoxItem(int row, juce::Graphics& g, int w, int h, bool selected) {
-    if (row < 0 || row >= ampNames_.size()) return;
+    if (row < 0 || row >= int(shown_.size())) return;
     if (selected) {
         g.setGradientFill(juce::ColourGradient(look_.accent().withAlpha(0.26f), 0.0f, 0.0f, look_.accent().withAlpha(0.06f), float(w), 0.0f, false));
         g.fillRect(0, 0, w, h);
@@ -531,14 +567,16 @@ void SasEditor::paintListBoxItem(int row, juce::Graphics& g, int w, int h, bool 
     }
     g.setColour(selected ? look_.accent() : look_.text().withAlpha(0.8f));
     g.setFont(AmpLookAndFeel::font(14.0f, selected, 0.01f));
-    g.drawText(ampNames_[row], 12, 0, w - 16, h, juce::Justification::centredLeft);
+    g.drawText(ampNames_[shown_[std::size_t(row)]], 12, 0, w - 16, h, juce::Justification::centredLeft);
 }
 
 void SasEditor::selectedRowsChanged(int lastRow) {
-    if (lastRow < 0 || lastRow == processor_.selectedAmpIndex()) return;
+    if (lastRow < 0 || lastRow >= int(shown_.size())) return;
+    const int amp = shown_[std::size_t(lastRow)];
+    if (amp == processor_.selectedAmpIndex()) return;
     if (auto* param = processor_.apvts.getParameter(ids::amp)) {
         param->beginChangeGesture();
-        param->setValueNotifyingHost(param->convertTo0to1(float(lastRow)));
+        param->setValueNotifyingHost(param->convertTo0to1(float(amp)));
         param->endChangeGesture();
     }
 }
@@ -601,12 +639,7 @@ void SasEditor::showAmp(int index) {
     levelMatch_.setVisible(std::any_of(def.preamp.jacks.begin(), def.preamp.jacks.end(), [](const sas::JackDef& j) { return j.levelDb != 0.0; }));
     const int jackNow = int(processor_.apvts.getRawParameterValue(ids::jack)->load() + 0.5f);
     jack_.setSelectedItemIndex(juce::jlimit(0, int(def.preamp.jacks.size()) - 1, jackNow), juce::dontSendNotification);
-    {
-        juce::SparseSet<int> sel;
-        sel.addRange(juce::Range<int>(index, index + 1));
-        ampList_.setSelectedRows(sel, juce::dontSendNotification);
-    }
-    ampList_.repaint();
+    refreshAmpList();
     resized();
     repaint();
 }
@@ -779,8 +812,9 @@ void SasEditor::resized() {
         logoBounds_ = col.removeFromTop(40);
         col.removeFromTop(10);
         ampCaption_.setVisible(false);  // the logo and the list say what this is
-        const int rows = std::max(1, ampNames_.size());
-        ampList_.setBounds(col.removeFromTop(rows * 26 + 2));
+        ampSearch_.setBounds(col.removeFromTop(24));
+        col.removeFromTop(4);
+        ampList_.setBounds(col.removeFromTop(6 * 26 + 14));  // six rows and a bit of the next: it scrolls
         col.removeFromTop(gap);
         jackCaption_.setBounds(col.removeFromTop(16));
         jack_.setBounds(col.removeFromTop(24));

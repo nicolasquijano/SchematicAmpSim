@@ -729,3 +729,54 @@ TEST_CASE("Hiwatt DR103: the brilliant channel is thinner, each volume acts on i
         CHECK(level(jack, nullptr, 0, 3150.0, 0.0005, 1.0) > 1.5 * level(jack, nullptr, 0, 3150.0, 0.0005, 0.0));
     }
 }
+
+TEST_CASE("Orange OR120: supply, bias and the preamp plates are in a sane range") {
+    const AmpDef def = loadEmbeddedAmp("orange_or120");
+    PowerAmp power(def, kFs);
+    const auto net = parseNetlist(def.power.netlistText, def.power.netlist);
+    CHECK(power.solver().dcConverged);
+    auto v = [&](const char* n) { return power.solver().voltage(net.node(n)); };
+    CHECK(std::abs(v("a") - 475.0) < 30.0);      // A+
+    CHECK(v("b") < v("a"));                      // the choke
+    CHECK(v("x") < v("c"));                      // C+ then D+ through the 33k pair
+    CHECK(std::abs(v("bias") + 43.0) < 6.0);
+    const double idleMa = (v("a") - v("pt")) / 35.0 / 2.0 * 1e3;  // per tube, 35 ohm per primary half
+    INFO("idle " << idleMa << " mA per EL34");
+    CHECK(idleMa > 25.0);
+    CHECK(idleMa < 45.0);
+    Preamp pre(def, kFs, power.railX());
+    const auto pnet = parseNetlist(def.preamp.netlistText, def.preamp.netlist);
+    auto p = [&](const char* n) { return pre.solver().voltage(pnet.node(n)); };
+    INFO("V1 plate " << p("p1") << " V, V2 plate " << p("p2") << " V, D+ " << p("x") << " V");
+    CHECK(p("p1") > 90.0);
+    CHECK(p("p1") < 200.0);
+    CHECK(std::abs(p("p1") - p("p2")) < 5.0);    // the two stages are identical
+}
+
+TEST_CASE("Orange OR120: the FAC positions cut more bass, the gain, tone and boost controls act, and the feedback is negative") {
+    const AmpDef def = loadEmbeddedAmp("orange_or120");
+    auto level = [&](const char* jack, const char* knob, double v, double hz, double peak = 0.0002, double presence = 0.5) {
+        FullAmp amp(def, kFs);
+        auto k = defaultKnobs(def);
+        if (knob) k[def.knobIndex(knob)] = v;
+        amp.setKnobs(k, presence);
+        amp.setJack(def.jackIndex(jack));
+        return rmsAt(amp, hz, peak);
+    };
+    // The ladder of 4n7 ... 330p is a high-pass that rises: each position has less 100 Hz against 3 kHz than the one before.
+    double last = 1e9;
+    for (const char* jack : {"fac1", "fac2", "fac3", "fac4", "fac5", "fac6"}) {
+        const double tilt = level(jack, nullptr, 0, 100.0, 0.00002) / level(jack, nullptr, 0, 3000.0, 0.00002);
+        INFO(jack << " 100 Hz / 3 kHz " << tilt);
+        CHECK(tilt < 1.1 * last);  // the deepest positions are down in the noise of the measurement: allow a little
+        last = tilt;
+    }
+    CHECK(last < 0.1 * (level("fac1", nullptr, 0, 100.0, 0.00002) / level("fac1", nullptr, 0, 3000.0, 0.00002)));
+    CHECK(level("fac1", "gain", 0.8, 500.0, 0.00002) > 1.5 * level("fac1", "gain", 0.3, 500.0, 0.00002));
+    // The Orange tone circuit is not a Marshall's: the treble pot loads the bass network, so turned up it takes the low mids away and
+    // leaves the highs (brighter tilt); the bass pot adds body around 160 Hz.
+    auto tilt = [&](double treble) { return level("fac1", "treble", treble, 4000.0, 0.00002) / level("fac1", "treble", treble, 250.0, 0.00002); };
+    CHECK(tilt(1.0) > 1.5 * tilt(0.0));
+    CHECK(level("fac1", "bass", 1.0, 160.0, 0.00002) > 1.3 * level("fac1", "bass", 0.0, 160.0, 0.00002));
+    CHECK(level("fac1", nullptr, 0, 3150.0, 0.00002, 1.0) > 1.5 * level("fac1", nullptr, 0, 3150.0, 0.00002, 0.0));
+}

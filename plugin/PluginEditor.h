@@ -126,6 +126,7 @@ private:
     int getNumRows() override;
     void paintListBoxItem(int row, juce::Graphics&, int w, int h, bool selected) override;
     void selectedRowsChanged(int lastRow) override;
+    void refreshAmpList();  // applies the search box to the list (the rows are positions in shown_)
 
     void timerCallback() override;
     void chooseImpulseResponse(int slot);
@@ -164,6 +165,8 @@ private:
     int tick_ = 0;
 
     juce::ListBox ampList_{"amps", nullptr};
+    juce::TextEditor ampSearch_;
+    std::vector<int> shown_;  // the amp indices that match the search, in list order
     juce::ComboBox quality_, jack_, cab_, pickup_, tube_, noise_, unit_;
     std::unique_ptr<juce::AudioProcessorValueTreeState::ComboBoxAttachment> qualityAtt_, cabAtt_, pickupAtt_, noiseAtt_, unitAtt_;
     juce::Label ampCaption_, qualityCaption_, jackCaption_, cabCaption_, pickupCaption_, nameA_, nameB_, blendNote_, cabNote_, tubeCaption_, noiseCaption_, unitCaption_, idleLabel_, conditionNote_;
