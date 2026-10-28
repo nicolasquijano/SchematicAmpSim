@@ -1,0 +1,80 @@
+name: CI
+
+# Builds the plugin and runs the tests on Windows and macOS for every push to master and every pull request.
+# The packages (installer, zips) are attached to the run as artifacts so they can be tried without making a release.
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  windows:
+    name: Windows (VST3)
+    runs-on: windows-2022
+    steps:
+      - uses: actions/checkout@v4
+
+      # JUCE, Catch2 and nlohmann/json are fetched into third_party/ by CMake; keep them between runs.
+      - uses: actions/cache@v4
+        with:
+          path: third_party
+          key: third-party-${{ hashFiles('CMakeLists.txt') }}
+
+      - name: Build and test
+        shell: cmd
+        run: |
+          call "C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Auxiliary\Build\vcvars64.bat"
+          cmake --preset release || exit /b 1
+          cmake --build --preset release || exit /b 1
+          ctest --preset release || exit /b 1
+
+      - name: Install Inno Setup
+        shell: pwsh
+        run: choco install innosetup --no-progress -y
+
+      - name: Package
+        shell: pwsh
+        run: ./package.ps1 -SkipBuild
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows-packages
+          path: dist/*
+
+  macos:
+    name: macOS (VST3 + AU, universal)
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/cache@v4
+        with:
+          path: third_party
+          key: third-party-${{ hashFiles('CMakeLists.txt') }}
+
+      - name: Tools
+        run: brew list ninja >/dev/null 2>&1 || brew install ninja
+
+      - name: Build
+        run: |
+          cmake --preset release-macos
+          cmake --build --preset release-macos
+
+      - name: Test
+        run: ctest --preset release-macos
+
+      - name: Package
+        run: ./package-macos.sh
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: macos-packages
+          path: dist/*

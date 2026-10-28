@@ -3,6 +3,17 @@
 All notable changes to Schematic Amp Sim. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the
 version numbers follow [Semantic Versioning](https://semver.org/) (see [docs/RELEASING.md](docs/RELEASING.md)).
 
+## [Unreleased]
+
+### Added
+- A macOS build (VST3 and Audio Unit, one universal binary for Apple Silicon and Intel, macOS 11 or later), packaged by `package-macos.sh`.
+  Not tried on a real Mac yet and not notarized.
+- GitHub Actions: `ci.yml` builds and tests on Windows and macOS on every push; `release.yml` builds both and creates a draft release when a
+  `v*` tag is pushed.
+
+### Changed
+- Strict floating point (`-ffp-contract=off`) on clang and gcc, as `/fp:precise` on MSVC.
+
 ## [0.1.0-beta] - 2026-10-27
 
 The first public release: a Windows VST3 with seven circuit-level amplifiers.

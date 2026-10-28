@@ -1,4 +1,11 @@
 cmake_minimum_required(VERSION 3.25)
+
+# macOS: one binary for Apple Silicon and Intel, for macOS 11 and later. These must be set before project().
+if(APPLE)
+  set(CMAKE_OSX_ARCHITECTURES "arm64;x86_64" CACHE STRING "Architectures of the macOS binaries")
+  set(CMAKE_OSX_DEPLOYMENT_TARGET "11.0" CACHE STRING "Oldest macOS the plugin runs on")
+endif()
+
 project(SchematicAmpSim VERSION 0.1.0 LANGUAGES C CXX)
 
 # The version lives here and nowhere else: bump VERSION above (and the suffix below) for a release, see docs/RELEASING.md.
@@ -8,6 +15,11 @@ set(SAS_VERSION_STRING "${PROJECT_VERSION}${SAS_VERSION_SUFFIX}")
 configure_file("${CMAKE_SOURCE_DIR}/cmake/version_info.h.in" "${CMAKE_BINARY_DIR}/generated/sas/version_info.h" @ONLY)
 
 set(CMAKE_CXX_STANDARD 20)
+# Strict IEEE arithmetic everywhere, like /fp:precise on MSVC (never /fp:fast): the parity tests against the Rust reference and the
+# stability of the Newton solver depend on it. clang on Apple Silicon fuses a * b + c into one rounding by default; turn that off.
+if(NOT MSVC)
+  add_compile_options(-ffp-contract=off)
+endif()
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 set_property(GLOBAL PROPERTY USE_FOLDERS ON)

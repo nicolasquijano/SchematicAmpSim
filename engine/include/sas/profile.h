@@ -3,7 +3,13 @@
 #include <cstdint>
 
 #ifdef SAS_PROFILE
+#if defined(_MSC_VER)
 #include <intrin.h>
+#elif defined(__x86_64__) || defined(__i386__)
+#include <x86intrin.h>
+#else
+#error "SAS_PROFILE needs the x86 time-stamp counter (__rdtsc)"
+#endif
 namespace sas {
 enum ProfSlot { ProfStep, ProfEval, ProfFactor, ProfSolve, ProfMatvec, ProfReconstruct, ProfSlots };
 inline std::uint64_t g_profile[ProfSlots] = {};

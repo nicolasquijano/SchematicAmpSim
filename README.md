@@ -137,7 +137,7 @@ build\tests\sas_plugin_tests.exe "readme screenshots"
 
 ## Status
 
-Windows VST3 only. Planned: AU and AAX. The Eco mode and the level
+Windows VST3 is released. macOS (VST3 and Audio Unit, one binary for Apple Silicon and Intel) is built and tested by GitHub Actions on every push, but has not been tried on a real Mac yet and is not notarized. Planned: AAX. The Eco mode and the level
 matching have been verified with tests, not yet extensively by ear.
 
 ## License and trademarks

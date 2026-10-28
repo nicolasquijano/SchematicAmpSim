@@ -2,8 +2,8 @@
 #   SchematicAmpSim-<version>-win64.zip          the VST3 bundle (copy it to your VST3 folder)
 #   SchematicAmpSim-<version>-win64-setup.exe    the installer, when Inno Setup 6 or 7 is installed
 #   SHA256SUMS.txt                               checksums of both
-# Usage: package.cmd [-SkipTests]
-param([switch]$SkipTests)
+# Usage: package.cmd [-SkipTests] [-SkipBuild]   (-SkipBuild: only package the plugin that is already in build\, as the CI does)
+param([switch]$SkipTests, [switch]$SkipBuild)
 $ErrorActionPreference = 'Stop'
 Set-Location $PSScriptRoot
 
@@ -15,9 +15,11 @@ if (-not $version) { throw 'could not read the version from CMakeLists.txt' }
 $full = "$version$suffix"
 Write-Host "Packaging Schematic Amp Sim $full"
 
-$build = Join-Path $PSScriptRoot "build.cmd"  # an explicit path: not every shell looks in the current folder
-if ($SkipTests) { & cmd /c "`"$build`"" } else { & cmd /c "`"$build`" test" }
-if ($LASTEXITCODE -ne 0) { throw 'the build or the tests failed: nothing was packaged' }
+if (-not $SkipBuild) {
+    $build = Join-Path $PSScriptRoot "build.cmd"  # an explicit path: not every shell looks in the current folder
+    if ($SkipTests) { & cmd /c "`"$build`"" } else { & cmd /c "`"$build`" test" }
+    if ($LASTEXITCODE -ne 0) { throw 'the build or the tests failed: nothing was packaged' }
+}
 
 $bundle = 'build\plugin\SchematicAmpSim_artefacts\Release\VST3\Schematic Amp Sim.vst3'
 if (-not (Test-Path $bundle)) { throw "the plugin bundle is missing: $bundle" }

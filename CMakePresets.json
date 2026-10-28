@@ -3,20 +3,33 @@
   "configurePresets": [
     {
       "name": "release",
-      "displayName": "Ninja + MSVC, Release",
+      "displayName": "Ninja + MSVC, Release (Windows)",
       "generator": "Ninja",
       "binaryDir": "${sourceDir}/build",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Release",
         "CMAKE_C_COMPILER": "cl",
         "CMAKE_CXX_COMPILER": "cl"
-      }
+      },
+      "condition": { "type": "equals", "lhs": "${hostSystemName}", "rhs": "Windows" }
+    },
+    {
+      "name": "release-macos",
+      "displayName": "Ninja + clang, Release, universal (macOS)",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release"
+      },
+      "condition": { "type": "equals", "lhs": "${hostSystemName}", "rhs": "Darwin" }
     }
   ],
   "buildPresets": [
-    { "name": "release", "configurePreset": "release" }
+    { "name": "release", "configurePreset": "release" },
+    { "name": "release-macos", "configurePreset": "release-macos" }
   ],
   "testPresets": [
-    { "name": "release", "configurePreset": "release", "output": { "outputOnFailure": true } }
+    { "name": "release", "configurePreset": "release", "output": { "outputOnFailure": true } },
+    { "name": "release-macos", "configurePreset": "release-macos", "output": { "outputOnFailure": true } }
   ]
 }

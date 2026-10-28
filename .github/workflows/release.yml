@@ -1,0 +1,104 @@
+name: Release
+
+# Pushing a tag like v0.2.0 or v0.2.0-beta builds the Windows and macOS packages and creates a DRAFT release with them attached.
+# The draft is for you to read, try and publish by hand (a tag with a "-" in it, like -beta, is marked as a pre-release).
+# See docs/RELEASING.md.
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  windows:
+    name: Windows
+    runs-on: windows-2022
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/cache@v4
+        with:
+          path: third_party
+          key: third-party-${{ hashFiles('CMakeLists.txt') }}
+      - name: Build and test
+        shell: cmd
+        run: |
+          call "C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Auxiliary\Build\vcvars64.bat"
+          cmake --preset release || exit /b 1
+          cmake --build --preset release || exit /b 1
+          ctest --preset release || exit /b 1
+      - name: Install Inno Setup
+        shell: pwsh
+        run: choco install innosetup --no-progress -y
+      - name: Package
+        shell: pwsh
+        run: ./package.ps1 -SkipBuild
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows-packages
+          path: dist/*
+
+  macos:
+    name: macOS
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/cache@v4
+        with:
+          path: third_party
+          key: third-party-${{ hashFiles('CMakeLists.txt') }}
+      - name: Tools
+        run: brew list ninja >/dev/null 2>&1 || brew install ninja
+      - name: Build and test
+        run: |
+          cmake --preset release-macos
+          cmake --build --preset release-macos
+          ctest --preset release-macos
+      - name: Package
+        run: ./package-macos.sh
+      - uses: actions/upload-artifact@v4
+        with:
+          name: macos-packages
+          path: dist/*
+
+  draft-release:
+    name: Draft release
+    needs: [windows, macos]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          path: packages
+          merge-multiple: true
+
+      - name: Release notes from the changelog
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          # The section "## [<version>] - date" of CHANGELOG.md, up to the next "## [".
+          awk -v v="$version" '
+            $0 ~ "^## \\[" v "\\]" { found = 1; next }
+            found && /^## \[/ { exit }
+            found { print }
+          ' CHANGELOG.md > notes.md
+          if [ ! -s notes.md ]; then echo "No CHANGELOG.md section for $version" > notes.md; fi
+          {
+            echo
+            echo "## Checksums (SHA-256)"
+            echo '```'
+            cat packages/SHA256SUMS*.txt
+            echo '```'
+          } >> notes.md
+
+      - name: Create the draft release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          flags="--draft"
+          case "$GITHUB_REF_NAME" in *-*) flags="$flags --prerelease" ;; esac
+          gh release create "$GITHUB_REF_NAME" $flags \
+            --title "Schematic Amp Sim ${GITHUB_REF_NAME#v}" \
+            --notes-file notes.md \
+            packages/*

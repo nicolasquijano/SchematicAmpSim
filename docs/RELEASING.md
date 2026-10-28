@@ -58,3 +58,30 @@ is not code-signed, so Windows SmartScreen may warn when it is run for the first
 
 To test it without touching your plugin folder: `SchematicAmpSim-<version>-win64-setup.exe /VERYSILENT /CURRENTUSER /DIR="C:\temp\test.vst3"`, then run
 the `unins000.exe` it leaves there.
+
+## Continuous integration and the automatic draft
+
+Two workflows live in `.github/workflows/`:
+
+- **`ci.yml`** runs on every push to master and every pull request: it builds and runs the tests on Windows (MSVC) and on macOS (clang, universal
+  arm64 + x86_64, VST3 and Audio Unit), and attaches the packages to the run as artifacts.
+- **`release.yml`** runs when a tag `v*` is pushed (step 7 above): it builds both platforms, packages them and creates a **draft** release with the
+  Windows installer and zip, the macOS zip, the checksums and the changelog section of that version as notes. A tag with a `-` in it
+  (`-beta`) is marked as a pre-release. Read the draft, try the files, then publish it by hand. The manual steps above still work without it.
+
+Neither workflow has run yet on GitHub: the first run may need small fixes (paths on the runners, a missing tool).
+
+## macOS
+
+The macOS build is a universal binary (Apple Silicon and Intel, macOS 11 or later): `Schematic Amp Sim.vst3` and the Audio Unit
+`Schematic Amp Sim.component`, packaged by `package-macos.sh` into `dist/SchematicAmpSim-<version>-macos-universal.zip` with an `INSTALL.txt`.
+
+- The bundles only get an **ad-hoc signature**. Apple Silicon refuses unsigned code, but an ad-hoc signature is not what Gatekeeper wants for a
+  download: users must remove the quarantine mark (`xattr -dr com.apple.quarantine <bundle>`, the INSTALL.txt says how).
+- To remove that step the bundles need a **Developer ID signature and Apple notarization**, which requires an Apple Developer account (99 USD a year).
+  Once there is one: store the certificate and the notarization credentials as GitHub secrets, and add `codesign --options runtime`, `notarytool submit`
+  and `stapler staple` to `package-macos.sh` / the macOS jobs, and ship a `.pkg` or `.dmg` instead of a zip.
+- `-ffp-contract=off` is set for clang and gcc in `CMakeLists.txt`: without it clang on Apple Silicon fuses multiplications and additions and the
+  numerical parity with the MSVC build (and the Rust reference) is lost.
+- Nobody has listened to the macOS build yet. Before announcing it: load it in Logic (the Audio Unit, `auval -v aufx Sas1 Nico`) and in one VST3 host.
+
