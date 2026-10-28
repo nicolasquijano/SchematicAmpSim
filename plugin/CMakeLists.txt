@@ -1,4 +1,5 @@
 juce_add_plugin(SchematicAmpSim
+  VERSION ${PROJECT_VERSION}
   COMPANY_NAME "Nico"
   PLUGIN_MANUFACTURER_CODE Nico
   PLUGIN_CODE Sas1

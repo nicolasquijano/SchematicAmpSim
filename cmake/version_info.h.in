@@ -1,0 +1,7 @@
+// Generated from cmake/version_info.h.in by CMake. Do not edit.
+#pragma once
+
+#define SAS_VERSION_STRING "@SAS_VERSION_STRING@"
+#define SAS_VERSION_MAJOR @PROJECT_VERSION_MAJOR@
+#define SAS_VERSION_MINOR @PROJECT_VERSION_MINOR@
+#define SAS_VERSION_PATCH @PROJECT_VERSION_PATCH@

@@ -2,6 +2,8 @@
 
 #include <cmath>
 
+#include "sas/version.h"
+
 // ------------------------------------------------------------------ look
 
 juce::FontOptions AmpLookAndFeel::font(float size, bool bold, float tracking) {
@@ -752,6 +754,9 @@ void SasEditor::paint(juce::Graphics& g) {
     }
 
     drawLogo(g, logoBounds_.toFloat());
+    g.setColour(look_.label().withAlpha(0.65f));
+    g.setFont(AmpLookAndFeel::font(10.0f));
+    g.drawText(juce::String("v") + sas::engineVersion(), 12, getHeight() - 24, 168, 14, juce::Justification::centredLeft);
 
     // Title of the amp, with a thin accent line under it.
     const int left = 12 + 176;

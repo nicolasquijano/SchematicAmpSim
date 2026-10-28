@@ -1,6 +1,12 @@
 cmake_minimum_required(VERSION 3.25)
 project(SchematicAmpSim VERSION 0.1.0 LANGUAGES C CXX)
 
+# The version lives here and nowhere else: bump VERSION above (and the suffix below) for a release, see docs/RELEASING.md.
+# "-beta" while the saved-project format may still change; empty for a stable 1.0 and later.
+set(SAS_VERSION_SUFFIX "-beta")
+set(SAS_VERSION_STRING "${PROJECT_VERSION}${SAS_VERSION_SUFFIX}")
+configure_file("${CMAKE_SOURCE_DIR}/cmake/version_info.h.in" "${CMAKE_BINARY_DIR}/generated/sas/version_info.h" @ONLY)
+
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)

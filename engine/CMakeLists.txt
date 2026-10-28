@@ -34,7 +34,7 @@ add_library(sas_engine STATIC
   src/compressor.cpp
   ${_comp_gen}
   src/chain.cpp)
-target_include_directories(sas_engine PUBLIC include)
+target_include_directories(sas_engine PUBLIC include "${CMAKE_BINARY_DIR}/generated")
 target_link_libraries(sas_engine PUBLIC nlohmann_json::nlohmann_json)
 set_target_properties(sas_engine PROPERTIES INTERPROCEDURAL_OPTIMIZATION ON)
 target_compile_features(sas_engine PUBLIC cxx_std_20)

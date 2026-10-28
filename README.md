@@ -30,6 +30,16 @@ the amp itself (tubes, bias, noise, wear, unit). The **Tuner**:
 
 (The pictures are rendered by the editor itself: see "Repository layout" for how to regenerate them.)
 
+## Download
+
+Get the latest version from the [Releases page](https://github.com/nicolasquijano/SchematicAmpSim/releases) (Windows 10/11, 64-bit, any VST3 host):
+
+- **`SchematicAmpSim-<version>-win64-setup.exe`**: the installer. It puts the plugin in `C:\Program Files\Common Files\VST3`.
+- **`SchematicAmpSim-<version>-win64.zip`**: the plugin bundle on its own, to copy into your VST3 folder by hand.
+
+Then rescan the plugins in your DAW. The current version is a **beta** (see the [changelog](CHANGELOG.md)): the saved-project format may
+still change between 0.x versions. Versioning and the steps of a release are in [docs/RELEASING.md](docs/RELEASING.md).
+
 ## Features
 
 - **Circuit-level modelling.** Modified nodal analysis with a DK-style discretisation (trapezoidal

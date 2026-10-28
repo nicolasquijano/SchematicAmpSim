@@ -1,7 +1,8 @@
 #include "sas/version.h"
+#include "sas/version_info.h"
 
 namespace sas {
 
-const char* engineVersion() noexcept { return "0.1.0"; }
+const char* engineVersion() noexcept { return SAS_VERSION_STRING; }
 
 }  // namespace sas
