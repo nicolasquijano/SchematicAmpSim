@@ -12,7 +12,7 @@ VST3 for Windows, built with C++20 and [JUCE](https://juce.com).
 
 ## Screenshots
 
-Every amp has its own colours (the amp list is on the left). Four of the eleven:
+Every amp has its own colours (the amp list is on the left). Four of the twelve:
 
 <p align="center">
   <img src="docs/images/amps.png" alt="American Twin, American Tweed, American 5050 and British Class A" width="800">
@@ -48,7 +48,7 @@ still change between 0.x versions. Versioning and the steps of a release are in 
 - **Amps are data, not code.** Each amp is a folder with a netlist and an `amp.json` that maps
   knobs, input jacks, presence, supply and output level onto circuit elements. Adding an amp means
   adding files; nothing is recompiled except to embed them.
-- **Eleven amps included** (display names are deliberately generic):
+- **Twelve amps included** (display names are deliberately generic):
   | Name | Circuit |
   |---|---|
   | British 800 | Cascading-gain preamp, 100 W-class EL34 power amp, High and Low input jacks |
@@ -60,11 +60,12 @@ still change between 0.x versions. Versioning and the steps of a release are in 
   | American Bass 50 | 1959-style 50 W tweed bass head: bright and normal channels with #1 and #2 inputs (jumpered or not), 12AY7 / 12AX7 preamp with cathode follower, the 250p / 56k tone stack, long-tailed phase inverter with 27k negative feedback and presence, two 6L6GC with fixed bias, GZ34 rectifier and choke |
   | British Hi-Fi | High-headroom 100 W head with huge transformers: brilliant and normal channels (a 1000p or a 22n coupling) mixed into a double triode, the passive 1000p / 220p treble, middle and bass stack, master volume, long-tailed 12AX7 phase inverter with the feedback injected into its tail and a presence network, four EL34 on fixed bias, silicon bridge supply with three filtered HT stages |
   | British Or | Early-70s 120 W head: one input into two identical 12AX7 stages around the Orange tone circuit (1n5 / 10n treble, 1M bass, two 100k) and a gain pot, a six-position FAC switch (a ladder of 4n7 to 330p that cuts more bass at each step, selected with the channel list), a cathodyne inverter, four EL34 with a choke-fed screen supply and 15k negative feedback into the first triode's cathode with a BOOST control (2 mH / 0.47u). No master volume |
+  | American Bass 300 | 1972-style 300 W tube bass head: two channels (Bright and Normal inputs), the Ultra Lo and Ultra Hi switches, a Baxandall-type bass and treble stack, the mid-range network with its toroidal inductor and three frequencies, a 6C4 cathode follower, a cathodyne phase inverter with 12BH7 cathode-follower drivers and six 6550 at 660 V. No negative feedback. The amp's own switches are drop-downs under its knobs |
   | British Class A | Class A 30 W combo-style amp (Top Boost reissue drawing): Normal channel straight to the phase inverter, Brilliant channel through the Treble / Bass network, Cut control, four cathode-biased EL84 with no negative feedback (no vibrato or reverb) |
   | American Tweed | 1950s-style 12 W tweed combo: two channels with interactive volume pots and a tone control, 12AY7 / 12AX7 preamp, cathodyne phase inverter, two cathode-biased 6V6GT, no negative feedback, high-impedance 5Y3GT rectifier supply |
 - **The loudspeaker is part of the circuit**: the output transformer drives a voice-coil resistance and inductance and the cone's mechanical resonance (typical 12 inch values scaled to each amp's load), so the amp's output voltage has the bass bump, the mid dip and the rising top of a tube amp into a real speaker. It can be turned off per amp with `"speaker_load": {"enabled": false}` in its `amp.json`. The output transformer also has winding capacitance and core loss (`transformer_parasitics`). The Lite mode does not reproduce the bump, the dip or the treble resonance.
 - **Pitch shift** (Pitch tab): -12 to +12 semitones and fine tuning in cents, for dropped tunings, octaves or tuning the recording. A granular two-head shifter that works on chords; it adds about 12 ms of delay only while a shift is set.
-- **Post equaliser** (EQ tab): five bands (low shelf, three bells, high shelf), a high-pass and a low-pass, with a draggable response curve and five guitar presets (clean, blues, tight rhythm, lead, de-fizz); it works on the final stereo signal, after the cabinet, so it shapes the result without changing how the amp distorts.
+- **Post equaliser** (EQ tab): five bands (low shelf, three bells, high shelf), a high-pass and a low-pass, with a draggable response curve and ten guitar presets (clean, blues, tight rhythm, lead, de-fizz, metal, jazz, country, classic rock, mix-ready); it works on the final stereo signal, after the cabinet, so it shapes the result without changing how the amp distorts.
 - **Standalone application and presets**: besides the VST3, `Schematic Amp Sim.exe` runs without a DAW (the gear button opens the audio settings: pick the ASIO driver of your interface (or Windows Audio exclusive mode) and the input channel of the guitar; the input starts muted to avoid feedback, unmute it once the monitoring is safe). The Presets button saves and loads the whole state as `.sasp` files in `%APPDATA%\Schematic Amp Sim\Presets`.
 - **Quality modes**
   | Mode | What it does |

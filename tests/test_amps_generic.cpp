@@ -49,7 +49,9 @@ TEST_CASE("every embedded amp loads, converges, and makes sound with every jack"
                 FullAmp amp(def, kFs);
                 amp.setKnobs(defaultKnobs(def), def.power.presenceDefault);
                 amp.setJack(j);
-                const double level = rmsAt(amp, 220.0, 0.1);
+                // A jack that is much hotter than the others (the SVT's channel 1) is tested at the level the plugin gives it with "level match" on.
+                const double peak = 0.1 * std::min(1.0, std::pow(10.0, def.preamp.jacks[j].levelDb / 20.0));
+                const double level = rmsAt(amp, 220.0, peak);
                 INFO(id << " jack " << def.preamp.jacks[j].name << " rms " << level);
                 CHECK(level > 0.1);
                 // The very first sample of a hard onset into the inductive speaker load may fail once (the next ones converge).
@@ -844,4 +846,56 @@ TEST_CASE("Transformer parasitics: the primary's winding capacitance rolls the t
             }
         }
     }
+}
+
+TEST_CASE("American Bass 300 (SVT): the supply, the bias and the first stages are in the range of the drawing") {
+    const AmpDef def = loadEmbeddedAmp("svt_bass300");
+    PowerAmp power(def, kFs);
+    const auto net = parseNetlist(def.power.netlistText, def.power.netlist);
+    CHECK(power.solver().dcConverged);
+    auto v = [&](const char* n) { return power.solver().voltage(net.node(n)); };
+    CHECK(std::abs(v("a") - 660.0) < 40.0);      // A
+    CHECK(std::abs(v("x") - 462.0) < 60.0);      // B
+    CHECK(std::abs(v("vs") - 350.0) < 1.0);      // the screens
+    const double idleMa = (v("a") - v("pt")) / 20.0 / 3.0 * 1e3;  // per tube: 20 ohm per half, three tubes
+    INFO("idle " << idleMa << " mA per 6550");
+    CHECK(idleMa > 15.0);
+    CHECK(idleMa < 35.0);                        // the drawing's 0.072 V across 1 ohm for three tubes is 24 mA
+    Preamp pre(def, kFs, power.railX());
+    const auto pnet = parseNetlist(def.preamp.netlistText, def.preamp.netlist);
+    auto p = [&](const char* n) { return pre.solver().voltage(pnet.node(n)); };
+    INFO("V1a plate " << p("p1") << " V, V4b cathode " << p("k4b") << " V");
+    CHECK(p("rb") > 280.0);
+    CHECK(p("rb") < 420.0);                      // the +300 V rail
+    CHECK(std::abs(p("k4b") - 135.0) < 40.0);    // V4b's cathode follower
+}
+
+TEST_CASE("American Bass 300 (SVT): it is quiet at rest, the switches and the controls act") {
+    const AmpDef def = loadEmbeddedAmp("svt_bass300");
+    {
+        // The preamp used to motorboat at rest through its single supply filter: with two stages it stays still.
+        FullAmp amp(def, kFs);
+        amp.setKnobs(defaultKnobs(def), 0.5);
+        double acc = 0;
+        const std::size_t n = std::size_t(1.0 * kFs);
+        for (std::size_t i = 0; i < n; ++i) { const double y = amp.process(0.0); if (i > n / 2) acc += y * y; }
+        CHECK(std::sqrt(acc / double(n / 2)) < 0.05);
+    }
+    auto level = [&](const char* knob, double v, double hz, int selector, int position, int jack = 0) {
+        FullAmp amp(def, kFs);
+        auto k = defaultKnobs(def);
+        if (knob) k[def.knobIndex(knob)] = v;
+        amp.setKnobs(k, 0.5);
+        amp.setJack(std::size_t(jack));
+        if (selector >= 0) amp.setSelector(std::size_t(selector), std::size_t(position));
+        return rmsAt(amp, hz, 0.00003);
+    };
+    // Bass and treble move their own ends; the Ultra Hi switch lifts the top; Ultra Lo scoops the mids.
+    CHECK(level("bass", 1.0, 40.0, -1, 0) > 1.5 * level("bass", 0.0, 40.0, -1, 0));
+    CHECK(level("treble", 1.0, 4000.0, -1, 0) > 1.2 * level("treble", 0.0, 4000.0, -1, 0));
+    CHECK(level(nullptr, 0, 3200.0, 1, 1) > 1.3 * level(nullptr, 0, 3200.0, 1, 0));   // ultra hi
+    CHECK(level(nullptr, 0, 400.0, 0, 1) < 0.85 * level(nullptr, 0, 400.0, 0, 0));    // ultra lo (the twin-T notch)
+    CHECK(level(nullptr, 0, 5000.0, 0, 2) > 1.5 * level(nullptr, 0, 40.0, 0, 2));     // bass cut leaves the top
+    // Channel 1 has two more gain stages than channel 2.
+    CHECK(level(nullptr, 0, 500.0, -1, 0, 0) > 3.0 * level(nullptr, 0, 500.0, -1, 0, 2));
 }

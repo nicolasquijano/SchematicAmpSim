@@ -6,7 +6,15 @@ version numbers follow [Semantic Versioning](https://semver.org/) (see [docs/REL
 ## [Unreleased]
 
 ### Added
-- Five guitar presets for the EQ alone (the Presets button on the EQ page; they only set the EQ): Clean sparkle, Warm blues, Tight rhythm, Lead cut-through and Smooth (de-fizz), plus Flat to reset.
+- A new amp, American Bass 300, from the preamp and power amp drawings of a 1972 tube bass head with the Ultra Hi and Ultra Lo switches: two channels, the bass select network, a bass / treble stack per channel,
+  the mid-range network with its toroidal inductor, six 6550. The switches are a new kind of control: an amp can now declare up to four "selectors" (amp.json `preamp.selectors`), shown as drop-downs under its
+  knobs and saved as parameters. Several readings of the drawing are interpretations (see the comments in `amps/svt_bass300/*.net`): the bass-select and channel 2 Ultra Lo networks, the exact taps of the toroid,
+  the cathode-follower drivers, the supply decoupling (a second filter stage was added: with the drawing's single filter this model motorboats). The 6550 model was fitted at much lower plate voltages than the
+  660 V here. The Lite mode does not follow the full circuit well on this amp (it cannot reproduce the speaker and transformer shape of a feedback-free amp).
+- Ten guitar presets for the EQ alone (the Presets button on the EQ page; they only set the EQ): Clean sparkle, Warm blues, Tight rhythm, Lead cut-through, Smooth (de-fizz), Metal scoop, Jazz warm, Country twang, Classic rock crunch and Mix-ready, plus Flat to reset.
+
+### Changed
+- The window opens larger (1000 x 520, resizable from 920 x 480) and the amp list uses the free height. The noise gate moved from the Effects page to the Amp page, next to the guitar input.
 
 ### Removed
 - The bass and treble harmonic exciter ("maximizer") of 0.2.0-beta: it did not earn its place. Projects that stored its two knobs simply ignore them.

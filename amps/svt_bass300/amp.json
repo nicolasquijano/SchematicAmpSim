@@ -1,0 +1,398 @@
+{
+ "id": "svt_bass300",
+ "order": 11,
+ "output_db": 3.1,
+ "name": "American Bass 300",
+ "theme": {
+  "background": "#0d0d0f",
+  "panel": "#1d1d22",
+  "edge": "#3d3d46",
+  "accent": "#ff5a3c",
+  "label": "#9a8f8a",
+  "text": "#ece6e2",
+  "knob_top": "#3b3b44",
+  "knob_bottom": "#131316",
+  "pointer": "#ffd6cc"
+ },
+ "preamp": {
+  "netlist": "preamp.net",
+  "tolerance": 2e-06,
+  "rail_source": "VRAIL",
+  "input_source": "VIN",
+  "output_node": "out",
+  "pot_min_ohms": 100,
+  "jack_label": "INPUT",
+  "knobs": [
+   {
+    "name": "vol1",
+    "default": 0.2,
+    "pot": {
+     "type": "wiper",
+     "top": "VR_V1T",
+     "bottom": "VR_V1B",
+     "total": 1000000.0,
+     "taper": "linear"
+    }
+   },
+   {
+    "name": "vol2",
+    "default": 0.3,
+    "pot": {
+     "type": "wiper",
+     "top": "VR_V2T",
+     "bottom": "VR_V2B",
+     "total": 1000000.0,
+     "taper": "linear"
+    }
+   },
+   {
+    "name": "bass",
+    "default": 0.5,
+    "pot": {
+     "type": "wiper",
+     "top": "VR_BS1T",
+     "bottom": "VR_BS1B",
+     "total": 1000000.0,
+     "taper": "log",
+     "also": [
+      {
+       "top": "VR_BS2T",
+       "bottom": "VR_BS2B"
+      }
+     ]
+    }
+   },
+   {
+    "name": "treble",
+    "default": 0.5,
+    "pot": {
+     "type": "wiper",
+     "top": "VR_TR1B",
+     "bottom": "VR_TR1T",
+     "total": 1000000.0,
+     "taper": "log",
+     "also": [
+      {
+       "top": "VR_TR2B",
+       "bottom": "VR_TR2T"
+      }
+     ]
+    }
+   },
+   {
+    "name": "mid",
+    "default": 0.5,
+    "pot": {
+     "type": "wiper",
+     "top": "VR_MIDB",
+     "bottom": "VR_MIDT",
+     "total": 50000.0,
+     "taper": "linear"
+    }
+   }
+  ],
+  "source_ohms": {
+   "resistors": [
+    "RSRC"
+   ],
+   "default": 7000,
+   "min": 10
+  },
+  "jacks": [
+   {
+    "name": "ch1_normal",
+    "label": "Ch 1 Normal",
+    "drive": "VIN",
+    "resistors": {
+     "SW_N1": 1,
+     "SW_B1": 1000000000000.0,
+     "SW_N2": 1000000000000.0,
+     "SW_B2": 1000000000000.0
+    },
+    "level_db": -30.0
+   },
+   {
+    "name": "ch1_bright",
+    "label": "Ch 1 Bright",
+    "drive": "VIN",
+    "resistors": {
+     "SW_N1": 1000000000000.0,
+     "SW_B1": 1,
+     "SW_N2": 1000000000000.0,
+     "SW_B2": 1000000000000.0
+    },
+    "level_db": -30.0
+   },
+   {
+    "name": "ch2_normal",
+    "label": "Ch 2 Normal",
+    "drive": "VIN",
+    "resistors": {
+     "SW_N1": 1000000000000.0,
+     "SW_B1": 1000000000000.0,
+     "SW_N2": 1,
+     "SW_B2": 1000000000000.0
+    },
+    "level_db": 19.0
+   },
+   {
+    "name": "ch2_bright",
+    "label": "Ch 2 Bright",
+    "drive": "VIN",
+    "resistors": {
+     "SW_N1": 1000000000000.0,
+     "SW_B1": 1000000000000.0,
+     "SW_N2": 1000000000000.0,
+     "SW_B2": 1
+    },
+    "level_db": 19.0
+   },
+   {
+    "name": "both_normal",
+    "label": "Ch 1 + 2 Normal",
+    "drive": "VIN",
+    "resistors": {
+     "SW_N1": 1,
+     "SW_B1": 1000000000000.0,
+     "SW_N2": 1,
+     "SW_B2": 1000000000000.0
+    },
+    "level_db": -30.0
+   }
+  ],
+  "selectors": [
+   {
+    "name": "ultra_lo",
+    "label": "ULTRA LO",
+    "positions": [
+     {
+      "label": "Off",
+      "resistors": {
+       "SW_DIR": 1,
+       "SW_KA": 1000000000000.0,
+       "SW_RB": 1000000000000.0,
+       "SW_UL2": 1000000000000.0
+      }
+     },
+     {
+      "label": "Ultra Lo",
+      "resistors": {
+       "SW_DIR": 1000000000000.0,
+       "SW_KA": 1,
+       "SW_RB": 1,
+       "SW_UL2": 1
+      }
+     },
+     {
+      "label": "Bass cut (ch 1)",
+      "resistors": {
+       "SW_DIR": 1000000000000.0,
+       "SW_KA": 1,
+       "SW_RB": 1000000000000.0,
+       "SW_UL2": 1000000000000.0
+      }
+     }
+    ]
+   },
+   {
+    "name": "ultra_hi",
+    "label": "ULTRA HI",
+    "positions": [
+     {
+      "label": "Off",
+      "resistors": {
+       "SW_UH1": 1000000000000.0,
+       "SW_UH2": 1000000000000.0
+      }
+     },
+     {
+      "label": "Ultra Hi",
+      "resistors": {
+       "SW_UH1": 1,
+       "SW_UH2": 1
+      }
+     }
+    ]
+   },
+   {
+    "name": "mid_freq",
+    "label": "MID FREQ",
+    "positions": [
+     {
+      "label": "Low",
+      "resistors": {
+       "SW_M1": 1,
+       "SW_M2": 1000000000000.0,
+       "SW_M3": 1000000000000.0
+      }
+     },
+     {
+      "label": "Mid",
+      "resistors": {
+       "SW_M1": 1000000000000.0,
+       "SW_M2": 1,
+       "SW_M3": 1000000000000.0
+      }
+     },
+     {
+      "label": "High",
+      "resistors": {
+       "SW_M1": 1000000000000.0,
+       "SW_M2": 1000000000000.0,
+       "SW_M3": 1
+      }
+     }
+    ]
+   }
+  ]
+ },
+ "ui": [
+  {
+   "param": "volume",
+   "knob": "vol1",
+   "label": "CH 1"
+  },
+  {
+   "param": "volume2",
+   "knob": "vol2",
+   "label": "CH 2"
+  },
+  {
+   "param": "bass",
+   "knob": "bass",
+   "label": "BASS"
+  },
+  {
+   "param": "middle",
+   "knob": "mid",
+   "label": "MID"
+  },
+  {
+   "param": "treble",
+   "knob": "treble",
+   "label": "TREBLE"
+  }
+ ],
+ "power": {
+  "transformer_parasitics": {
+   "primary_pf": 150,
+   "core_loss_ohms": 34000
+  },
+  "tubes": [
+   {
+    "name": "6550",
+    "model": "6550DS",
+    "pmax_w": 35.0,
+    "bias_scale": 1.0
+   },
+   {
+    "name": "EL34",
+    "model": "EL34",
+    "pmax_w": 25.0,
+    "bias_scale": 0.7281
+   },
+   {
+    "name": "6L6GC",
+    "model": "6L6GCDS",
+    "pmax_w": 30.0,
+    "bias_scale": 0.8807
+   }
+  ],
+  "bias": {
+   "source": "VBIAS",
+   "idle_resistors": [
+    "DCR_PT",
+    "DCR_PB"
+   ],
+   "tubes_per_half": 3
+  },
+  "netlist": "poweramp.net",
+  "tolerance": 0.0001,
+  "input_source": "VAUDIO",
+  "ht_source": "VHT",
+  "ht_node": "a",
+  "rail_node": "x",
+  "output_node": "t4",
+  "load_resistor": "RLOAD",
+  "supply": {
+   "mains_hz": 60,
+   "vac_peak": 735,
+   "rect_source_ohms": 60,
+   "ht_dc_source": 660,
+   "rect_drop": 4,
+   "reservoir_farads": 5e-05,
+   "tie_ohms": 1.0,
+   "settle_seconds": 0.5
+  }
+ },
+ "lite": {
+  "base_gain_db": 28.7516,
+  "high_pass_hz": 33.2862,
+  "shelf_hz": 150,
+  "presence_db": [
+   0,
+   0,
+   0,
+   0,
+   0
+  ],
+  "sag_table": [
+   [
+    0,
+    0
+   ],
+   [
+    2.54648,
+    2.71934
+   ],
+   [
+    5.09296,
+    10.4915
+   ],
+   [
+    9.5493,
+    33.1767
+   ],
+   [
+    15.9155,
+    73.0202
+   ],
+   [
+    22.2817,
+    102.743
+   ],
+   [
+    28.6479,
+    112.461
+   ],
+   [
+    35.0141,
+    116.537
+   ],
+   [
+    44.5634,
+    119.601
+   ],
+   [
+    57.2958,
+    122.287
+   ],
+   [
+    82.7606,
+    128
+   ],
+   [
+    127.324,
+    137.234
+   ]
+  ],
+  "rail_x_idle": 456.801,
+  "rail_sag_fraction": 0.58,
+  "ceiling_light": 187.4,
+  "ceiling_heavy": 37.925,
+  "ceiling_decay": 11.8128,
+  "knee": 68.6002,
+  "sag_attack_s": 0.01,
+  "sag_release_s": 0.06
+ }
+}

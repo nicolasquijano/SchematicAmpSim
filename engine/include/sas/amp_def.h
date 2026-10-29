@@ -41,6 +41,18 @@ struct JackDef {
     std::vector<std::pair<std::string, double>> resistors;  // switch resistors to set
 };
 
+// A switch with several positions (the Ultra Hi / Ultra Lo switches of a bass amp, a mid-range selector...): in each position some switch
+// resistors take the given values. Position 0 must be what the netlist has by default. The editor shows one drop-down per selector.
+struct SelectorPositionDef {
+    std::string label;
+    std::vector<std::pair<std::string, double>> resistors;
+};
+struct SelectorDef {
+    static constexpr std::size_t kMax = 4;  // how many selectors an amp can have (the plugin has that many parameters)
+    std::string name, label;
+    std::vector<SelectorPositionDef> positions;
+};
+
 // A later part of the preamp, solved separately: its source `linkSource` is driven every sample
 // with the voltage of node `linkFrom` of the previous part (one-way coupling: the later part does
 // not load the earlier one, so the cut belongs at a low-impedance node such as a cathode follower).
@@ -108,6 +120,7 @@ struct PreampDef {
     std::vector<std::string> sourceResistors;
     double sourceOhmsDefault = 7000, sourceOhmsMin = 10;
     std::vector<JackDef> jacks;
+    std::vector<SelectorDef> selectors;
     std::string jackLabel = "INPUT JACK";  // caption of the selector: "MODE", "CHANNEL", ...
     VibratoDef vibrato;
     ReverbDef reverb;

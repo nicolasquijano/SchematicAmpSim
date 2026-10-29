@@ -61,6 +61,9 @@ Layout SasProcessor::createLayout(const std::vector<sas::AmpDef>& defs) {
     l.add(std::make_unique<juce::AudioParameterChoice>(
         juce::ParameterID{ids::jack, kVersion}, "Input jack", juce::StringArray{"Jack 1", "Jack 2", "Jack 3", "Jack 4", "Jack 5", "Jack 6", "Jack 7", "Jack 8"}, 0));
     l.add(std::make_unique<juce::AudioParameterBool>(juce::ParameterID{ids::levelMatch, kVersion}, "Level match", true));
+    for (int i = 0; i < 4; ++i)
+        l.add(std::make_unique<juce::AudioParameterChoice>(juce::ParameterID{ids::sel[i], kVersion}, "Amp switch " + juce::String(i + 1),
+                                                           juce::StringArray{"Position 1", "Position 2", "Position 3", "Position 4", "Position 5"}, 0));
     l.add(std::make_unique<juce::AudioParameterBool>(juce::ParameterID{ids::tsOn, kVersion}, "Tube Screamer", false));
     l.add(knob(ids::tsDrive, "TS Drive", 5.0f));
     l.add(knob(ids::tsTone, "TS Tone", 5.0f));
@@ -295,6 +298,9 @@ sas::ChainSettings SasProcessor::readSettings(bool irAvailable) {
     // With no IR loaded the IR mode falls back to the cab filter instead of the raw amp.
     s.cabFilter = cab == CabMode::Filter || (cab == CabMode::Ir && !irAvailable);
     s.jackLevelMatch = raw(ids::levelMatch) > 0.5;
+    s.selectors.clear();
+    for (std::size_t i = 0; i < def.preamp.selectors.size() && i < 4; ++i)
+        s.selectors.push_back(std::size_t(juce::jlimit(0, int(def.preamp.selectors[i].positions.size()) - 1, int(raw(ids::sel[i]) + 0.5))));
     s.vibratoOn = raw(ids::vibOn) > 0.5;
     s.vibratoSpeed = double(ap.vibSpeed->load()) / 10.0;
     s.tsOn = raw(ids::tsOn) > 0.5;

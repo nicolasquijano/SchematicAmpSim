@@ -212,6 +212,8 @@ private:
     juce::TextEditor ampSearch_;
     std::vector<int> shown_;  // the amp indices that match the search, in list order
     juce::ComboBox quality_, jack_, cab_, pickup_, tube_, noise_, unit_;
+    juce::ComboBox selBox_[4];  // the amp's own switches
+    juce::Label selCaption_[4];
     std::unique_ptr<juce::AudioProcessorValueTreeState::ComboBoxAttachment> qualityAtt_, cabAtt_, pickupAtt_, noiseAtt_, unitAtt_;
     juce::Label ampCaption_, qualityCaption_, jackCaption_, cabCaption_, pickupCaption_, nameA_, nameB_, blendNote_, cabNote_, tubeCaption_, noiseCaption_, unitCaption_, idleLabel_, conditionNote_;
     juce::ToggleButton tsOn_{"On"};

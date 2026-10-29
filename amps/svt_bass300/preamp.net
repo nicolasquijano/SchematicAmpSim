@@ -1,0 +1,187 @@
+* Ampeg SVT (1972, 6550 version) preamp, drawing 591719: two channels (each with a Bright and a Normal input), V1 / V2 12AX7, the Ultra Lo and
+* Ultra Hi switches, a Baxandall-type bass / treble stack per channel, V3 / V4 (12AX7), the mid-range network with its toroidal inductor and
+* selector, and the V5 (6C4) cathode follower that feeds the power amp.
+*
+* Switches (amp.json "selectors"; the values below are position 0 of each):
+*   SW_DIR / SW_KA / SW_RB   SW1, channel 1 "bass select": Off (direct), Bass cut (the high-pass T alone), Ultra Low (both arms, R10 bypassed)
+*   SW_UH1 / SW_UH2          SW2 / SW4 Ultra Hi: 500p across the top of the channel's volume pot (one selector drives both)
+*   SW_UL2                   SW3 Ultra Lo of channel 2: the coupling goes straight through instead of through 1n
+*   SW_M1 / SW_M2 / SW_M3    SW5 mid-range select: which tap of L1 is grounded (directly, or through the .15 or the .033)
+*   SW_B1 SW_N1 SW_B2 SW_N2  the four inputs (the jacks in amp.json)
+*
+* Assumptions where the drawing is silent or hard to read (change them here, not in code):
+*  - the unplugged jacks are open, the plugged one reaches the grid through its 47k (Normal) or the 100k + 4n7 (Bright);
+*  - SW1: the R8 / C3 / R9 and C4 / C5 arms are always between the two ends, the switch decides whether a direct wire bypasses them and where
+*    the middle of the C4 / C5 arm goes (open, 888k, or 68k to ground); C3 bridges R8;
+*  - channel 2's Ultra Lo network (R17, R18, C10 around SW3) is reduced to its effect on the coupling: 1n + 10M, or straight through;
+*  - the tone stack: 220k from the coupling cap to the top of the bass pot (1M log, 1n across its top half, 10n across its bottom half, 22k to
+*    ground), 470p to the top of the treble pot (1M log, 4n7 from its bottom to ground), 120k between the two wipers, the output at the top
+*    of the treble pot (through 10n into V3b in channel 1, through 100k into the cathode follower in channel 2);
+*  - the mid-range network: the cathode follower's output F; 6.8k + 220k and .68u + 620 from F to the pot's end, 470 + .68u from the other end
+*    to ground; the pot's wiper on the top tap of L1 (1 H over its whole length, 0.292 / 0.222 / 0.486 turns in the three sections, so tap 3 with
+*    .033u resonates near 3 kHz, tap 2 with .15u near 800 Hz, tap 1 alone is an inductor); 220k bleeders to ground;
+*  - V5 (6C4) is modelled with the 12AT7 triode (its mu is 17, the 12AT7 about 60: as a cathode follower it is almost the same);
+*  - the knobs are one bass and one treble for both channels (the drawing has one stack each), two volumes, one mid-range.
+
+.nodes x rb rd gin in jb1 jn1 jb2 jn2 g1 p1 k1 kb1 n1 jx jk jka jm vt1 wv1 uh1 g3 p3 k3 a1 bb1 w51 d1 t61 w61 b61 g3b p3b k3b m3 g4 p4a k4a k4b f e1 ve e2 vl e3 wm a3 a2 a1t s3 s2 tn g5 k5 m5 out g2 p2a k2a q2 vt2 wv2 uh2 p2b k2b a2s bb2 w52 d2 t62 w62 b62 pkb1 pkb2 pkk1 pkk2 pkk4
+
+* 430 V node (driven from the power amp at run time), 8.2k and 40u make the +300 V rail of the preamp.
+V VRAIL x 100 430
+R R47 x rb 8.2k
+C C23 rb 0 40u
+* Decoupling the first stages from the last ones (the drawing has a single 40u; without a second stage this model motorboats at rest).
+R RDEC rb rd 4k7
+C CDEC rd 0 40u
+
+I VIN gin 1
+R RSRC gin in 7k
+* The guitar behind its source impedance (see the other amps for the pickup model).
+R RPU1 gin pkb1 1e12
+.xfmr LPU1 L=2.5
+  W pkb1 in 1 pu
+.end
+R RPU2 gin pkb2 1e12
+.xfmr LPU2 L=5
+  W pkb2 in 1 pu
+.end
+C CPU gin in 110p
+R RPL gin in 1e12
+R SWK1 in pkk1 1e12
+C CCAB1 pkk1 0 200p
+R SWK2 in pkk2 1e12
+C CCAB2 pkk2 0 400p
+R SWK4 in pkk4 1e12
+C CCAB4 pkk4 0 800p
+
+* The four inputs: Normal behind 47k, Bright behind 100k with 4n7 across it; 5.6M at each first grid.
+R SW_N1 in jn1 1
+R SW_B1 in jb1 1e12
+R R2 jn1 g1 47k
+R R1 jb1 g1 100k
+C C1 jb1 g1 4n7
+R R4 g1 0 5.6M
+R SW_N2 in jn2 1e12
+R SW_B2 in jb2 1e12
+R R13 jn2 g2 47k
+R R12 jb2 g2 100k
+C C8 jb2 g2 4n7
+R R15 g2 0 5.6M
+
+* Channel 1: V1a (220k, 3k3), V1b a cathode follower DC-coupled to V1a's plate (220k load), 0.1u into SW1.
+T V1A g1 p1 k1 12AX7
+R R3 rd p1 220k
+R R5 k1 0 3k3
+T V1B p1 rd kb1 12AX7
+R R6 kb1 0 220k
+C C2 kb1 n1 100n
+* SW1: direct / bass cut / ultra low.
+R SW_DIR n1 vt1 1
+R R8 n1 jx 150k
+C C3 n1 jx 2n
+R R9 jx vt1 150k
+C C4 n1 jk 2n
+C C5 jk vt1 2n
+R SW_KA jk jka 1e12
+R R10 jka jm 820k
+R SW_RB jka jm 1e12
+R R11 jm 0 68k
+* Volume 1 (1M lin) and Ultra Hi (500p across its top section).
+R VR_V1T vt1 wv1 1
+R VR_V1B wv1 0 1
+R SW_UH1 vt1 uh1 1e12
+C C6 uh1 wv1 500p
+* V3a (47k load, 4k7 cathode), 0.1u into the stack.
+T V3A wv1 p3 k3 12AX7
+R R24 rd p3 47k
+R R25 k3 0 4k7
+C C7 p3 a1 100n
+* Stack 1.
+R R220A a1 bb1 220k
+R VR_BS1T bb1 w51 1
+R VR_BS1B w51 d1 1
+C C001A bb1 w51 1n
+C C01A w51 d1 10n
+R R22KA d1 0 22k
+C C47PA a1 t61 470p
+R VR_TR1T t61 w61 1
+R VR_TR1B w61 b61 1
+C C47NA b61 0 4n7
+R R26 w51 w61 120k
+* V3b (220k load, 560 + 7k5 cathode, 1M grid return to the cathode divider), 0.1... 10n into V4a.
+C C14 t61 g3b 10n
+T V3B g3b p3b k3b 12AX7
+R R28 rd p3b 220k
+R R29 k3b m3 560
+R R30 m3 0 7k5
+R R27 g3b m3 1M
+C C15 p3b g4 10n
+R R31 g4 0 1M
+R R35 k4b 0 56k
+* V4a (470k load, 3k3 cathode) DC-coupled to V4b, a cathode follower (3k3... 47k) that feeds the mid-range network at F.
+T V4A g4 p4a k4a 12AX7
+R R32 rb p4a 470k
+R R33 k4a 0 3k3
+T V4B p4a rb k4b 12AX7
+R R37 k4b f 47k
+* Mid-range network.
+R R36 f e1 6k8
+R R38 e1 ve 220k
+C C19 f e2 680n
+R R39 e2 ve 620
+R VR_MIDT ve wm 1
+R VR_MIDB wm vl 1
+R R34 vl e3 470
+C C16 e3 0 680n
+.xfmr L1 L=1
+  W wm a3 0.292 l1
+  W a3 a2 0.222 l1
+  W a2 a1t 0.486 l1
+  K l1 l1 0.9998
+.end
+C C17 a3 s3 33n
+C C18 a2 s2 150n
+R SW_M1 a1t 0 1
+R SW_M2 s2 0 1e12
+R SW_M3 s3 0 1e12
+R R40 a3 0 220k
+R R41 a2 0 220k
+* Into V5: 0.02u through 100k from the mid-range output, channel 2 through 100k into the same node.
+C C20 f c20 100n
+R R42 c20 tn 100k
+C C21 tn g5 20n
+T V5 g5 rb k5 12AT7
+R R43 g5 m5 1M
+R R44 k5 m5 1k
+R R45 m5 0 47k
+C C22 k5 out 100n
+R R46 out 0 100k
+
+* Channel 2: V2a (220k, 3k3), 0.1u into the Ultra Lo coupling, volume 2 and Ultra Hi, V2b (100k load, 3k3 cathode), 0.1u into the stack.
+T V2A g2 p2a k2a 12AX7
+R R14 rd p2a 220k
+R R16 k2a 0 3k3
+C C9 p2a q2 100n
+R R19 q2 vt2 10M
+C C11 q2 vt2 1n
+R SW_UL2 q2 vt2 1e12
+R VR_V2T vt2 wv2 1
+R VR_V2B wv2 0 1
+R SW_UH2 vt2 uh2 1e12
+C C12 uh2 wv2 500p
+T V2B wv2 p2b k2b 12AX7
+R R20 rd p2b 100k
+R R21 k2b 0 3k3
+C C13 p2b a2s 100n
+* Stack 2 (the same as stack 1; its output at the top of the treble pot goes through 100k to V5's input).
+R R220B a2s bb2 220k
+R VR_BS2T bb2 w52 1
+R VR_BS2B w52 d2 1
+C C001B bb2 w52 1n
+C C01B w52 d2 10n
+R R22KB d2 0 22k
+C C47PB a2s t62 470p
+R VR_TR2T t62 w62 1
+R VR_TR2B w62 b62 1
+C C47NB b62 0 4n7
+R R22 w52 w62 120k
+R R23 t62 tn 100k

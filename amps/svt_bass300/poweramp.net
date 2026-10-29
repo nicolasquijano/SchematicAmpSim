@@ -1,0 +1,81 @@
+* Ampeg SVT (1972, 6550 version) power amp, drawing 591720: V1 (12AX7) as a gain stage and a cathodyne phase inverter, two 12BH7 cathode
+* followers that drive the grids, six 6550 as two groups of three on fixed bias, the output transformer (4 and 2 ohm taps) and the supply:
+* a bridge into 100u + 100u (node a, 660 V, integrated by the engine), 4k7 to the 462 V node (preamp and phase inverter), a separate winding
+* for the 350 V screens and the -150 V that biases the grids.
+*
+* Assumptions where the drawing is silent or hard to read (change them here, not in code):
+*  - there is no global negative feedback and no presence control in this amp;
+*  - the 12BH7 followers are modelled with the 12AT7 triode (the same transconductance, about 5 mA/V, so the same output impedance);
+*  - the second 12AX7 half is a cathodyne: 15k plate load, 1k + 10k + 7k5 on the cathode (the balance pot VR3 at mid travel), the outputs taken
+*    from the plate and from the top of the cathode resistor, 0.1u into the followers' grids (150k to the bias supply);
+*  - each follower's grid leak goes to the bias supply (-50 V here, tuned for ~24 mA per tube: the drawing prints 0.072 V across 1 ohm for
+*    three tubes), the cathodes are loaded by 47k to the -150 V and reach the three grids through three 47k in parallel (15k7);
+*  - the 350 V screen supply is taken as a stiff source, the 5.1 ohm screen resistors as 1.7 ohm for three tubes;
+*  - output transformer: 1.6k plate to plate (six 6550 at 660 V), 4 H per primary half, 20 ohm per half, a large core (SAT 7); the load is the
+*    4 ohm tap (the drawing's speaker cabinet is 8 ohm + 8 ohm in parallel, 4 ohm total);
+*  - the 6550 model was fitted at much lower plate voltages: its behaviour at 660 V is an extrapolation.
+
+.nodes pin ga pa1 k1a gb1 pb1 kck ck cm gc1 gc2 kcf1 kcf2 g1 g2 s1 s2 kt kb pt pbm npt npb a t4 x c bias neg vs
+
+S VAUDIO pin 1 0
+S VHT a 1 660
+S VBIAS bias 1k -56
+V VSCR vs 20 350
+V VNEG neg 20 -150
+
+* V1a: 1k + 470k at the grid, 220k load, 2k2 cathode.
+R R51 pin ga 1k
+R R2 ga 0 470k
+T V1A ga pa1 k1a 12AX7
+R R3 c pa1 220k
+R RK1A k1a 0 2k2
+* V1b, the cathodyne: 0.1u and 1M from the grid to the cathode resistor.
+C C1 pa1 gb1 100n
+R R7 gb1 ck 1M
+T V1B gb1 pb1 kck 12AX7
+R R6 c pb1 15k
+R R8 kck ck 1k
+R R9 ck cm 10k
+R VR3 cm 0 7k5
+* 12BH7 cathode followers.
+C C3 pb1 gc1 100n
+C C4 kck gc2 100n
+R R16 gc1 bias 150k
+R R18 gc2 bias 150k
+T VCF1 gc1 vs kcf1 12AT7
+T VCF2 gc2 vs kcf2 12AT7
+R R24 kcf1 neg 47k
+R R25 kcf2 neg 47k
+R R29 kcf1 g1 15k7
+R R26 kcf2 g2 15k7
+* Bias supply, filtered.
+C CBIAS bias 0 10u
+* Six 6550: three per group, cathodes through 1 ohm / 3, screens through 5.1 ohm / 3.
+P V4 g1 pt s1 kt 6550DS 3
+P V5 g2 pbm s2 kb 6550DS 3
+R RK1 kt 0 0.33
+R RK2 kb 0 0.33
+R RS1 vs s1 1.7
+R RS2 vs s2 1.7
+
+* Output transformer, plates fed from node a (the centre tap, 660 V).
+R DCR_PT pt npt 20
+R DCR_PB pbm npb 20
+.param n4 = 2*1/sqrt(1600/4)
+* Core saturation: SAT is the flux (volt-seconds) where the extra magnetising current equals the linear one; ~full-power
+* plate-to-plate swing / (2 pi f), here with f about 25 Hz for the large core.
+.xfmr OT L=4 SAT=7
+  W npt a 1 pri
+  W a npb 1 pri
+  W t4 0 n4 sec
+  K pri pri 0.9999
+  K pri sec 0.9995
+.end
+R RLOAD t4 0 4
+
+* Supply after the first 100u pair (node a): 4k7 to the 462 V node x (30u), 15k to the 362 V node c (40u); RPREAMP is what the preamp draws.
+R R49 a x 4.7k
+C C11 x 0 30u
+R R50 x c 15k
+C C12 c 0 40u
+R RPREAMP x 0 11k

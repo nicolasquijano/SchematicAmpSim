@@ -767,7 +767,7 @@ TEST_CASE("readme screenshots", "[.screenshots]") {
         setParam(p, "amp", float(ampIndex(p, id)));
         p.prepareToPlay(48000.0, 512);
         std::unique_ptr<juce::AudioProcessorEditor> ed(p.createEditor());
-        ed->setSize(800, 410);
+        ed->setSize(1000, 520);
         play(p, *dynamic_cast<SasEditor*>(ed.get()), 196.0, 0.2);
         return ed->createComponentSnapshot(ed->getLocalBounds(), true, imageScale);
     };
@@ -799,7 +799,7 @@ TEST_CASE("readme screenshots", "[.screenshots]") {
         setParam(p, ids::wear, 3.0f);
         p.prepareToPlay(48000.0, 512);
         std::unique_ptr<juce::AudioProcessorEditor> ed(p.createEditor());
-        ed->setSize(800, 410);
+        ed->setSize(1000, 520);
         play(p, *dynamic_cast<SasEditor*>(ed.get()), 196.0, 0.2);
         clickTab(*ed, "Effects");
         savePng(ed->createComponentSnapshot(ed->getLocalBounds(), true, scale), "effects.png");
@@ -833,7 +833,7 @@ TEST_CASE("readme screenshots", "[.screenshots]") {
         setParam(p, ids::doubleAmount, 3.0f);
         setParam(p, ids::speaker, 3.0f);
         std::unique_ptr<juce::AudioProcessorEditor> ed(p.createEditor());
-        ed->setSize(800, 410);
+        ed->setSize(1000, 520);
         auto* se = dynamic_cast<SasEditor*>(ed.get());
         play(p, *se, 196.0, 0.2);
         se->updateImpulseStatus();
@@ -849,7 +849,7 @@ TEST_CASE("readme screenshots", "[.screenshots]") {
         setParam(p, ids::tunerOn, 1.0f);
         p.prepareToPlay(48000.0, 512);
         std::unique_ptr<juce::AudioProcessorEditor> ed(p.createEditor());
-        ed->setSize(800, 410);
+        ed->setSize(1000, 520);
         auto* se = dynamic_cast<SasEditor*>(ed.get());
         run(p, 100, 110.0, 0.1);
         for (int i = 0; i < 12; ++i) se->updateTuner();
@@ -867,7 +867,7 @@ TEST_CASE("the editor builds for every amp and can be rendered") {
         p.prepareToPlay(48000.0, 512);
         std::unique_ptr<juce::AudioProcessorEditor> ed(p.createEditor());
         REQUIRE(ed != nullptr);
-        ed->setSize(800, 410);
+        ed->setSize(1000, 520);
         run(p, 40, 220.0, 0.2);  // so the meters have something to show
         if (auto* se = dynamic_cast<SasEditor*>(ed.get())) for (int i = 0; i < 12; ++i) { se->pollMeters(); run(p, 2, 220.0, 0.2); }
         CHECK(ed->getWidth() > 0);
@@ -1026,7 +1026,7 @@ TEST_CASE("eq presets: each factory preset sets the EQ parameters, stays within 
     JuceInit init;
     SasProcessor p;
     p.prepareToPlay(48000.0, 512);
-    REQUIRE(kEqPresetCount == 6);  // flat and the five guitar presets
+    REQUIRE(kEqPresetCount == 11);  // flat and ten guitar presets
     auto response = [&](double hz) {
         sas::EqParams eq;
         eq.on = p.apvts.getRawParameterValue(ids::eqOn)->load() > 0.5f;
@@ -1069,4 +1069,40 @@ TEST_CASE("eq presets: each factory preset sets the EQ parameters, stays within 
     CHECK(at(4, 800.0) > 2.0);
     CHECK(at(5, 8000.0) < -4.0);                                                   // de-fizz
     CHECK(at(5, 4500.0) < -2.0);
+    CHECK(at(6, 550.0) < -3.0);                                                    // metal scoop: the mids hollowed out
+    CHECK(at(6, 3000.0) > 1.5);
+    CHECK(at(6, 30.0) < -12.0);
+    CHECK(at(7, 8000.0) < -6.0);                                                   // jazz warm: dark
+    CHECK(at(7, 200.0) > 1.0);
+    CHECK(at(8, 3000.0) > 3.0);                                                    // country twang
+    CHECK(at(8, 60.0) < -8.0);
+    CHECK(at(9, 500.0) > 1.5);                                                     // classic rock crunch: thick mids
+    CHECK(at(9, 200.0) > 1.0);
+    CHECK(at(9, 8000.0) < -2.0);
+    CHECK(at(10, 300.0) < -2.5);                                                   // mix-ready: no mud, a little presence
+    CHECK(at(10, 3000.0) > 1.0);
+    CHECK(at(10, 50.0) < -9.0);
+}
+
+TEST_CASE("amp switches: the SVT has three, they are parameters, and they change the sound") {
+    JuceInit init;
+    SasProcessor p;
+    p.prepareToPlay(48000.0, 512);
+    int svt = -1;
+    for (std::size_t i = 0; i < p.amps().size(); ++i) if (p.amps()[i].id == "svt_bass300") svt = int(i);
+    REQUIRE(svt >= 0);
+    CHECK(p.amps()[std::size_t(svt)].preamp.selectors.size() == 3);
+    for (int i = 0; i < 4; ++i) CHECK(p.apvts.getParameter(ids::sel[i]) != nullptr);
+    setParam(p, ids::quality, 0.0f);
+    setParam(p, ids::amp, float(svt));
+    bool swapped = false;
+    for (int i = 0; i < 1200 && !swapped; ++i) { run(p, 2, 3000.0, 0.00002); swapped = p.runningAmpIndex() == svt; juce::Thread::sleep(15); }
+    REQUIRE(swapped);
+    run(p, 20, 3000.0, 0.00002);
+    const double off = rms(run(p, 10, 3000.0, 0.00002));
+    setParam(p, ids::sel[1], 1.0f);  // Ultra Hi
+    run(p, 20, 3000.0, 0.00002);
+    const double on = rms(run(p, 10, 3000.0, 0.00002));
+    INFO("ultra hi off " << off << ", on " << on);
+    CHECK(on > 1.2 * off);
 }

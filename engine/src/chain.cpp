@@ -59,6 +59,7 @@ void Chain::setSettings(const ChainSettings& s) {
     outputDb_.setTarget(s.outputDb);
     target_.quality = s.quality;
     target_.jack = std::min(s.jack, def_.preamp.jacks.size() - 1);
+    target_.selectors = s.selectors;
     target_.cabFilter = s.cabFilter;
     target_.tsOn = s.tsOn;
     target_.vibratoOn = s.vibratoOn;
@@ -136,6 +137,7 @@ void Chain::processAmp(const float* mono, float* out, std::size_t n) {
                     amp2_->setKnobs(knobScratch_, presence, powerScratch_);
                     amp2_->power().setBias(bias);
                     amp2_->setJack(target_.jack);
+                    for (std::size_t i = 0; i < target_.selectors.size(); ++i) amp2_->setSelector(i, target_.selectors[i]);
                     amp2_->setVibrato(target_.vibratoOn, target_.vibratoSpeed);
                     amp2_->setSourceOhms(sourceOhms);
                     amp2_->setGuitar(target_.pickup, target_.cableMeters, pedalOn);
@@ -145,6 +147,7 @@ void Chain::processAmp(const float* mono, float* out, std::size_t n) {
                     amp4_->setKnobs(knobScratch_, presence, powerScratch_);
                     amp4_->power().setBias(bias);
                     amp4_->setJack(target_.jack);
+                    for (std::size_t i = 0; i < target_.selectors.size(); ++i) amp4_->setSelector(i, target_.selectors[i]);
                     amp4_->setVibrato(target_.vibratoOn, target_.vibratoSpeed);
                     amp4_->setSourceOhms(sourceOhms);
                     amp4_->setGuitar(target_.pickup, target_.cableMeters, pedalOn);
@@ -153,6 +156,7 @@ void Chain::processAmp(const float* mono, float* out, std::size_t n) {
                 case Quality::Lite:
                     lite_->setKnobs(knobScratch_, presence, powerScratch_);
                     lite_->setJack(target_.jack);
+                    for (std::size_t i = 0; i < target_.selectors.size(); ++i) lite_->setSelector(i, target_.selectors[i]);
                     lite_->setVibrato(target_.vibratoOn, target_.vibratoSpeed);
                     lite_->setSourceOhms(sourceOhms);
                     lite_->setGuitar(target_.pickup, target_.cableMeters, pedalOn);
@@ -161,6 +165,7 @@ void Chain::processAmp(const float* mono, float* out, std::size_t n) {
                 case Quality::Eco:
                     eco_->setKnobs(knobScratch_, presence, powerScratch_);
                     eco_->setJack(target_.jack);
+                    for (std::size_t i = 0; i < target_.selectors.size(); ++i) eco_->setSelector(i, target_.selectors[i]);
                     eco_->setVibrato(target_.vibratoOn, target_.vibratoSpeed);
                     eco_->setSourceOhms(sourceOhms);
                     eco_->setGuitar(target_.pickup, target_.cableMeters, pedalOn);

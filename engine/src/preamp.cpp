@@ -103,6 +103,14 @@ Preamp::Preamp(const AmpDef& def, double fs, double railVolts, bool useTables, b
         for (const auto& [name, ohms] : jd.resistors) j.resistors.push_back({find(name), ohms});
         jacks_.push_back(std::move(j));
     }
+    for (const auto& sd : pd.selectors) {
+        selectors_.emplace_back();
+        for (const auto& pos : sd.positions) {
+            selectors_.back().emplace_back();
+            for (const auto& [name, ohms] : pos.resistors) selectors_.back().back().push_back({find(name), ohms});
+        }
+        selectorPos_.push_back(0);  // the netlist's own values are position 0
+    }
     for (const auto& name : pd.sourceResistors) {
         if (name == "RSRC") rsrcIndex_ = sourceResistors_.size();
         sourceResistors_.push_back(find(name));
@@ -207,6 +215,15 @@ void Preamp::setGuitar(int pickup, int cableMeters, bool pedalOn) {
     set(pickupLoss_, active ? kLossOhms[pickup] : kOpen);
     for (int b = 0; b < 3; ++b) set(cableSwitch_[b], active && (((cableMeters / 2) >> b) & 1) ? kClosed : kOpen);
     set(sourceResistors_[rsrcIndex_], active ? kOpen : sourceOhms_);
+    refreshAll();
+}
+
+void Preamp::setSelector(std::size_t i, std::size_t pos) {
+    if (i >= selectors_.size()) return;
+    pos = std::min(pos, selectors_[i].size() - 1);
+    if (pos == selectorPos_[i]) return;
+    selectorPos_[i] = pos;
+    for (const auto& [ref, ohms] : selectors_[i][pos]) set(ref, ohms);
     refreshAll();
 }
 

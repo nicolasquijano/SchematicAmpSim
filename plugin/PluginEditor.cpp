@@ -468,6 +468,20 @@ SasEditor::SasEditor(SasProcessor& p)
             param->endChangeGesture();
         }
     };
+    for (int i = 0; i < 4; ++i) {
+        addChildComponent(selBox_[i]);
+        addChildComponent(selCaption_[i]);
+        styleCaption(selCaption_[i], "");
+        selBox_[i].onChange = [this, i] {
+            if (auto* param = processor_.apvts.getParameter(ids::sel[i])) {
+                const int index = selBox_[i].getSelectedItemIndex();
+                if (index < 0) return;
+                param->beginChangeGesture();
+                param->setValueNotifyingHost(param->convertTo0to1(float(index)));
+                param->endChangeGesture();
+            }
+        };
+    }
     styleCaption(ampCaption_, "AMP");
     styleCaption(qualityCaption_, "QUALITY");
     styleCaption(jackCaption_, "INPUT JACK");
@@ -574,8 +588,8 @@ SasEditor::SasEditor(SasProcessor& p)
 
     showAmp(processor_.selectedAmpIndex());
     setResizable(true, true);
-    setResizeLimits(680, 380, 1200, 760);
-    setSize(800, 410);
+    setResizeLimits(920, 480, 1700, 1000);
+    setSize(1000, 520);
     startTimerHz(30);
     timerCallback();
 }
@@ -841,6 +855,18 @@ void SasEditor::showAmp(int index) {
     jack_.clear(juce::dontSendNotification);
     for (std::size_t j = 0; j < def.preamp.jacks.size(); ++j) jack_.addItem(juce::String(def.preamp.jacks[j].label), int(j) + 1);
     jackCaption_.setText(juce::String(def.preamp.jackLabel), juce::dontSendNotification);
+    for (int i = 0; i < 4; ++i) {
+        selBox_[i].clear(juce::dontSendNotification);
+        const bool has = i < int(def.preamp.selectors.size());
+        selBox_[i].setVisible(has && page_ == 0);
+        selCaption_[i].setVisible(has && page_ == 0);
+        if (!has) continue;
+        const auto& sd = def.preamp.selectors[std::size_t(i)];
+        for (std::size_t p = 0; p < sd.positions.size(); ++p) selBox_[i].addItem(juce::String(sd.positions[p].label), int(p) + 1);
+        selCaption_[i].setText(juce::String(sd.label), juce::dontSendNotification);
+        const int now = int(processor_.apvts.getRawParameterValue(ids::sel[i])->load() + 0.5f);
+        selBox_[i].setSelectedItemIndex(juce::jlimit(0, int(sd.positions.size()) - 1, now), juce::dontSendNotification);
+    }
     tube_.clear(juce::dontSendNotification);
     for (std::size_t t = 0; t < def.power.tubes.size(); ++t) tube_.addItem(juce::String(def.power.tubes[t].name), int(t) + 1);
     tube_.setSelectedItemIndex(processor_.wantedCondition().tube, juce::dontSendNotification);
@@ -880,6 +906,10 @@ void SasEditor::timerCallback() {
     const int jackNow = int(processor_.apvts.getRawParameterValue(ids::jack)->load() + 0.5f);
     if (jackNow < jack_.getNumItems() && jack_.getSelectedItemIndex() != jackNow)
         jack_.setSelectedItemIndex(jackNow, juce::dontSendNotification);
+    for (int i = 0; i < 4; ++i) {
+        const int now = int(processor_.apvts.getRawParameterValue(ids::sel[i])->load() + 0.5f);
+        if (now < selBox_[i].getNumItems() && selBox_[i].getSelectedItemIndex() != now) selBox_[i].setSelectedItemIndex(now, juce::dontSendNotification);
+    }
 
     if (const int tubeNow = processor_.wantedCondition().tube;
         tubeNow < tube_.getNumItems() && tube_.getSelectedItemIndex() != tubeNow)
@@ -1072,7 +1102,7 @@ void SasEditor::resized() {
         ampCaption_.setVisible(false);  // the logo and the list say what this is
         ampSearch_.setBounds(col.removeFromTop(24));
         col.removeFromTop(4);
-        ampList_.setBounds(col.removeFromTop(5 * 26 + 14));  // five rows and a bit of the next: it scrolls
+        ampList_.setBounds(col.removeFromTop(std::max(5 * 26 + 14, col.getHeight() - 174)));  // the room the controls below leave: it scrolls when the amps do not fit
         col.removeFromTop(gap);
         jackCaption_.setBounds(col.removeFromTop(16));
         jack_.setBounds(col.removeFromTop(24));
@@ -1109,22 +1139,22 @@ void SasEditor::resized() {
     for (auto* c : std::initializer_list<juce::Component*>{&pitchSlider_, &pitchValue_, &pitchNote_, &pitchDown12_, &pitchDown1_, &pitchUp1_, &pitchUp12_, &pitchZero_, &pitchFine_}) c->setVisible(pitchPage);
     for (auto* c : std::initializer_list<juce::Component*>{&tunerDisplay_, &tunerOn_, &tunerMute_, &tunerRef_}) c->setVisible(tunerPage);
     for (auto& k : ampKnobs_) k->setVisible(ampPage);
-    for (auto* c : std::initializer_list<juce::Component*>{&input_, &output_, &inBar_, &outBar_, &tubes_, &cable_, &pickup_, &pickupCaption_}) c->setVisible(ampPage);
+    if (!ampPage)
+        for (int i = 0; i < 4; ++i) { selBox_[i].setVisible(false); selCaption_[i].setVisible(false); }
+    for (auto* c : std::initializer_list<juce::Component*>{&input_, &output_, &inBar_, &outBar_, &tubes_, &cable_, &pickup_, &pickupCaption_, &gateOn_, &gateThreshold_, &gateRelease_}) c->setVisible(ampPage);
     for (auto* c : std::initializer_list<juce::Component*>{&cabCaption_, &cab_, &speaker_, &speakerIntense_, &blend_, &blendNote_, &loadA_, &clearA_, &nameA_, &curveA_,
                                                            &loadB_, &clearB_, &nameB_, &curveB_, &cabNote_, &stereoWidth_, &doubleAmount_, &doubleTime_}) c->setVisible(cabPage);
-    for (auto* c : std::initializer_list<juce::Component*>{&compOn_, &compFast_, &compSustain_, &compBlend_, &compTone_, &compLevel_, &tsOn_, &tsDrive_, &tsTone_, &tsLevel_, &gateOn_, &gateThreshold_, &gateRelease_,
+    for (auto* c : std::initializer_list<juce::Component*>{&compOn_, &compFast_, &compSustain_, &compBlend_, &compTone_, &compLevel_, &tsOn_, &tsDrive_, &tsTone_, &tsLevel_,
                                                            &bias_, &wear_, &tube_, &noise_, &unit_, &tubeCaption_, &noiseCaption_, &unitCaption_, &idleLabel_, &conditionNote_}) c->setVisible(fxPage);
 
     if (fxPage) {
-        // Effects page, in signal order: compressor, overdrive, noise gate; below them the state of the amp itself.
+        // Effects page, in signal order: compressor, overdrive; below them the state of the amp itself (the noise gate is on the Amp page).
         const int knobW = std::clamp((area.getWidth() - 2 * gap - 36) / 9, 50, 110);
         const int condKnobW = 75;
         auto fxRow = area.removeFromTop(std::min(area.getHeight(), 160));
         auto compPanel = fxRow.removeFromLeft(knobW * 4 + 12);
         fxRow.removeFromLeft(gap);
         auto tsPanel = fxRow.removeFromLeft(knobW * 3 + 12);
-        fxRow.removeFromLeft(gap);
-        auto gatePanel = fxRow.removeFromLeft(knobW * 2 + 12);
         panels_.push_back({compPanel, "COMPRESSOR"});
         {
             auto cin = compPanel.reduced(6, 4);
@@ -1136,14 +1166,6 @@ void SasEditor::resized() {
             compBlend_.setBounds(cin.removeFromLeft(w));
             compTone_.setBounds(cin.removeFromLeft(w));
             compLevel_.setBounds(cin);
-        }
-        panels_.push_back({gatePanel, "GATE"});
-        {
-            auto gin = gatePanel.reduced(6, 4);
-            auto ghead = gin.removeFromTop(20);
-            gateOn_.setBounds(ghead.removeFromRight(56));
-            gateThreshold_.setBounds(gin.removeFromLeft(gin.getWidth() / 2));
-            gateRelease_.setBounds(gin);
         }
         // Second row: the state of the amp itself.
         area.removeFromTop(gap);
@@ -1338,17 +1360,42 @@ void SasEditor::resized() {
     {
         auto row = area.reduced(6, 4);
         row.removeFromTop(16);
+        const int selectors = shownAmp_ >= 0 ? int(processor_.amps()[std::size_t(shownAmp_)].preamp.selectors.size()) : 0;
+        for (int i = 0; i < 4; ++i) {
+            selBox_[i].setVisible(i < selectors);
+            selCaption_[i].setVisible(i < selectors);
+        }
+        if (selectors > 0) {
+            // The amp's own switches, in a strip along the bottom of the panel.
+            auto strip = row.removeFromBottom(44);
+            const int w = strip.getWidth() / selectors;
+            for (int i = 0; i < selectors; ++i) {
+                auto cell = strip.removeFromLeft(w).reduced(6, 0);
+                selCaption_[i].setBounds(cell.removeFromTop(16));
+                selBox_[i].setBounds(cell.removeFromTop(24));
+            }
+        }
         const int n = std::max<int>(1, int(ampKnobs_.size()));
         const int w = row.getWidth() / n;
         for (auto& k : ampKnobs_) k->setBounds(row.removeFromLeft(w));
     }
 
-    const int knobW = std::clamp(bottom.getWidth() / 7, 64, 100);
+    const int knobW = std::clamp(bottom.getWidth() / 9, 56, 90);
     auto ioPanel = bottom.removeFromRight(knobW * 2 + 12 + 2 * 16);
     bottom.removeFromRight(gap);
-    // The guitar (pickup and cable) is where the signal starts, so it sits with the amp.
-    auto guitarPanel = bottom.removeFromLeft(std::clamp(bottom.getWidth() * 46 / 100, 176, 210));
+    // The guitar (pickup and cable) is where the signal starts, so it sits with the amp, and the noise gate right after it.
+    auto guitarPanel = bottom.removeFromLeft(std::clamp(bottom.getWidth() * 30 / 100, 176, 200));
     bottom.removeFromLeft(gap);
+    auto gatePanel = bottom.removeFromLeft(knobW * 2 + 16);
+    bottom.removeFromLeft(gap);
+    panels_.push_back({gatePanel, "NOISE GATE"});
+    {
+        auto gin = gatePanel.reduced(6, 4);
+        auto ghead = gin.removeFromTop(20);
+        gateOn_.setBounds(ghead.removeFromRight(56));
+        gateThreshold_.setBounds(gin.removeFromLeft(gin.getWidth() / 2));
+        gateRelease_.setBounds(gin);
+    }
     panels_.push_back({guitarPanel, "GUITAR INPUT"});
     {
         auto gin = guitarPanel.reduced(8, 4);

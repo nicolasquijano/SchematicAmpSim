@@ -25,5 +25,15 @@ inline constexpr EqPreset kEqPresets[] = {
     {"Lead cut-through", 110.0, 9500.0, {{{150.0, -2.0, 0.7}, {800.0, 3.0, 1.1}, {2200.0, 2.5, 1.0}, {5000.0, -1.5, 1.5}, {7500.0, -2.5, 0.7}}}},
     // For a harsh amp or a bright speaker: the 3 to 5 kHz edge and the top tamed, a little warmth added.
     {"Smooth (de-fizz)", 80.0, 6500.0, {{{100.0, -1.0, 0.7}, {250.0, -1.5, 1.0}, {1000.0, 1.0, 1.0}, {4500.0, -3.0, 1.5}, {7000.0, -4.0, 0.7}}}},
+    // Metal with the mids scooped: punch in the lows, the middle hollowed out, the pick attack on top.
+    {"Metal scoop", 80.0, 8000.0, {{{110.0, 2.0, 0.7}, {550.0, -4.0, 0.8}, {900.0, -2.5, 1.0}, {3000.0, 3.0, 1.2}, {7000.0, -2.0, 0.7}}}},
+    // Jazz and neck pickups: dark and round, the highs rolled off early.
+    {"Jazz warm", 50.0, 5500.0, {{{200.0, 2.0, 0.7}, {400.0, 1.0, 0.9}, {1000.0, 0.0, 1.0}, {3000.0, -2.0, 1.0}, {5000.0, -5.0, 0.7}}}},
+    // Country and chicken picking: no rumble, a hard twang between 2.5 and 3.5 kHz.
+    {"Country twang", 120.0, 20000.0, {{{150.0, -1.0, 0.7}, {400.0, -1.0, 1.0}, {800.0, -1.0, 1.0}, {3000.0, 4.0, 1.1}, {8000.0, 1.5, 0.7}}}},
+    // 1970s rock: thick, the mids forward, the top a little tamed.
+    {"Classic rock crunch", 70.0, 8500.0, {{{150.0, 3.0, 0.7}, {500.0, 2.0, 1.0}, {1500.0, 2.0, 1.0}, {2800.0, 0.5, 1.2}, {6000.0, -2.5, 0.7}}}},
+    // A guitar that has to fit in a dense mix: clear lows, no mud, a little presence.
+    {"Mix-ready", 100.0, 10000.0, {{{120.0, -1.0, 0.7}, {300.0, -3.0, 1.1}, {1000.0, 0.5, 1.0}, {3000.0, 1.5, 1.0}, {8000.0, -1.5, 0.7}}}},
 };
 inline constexpr int kEqPresetCount = int(sizeof(kEqPresets) / sizeof(kEqPresets[0]));

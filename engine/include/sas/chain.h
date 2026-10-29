@@ -30,6 +30,7 @@ struct ChainSettings {
     double inputDb = 0.0, outputDb = 0.0;
     Quality quality = Quality::Normal;
     std::size_t jack = 0;
+    std::vector<std::size_t> selectors;  // one position per selector of the amp (amp.json "selectors")
     bool jackLevelMatch = true;  // apply the jack's `level_db` at the amp input
     bool vibratoOn = false;      // optical tremolo of amps that have one
     double vibratoSpeed = 0.5;

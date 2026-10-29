@@ -120,6 +120,23 @@ PreampDef parsePreamp(const json& j, const FileReader& read) {
             jd.resistors.push_back({name, ohms.get<double>()});
         p.jacks.push_back(std::move(jd));
     }
+    if (j.contains("selectors")) {
+        for (const auto& sk : j.at("selectors")) {
+            SelectorDef sd;
+            sd.name = str(sk, "name", "preamp.selectors");
+            sd.label = sk.contains("label") ? str(sk, "label", "preamp.selectors." + sd.name) : sd.name;
+            for (const auto& pk : need(sk, "positions", "preamp.selectors." + sd.name)) {
+                SelectorPositionDef pd;
+                pd.label = str(pk, "label", "preamp.selectors." + sd.name);
+                if (pk.contains("resistors"))
+                    for (const auto& [name, ohms] : pk.at("resistors").items()) pd.resistors.push_back({name, ohms.get<double>()});
+                sd.positions.push_back(std::move(pd));
+            }
+            if (sd.positions.size() < 2 || sd.positions.size() > 5) bad("preamp.selectors." + sd.name, "a selector has 2 to 5 positions");
+            p.selectors.push_back(std::move(sd));
+        }
+        if (p.selectors.size() > SelectorDef::kMax) bad("preamp.selectors", "at most 4 selectors");
+    }
     if (p.jacks.empty()) bad("preamp.jacks", "at least one jack is required");
     if (j.contains("jack_label")) p.jackLabel = str(j, "jack_label", "preamp");
     if (j.contains("reverb")) {

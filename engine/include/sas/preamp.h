@@ -51,6 +51,9 @@ public:
         if (vib_) { vib_->setOn(on); vib_->setSpeed(speed, potMinOhms_); }
     }
     void setJack(std::size_t jack);
+    // Selector `i` (amp.json "selectors") to position `pos`.
+    void setSelector(std::size_t i, std::size_t pos);
+    std::size_t selectorCount() const { return selectors_.size(); }
     std::size_t jack() const { return jack_; }
 
     // One sample: guitar volts in, master-volume output (volts) out.
@@ -131,6 +134,8 @@ private:
     std::vector<double> values_;
     std::vector<Jack> jacks_;
     std::size_t jack_ = 0;
+    std::vector<std::vector<std::vector<std::pair<Refs, double>>>> selectors_;  // [selector][position] -> resistors to set
+    std::vector<std::size_t> selectorPos_;
     std::unique_ptr<Vibrato> vib_;
     std::unique_ptr<Reverb> rev_;  // spring reverb: tapped from a node of stage 0, injected at a source of it
     SrcId revSrc_{0};
