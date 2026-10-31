@@ -235,7 +235,8 @@ TEST_CASE("an impulse response loads, survives the state, and shapes the sound")
     JuceInit init;
     SasProcessor p;
     p.prepareToPlay(48000.0, 512);
-    CHECK(p.impulseResponseName() == "4x12 OS Mix 1");  // a new instance carries the first built-in cabinet
+    // A new instance carries the first built-in cabinet (none when the build has no impulses).
+    CHECK(p.impulseResponseName() == (SasProcessor::builtInImpulseResponseCount() > 0 ? juce::String("4x12 OS Mix 1") : juce::String()));
     CHECK(!p.loadImpulseResponse(juce::File("C:/definitely/not/here.wav")));
 
     const auto file = writeImpulse("sas_test_ir.wav");
@@ -880,12 +881,26 @@ TEST_CASE("the editor builds for every amp and can be rendered") {
                 p.applyEqPreset(3);
                 for (auto* c : ed->getChildren())
                     if (auto* b = dynamic_cast<juce::TextButton*>(c); b && b->getButtonText() == "EQ") { b->setToggleState(true, juce::dontSendNotification); b->onClick(); }
+                if (auto* se2 = dynamic_cast<SasEditor*>(ed.get())) for (int i = 0; i < 24; ++i) { run(p, 1, 220.0, 0.2); se2->updateSpectrum(); }
                 {
                     const auto ex = ed->createComponentSnapshot(ed->getLocalBounds());
                     juce::FileOutputStream o4(juce::File(dir).getChildFile("eq.png"));
                     if (o4.openedOk()) { o4.setPosition(0); o4.truncate(); png.writeImageToStream(ex, o4); }
                     p.applyEqPreset(0);
                     
+                }
+                setParam(p, ids::phOn, 1.0f);
+                setParam(p, ids::chOn, 1.0f);
+                setParam(p, ids::vbOn, 1.0f);
+                for (auto* c : ed->getChildren())
+                    if (auto* b = dynamic_cast<juce::TextButton*>(c); b && b->getButtonText() == "Mod") { b->setToggleState(true, juce::dontSendNotification); b->onClick(); }
+                {
+                    const auto mx = ed->createComponentSnapshot(ed->getLocalBounds());
+                    juce::FileOutputStream o6(juce::File(dir).getChildFile("mod.png"));
+                    if (o6.openedOk()) { o6.setPosition(0); o6.truncate(); png.writeImageToStream(mx, o6); }
+                    setParam(p, ids::phOn, 0.0f);
+                    setParam(p, ids::chOn, 0.0f);
+                    setParam(p, ids::vbOn, 0.0f);
                 }
                 p.applyDelayPreset(4);
                 p.applyReverbPreset(2);
@@ -1120,20 +1135,22 @@ TEST_CASE("amp switches: the SVT has three, they are parameters, and they change
 
 TEST_CASE("built-in cabinet impulses: three ship with the plugin, load into either slot and survive a project round trip") {
     JuceInit juceInit;
-    REQUIRE(SasProcessor::builtInImpulseResponseCount() == 3);
-    CHECK(SasProcessor::builtInImpulseResponseName(0) == "4x12 OS Mix 1");
-    CHECK(SasProcessor::builtInImpulseResponseName(2) == "4x12 OS Mix 3");
+    if (SasProcessor::builtInImpulseResponseCount() == 0) SKIP("this build carries no built-in impulses (plugin/cabs has no WAV files)");
+    REQUIRE(SasProcessor::builtInImpulseResponseCount() == 8);
+    const char* expected[] = {"4x12 Fried Mix 1", "4x12 Green Mix 1", "4x12 Green Mix 2", "4x12 Green Mix 3", "4x12 Org Mix 1", "4x12 OS Mix 1", "4x12 OS Mix 2", "4x12 OS Mix 3"};
+    for (int i = 0; i < 8; ++i) CHECK(SasProcessor::builtInImpulseResponseName(i) == expected[i]);
     SasProcessor proc;
     CHECK(proc.impulseResponseName(0) == "4x12 OS Mix 1");
-    REQUIRE(proc.loadBuiltInImpulseResponse(1, 1));
-    CHECK(proc.impulseResponseName(1) == "4x12 OS Mix 2");
-    CHECK_FALSE(proc.loadBuiltInImpulseResponse(7, 0));
+    REQUIRE(proc.loadBuiltInImpulseResponse(2, 1));
+    CHECK(proc.impulseResponseName(1) == "4x12 Green Mix 2");
+    CHECK_FALSE(proc.loadBuiltInImpulseResponse(8, 0));
+    for (int i = 0; i < SasProcessor::builtInImpulseResponseCount(); ++i) CHECK(proc.loadBuiltInImpulseResponse(i, 1));  // every one decodes
     juce::MemoryBlock state;
     proc.getStateInformation(state);
     SasProcessor other;
     other.setStateInformation(state.getData(), int(state.getSize()));
     CHECK(other.impulseResponseName(0) == "4x12 OS Mix 1");
-    CHECK(other.impulseResponseName(1) == "4x12 OS Mix 2");
+    CHECK(other.impulseResponseName(1) == "4x12 OS Mix 3");
 }
 
 TEST_CASE("delay and reverb: off by default and invisible, on they add a tail, presets set both, and the state survives a project round trip") {
@@ -1176,4 +1193,125 @@ TEST_CASE("delay and reverb: off by default and invisible, on they add a tail, p
     other.setStateInformation(state.getData(), int(state.getSize()));
     CHECK(other.apvts.getRawParameterValue(ids::plHall)->load() > 0.5f);
     CHECK(other.apvts.getRawParameterValue(ids::plDecay)->load() == Catch::Approx(3.8f).margin(0.05f));
+}
+
+TEST_CASE("phaser: off by default, on it changes the sound before the amp and after it, and the position is a saved parameter") {
+    JuceInit juceInit;
+    SasProcessor proc;
+    proc.prepareToPlay(48000.0, 512);
+    CHECK(proc.apvts.getRawParameterValue(ids::phOn)->load() < 0.5f);
+    auto render = [&]() {
+        juce::AudioBuffer<float> out(2, 512 * 40);
+        juce::MidiBuffer midi;
+        for (int blk = 0; blk < 40; ++blk) {
+            juce::AudioBuffer<float> b(2, 512);
+            fill(b, 330.0, 0.1, 48000.0, blk * 512);
+            proc.processBlock(b, midi);
+            for (int ch = 0; ch < 2; ++ch) out.copyFrom(ch, blk * 512, b, ch, 0, 512);
+        }
+        return out;
+    };
+    const auto plain = render();
+    setParam(proc, ids::phOn, 1.0f);
+    setParam(proc, ids::phSpeed, 6.0f);
+    const auto before = render();
+    setParam(proc, ids::phPost, 1.0f);
+    const auto after = render();
+    auto diff = [](const juce::AudioBuffer<float>& a, const juce::AudioBuffer<float>& b) {
+        double d = 0;
+        for (int i = 8192; i < a.getNumSamples(); ++i) d += std::fabs(double(a.getSample(0, i)) - double(b.getSample(0, i)));
+        return d;
+    };
+    CHECK(diff(plain, before) > 1.0);
+    CHECK(diff(plain, after) > 1.0);
+    CHECK(diff(before, after) > 1.0);
+    juce::MemoryBlock state;
+    proc.getStateInformation(state);
+    SasProcessor other;
+    other.setStateInformation(state.getData(), int(state.getSize()));
+    CHECK(other.apvts.getRawParameterValue(ids::phPost)->load() > 0.5f);
+}
+
+TEST_CASE("chorus: off by default, on it changes the sound in both modes and both positions, and the settings are saved") {
+    JuceInit juceInit;
+    SasProcessor proc;
+    proc.prepareToPlay(48000.0, 512);
+    CHECK(proc.apvts.getRawParameterValue(ids::chOn)->load() < 0.5f);
+    CHECK(proc.apvts.getRawParameterValue(ids::chPost)->load() > 0.5f);  // after the amp unless told otherwise
+    auto render = [&]() {
+        juce::AudioBuffer<float> out(2, 512 * 40);
+        juce::MidiBuffer midi;
+        for (int blk = 0; blk < 40; ++blk) {
+            juce::AudioBuffer<float> b(2, 512);
+            fill(b, 330.0, 0.1, 48000.0, blk * 512);
+            proc.processBlock(b, midi);
+            for (int ch = 0; ch < 2; ++ch) out.copyFrom(ch, blk * 512, b, ch, 0, 512);
+        }
+        return out;
+    };
+    auto diff = [](const juce::AudioBuffer<float>& a, const juce::AudioBuffer<float>& b, int ch) {
+        double d = 0;
+        for (int i = 8192; i < a.getNumSamples(); ++i) d += std::fabs(double(a.getSample(ch, i)) - double(b.getSample(ch, i)));
+        return d;
+    };
+    const auto plain = render();
+    setParam(proc, ids::chOn, 1.0f);
+    const auto ce2Post = render();
+    CHECK(diff(plain, ce2Post, 0) > 1.0);
+    setParam(proc, ids::chMode, 1.0f);
+    const auto junoPost = render();
+    CHECK(diff(ce2Post, junoPost, 0) > 1.0);
+    CHECK(diff(junoPost, junoPost, 0) == 0.0);
+    CHECK(diff(junoPost, plain, 1) > 1.0);
+    setParam(proc, ids::chPost, 0.0f);
+    const auto junoPre = render();
+    CHECK(diff(junoPost, junoPre, 0) > 1.0);
+    for (int i = 0; i < junoPre.getNumSamples(); ++i) REQUIRE(std::isfinite(junoPre.getSample(0, i)));
+    juce::MemoryBlock state;
+    proc.getStateInformation(state);
+    SasProcessor other;
+    other.setStateInformation(state.getData(), int(state.getSize()));
+    CHECK(other.apvts.getRawParameterValue(ids::chMode)->load() > 0.5f);
+    CHECK(other.apvts.getRawParameterValue(ids::chPost)->load() < 0.5f);
+}
+
+TEST_CASE("vibe: off by default, on it changes the sound in both modes and positions, and the settings are saved") {
+    JuceInit juceInit;
+    SasProcessor proc;
+    proc.prepareToPlay(48000.0, 512);
+    CHECK(proc.apvts.getRawParameterValue(ids::vbOn)->load() < 0.5f);
+    CHECK(proc.apvts.getRawParameterValue(ids::vbPost)->load() < 0.5f);  // in front of the amp unless told otherwise
+    auto render = [&]() {
+        juce::AudioBuffer<float> out(2, 512 * 40);
+        juce::MidiBuffer midi;
+        for (int blk = 0; blk < 40; ++blk) {
+            juce::AudioBuffer<float> b(2, 512);
+            fill(b, 330.0, 0.1, 48000.0, blk * 512);
+            proc.processBlock(b, midi);
+            for (int ch = 0; ch < 2; ++ch) out.copyFrom(ch, blk * 512, b, ch, 0, 512);
+        }
+        return out;
+    };
+    auto diff = [](const juce::AudioBuffer<float>& a, const juce::AudioBuffer<float>& b) {
+        double d = 0;
+        for (int i = 8192; i < a.getNumSamples(); ++i) d += std::fabs(double(a.getSample(0, i)) - double(b.getSample(0, i)));
+        return d;
+    };
+    const auto plain = render();
+    setParam(proc, ids::vbOn, 1.0f);
+    setParam(proc, ids::vbSpeed, 6.0f);
+    const auto pre = render();
+    CHECK(diff(plain, pre) > 1.0);
+    setParam(proc, ids::vbVibrato, 1.0f);
+    const auto vib = render();
+    CHECK(diff(pre, vib) > 1.0);
+    setParam(proc, ids::vbPost, 1.0f);
+    const auto post = render();
+    CHECK(diff(vib, post) > 1.0);
+    juce::MemoryBlock state;
+    proc.getStateInformation(state);
+    SasProcessor other;
+    other.setStateInformation(state.getData(), int(state.getSize()));
+    CHECK(other.apvts.getRawParameterValue(ids::vbVibrato)->load() > 0.5f);
+    CHECK(other.apvts.getRawParameterValue(ids::vbPost)->load() > 0.5f);
 }

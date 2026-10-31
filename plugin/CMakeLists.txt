@@ -65,14 +65,30 @@ if(_face_copies)
 endif()
 
 # Cabinet impulse responses built into the plugin: plugin/cabs/*.wav (listed in the cabinet page, see SasProcessor::builtInImpulseResponse*).
+# The WAV files are NOT part of the repository (they are third-party, see plugin/cabs/README.md): a build that finds none still works,
+# with an empty list, through a stub header with the same names.
 file(GLOB _cab_wavs CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/cabs/*.wav")
 list(SORT _cab_wavs)
-juce_add_binary_data(SasCabs HEADER_NAME CabData.h NAMESPACE CabData SOURCES ${_cab_wavs})
-set_target_properties(SasCabs PROPERTIES POSITION_INDEPENDENT_CODE ON)
+if(_cab_wavs)
+  juce_add_binary_data(SasCabs HEADER_NAME CabData.h NAMESPACE CabData SOURCES ${_cab_wavs})
+  set_target_properties(SasCabs PROPERTIES POSITION_INDEPENDENT_CODE ON)
+else()
+  message(STATUS "SchematicAmpSim: no cabinet impulses in plugin/cabs (the built-in list will be empty)")
+  file(WRITE "${CMAKE_BINARY_DIR}/cab_stub/CabData.h" "#pragma once
+// Generated: no impulse responses were found in plugin/cabs, so there are none built in.
+namespace CabData {
+constexpr int namedResourceListSize = 0;
+inline const char* namedResourceList[1] = {\"\"};
+inline const char* originalFilenames[1] = {\"\"};
+inline const char* getNamedResource(const char*, int& size) { size = 0; return nullptr; }
+}  // namespace CabData
+")
+  target_include_directories(SchematicAmpSim PRIVATE "${CMAKE_BINARY_DIR}/cab_stub")
+endif()
 
 target_link_libraries(SchematicAmpSim
   PRIVATE
-    SasCabs
+    $<$<BOOL:${_cab_wavs}>:SasCabs>
     sas_engine
     sas_amps
     $<$<BOOL:${_face_copies}>:SasFaces>

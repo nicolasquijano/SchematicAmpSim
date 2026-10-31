@@ -409,7 +409,9 @@ SasEditor::SasEditor(SasProcessor& p)
       stereoWidth_(p.apvts, ids::irWidth, "WIDTH"), doubleAmount_(p.apvts, ids::doubleAmount, "DOUBLE"), doubleTime_(p.apvts, ids::doubleTime, "TIME"), pitchFine_(p.apvts, ids::pitchFine, "FINE cents"), eqHpf_(p.apvts, ids::eqHpf, "HIGH-PASS"), eqLpf_(p.apvts, ids::eqLpf, "LOW-PASS"), eqCurve_(p.apvts),
       dlyTime_(p.apvts, ids::dlyTime, "TIME ms"), dlyFb_(p.apvts, ids::dlyFeedback, "FEEDBACK"), dlyMix_(p.apvts, ids::dlyMix, "MIX"), dlyTone_(p.apvts, ids::dlyTone, "TONE"),
       plDecay_(p.apvts, ids::plDecay, "DECAY s"), plPre_(p.apvts, ids::plPre, "PRE-DELAY"), plTone_(p.apvts, ids::plTone, "TONE"), plLow_(p.apvts, ids::plLow, "LOW CUT"),
-      plMix_(p.apvts, ids::plMix, "MIX"), plMod_(p.apvts, ids::plMod, "MOD") {
+      plMix_(p.apvts, ids::plMix, "MIX"), plMod_(p.apvts, ids::plMod, "MOD"), phSpeed_(p.apvts, ids::phSpeed, "SPEED Hz"),
+      chRate_(p.apvts, ids::chRate, "RATE Hz"), chDepth_(p.apvts, ids::chDepth, "DEPTH"),
+      vbSpeed_(p.apvts, ids::vbSpeed, "SPEED Hz"), vbIntensity_(p.apvts, ids::vbIntensity, "INTENSITY") {
     setLookAndFeel(&look_);
     for (auto* k : {&input_, &output_, &tsDrive_, &tsTone_, &tsLevel_, &gateThreshold_, &gateRelease_, &cable_, &bias_, &wear_, &speaker_, &blend_, &compSustain_, &compBlend_, &compTone_, &compLevel_, &tunerRef_, &stereoWidth_, &doubleAmount_, &doubleTime_}) addAndMakeVisible(*k);
     addAndMakeVisible(inBar_);
@@ -577,6 +579,38 @@ SasEditor::SasEditor(SasProcessor& p)
     pitchZero_.onClick = [this] { pitchSlider_.setValue(0.0); };
     updatePitchLabels();
 
+    addAndMakeVisible(phSpeed_);
+    addAndMakeVisible(phOn_);
+    addAndMakeVisible(phIntense_);
+    phOnAtt_ = std::make_unique<juce::AudioProcessorValueTreeState::ButtonAttachment>(p.apvts, ids::phOn, phOn_);
+    phIntenseAtt_ = std::make_unique<juce::AudioProcessorValueTreeState::ButtonAttachment>(p.apvts, ids::phIntense, phIntense_);
+    phIntense_.setTooltip("Feeds the output of the four stages back to the input: a deeper, more resonant sweep");
+    styleCombo(phPos_, ids::phPost, phPosAtt_);
+    styleCaption(phPosCaption_, "POSITION");
+    addAndMakeVisible(chRate_);
+    addAndMakeVisible(chDepth_);
+    addAndMakeVisible(chOn_);
+    chOnAtt_ = std::make_unique<juce::AudioProcessorValueTreeState::ButtonAttachment>(p.apvts, ids::chOn, chOn_);
+    styleCombo(chMode_, ids::chMode, chModeAtt_);
+    styleCombo(chJuno_, ids::chJuno, chJunoAtt_);
+    styleCombo(chPos_, ids::chPost, chPosAtt_);
+    styleCaption(chModeCaption_, "MODE");
+    styleCaption(chJunoCaption_, "JUNO BUTTON");
+    styleCaption(chPosCaption_, "POSITION");
+    chMode_.setTooltip("CE-2: one voice with free Rate and Depth. Juno: two voices, one in each ear, with the three fixed buttons");
+    addAndMakeVisible(modTab_);
+    modTab_.setClickingTogglesState(true);
+    modTab_.setRadioGroupId(7);
+    modTab_.onClick = [this] { setPage(7); };
+    addAndMakeVisible(vbSpeed_);
+    addAndMakeVisible(vbIntensity_);
+    addAndMakeVisible(vbOn_);
+    addAndMakeVisible(vbVibrato_);
+    vbOnAtt_ = std::make_unique<juce::AudioProcessorValueTreeState::ButtonAttachment>(p.apvts, ids::vbOn, vbOn_);
+    vbVibratoAtt_ = std::make_unique<juce::AudioProcessorValueTreeState::ButtonAttachment>(p.apvts, ids::vbVibrato, vbVibrato_);
+    vbVibrato_.setTooltip("Off: chorus (the dry signal mixed with the phase-shifted one). On: vibrato (only the phase-shifted one: the pitch wobbles)");
+    styleCombo(vbPos_, ids::vbPost, vbPosAtt_);
+    styleCaption(vbPosCaption_, "POSITION");
     // The Space page: delay and reverb.
     for (auto* k : {&dlyTime_, &dlyFb_, &dlyMix_, &dlyTone_, &plDecay_, &plPre_, &plTone_, &plLow_, &plMix_, &plMod_}) addAndMakeVisible(*k);
     for (auto* b : {&dlyOn_, &dlyPing_, &dlyAnalog_, &plOn_, &plHall_}) addAndMakeVisible(*b);
@@ -826,6 +860,23 @@ void EqCurve::paint(juce::Graphics& g) {
     const auto b = getLocalBounds().toFloat();
     g.setColour(juce::Colours::black.withAlpha(0.30f));
     g.fillRoundedRectangle(b, 5.0f);
+    // What is sounding, behind everything else: a silhouette of the output spectrum (the level axis is its own: -96 to -12 dB).
+    if (spectrum_ != nullptr) {
+        constexpr float kLow = -96.0f, kHigh = -12.0f;
+        juce::Path shape;
+        const float bottom = b.getBottom();
+        shape.startNewSubPath(xOf(sas::SpectrumAnalyzer::freqOf(0)), bottom);
+        for (int i = 0; i < sas::SpectrumAnalyzer::kPoints; ++i) {
+            const float level = juce::jlimit(0.0f, 1.0f, ((*spectrum_)[std::size_t(i)] - kLow) / (kHigh - kLow));
+            shape.lineTo(xOf(sas::SpectrumAnalyzer::freqOf(i)), bottom - level * (b.getHeight() - 2.0f));
+        }
+        shape.lineTo(xOf(sas::SpectrumAnalyzer::freqOf(sas::SpectrumAnalyzer::kPoints - 1)), bottom);
+        shape.closeSubPath();
+        g.setGradientFill(juce::ColourGradient(text.withAlpha(0.34f), 0.0f, b.getY(), text.withAlpha(0.06f), 0.0f, bottom, false));
+        g.fillPath(shape);
+        g.setColour(text.withAlpha(0.45f));
+        g.strokePath(shape, juce::PathStrokeType(1.0f));
+    }
     // Grid: the usual guitar frequencies, 6 dB steps.
     g.setFont(AmpLookAndFeel::font(10.0f, false, 0.02f));
     for (double hz : {50.0, 100.0, 200.0, 500.0, 1000.0, 2000.0, 5000.0, 10000.0}) {
@@ -941,6 +992,13 @@ void SasEditor::showAmp(int index) {
     repaint();
 }
 
+void SasEditor::updateSpectrum() {
+    processor_.spectrumFeed().latest(spectrumBuf_.data(), spectrumBuf_.size());
+    spectrum_.setSampleRate(processor_.getSampleRate() > 0.0 ? processor_.getSampleRate() : 48000.0);
+    spectrum_.analyze(spectrumBuf_.data());
+    eqCurve_.setSpectrum(&spectrum_.db());
+}
+
 void SasEditor::pollMeters() {
     inBar_.setLevel(processor_.takeInputPeak());
     outBar_.setLevel(processor_.takeOutputPeak());
@@ -958,7 +1016,16 @@ void SasEditor::pollMeters() {
 void SasEditor::timerCallback() {
     pollMeters();
     dlyTime_.setEnabled(int(processor_.apvts.getRawParameterValue(ids::dlySync)->load() + 0.5f) == 0);  // with a tempo sync the time knob has no say
-    if (page_ == 5) eqCurve_.repaint();  // follows the parameters when the host or an automation moves them
+    {
+        const bool juno = processor_.apvts.getRawParameterValue(ids::chMode)->load() > 0.5f;
+        chRate_.setEnabled(!juno);
+        chDepth_.setEnabled(!juno);
+        chJuno_.setEnabled(juno);
+    }
+    if (page_ == 5) {
+        updateSpectrum();
+        eqCurve_.repaint();  // follows the parameters when the host or an automation moves them, and the spectrum
+    }  // follows the parameters when the host or an automation moves them
     if (++tunerTicks_ % 3 == 0) updateTuner();
     if (tick_++ % 8 != 0) return;  // the rest at about 4 Hz
     // Follows the amp parameter when the host or a restored state changes it.
@@ -1198,6 +1265,8 @@ void SasEditor::resized() {
         head.removeFromRight(3);
         spaceTab_.setBounds(head.removeFromRight(56).withTrimmedTop(6).withTrimmedBottom(2));
         head.removeFromRight(3);
+        modTab_.setBounds(head.removeFromRight(46).withTrimmedTop(6).withTrimmedBottom(2));
+        head.removeFromRight(3);
         eqTab_.setBounds(head.removeFromRight(42).withTrimmedTop(6).withTrimmedBottom(2));
         head.removeFromRight(3);
         pitchTab_.setBounds(head.removeFromRight(54).withTrimmedTop(6).withTrimmedBottom(2));
@@ -1209,8 +1278,10 @@ void SasEditor::resized() {
         ampTab_.setBounds(head.removeFromRight(54).withTrimmedTop(6).withTrimmedBottom(2));
         area.removeFromTop(4);
     }
-    const bool ampPage = page_ == 0, fxPage = page_ == 1, cabPage = page_ == 2, tunerPage = page_ == 3, pitchPage = page_ == 4, eqPage = page_ == 5, spacePage = page_ == 6;
+    const bool ampPage = page_ == 0, fxPage = page_ == 1, cabPage = page_ == 2, tunerPage = page_ == 3, pitchPage = page_ == 4, eqPage = page_ == 5, spacePage = page_ == 6, modPage = page_ == 7;
     for (auto* c : std::initializer_list<juce::Component*>{&eqCurve_, &eqOn_, &eqReset_, &eqBandLabel_, &eqHpf_, &eqLpf_}) c->setVisible(eqPage);
+    for (auto* c : std::initializer_list<juce::Component*>{&phSpeed_, &phOn_, &phIntense_, &phPos_, &phPosCaption_, &chRate_, &chDepth_, &chOn_, &chMode_, &chJuno_, &chPos_,
+                                                           &chModeCaption_, &chJunoCaption_, &chPosCaption_, &vbSpeed_, &vbIntensity_, &vbOn_, &vbVibrato_, &vbPos_, &vbPosCaption_}) c->setVisible(modPage);
     for (auto* c : std::initializer_list<juce::Component*>{&dlyTime_, &dlyFb_, &dlyMix_, &dlyTone_, &plDecay_, &plPre_, &plTone_, &plLow_, &plMix_, &plMod_, &dlyOn_, &dlyPing_, &dlyAnalog_,
                                                            &plOn_, &plHall_, &dlySync_, &dlySyncCaption_, &dlyTap_, &dlyPresets_, &plPresets_, &fxNote_}) c->setVisible(spacePage);
     for (int b = 0; b < 5; ++b)
@@ -1280,6 +1351,60 @@ void SasEditor::resized() {
         return;
     }
 
+    if (modPage) {
+        // Mod page: the phaser on the left, the chorus on the right.
+        const int total = area.getWidth();
+        auto phPanel = area.removeFromLeft(total * 26 / 100);
+        area.removeFromLeft(gap);
+        auto chPanel = area.removeFromLeft((area.getWidth() - gap) * 50 / 100);
+        area.removeFromLeft(gap);
+        auto vbPanel = area;
+        panels_.push_back({phPanel, "PHASER"});
+        {
+            auto in = phPanel.reduced(8, 6);
+            auto head = in.removeFromTop(22);
+            phOn_.setBounds(head.removeFromRight(56));
+            phIntense_.setBounds(head.removeFromRight(74));
+            auto bottom = in.removeFromBottom(40);
+            phPosCaption_.setBounds(bottom.removeFromTop(14));
+            phPos_.setBounds(bottom.removeFromLeft(130).withTrimmedBottom(2));
+            phSpeed_.setBounds(in.withSizeKeepingCentre(std::min(in.getWidth(), 240), in.getHeight()));
+        }
+        panels_.push_back({chPanel, "CHORUS"});
+        {
+            auto in = chPanel.reduced(8, 6);
+            auto head = in.removeFromTop(22);
+            chOn_.setBounds(head.removeFromRight(56));
+            auto bottom = in.removeFromBottom(40);
+            const int w = bottom.getWidth() / 3;
+            auto c1 = bottom.removeFromLeft(w).withTrimmedRight(6), c2 = bottom.removeFromLeft(w).withTrimmedRight(6), c3 = bottom.withTrimmedRight(6);
+            chModeCaption_.setBounds(c1.removeFromTop(14));
+            chMode_.setBounds(c1.withTrimmedBottom(2));
+            chJunoCaption_.setBounds(c2.removeFromTop(14));
+            chJuno_.setBounds(c2.withTrimmedBottom(2));
+            chPosCaption_.setBounds(c3.removeFromTop(14));
+            chPos_.setBounds(c3.withTrimmedBottom(2));
+            const int kw = in.getWidth() / 2;
+            chRate_.setBounds(in.removeFromLeft(kw));
+            chDepth_.setBounds(in);
+        }
+        panels_.push_back({vbPanel, "VIBE"});
+        {
+            auto in = vbPanel.reduced(8, 6);
+            auto head = in.removeFromTop(22);
+            vbOn_.setBounds(head.removeFromRight(56));
+            vbVibrato_.setBounds(head.removeFromRight(80));
+            auto bottom = in.removeFromBottom(40);
+            vbPosCaption_.setBounds(bottom.removeFromTop(14));
+            vbPos_.setBounds(bottom.removeFromLeft(130).withTrimmedBottom(2));
+            const int kw = in.getWidth() / 2;
+            vbSpeed_.setBounds(in.removeFromLeft(kw));
+            vbIntensity_.setBounds(in);
+        }
+        repaint();
+        return;
+    }
+
     if (spacePage) {
         // Space page: the delay on the left, the reverb on the right; a strip with the presets underneath.
         auto strip = area.removeFromBottom(30);
@@ -1296,9 +1421,10 @@ void SasEditor::resized() {
             dlyAnalog_.setBounds(head.removeFromRight(72));
             dlyPing_.setBounds(head.removeFromRight(90));
             auto bottom = in.removeFromBottom(34);
-            const int w = in.getWidth() / 4;
-            dlyTime_.setBounds(in.removeFromLeft(w));
-            dlyFb_.setBounds(in.removeFromLeft(w));
+            auto top = in.removeFromTop(in.getHeight() / 2);  // two rows of two
+            const int w = in.getWidth() / 2;
+            dlyTime_.setBounds(top.removeFromLeft(w));
+            dlyFb_.setBounds(top);
             dlyMix_.setBounds(in.removeFromLeft(w));
             dlyTone_.setBounds(in);
             dlySyncCaption_.setBounds(bottom.removeFromTop(13));
@@ -1316,10 +1442,12 @@ void SasEditor::resized() {
             plHall_.setBounds(head.removeFromRight(62));
             auto bottom = in.removeFromBottom(34);
             plPresets_.setBounds(bottom.removeFromBottom(24).removeFromLeft(100));
-            const int w = in.getWidth() / 6;
-            plDecay_.setBounds(in.removeFromLeft(w));
-            plPre_.setBounds(in.removeFromLeft(w));
-            plTone_.setBounds(in.removeFromLeft(w));
+            // Two rows of three: each knob gets twice the width it would in a single row.
+            auto top = in.removeFromTop(in.getHeight() / 2);
+            const int w = in.getWidth() / 3;
+            plDecay_.setBounds(top.removeFromLeft(w));
+            plPre_.setBounds(top.removeFromLeft(w));
+            plTone_.setBounds(top);
             plLow_.setBounds(in.removeFromLeft(w));
             plMix_.setBounds(in.removeFromLeft(w));
             plMod_.setBounds(in);

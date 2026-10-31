@@ -10,13 +10,17 @@
 
 #include "sas/amp_def.h"
 #include "sas/chain.h"
+#include "sas/chorus.h"
 #include "sas/condition.h"
 #include "sas/delay.h"
 #include "sas/eq.h"
 #include "sas/gate.h"
+#include "sas/phaser.h"
 #include "sas/pitch_shifter.h"
 #include "sas/plate.h"
+#include "sas/spectrum.h"
 #include "sas/stereo.h"
+#include "sas/vibe.h"
 #include "sas/tuner.h"
 
 namespace ids {
@@ -80,6 +84,24 @@ inline constexpr const char* doubleTime = "double_time";      // its delay, 8..3
 inline constexpr const char* irBlend = "ir_blend";  // 0 = impulse response A only, 10 = B only
 inline constexpr const char* speaker = "speaker";               // speaker dynamics amount, 0..10
 inline constexpr const char* speakerIntense = "speaker_intense";  // stronger speaker dynamics
+// The phaser (sas/phaser.h): in front of the amp or after it.
+inline constexpr const char* phOn = "ph_on";
+inline constexpr const char* phSpeed = "ph_speed";      // Hz
+inline constexpr const char* phIntense = "ph_intense";  // with feedback
+inline constexpr const char* phPost = "ph_post";        // 0 = before the amp, 1 = after the amp (and the cabinet)
+// The chorus (sas/chorus.h): two modes, before the amp or after it.
+inline constexpr const char* chOn = "ch_on";
+inline constexpr const char* chMode = "ch_mode";    // 0 = CE-2 (one voice), 1 = Juno (two voices)
+inline constexpr const char* chRate = "ch_rate";    // Hz, CE-2
+inline constexpr const char* chDepth = "ch_depth";  // percent, CE-2
+inline constexpr const char* chJuno = "ch_juno";    // Juno button: I, II, I+II
+inline constexpr const char* chPost = "ch_post";    // 0 = before the amp, 1 = after the amp (and the cabinet)
+// The vibe (sas/vibe.h): before the amp or after it.
+inline constexpr const char* vbOn = "vb_on";
+inline constexpr const char* vbSpeed = "vb_speed";          // Hz
+inline constexpr const char* vbIntensity = "vb_intensity";  // percent
+inline constexpr const char* vbVibrato = "vb_vibrato";      // false: chorus mode, true: vibrato mode
+inline constexpr const char* vbPost = "vb_post";            // 0 = before the amp, 1 = after the amp (and the cabinet)
 // Delay and reverb at the end of the chain (see sas/delay.h and sas/plate.h).
 inline constexpr const char* dlyOn = "dly_on";
 inline constexpr const char* dlyTime = "dly_time";      // ms, used when dlySync is Free
@@ -143,6 +165,7 @@ public:
     bool loadPreset(const juce::File& file);
     // One of the factory presets of the equaliser (EqPresets.h; 0 = flat): sets only the EQ parameters and switches the EQ on.
     void applyEqPreset(int index);
+    const sas::SpectrumFeed& spectrumFeed() const { return spectrumFeed_; }
     void applyDelayPreset(int index);   // each effect has its own presets (plugin/FxPresets.h)
     void applyReverbPreset(int index);
     void clearImpulseResponse(int slot = 0);
@@ -223,6 +246,10 @@ private:
     sas::NoiseGate gate_;
     sas::PitchShifter pitch_;
     sas::ParametricEq eq_;
+    sas::Phaser phaser_;
+    sas::SpectrumFeed spectrumFeed_;  // the output, for the picture of what is sounding on the EQ page
+    sas::Chorus chorus_;
+    sas::Vibe vibe_;
     sas::StereoDelay delay_;
     sas::PlateReverb plate_;
     bool pitchWasActive_ = false;

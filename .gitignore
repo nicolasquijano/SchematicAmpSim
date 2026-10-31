@@ -4,3 +4,5 @@ dist/
 third_party/
 .vs/
 *.user
+# Third-party cabinet impulses built into the plugin: kept on the developer's machine only (see plugin/cabs/README.md)
+plugin/cabs/*.wav

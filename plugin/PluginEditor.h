@@ -96,6 +96,8 @@ public:
     void mouseWheelMove(const juce::MouseEvent&, const juce::MouseWheelDetails&) override;
 
     int selected() const { return selected_; }
+    // The levels (dB at log-spaced points from 20 Hz to 20 kHz) of what is sounding, drawn behind the curve; null = nothing to draw.
+    void setSpectrum(const std::array<float, sas::SpectrumAnalyzer::kPoints>* db) { spectrum_ = db; }
     void select(int band);
     std::function<void(int)> onSelect;
 
@@ -110,6 +112,7 @@ private:
 
     juce::AudioProcessorValueTreeState& apvts_;
     int selected_ = 2, dragging_ = -1;
+    const std::array<float, sas::SpectrumAnalyzer::kPoints>* spectrum_ = nullptr;
 };
 
 // The tuner's face: the note, how far from it in cents on a needle meter, and the frequency.
@@ -148,6 +151,7 @@ public:
 
     void paint(juce::Graphics&) override;
     void resized() override;
+    void updateSpectrum();  // analyses the latest output and hands it to the EQ curve (the timer calls it on the EQ page)
     void pollMeters();  // reads the processor's peaks into the level bars (the timer calls it)
     void updateTuner();  // runs the pitch detection on the latest input (the timer calls it)
     void updateImpulseStatus();  // the impulse names and response curves of the Cabinet page (the timer calls it)
@@ -189,10 +193,25 @@ private:
     KnobWithLabel bias_, wear_, speaker_, blend_;
     KnobWithLabel compSustain_, compBlend_, compTone_, compLevel_, tunerRef_, stereoWidth_, doubleAmount_, doubleTime_, pitchFine_, eqHpf_, eqLpf_;
     EqCurve eqCurve_;
+    sas::SpectrumAnalyzer spectrum_;
+    std::vector<float> spectrumBuf_ = std::vector<float>(sas::SpectrumAnalyzer::kFft);
     // The Space page: delay and reverb at the end of the chain.
-    KnobWithLabel dlyTime_, dlyFb_, dlyMix_, dlyTone_, plDecay_, plPre_, plTone_, plLow_, plMix_, plMod_;
+    KnobWithLabel dlyTime_, dlyFb_, dlyMix_, dlyTone_, plDecay_, plPre_, plTone_, plLow_, plMix_, plMod_, phSpeed_, chRate_, chDepth_, vbSpeed_, vbIntensity_;
     juce::ToggleButton dlyOn_{"On"}, dlyPing_{"Ping-pong"}, dlyAnalog_{"Analog"}, plOn_{"On"}, plHall_{"Hall"};
-    juce::ComboBox dlySync_;
+    juce::ComboBox dlySync_, phPos_, chMode_, chJuno_, chPos_, vbPos_;
+    juce::ToggleButton vbOn_{"On"}, vbVibrato_{"Vibrato"};
+    juce::Label vbPosCaption_;
+    std::unique_ptr<juce::AudioProcessorValueTreeState::ButtonAttachment> vbOnAtt_, vbVibratoAtt_;
+    std::unique_ptr<juce::AudioProcessorValueTreeState::ComboBoxAttachment> vbPosAtt_;
+    juce::ToggleButton chOn_{"On"};
+    juce::Label chModeCaption_, chJunoCaption_, chPosCaption_;
+    juce::TextButton modTab_{"Mod"};
+    std::unique_ptr<juce::AudioProcessorValueTreeState::ButtonAttachment> chOnAtt_;
+    std::unique_ptr<juce::AudioProcessorValueTreeState::ComboBoxAttachment> chModeAtt_, chJunoAtt_, chPosAtt_;
+    juce::ToggleButton phOn_{"On"}, phIntense_{"Intense"};
+    juce::Label phPosCaption_;
+    std::unique_ptr<juce::AudioProcessorValueTreeState::ButtonAttachment> phOnAtt_, phIntenseAtt_;
+    std::unique_ptr<juce::AudioProcessorValueTreeState::ComboBoxAttachment> phPosAtt_;
     juce::Label dlySyncCaption_, fxNote_;
     juce::TextButton dlyTap_{"Tap"}, dlyPresets_{"Presets"}, plPresets_{"Presets"}, spaceTab_{"Space"};
     std::unique_ptr<juce::AudioProcessorValueTreeState::ButtonAttachment> dlyOnAtt_, dlyPingAtt_, dlyAnalogAtt_, plOnAtt_, plHallAtt_;

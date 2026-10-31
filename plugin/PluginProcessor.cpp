@@ -143,6 +143,38 @@ Layout SasProcessor::createLayout(const std::vector<sas::AmpDef>& defs) {
         l.add(pct(ids::plMix, "Reverb mix", 0.0f, 100.0f, 22.0f));
         l.add(pct(ids::plMod, "Reverb modulation", 0.0f, 100.0f, 30.0f));
     }
+    l.add(std::make_unique<juce::AudioParameterBool>(juce::ParameterID{ids::phOn, kVersion}, "Phaser", false));
+    {
+        juce::NormalisableRange<float> speed(0.1f, 8.0f, 0.0f);
+        speed.setSkewForCentre(1.0f);
+        l.add(std::make_unique<juce::AudioParameterFloat>(juce::ParameterID{ids::phSpeed, kVersion}, "Phaser speed", speed, 0.8f,
+                                                           juce::AudioParameterFloatAttributes().withLabel("Hz").withStringFromValueFunction([](float v, int) { return juce::String(v, 2); })));
+    }
+    l.add(std::make_unique<juce::AudioParameterBool>(juce::ParameterID{ids::phIntense, kVersion}, "Phaser intense", false));
+    l.add(std::make_unique<juce::AudioParameterChoice>(juce::ParameterID{ids::phPost, kVersion}, "Phaser position", juce::StringArray{"Pre amp", "Post amp"}, 0));
+    l.add(std::make_unique<juce::AudioParameterBool>(juce::ParameterID{ids::chOn, kVersion}, "Chorus", false));
+    l.add(std::make_unique<juce::AudioParameterChoice>(juce::ParameterID{ids::chMode, kVersion}, "Chorus mode", juce::StringArray{"CE-2", "Juno"}, 0));
+    {
+        juce::NormalisableRange<float> rate(0.1f, 8.0f, 0.0f);
+        rate.setSkewForCentre(1.4f);
+        l.add(std::make_unique<juce::AudioParameterFloat>(juce::ParameterID{ids::chRate, kVersion}, "Chorus rate", rate, 1.2f,
+                                                           juce::AudioParameterFloatAttributes().withLabel("Hz").withStringFromValueFunction([](float v, int) { return juce::String(v, 2); })));
+    }
+    l.add(std::make_unique<juce::AudioParameterFloat>(juce::ParameterID{ids::chDepth, kVersion}, "Chorus depth", juce::NormalisableRange<float>(0.0f, 100.0f, 0.0f), 50.0f,
+                                                       juce::AudioParameterFloatAttributes().withLabel("%").withStringFromValueFunction([](float v, int) { return juce::String(v, 0); })));
+    l.add(std::make_unique<juce::AudioParameterChoice>(juce::ParameterID{ids::chJuno, kVersion}, "Chorus Juno button", juce::StringArray{"I", "II", "I+II"}, 0));
+    l.add(std::make_unique<juce::AudioParameterChoice>(juce::ParameterID{ids::chPost, kVersion}, "Chorus position", juce::StringArray{"Pre amp", "Post amp"}, 1));
+    l.add(std::make_unique<juce::AudioParameterBool>(juce::ParameterID{ids::vbOn, kVersion}, "Vibe", false));
+    {
+        juce::NormalisableRange<float> speed(0.3f, 10.0f, 0.0f);
+        speed.setSkewForCentre(3.0f);
+        l.add(std::make_unique<juce::AudioParameterFloat>(juce::ParameterID{ids::vbSpeed, kVersion}, "Vibe speed", speed, 3.0f,
+                                                           juce::AudioParameterFloatAttributes().withLabel("Hz").withStringFromValueFunction([](float v, int) { return juce::String(v, 2); })));
+    }
+    l.add(std::make_unique<juce::AudioParameterFloat>(juce::ParameterID{ids::vbIntensity, kVersion}, "Vibe intensity", juce::NormalisableRange<float>(0.0f, 100.0f, 0.0f), 70.0f,
+                                                       juce::AudioParameterFloatAttributes().withLabel("%").withStringFromValueFunction([](float v, int) { return juce::String(v, 0); })));
+    l.add(std::make_unique<juce::AudioParameterBool>(juce::ParameterID{ids::vbVibrato, kVersion}, "Vibe vibrato", false));
+    l.add(std::make_unique<juce::AudioParameterChoice>(juce::ParameterID{ids::vbPost, kVersion}, "Vibe position", juce::StringArray{"Pre amp", "Post amp"}, 0));
     l.add(std::make_unique<juce::AudioParameterBool>(juce::ParameterID{ids::compOn, kVersion}, "Compressor", false));
     l.add(knob(ids::compSustain, "Compressor sustain", 5.0f));
     l.add(knob(ids::compBlend, "Compressor blend", 7.0f));
@@ -275,7 +307,11 @@ SasProcessor::SasProcessor()
     mono2_.resize(kMaxChunk);
     monoR_.resize(kMaxChunk);
     builder_ = std::make_unique<ChainBuilder>(*this);
-    loadBuiltInImpulseResponse(0, 0);  // a fresh instance has the first built-in cabinet ready in slot A (a restored project replaces it)
+    // A fresh instance has "4x12 OS Mix 1" ready in slot A (a restored project replaces it); the first of the list if that one is not there.
+    int firstCab = 0;
+    for (int i = 0; i < builtInImpulseResponseCount(); ++i)
+        if (builtInImpulseResponseName(i) == "4x12 OS Mix 1") firstCab = i;
+    loadBuiltInImpulseResponse(firstCab, 0);
 }
 
 SasProcessor::~SasProcessor() {
@@ -315,6 +351,9 @@ void SasProcessor::prepareToPlay(double sampleRate, int samplesPerBlock) {
     pitch_.prepare(sampleRate);
     eq_.prepare(sampleRate);
     delay_.prepare(sampleRate);
+    phaser_.prepare(sampleRate);
+    chorus_.prepare(sampleRate);
+    vibe_.prepare(sampleRate);
     plate_.prepare(sampleRate);
     pitchWasActive_ = false;
     tuner_.prepare(sampleRate);
@@ -431,6 +470,28 @@ void SasProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::MidiBuff
         pl.mod = std::clamp(raw(ids::plMod) / 100.0, 0.0, 1.0);
         plate_.setParams(pl);
     }
+    sas::PhaserParams phaserParams;
+    phaserParams.on = apvts.getRawParameterValue(ids::phOn)->load() > 0.5f;
+    phaserParams.speedHz = double(apvts.getRawParameterValue(ids::phSpeed)->load());
+    phaserParams.intense = apvts.getRawParameterValue(ids::phIntense)->load() > 0.5f;
+    const bool phaserPost = apvts.getRawParameterValue(ids::phPost)->load() > 0.5f;
+    // The same unit sits in one place at a time; the part of the chain it is not in sees it switched off.
+    phaser_.setParams(phaserParams);
+    sas::ChorusParams chorusParams;
+    chorusParams.on = apvts.getRawParameterValue(ids::chOn)->load() > 0.5f;
+    chorusParams.juno = apvts.getRawParameterValue(ids::chMode)->load() > 0.5f;
+    chorusParams.rateHz = double(apvts.getRawParameterValue(ids::chRate)->load());
+    chorusParams.depth = double(apvts.getRawParameterValue(ids::chDepth)->load()) / 100.0;
+    chorusParams.junoButton = int(apvts.getRawParameterValue(ids::chJuno)->load() + 0.5f);
+    const bool chorusPost = apvts.getRawParameterValue(ids::chPost)->load() > 0.5f;
+    chorus_.setParams(chorusParams);
+    sas::VibeParams vibeParams;
+    vibeParams.on = apvts.getRawParameterValue(ids::vbOn)->load() > 0.5f;
+    vibeParams.speedHz = double(apvts.getRawParameterValue(ids::vbSpeed)->load());
+    vibeParams.intensity = double(apvts.getRawParameterValue(ids::vbIntensity)->load()) / 100.0;
+    vibeParams.vibrato = apvts.getRawParameterValue(ids::vbVibrato)->load() > 0.5f;
+    const bool vibePost = apvts.getRawParameterValue(ids::vbPost)->load() > 0.5f;
+    vibe_.setParams(vibeParams);
     // The pitch shifter sits in front of everything and adds its own delay only while it is shifting.
     const double pitchSemitones = double(apvts.getRawParameterValue(ids::pitch)->load()) + double(apvts.getRawParameterValue(ids::pitchFine)->load()) / 100.0;
     const bool pitchActive = std::fabs(pitchSemitones) > 1e-6;
@@ -469,6 +530,9 @@ void SasProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::MidiBuff
         if (tunerOn) tuner_.push(m, std::size_t(n));  // the raw input, before the pitch shifter and the gate
         if (pitchActive) pitch_.process(m, m, std::size_t(n), pitchRatio);
         gate_.process(m, std::size_t(n));
+        if (!phaserPost) phaser_.process(m, nullptr, std::size_t(n));  // the phaser in front of the amp (and of the other pedals)
+        if (!chorusPost) chorus_.process(m, nullptr, std::size_t(n));  // then the chorus, if it is placed there
+        if (!vibePost) vibe_.process(m, nullptr, std::size_t(n));      // and the vibe
 
         chain_->processAmp(m, m, std::size_t(n));
         float* mR = monoR_.data();  // the right channel; the left one is m
@@ -514,6 +578,9 @@ void SasProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::MidiBuff
                           8.0 + 22.0 * double(apvts.getRawParameterValue(ids::doubleTime)->load()) / 10.0);
         double_.process(m, mR, std::size_t(n));
         eq_.process(m, mR, std::size_t(n));  // the post equaliser, on the stereo pair after the cabinet and the doubling
+        if (phaserPost) phaser_.process(m, mR, std::size_t(n));  // or the phaser after the amp, cabinet and EQ
+        if (chorusPost) chorus_.process(m, mR, std::size_t(n));  // and the chorus after it
+        if (vibePost) vibe_.process(m, mR, std::size_t(n));      // then the vibe
         delay_.process(m, mR, std::size_t(n));  // then the time effects: the delay into the reverb
         plate_.process(m, mR, std::size_t(n));
         chain_->applyOutputStereo(m, mR, std::size_t(n));
@@ -521,6 +588,7 @@ void SasProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::MidiBuff
             std::fill(m, m + n, 0.0f);
             std::fill(mR, mR + n, 0.0f);
         }
+        spectrumFeed_.push(m, mR, std::size_t(n));  // what is sounding, for the spectrum on the EQ page
         float outPeak = 0.0f;
         for (int i = 0; i < n; ++i) outPeak = std::max(outPeak, std::max(std::fabs(m[i]), std::fabs(mR[i])));
         if (inPeak > inputPeak_.load()) inputPeak_.store(inPeak);
