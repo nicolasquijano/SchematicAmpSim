@@ -25,6 +25,8 @@ juce_add_plugin(SchematicAmpSim
 target_sources(SchematicAmpSim PRIVATE
   PluginProcessor.cpp
   PluginProcessor.h
+  AmpFace.cpp
+  AmpFace.h
   PluginEditor.cpp
   PluginEditor.h)
 
@@ -39,10 +41,41 @@ if(SAS_ASIO_SDK_DIR)
   target_compile_definitions(SchematicAmpSim PUBLIC JUCE_ASIO=1)
 endif()
 
+# The amps' own fronts: amps/<id>/face/*.png, renamed <id>_<name>.png so the binary-data names do not collide.
+file(GLOB _face_pngs CONFIGURE_DEPENDS "${CMAKE_SOURCE_DIR}/amps/*/face/*.png")
+set(_face_copies "")
+foreach(_png IN LISTS _face_pngs)
+  get_filename_component(_name "${_png}" NAME)
+  get_filename_component(_facedir "${_png}" DIRECTORY)
+  get_filename_component(_ampdir "${_facedir}" DIRECTORY)
+  get_filename_component(_id "${_ampdir}" NAME)
+  # Only amps whose amp.json asks for a faceplate carry their images; the others keep theirs in the repo for later.
+  file(READ "${_ampdir}/amp.json" _ampjson)
+  string(FIND "${_ampjson}" "\"faceplate\"" _wants_face)
+  if(_wants_face EQUAL -1)
+    continue()
+  endif()
+  configure_file("${_png}" "${CMAKE_BINARY_DIR}/faces/${_id}_${_name}" COPYONLY)
+  list(APPEND _face_copies "${CMAKE_BINARY_DIR}/faces/${_id}_${_name}")
+endforeach()
+if(_face_copies)
+  juce_add_binary_data(SasFaces SOURCES ${_face_copies})
+  set_target_properties(SasFaces PROPERTIES POSITION_INDEPENDENT_CODE ON)
+  target_compile_definitions(SchematicAmpSim PRIVATE SAS_HAS_FACES=1)
+endif()
+
+# Cabinet impulse responses built into the plugin: plugin/cabs/*.wav (listed in the cabinet page, see SasProcessor::builtInImpulseResponse*).
+file(GLOB _cab_wavs CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/cabs/*.wav")
+list(SORT _cab_wavs)
+juce_add_binary_data(SasCabs HEADER_NAME CabData.h NAMESPACE CabData SOURCES ${_cab_wavs})
+set_target_properties(SasCabs PROPERTIES POSITION_INDEPENDENT_CODE ON)
+
 target_link_libraries(SchematicAmpSim
   PRIVATE
+    SasCabs
     sas_engine
     sas_amps
+    $<$<BOOL:${_face_copies}>:SasFaces>
     juce::juce_audio_utils
     juce::juce_dsp
   PUBLIC

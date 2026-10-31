@@ -235,7 +235,7 @@ TEST_CASE("an impulse response loads, survives the state, and shapes the sound")
     JuceInit init;
     SasProcessor p;
     p.prepareToPlay(48000.0, 512);
-    CHECK(p.impulseResponseName().isEmpty());
+    CHECK(p.impulseResponseName() == "4x12 OS Mix 1");  // a new instance carries the first built-in cabinet
     CHECK(!p.loadImpulseResponse(juce::File("C:/definitely/not/here.wav")));
 
     const auto file = writeImpulse("sas_test_ir.wav");
@@ -887,6 +887,17 @@ TEST_CASE("the editor builds for every amp and can be rendered") {
                     p.applyEqPreset(0);
                     
                 }
+                p.applyDelayPreset(4);
+                p.applyReverbPreset(2);
+                for (auto* c : ed->getChildren())
+                    if (auto* b = dynamic_cast<juce::TextButton*>(c); b && b->getButtonText() == "Space") { b->setToggleState(true, juce::dontSendNotification); b->onClick(); }
+                {
+                    const auto sp = ed->createComponentSnapshot(ed->getLocalBounds());
+                    juce::FileOutputStream o5(juce::File(dir).getChildFile("space.png"));
+                    if (o5.openedOk()) { o5.setPosition(0); o5.truncate(); png.writeImageToStream(sp, o5); }
+                    p.applyDelayPreset(0);
+                    p.applyReverbPreset(0);
+                }
                 for (auto* c : ed->getChildren())
                     if (auto* b = dynamic_cast<juce::TextButton*>(c); b && b->getButtonText() == "Effects") { b->setToggleState(true, juce::dontSendNotification); b->onClick(); }
                 for (auto* c : ed->getChildren())
@@ -1105,4 +1116,64 @@ TEST_CASE("amp switches: the SVT has three, they are parameters, and they change
     const double on = rms(run(p, 10, 3000.0, 0.00002));
     INFO("ultra hi off " << off << ", on " << on);
     CHECK(on > 1.2 * off);
+}
+
+TEST_CASE("built-in cabinet impulses: three ship with the plugin, load into either slot and survive a project round trip") {
+    JuceInit juceInit;
+    REQUIRE(SasProcessor::builtInImpulseResponseCount() == 3);
+    CHECK(SasProcessor::builtInImpulseResponseName(0) == "4x12 OS Mix 1");
+    CHECK(SasProcessor::builtInImpulseResponseName(2) == "4x12 OS Mix 3");
+    SasProcessor proc;
+    CHECK(proc.impulseResponseName(0) == "4x12 OS Mix 1");
+    REQUIRE(proc.loadBuiltInImpulseResponse(1, 1));
+    CHECK(proc.impulseResponseName(1) == "4x12 OS Mix 2");
+    CHECK_FALSE(proc.loadBuiltInImpulseResponse(7, 0));
+    juce::MemoryBlock state;
+    proc.getStateInformation(state);
+    SasProcessor other;
+    other.setStateInformation(state.getData(), int(state.getSize()));
+    CHECK(other.impulseResponseName(0) == "4x12 OS Mix 1");
+    CHECK(other.impulseResponseName(1) == "4x12 OS Mix 2");
+}
+
+TEST_CASE("delay and reverb: off by default and invisible, on they add a tail, presets set both, and the state survives a project round trip") {
+    JuceInit juceInit;
+    SasProcessor proc;
+    proc.prepareToPlay(48000.0, 512);
+    CHECK(proc.apvts.getRawParameterValue(ids::dlyOn)->load() < 0.5f);
+    CHECK(proc.apvts.getRawParameterValue(ids::plOn)->load() < 0.5f);
+    auto burst = [&]() {
+        juce::AudioBuffer<float> b(2, 512);
+        juce::MidiBuffer midi;
+        double energyAfter = 0.0;
+        b.clear();
+        for (int blk = 0; blk < 120; ++blk) {
+            b.clear();
+            if (blk == 0) fill(b, 220.0, 0.3, 48000.0);
+            proc.processBlock(b, midi);
+            if (blk > 40) energyAfter += rms(b) * rms(b);
+        }
+        return energyAfter;
+    };
+    const double dry = burst();
+    proc.applyDelayPreset(4);   // "Ping-pong"
+    proc.applyReverbPreset(2);  // "Short plate"
+    CHECK(proc.apvts.getRawParameterValue(ids::dlyOn)->load() > 0.5f);
+    CHECK(proc.apvts.getRawParameterValue(ids::plOn)->load() > 0.5f);
+    CHECK(proc.apvts.getRawParameterValue(ids::dlyPing)->load() > 0.5f);
+    const double wet = burst();
+    INFO("tail energy dry " << dry << " wet " << wet);
+    CHECK(wet > dry * 3.0 + 1e-9);
+    proc.applyReverbPreset(5);  // "Big hall": only the reverb changes, the delay stays on
+    CHECK(proc.apvts.getRawParameterValue(ids::dlyOn)->load() > 0.5f);
+    proc.applyDelayPreset(0);   // "Off"
+    CHECK(proc.apvts.getRawParameterValue(ids::dlyOn)->load() < 0.5f);
+    CHECK(proc.apvts.getRawParameterValue(ids::plOn)->load() > 0.5f);
+    CHECK(proc.apvts.getRawParameterValue(ids::plHall)->load() > 0.5f);
+    juce::MemoryBlock state;
+    proc.getStateInformation(state);
+    SasProcessor other;
+    other.setStateInformation(state.getData(), int(state.getSize()));
+    CHECK(other.apvts.getRawParameterValue(ids::plHall)->load() > 0.5f);
+    CHECK(other.apvts.getRawParameterValue(ids::plDecay)->load() == Catch::Approx(3.8f).margin(0.05f));
 }

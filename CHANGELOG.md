@@ -6,6 +6,10 @@ version numbers follow [Semantic Versioning](https://semver.org/) (see [docs/REL
 ## [Unreleased]
 
 ### Added
+- A Space page with a delay and a reverb at the end of the chain (after the cabinet and the EQ). The delay: up to 1.5 s, feedback, mix, a tone control in the repeats, ping-pong, an "analog" mode (darker, a little saturation and
+  a slow wobble), tempo sync to the host (1/4, dotted 1/8, 1/8, 1/16) and a Tap button. The reverb: a plate or, with Hall, a larger room, with decay, pre-delay, tone, low cut, mix and modulation. Both let their tails ring out when switched off.
+  Each has its own list of factory presets (eight each) that only change that effect.
+- Three cabinet impulse responses (4x12 OS Mix 1, 2 and 3) built into the plugin: the Load buttons of the Cabinet page open a menu with them and "From file...". A new instance has Mix 1 loaded in slot A.
 - A new amp, American Bass 300, from the preamp and power amp drawings of a 1972 tube bass head with the Ultra Hi and Ultra Lo switches: two channels, the bass select network, a bass / treble stack per channel,
   the mid-range network with its toroidal inductor, six 6550. The switches are a new kind of control: an amp can now declare up to four "selectors" (amp.json `preamp.selectors`), shown as drop-downs under its
   knobs and saved as parameters. Several readings of the drawing are interpretations (see the comments in `amps/svt_bass300/*.net`): the bass-select and channel 2 Ultra Lo networks, the exact taps of the toroid,
@@ -14,6 +18,7 @@ version numbers follow [Semantic Versioning](https://semver.org/) (see [docs/REL
 - Ten guitar presets for the EQ alone (the Presets button on the EQ page; they only set the EQ): Clean sparkle, Warm blues, Tight rhythm, Lead cut-through, Smooth (de-fizz), Metal scoop, Jazz warm, Country twang, Classic rock crunch and Mix-ready, plus Flat to reset.
 
 ### Changed
+- A new instance opens with Output at -10 dB (it was 0): every amp is calibrated to a loud, near full-scale signal and had to be turned down. Projects that already saved an Output value keep it.
 - The window opens larger (1000 x 520, resizable from 920 x 480) and the amp list uses the free height. The noise gate moved from the Effects page to the Amp page, next to the guitar input.
 
 ### Removed

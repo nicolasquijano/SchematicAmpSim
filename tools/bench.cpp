@@ -49,7 +49,10 @@ int main() {
     const Case cases[] = {{"clean", 0.2, 0.5, 0.05}, {"crunch", 0.6, 0.5, 0.15}, {"lead", 1.0, 0.8, 0.3}};
     double sink = 0;
     std::vector<std::pair<std::string, sas::AmpDef>> amps;
-    for (const auto& id : sas::embeddedAmpIds()) amps.push_back({id, sas::loadEmbeddedAmp(id)});
+    // SAS_BENCH_AMP=<id> runs just that amp.
+    const char* only = std::getenv("SAS_BENCH_AMP");
+    for (const auto& id : sas::embeddedAmpIds())
+        if (!only || id == only) amps.push_back({id, sas::loadEmbeddedAmp(id)});
     // SAS_BENCH_MONO=<path to afd100_preamp_full.net> also runs the unsplit AFD100 preamp for comparison.
     if (const char* mono = std::getenv("SAS_BENCH_MONO")) {
         sas::AmpDef d = sas::loadEmbeddedAmp("afd100");

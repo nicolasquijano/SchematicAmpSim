@@ -212,6 +212,19 @@ struct LiteParams {
 // (empty for presence, which belongs to the power amp).
 struct UiKnob {
     std::string param, knob, powerKnob, label;  // `knob` (preamp) or `powerKnob` (power amp), or neither (presence)
+    std::string sub;                            // a second line under the label on a faceplate ("VOLUME")
+};
+
+// The amp's own front, drawn from the images in amps/<id>/face/ (background.png at twice the size of `art`, knob.png: the knob pointing up).
+// Everything below is in the points of the artwork (the same units as `art`).
+struct FaceplateDef {
+    std::string style;                              // "image"; empty = no faceplate
+    double artW = 0, artH = 0;                      // size of the artboard the images were drawn on
+    double knobBox = 0;                             // side of the square knob.png covers
+    std::vector<std::pair<double, double>> knobs;   // centre of each knob, in the order of `ui`
+    std::vector<std::pair<double, double>> jacks;   // centre of each drawn input jack
+    std::vector<std::vector<int>> jackValues;       // for each drawn jack: the jack parameter values it stands for (the first is chosen by a click, any of them lights it); default {its index}
+    double jackRadius = 0;                          // radius of the ring that marks the jack in use
 };
 
 // Colours of the editor while this amp is shown (amp.json "theme", each "#rrggbb"; missing ones keep the amber default).
@@ -231,6 +244,7 @@ struct AmpDef {
     // (see tools/sas_match_levels). Applied by the chain, not part of the circuit.
     double outputDb = 0.0;
     std::vector<UiKnob> ui;
+    FaceplateDef faceplate;  // the amp's own front (plugin/AmpFace.cpp) instead of the generic knob panel; style empty = generic
     PreampDef preamp;
     // Optional finer-split preamp for the Eco modes ("eco_preamp" in amp.json: it overrides the
     // netlist and stages of `preamp` and inherits everything else).

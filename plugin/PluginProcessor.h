@@ -11,9 +11,11 @@
 #include "sas/amp_def.h"
 #include "sas/chain.h"
 #include "sas/condition.h"
+#include "sas/delay.h"
 #include "sas/eq.h"
 #include "sas/gate.h"
 #include "sas/pitch_shifter.h"
+#include "sas/plate.h"
 #include "sas/stereo.h"
 #include "sas/tuner.h"
 
@@ -78,6 +80,23 @@ inline constexpr const char* doubleTime = "double_time";      // its delay, 8..3
 inline constexpr const char* irBlend = "ir_blend";  // 0 = impulse response A only, 10 = B only
 inline constexpr const char* speaker = "speaker";               // speaker dynamics amount, 0..10
 inline constexpr const char* speakerIntense = "speaker_intense";  // stronger speaker dynamics
+// Delay and reverb at the end of the chain (see sas/delay.h and sas/plate.h).
+inline constexpr const char* dlyOn = "dly_on";
+inline constexpr const char* dlyTime = "dly_time";      // ms, used when dlySync is Free
+inline constexpr const char* dlySync = "dly_sync";      // Free / 1/4 / dotted 1/8 / 1/8 / 1/16 of the host tempo
+inline constexpr const char* dlyFeedback = "dly_fb";    // percent
+inline constexpr const char* dlyMix = "dly_mix";        // percent
+inline constexpr const char* dlyTone = "dly_tone";      // Hz, low-pass in the repeats
+inline constexpr const char* dlyPing = "dly_ping";
+inline constexpr const char* dlyAnalog = "dly_analog";
+inline constexpr const char* plOn = "pl_on";
+inline constexpr const char* plHall = "pl_hall";        // plate (off) or hall (on)
+inline constexpr const char* plDecay = "pl_decay";      // seconds
+inline constexpr const char* plPre = "pl_pre";          // ms
+inline constexpr const char* plTone = "pl_tone";        // Hz, high-cut in the tail
+inline constexpr const char* plLow = "pl_low";          // Hz, high-pass on the wet signal
+inline constexpr const char* plMix = "pl_mix";          // percent
+inline constexpr const char* plMod = "pl_mod";          // percent
 }  // namespace ids
 
 // Cabinet source. Order is saved in projects: append only.
@@ -114,12 +133,18 @@ public:
     // Two slots (A = 0, B = 1) that are mixed with the "ir_blend" parameter; with only one loaded it plays alone.
     static constexpr int kIrSlots = 2;
     bool loadImpulseResponse(const juce::File& file, int slot = 0);
+    // The impulse responses carried inside the plugin (plugin/cabs): how many, their display names, and loading one into a slot.
+    static int builtInImpulseResponseCount();
+    static juce::String builtInImpulseResponseName(int index);
+    bool loadBuiltInImpulseResponse(int index, int slot = 0);
     // Presets: the whole state (amp, knobs, effects, EQ, pitch, impulse responses) as a text file, so a standalone session can keep its settings.
     static juce::File presetFolder();
     bool savePreset(const juce::File& file);
     bool loadPreset(const juce::File& file);
     // One of the factory presets of the equaliser (EqPresets.h; 0 = flat): sets only the EQ parameters and switches the EQ on.
     void applyEqPreset(int index);
+    void applyDelayPreset(int index);   // each effect has its own presets (plugin/FxPresets.h)
+    void applyReverbPreset(int index);
     void clearImpulseResponse(int slot = 0);
     juce::String impulseResponseName(int slot = 0) const;
     // Magnitude response of the loaded IR in dB (mean 0), log-spaced from 50 Hz to 10 kHz; empty when nothing is loaded.
@@ -198,6 +223,8 @@ private:
     sas::NoiseGate gate_;
     sas::PitchShifter pitch_;
     sas::ParametricEq eq_;
+    sas::StereoDelay delay_;
+    sas::PlateReverb plate_;
     bool pitchWasActive_ = false;
     sas::TunerFeed tuner_;
     std::atomic<float> inputPeak_{0.0f}, outputPeak_{0.0f}, gateGain_{1.0f}, idleMa_{0.0f};

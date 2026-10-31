@@ -5,6 +5,7 @@
 #include <memory>
 #include <vector>
 
+#include "AmpFace.h"
 #include "PluginProcessor.h"
 #include "sas/amp_def.h"
 #include "sas/eq.h"
@@ -160,6 +161,7 @@ private:
 
     void timerCallback() override;
     void chooseImpulseResponse(int slot);
+    void showImpulseMenu(int slot, juce::Component& anchor);  // the impulses built into the plugin, and "From file..."
     void showAmp(int index);  // rebuilds the amp-specific knobs, jack list and title
     void styleCombo(juce::ComboBox&, const char* paramId, std::unique_ptr<juce::AudioProcessorValueTreeState::ComboBoxAttachment>&);
     void styleCaption(juce::Label&, const juce::String&);
@@ -187,6 +189,15 @@ private:
     KnobWithLabel bias_, wear_, speaker_, blend_;
     KnobWithLabel compSustain_, compBlend_, compTone_, compLevel_, tunerRef_, stereoWidth_, doubleAmount_, doubleTime_, pitchFine_, eqHpf_, eqLpf_;
     EqCurve eqCurve_;
+    // The Space page: delay and reverb at the end of the chain.
+    KnobWithLabel dlyTime_, dlyFb_, dlyMix_, dlyTone_, plDecay_, plPre_, plTone_, plLow_, plMix_, plMod_;
+    juce::ToggleButton dlyOn_{"On"}, dlyPing_{"Ping-pong"}, dlyAnalog_{"Analog"}, plOn_{"On"}, plHall_{"Hall"};
+    juce::ComboBox dlySync_;
+    juce::Label dlySyncCaption_, fxNote_;
+    juce::TextButton dlyTap_{"Tap"}, dlyPresets_{"Presets"}, plPresets_{"Presets"}, spaceTab_{"Space"};
+    std::unique_ptr<juce::AudioProcessorValueTreeState::ButtonAttachment> dlyOnAtt_, dlyPingAtt_, dlyAnalogAtt_, plOnAtt_, plHallAtt_;
+    std::unique_ptr<juce::AudioProcessorValueTreeState::ComboBoxAttachment> dlySyncAtt_;
+    double lastTapMs_ = 0.0;
     juce::ToggleButton eqOn_{"On"};
     juce::TextButton eqReset_{"Reset"};
     juce::Label eqBandLabel_;
@@ -212,6 +223,7 @@ private:
     juce::TextEditor ampSearch_;
     std::vector<int> shown_;  // the amp indices that match the search, in list order
     juce::ComboBox quality_, jack_, cab_, pickup_, tube_, noise_, unit_;
+    std::unique_ptr<AmpFace> face_;  // the amp's front, for amps that have a faceplate (replaces the generic knobs)
     juce::ComboBox selBox_[4];  // the amp's own switches
     juce::Label selCaption_[4];
     std::unique_ptr<juce::AudioProcessorValueTreeState::ComboBoxAttachment> qualityAtt_, cabAtt_, pickupAtt_, noiseAtt_, unitAtt_;

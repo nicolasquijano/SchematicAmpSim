@@ -1,5 +1,9 @@
 #include "PluginProcessor.h"
 
+#include "FxPresets.h"
+
+#include "CabData.h"
+
 #include <algorithm>
 #include <array>
 
@@ -20,9 +24,9 @@ std::unique_ptr<juce::AudioParameterFloat> knob(const char* id, const char* name
             [](float v, int) { return juce::String(v, 1); }));
 }
 
-std::unique_ptr<juce::AudioParameterFloat> dbParam(const char* id, const char* name) {
+std::unique_ptr<juce::AudioParameterFloat> dbParam(const char* id, const char* name, float defaultDb = 0.0f) {
     return std::make_unique<juce::AudioParameterFloat>(
-        juce::ParameterID{id, kVersion}, name, juce::NormalisableRange<float>(-24.0f, 24.0f, 0.0f), 0.0f,
+        juce::ParameterID{id, kVersion}, name, juce::NormalisableRange<float>(-24.0f, 24.0f, 0.0f), defaultDb,
         juce::AudioParameterFloatAttributes().withLabel("dB").withStringFromValueFunction(
             [](float v, int) { return juce::String(v, 1); }));
 }
@@ -52,7 +56,8 @@ Layout SasProcessor::createLayout(const std::vector<sas::AmpDef>& defs) {
     l.add(knob(ids::resonance, "Resonance", 5.0f));
     l.add(std::make_unique<juce::AudioParameterBool>(juce::ParameterID{ids::vibOn, kVersion}, "Vibrato", false));
     l.add(dbParam(ids::input, "Input"));
-    l.add(dbParam(ids::output, "Output"));
+    // The amps are calibrated to a loud, full-scale speaker signal; a new instance opens 10 dB lower so it does not hit the host hot.
+    l.add(dbParam(ids::output, "Output", -10.0f));
     // New qualities are only appended so saved projects keep theirs (same rule as the Rust build).
     l.add(std::make_unique<juce::AudioParameterChoice>(
         juce::ParameterID{ids::quality, kVersion}, "Quality", juce::StringArray{"Normal (2x)", "High (4x)", "Lite (2x)", "Eco (2x)"}, 0));
@@ -103,6 +108,41 @@ Layout SasProcessor::createLayout(const std::vector<sas::AmpDef>& defs) {
                                                        juce::AudioParameterFloatAttributes().withLabel("dB").withStringFromValueFunction([](float v, int) { return juce::String(v, 0); })));
     l.add(std::make_unique<juce::AudioParameterFloat>(juce::ParameterID{ids::gateRelease, kVersion}, "Gate release", juce::NormalisableRange<float>(20.0f, 500.0f, 0.0f, 0.5f), 120.0f,
                                                        juce::AudioParameterFloatAttributes().withLabel("ms").withStringFromValueFunction([](float v, int) { return juce::String(v, 0); })));
+    {
+        auto hz = [](const char* id, const char* name, float lo, float hi, float def) {
+            juce::NormalisableRange<float> r(lo, hi, 0.0f);
+            r.setSkewForCentre(std::sqrt(lo * hi));
+            return std::make_unique<juce::AudioParameterFloat>(juce::ParameterID{id, kVersion}, name, r, def,
+                                                               juce::AudioParameterFloatAttributes().withLabel("Hz").withStringFromValueFunction([](float v, int) { return juce::String(v, 0); }));
+        };
+        auto pct = [](const char* id, const char* name, float lo, float hi, float def) {
+            return std::make_unique<juce::AudioParameterFloat>(juce::ParameterID{id, kVersion}, name, juce::NormalisableRange<float>(lo, hi, 0.0f), def,
+                                                               juce::AudioParameterFloatAttributes().withLabel("%").withStringFromValueFunction([](float v, int) { return juce::String(v, 0); }));
+        };
+        l.add(std::make_unique<juce::AudioParameterBool>(juce::ParameterID{ids::dlyOn, kVersion}, "Delay", false));
+        juce::NormalisableRange<float> time(20.0f, 1500.0f, 0.0f);
+        time.setSkewForCentre(350.0f);
+        l.add(std::make_unique<juce::AudioParameterFloat>(juce::ParameterID{ids::dlyTime, kVersion}, "Delay time", time, 380.0f,
+                                                           juce::AudioParameterFloatAttributes().withLabel("ms").withStringFromValueFunction([](float v, int) { return juce::String(v, 0); })));
+        l.add(std::make_unique<juce::AudioParameterChoice>(juce::ParameterID{ids::dlySync, kVersion}, "Delay sync", juce::StringArray{"Free", "1/4", "1/8 dotted", "1/8", "1/16"}, 0));
+        l.add(pct(ids::dlyFeedback, "Delay feedback", 0.0f, 92.0f, 35.0f));
+        l.add(pct(ids::dlyMix, "Delay mix", 0.0f, 100.0f, 25.0f));
+        l.add(hz(ids::dlyTone, "Delay tone", 1000.0f, 12000.0f, 6500.0f));
+        l.add(std::make_unique<juce::AudioParameterBool>(juce::ParameterID{ids::dlyPing, kVersion}, "Delay ping-pong", false));
+        l.add(std::make_unique<juce::AudioParameterBool>(juce::ParameterID{ids::dlyAnalog, kVersion}, "Delay analog", false));
+        l.add(std::make_unique<juce::AudioParameterBool>(juce::ParameterID{ids::plOn, kVersion}, "Reverb", false));
+        l.add(std::make_unique<juce::AudioParameterBool>(juce::ParameterID{ids::plHall, kVersion}, "Reverb hall", false));
+        juce::NormalisableRange<float> decay(0.3f, 8.0f, 0.0f);
+        decay.setSkewForCentre(2.0f);
+        l.add(std::make_unique<juce::AudioParameterFloat>(juce::ParameterID{ids::plDecay, kVersion}, "Reverb decay", decay, 2.0f,
+                                                           juce::AudioParameterFloatAttributes().withLabel("s").withStringFromValueFunction([](float v, int) { return juce::String(v, 1); })));
+        l.add(std::make_unique<juce::AudioParameterFloat>(juce::ParameterID{ids::plPre, kVersion}, "Reverb pre-delay", juce::NormalisableRange<float>(0.0f, 150.0f, 0.0f), 15.0f,
+                                                           juce::AudioParameterFloatAttributes().withLabel("ms").withStringFromValueFunction([](float v, int) { return juce::String(v, 0); })));
+        l.add(hz(ids::plTone, "Reverb tone", 2000.0f, 14000.0f, 8000.0f));
+        l.add(hz(ids::plLow, "Reverb low cut", 20.0f, 800.0f, 150.0f));
+        l.add(pct(ids::plMix, "Reverb mix", 0.0f, 100.0f, 22.0f));
+        l.add(pct(ids::plMod, "Reverb modulation", 0.0f, 100.0f, 30.0f));
+    }
     l.add(std::make_unique<juce::AudioParameterBool>(juce::ParameterID{ids::compOn, kVersion}, "Compressor", false));
     l.add(knob(ids::compSustain, "Compressor sustain", 5.0f));
     l.add(knob(ids::compBlend, "Compressor blend", 7.0f));
@@ -235,6 +275,7 @@ SasProcessor::SasProcessor()
     mono2_.resize(kMaxChunk);
     monoR_.resize(kMaxChunk);
     builder_ = std::make_unique<ChainBuilder>(*this);
+    loadBuiltInImpulseResponse(0, 0);  // a fresh instance has the first built-in cabinet ready in slot A (a restored project replaces it)
 }
 
 SasProcessor::~SasProcessor() {
@@ -273,6 +314,8 @@ void SasProcessor::prepareToPlay(double sampleRate, int samplesPerBlock) {
     gate_.prepare(sampleRate);
     pitch_.prepare(sampleRate);
     eq_.prepare(sampleRate);
+    delay_.prepare(sampleRate);
+    plate_.prepare(sampleRate);
     pitchWasActive_ = false;
     tuner_.prepare(sampleRate);
     double_.prepare(sampleRate);
@@ -357,6 +400,37 @@ void SasProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::MidiBuff
         }
         eq_.setParams(eq);
     }
+    {
+        auto raw = [this](const char* id) { return double(apvts.getRawParameterValue(id)->load()); };
+        sas::DelayParams d;
+        d.on = raw(ids::dlyOn) > 0.5;
+        d.timeMs = raw(ids::dlyTime);
+        if (const int sync = int(raw(ids::dlySync) + 0.5); sync > 0) {
+            // Tied to the host tempo (120 bpm when the host does not say): a quarter note, a dotted eighth, an eighth, a sixteenth.
+            double bpm = 120.0;
+            if (auto* head = getPlayHead())
+                if (auto pos = head->getPosition())
+                    if (auto b = pos->getBpm()) bpm = std::clamp(*b, 30.0, 300.0);
+            static constexpr double kBeats[] = {1.0, 1.0, 0.75, 0.5, 0.25};
+            d.timeMs = std::clamp(60000.0 / bpm * kBeats[std::min(sync, 4)], 20.0, sas::StereoDelay::kMaxMs);
+        }
+        d.feedback = std::clamp(raw(ids::dlyFeedback) / 100.0, 0.0, 0.92);
+        d.mix = std::clamp(raw(ids::dlyMix) / 100.0, 0.0, 1.0);
+        d.toneHz = raw(ids::dlyTone);
+        d.pingPong = raw(ids::dlyPing) > 0.5;
+        d.analog = raw(ids::dlyAnalog) > 0.5;
+        delay_.setParams(d);
+        sas::PlateParams pl;
+        pl.on = raw(ids::plOn) > 0.5;
+        pl.hall = raw(ids::plHall) > 0.5;
+        pl.decaySec = raw(ids::plDecay);
+        pl.preMs = raw(ids::plPre);
+        pl.toneHz = raw(ids::plTone);
+        pl.lowCutHz = raw(ids::plLow);
+        pl.mix = std::clamp(raw(ids::plMix) / 100.0, 0.0, 1.0);
+        pl.mod = std::clamp(raw(ids::plMod) / 100.0, 0.0, 1.0);
+        plate_.setParams(pl);
+    }
     // The pitch shifter sits in front of everything and adds its own delay only while it is shifting.
     const double pitchSemitones = double(apvts.getRawParameterValue(ids::pitch)->load()) + double(apvts.getRawParameterValue(ids::pitchFine)->load()) / 100.0;
     const bool pitchActive = std::fabs(pitchSemitones) > 1e-6;
@@ -440,6 +514,8 @@ void SasProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::MidiBuff
                           8.0 + 22.0 * double(apvts.getRawParameterValue(ids::doubleTime)->load()) / 10.0);
         double_.process(m, mR, std::size_t(n));
         eq_.process(m, mR, std::size_t(n));  // the post equaliser, on the stereo pair after the cabinet and the doubling
+        delay_.process(m, mR, std::size_t(n));  // then the time effects: the delay into the reverb
+        plate_.process(m, mR, std::size_t(n));
         chain_->applyOutputStereo(m, mR, std::size_t(n));
         if (tunerMuted) {  // tuning: nobody wants to hear the amp
             std::fill(m, m + n, 0.0f);
@@ -530,6 +606,29 @@ bool SasProcessor::loadImpulseResponseFromMemory(const void* data, std::size_t s
     return true;
 }
 
+int SasProcessor::builtInImpulseResponseCount() { return CabData::namedResourceListSize; }
+
+juce::String SasProcessor::builtInImpulseResponseName(int index) {
+    if (index < 0 || index >= CabData::namedResourceListSize) return {};
+    // "cab_4x12_os_mix1_wav" -> "4x12 OS Mix 1"
+    juce::String n = juce::String(CabData::originalFilenames[index]).upToLastOccurrenceOf(".", false, false);
+    n = n.fromFirstOccurrenceOf("cab_", false, false).replaceCharacter('_', ' ');
+    juce::StringArray words = juce::StringArray::fromTokens(n, " ", "");
+    for (auto& w : words) {
+        if (w.startsWith("mix") && w.length() > 3) w = "Mix " + w.substring(3);
+        else if (w.length() <= 2 && !w.containsAnyOf("0123456789")) w = w.toUpperCase();
+        else if (!w.containsAnyOf("0123456789")) w = w.substring(0, 1).toUpperCase() + w.substring(1);
+    }
+    return words.joinIntoString(" ");
+}
+
+bool SasProcessor::loadBuiltInImpulseResponse(int index, int slot) {
+    if (index < 0 || index >= CabData::namedResourceListSize) return false;
+    int size = 0;
+    const char* data = CabData::getNamedResource(CabData::namedResourceList[index], size);
+    return data != nullptr && loadImpulseResponseFromMemory(data, std::size_t(size), builtInImpulseResponseName(index), slot);
+}
+
 bool SasProcessor::loadImpulseResponse(const juce::File& file, int slot) {
     juce::MemoryBlock bytes;
     if (!file.existsAsFile() || !file.loadFileAsData(bytes) || bytes.getSize() == 0) return false;
@@ -611,6 +710,48 @@ void SasProcessor::applyEqPreset(int index) {
         set(ids::eqGain[b], p.band[std::size_t(b)].gainDb);
         set(ids::eqQ[b], p.band[std::size_t(b)].q);
     }
+}
+
+void SasProcessor::applyDelayPreset(int index) {
+    if (index < 0 || index >= kDelayPresetCount) return;
+    const DelayPreset& p = kDelayPresets[index];
+    auto set = [this](const char* id, double value) {
+        if (auto* q = apvts.getParameter(id)) {
+            q->beginChangeGesture();
+            q->setValueNotifyingHost(q->convertTo0to1(float(value)));
+            q->endChangeGesture();
+        }
+    };
+    set(ids::dlyOn, p.on ? 1.0 : 0.0);
+    if (!p.on) return;  // "Off" only switches it off, so the knobs keep what the player had set
+    set(ids::dlySync, 0.0);
+    set(ids::dlyTime, p.timeMs);
+    set(ids::dlyFeedback, p.feedback);
+    set(ids::dlyMix, p.mix);
+    set(ids::dlyTone, p.toneHz);
+    set(ids::dlyPing, p.pingPong ? 1.0 : 0.0);
+    set(ids::dlyAnalog, p.analog ? 1.0 : 0.0);
+}
+
+void SasProcessor::applyReverbPreset(int index) {
+    if (index < 0 || index >= kReverbPresetCount) return;
+    const ReverbPreset& p = kReverbPresets[index];
+    auto set = [this](const char* id, double value) {
+        if (auto* q = apvts.getParameter(id)) {
+            q->beginChangeGesture();
+            q->setValueNotifyingHost(q->convertTo0to1(float(value)));
+            q->endChangeGesture();
+        }
+    };
+    set(ids::plOn, p.on ? 1.0 : 0.0);
+    if (!p.on) return;
+    set(ids::plHall, p.hall ? 1.0 : 0.0);
+    set(ids::plDecay, p.decaySec);
+    set(ids::plPre, p.preMs);
+    set(ids::plTone, p.toneHz);
+    set(ids::plLow, p.lowCutHz);
+    set(ids::plMix, p.mix);
+    set(ids::plMod, p.mod);
 }
 
 juce::File SasProcessor::presetFolder() {

@@ -1,5 +1,6 @@
 #include "PluginEditor.h"
 #include "EqPresets.h"
+#include "FxPresets.h"
 
 #include <cmath>
 
@@ -405,7 +406,10 @@ SasEditor::SasEditor(SasProcessor& p)
       bias_(p.apvts, ids::bias, "BIAS"), wear_(p.apvts, ids::wear, "WEAR"), speaker_(p.apvts, ids::speaker, "DYNAMICS"), blend_(p.apvts, ids::irBlend, "BLEND"),
       compSustain_(p.apvts, ids::compSustain, "SUSTAIN"), compBlend_(p.apvts, ids::compBlend, "BLEND"), compTone_(p.apvts, ids::compTone, "TONE"),
       compLevel_(p.apvts, ids::compLevel, "LEVEL"), tunerRef_(p.apvts, ids::tunerRef, "REF Hz"),
-      stereoWidth_(p.apvts, ids::irWidth, "WIDTH"), doubleAmount_(p.apvts, ids::doubleAmount, "DOUBLE"), doubleTime_(p.apvts, ids::doubleTime, "TIME"), pitchFine_(p.apvts, ids::pitchFine, "FINE cents"), eqHpf_(p.apvts, ids::eqHpf, "HIGH-PASS"), eqLpf_(p.apvts, ids::eqLpf, "LOW-PASS"), eqCurve_(p.apvts) {
+      stereoWidth_(p.apvts, ids::irWidth, "WIDTH"), doubleAmount_(p.apvts, ids::doubleAmount, "DOUBLE"), doubleTime_(p.apvts, ids::doubleTime, "TIME"), pitchFine_(p.apvts, ids::pitchFine, "FINE cents"), eqHpf_(p.apvts, ids::eqHpf, "HIGH-PASS"), eqLpf_(p.apvts, ids::eqLpf, "LOW-PASS"), eqCurve_(p.apvts),
+      dlyTime_(p.apvts, ids::dlyTime, "TIME ms"), dlyFb_(p.apvts, ids::dlyFeedback, "FEEDBACK"), dlyMix_(p.apvts, ids::dlyMix, "MIX"), dlyTone_(p.apvts, ids::dlyTone, "TONE"),
+      plDecay_(p.apvts, ids::plDecay, "DECAY s"), plPre_(p.apvts, ids::plPre, "PRE-DELAY"), plTone_(p.apvts, ids::plTone, "TONE"), plLow_(p.apvts, ids::plLow, "LOW CUT"),
+      plMix_(p.apvts, ids::plMix, "MIX"), plMod_(p.apvts, ids::plMod, "MOD") {
     setLookAndFeel(&look_);
     for (auto* k : {&input_, &output_, &tsDrive_, &tsTone_, &tsLevel_, &gateThreshold_, &gateRelease_, &cable_, &bias_, &wear_, &speaker_, &blend_, &compSustain_, &compBlend_, &compTone_, &compLevel_, &tunerRef_, &stereoWidth_, &doubleAmount_, &doubleTime_}) addAndMakeVisible(*k);
     addAndMakeVisible(inBar_);
@@ -523,8 +527,8 @@ SasEditor::SasEditor(SasProcessor& p)
     for (auto* b : {&loadA_, &clearA_, &loadB_, &clearB_}) addAndMakeVisible(*b);
     addAndMakeVisible(curveA_);
     addAndMakeVisible(curveB_);
-    loadA_.onClick = [this] { chooseImpulseResponse(0); };
-    loadB_.onClick = [this] { chooseImpulseResponse(1); };
+    loadA_.onClick = [this] { showImpulseMenu(0, loadA_); };
+    loadB_.onClick = [this] { showImpulseMenu(1, loadB_); };
     clearA_.onClick = [this] { processor_.clearImpulseResponse(0); };
     clearB_.onClick = [this] { processor_.clearImpulseResponse(1); };
 
@@ -572,6 +576,56 @@ SasEditor::SasEditor(SasProcessor& p)
     pitchUp12_.onClick = [this] { pitchSlider_.setValue(12.0); };
     pitchZero_.onClick = [this] { pitchSlider_.setValue(0.0); };
     updatePitchLabels();
+
+    // The Space page: delay and reverb.
+    for (auto* k : {&dlyTime_, &dlyFb_, &dlyMix_, &dlyTone_, &plDecay_, &plPre_, &plTone_, &plLow_, &plMix_, &plMod_}) addAndMakeVisible(*k);
+    for (auto* b : {&dlyOn_, &dlyPing_, &dlyAnalog_, &plOn_, &plHall_}) addAndMakeVisible(*b);
+    dlyOnAtt_ = std::make_unique<juce::AudioProcessorValueTreeState::ButtonAttachment>(p.apvts, ids::dlyOn, dlyOn_);
+    dlyPingAtt_ = std::make_unique<juce::AudioProcessorValueTreeState::ButtonAttachment>(p.apvts, ids::dlyPing, dlyPing_);
+    dlyAnalogAtt_ = std::make_unique<juce::AudioProcessorValueTreeState::ButtonAttachment>(p.apvts, ids::dlyAnalog, dlyAnalog_);
+    plOnAtt_ = std::make_unique<juce::AudioProcessorValueTreeState::ButtonAttachment>(p.apvts, ids::plOn, plOn_);
+    plHallAtt_ = std::make_unique<juce::AudioProcessorValueTreeState::ButtonAttachment>(p.apvts, ids::plHall, plHall_);
+    dlyAnalog_.setTooltip("Darker, steeper repeats with a little saturation and a slow wobble, like a tape or bucket-brigade unit");
+    plHall_.setTooltip("Off: a plate. On: a larger, slower room");
+    styleCombo(dlySync_, ids::dlySync, dlySyncAtt_);
+    styleCaption(dlySyncCaption_, "SYNC TO HOST TEMPO");
+    addAndMakeVisible(dlyTap_);
+    dlyTap_.setTooltip("Tap the tempo: the time of the delay becomes the gap between your last two taps");
+    dlyTap_.onClick = [this] {
+        const double now = juce::Time::getMillisecondCounterHiRes();
+        const double gap = now - lastTapMs_;
+        lastTapMs_ = now;
+        if (gap < 200.0 || gap > 1500.0) return;  // the first tap, or a pause: start over
+        if (auto* sync = processor_.apvts.getParameter(ids::dlySync)) sync->setValueNotifyingHost(0.0f);
+        if (auto* time = processor_.apvts.getParameter(ids::dlyTime)) {
+            time->beginChangeGesture();
+            time->setValueNotifyingHost(time->convertTo0to1(float(gap)));
+            time->endChangeGesture();
+        }
+    };
+    addAndMakeVisible(dlyPresets_);
+    dlyPresets_.onClick = [this] {
+        juce::PopupMenu menu;
+        for (int i = 0; i < kDelayPresetCount; ++i) menu.addItem(i + 1, juce::String(kDelayPresets[i].name));
+        menu.showMenuAsync(juce::PopupMenu::Options().withTargetComponent(&dlyPresets_), [this](int choice) {
+            if (choice > 0) processor_.applyDelayPreset(choice - 1);
+        });
+    };
+    addAndMakeVisible(plPresets_);
+    plPresets_.onClick = [this] {
+        juce::PopupMenu menu;
+        for (int i = 0; i < kReverbPresetCount; ++i) menu.addItem(i + 1, juce::String(kReverbPresets[i].name));
+        menu.showMenuAsync(juce::PopupMenu::Options().withTargetComponent(&plPresets_), [this](int choice) {
+            if (choice > 0) processor_.applyReverbPreset(choice - 1);
+        });
+    };
+    fxNote_.setText("The delay feeds the reverb. Both sit after the cabinet and the EQ, and let their tails ring out when switched off.", juce::dontSendNotification);
+    fxNote_.setFont(AmpLookAndFeel::font(10.5f));
+    addAndMakeVisible(fxNote_);
+    addAndMakeVisible(spaceTab_);
+    spaceTab_.setClickingTogglesState(true);
+    spaceTab_.setRadioGroupId(7);
+    spaceTab_.onClick = [this] { setPage(6); };
 
     for (auto* t : {&ampTab_, &cabTab_, &fxTab_, &pitchTab_, &eqTab_, &tunerTab_}) {
         t->setClickingTogglesState(true);
@@ -846,6 +900,11 @@ void SasEditor::showAmp(int index) {
     applyTheme(def);
 
     ampKnobs_.clear();
+    face_.reset();
+    if (AmpFace::available(def)) {
+        face_ = std::make_unique<AmpFace>(processor_.apvts, def);
+        addAndMakeVisible(*face_);
+    }
     for (const auto& u : def.ui) {
         auto k = std::make_unique<KnobWithLabel>(processor_.apvts, u.param.c_str(), u.label);
         addAndMakeVisible(*k);
@@ -898,11 +957,13 @@ void SasEditor::pollMeters() {
 
 void SasEditor::timerCallback() {
     pollMeters();
+    dlyTime_.setEnabled(int(processor_.apvts.getRawParameterValue(ids::dlySync)->load() + 0.5f) == 0);  // with a tempo sync the time knob has no say
     if (page_ == 5) eqCurve_.repaint();  // follows the parameters when the host or an automation moves them
     if (++tunerTicks_ % 3 == 0) updateTuner();
     if (tick_++ % 8 != 0) return;  // the rest at about 4 Hz
     // Follows the amp parameter when the host or a restored state changes it.
     if (processor_.selectedAmpIndex() != shownAmp_) showAmp(processor_.selectedAmpIndex());
+    if (face_) face_->repaint();  // the jacks follow the parameter
     const int jackNow = int(processor_.apvts.getRawParameterValue(ids::jack)->load() + 0.5f);
     if (jackNow < jack_.getNumItems() && jack_.getSelectedItemIndex() != jackNow)
         jack_.setSelectedItemIndex(jackNow, juce::dontSendNotification);
@@ -993,6 +1054,20 @@ void SasEditor::showPresetMenu() {
             folder.revealToUser();
         } else if (choice >= 100 && choice - 100 < files.size()) {
             load(files[choice - 100]);
+        }
+    });
+}
+
+void SasEditor::showImpulseMenu(int slot, juce::Component& anchor) {
+    juce::PopupMenu menu;
+    for (int i = 0; i < SasProcessor::builtInImpulseResponseCount(); ++i) menu.addItem(100 + i, SasProcessor::builtInImpulseResponseName(i));
+    menu.addSeparator();
+    menu.addItem(1, "From file...");
+    menu.showMenuAsync(juce::PopupMenu::Options().withTargetComponent(&anchor), [this, slot](int choice) {
+        if (choice == 1) {
+            chooseImpulseResponse(slot);
+        } else if (choice >= 100 && processor_.loadBuiltInImpulseResponse(choice - 100, slot)) {
+            if (auto* cab = processor_.apvts.getParameter(ids::cab)) cab->setValueNotifyingHost(cab->convertTo0to1(2.0f));  // audible right away
         }
     });
 }
@@ -1121,6 +1196,8 @@ void SasEditor::resized() {
         auto head = area.removeFromTop(36);
         tunerTab_.setBounds(head.removeFromRight(58).withTrimmedTop(6).withTrimmedBottom(2));
         head.removeFromRight(3);
+        spaceTab_.setBounds(head.removeFromRight(56).withTrimmedTop(6).withTrimmedBottom(2));
+        head.removeFromRight(3);
         eqTab_.setBounds(head.removeFromRight(42).withTrimmedTop(6).withTrimmedBottom(2));
         head.removeFromRight(3);
         pitchTab_.setBounds(head.removeFromRight(54).withTrimmedTop(6).withTrimmedBottom(2));
@@ -1132,13 +1209,16 @@ void SasEditor::resized() {
         ampTab_.setBounds(head.removeFromRight(54).withTrimmedTop(6).withTrimmedBottom(2));
         area.removeFromTop(4);
     }
-    const bool ampPage = page_ == 0, fxPage = page_ == 1, cabPage = page_ == 2, tunerPage = page_ == 3, pitchPage = page_ == 4, eqPage = page_ == 5;
+    const bool ampPage = page_ == 0, fxPage = page_ == 1, cabPage = page_ == 2, tunerPage = page_ == 3, pitchPage = page_ == 4, eqPage = page_ == 5, spacePage = page_ == 6;
     for (auto* c : std::initializer_list<juce::Component*>{&eqCurve_, &eqOn_, &eqReset_, &eqBandLabel_, &eqHpf_, &eqLpf_}) c->setVisible(eqPage);
+    for (auto* c : std::initializer_list<juce::Component*>{&dlyTime_, &dlyFb_, &dlyMix_, &dlyTone_, &plDecay_, &plPre_, &plTone_, &plLow_, &plMix_, &plMod_, &dlyOn_, &dlyPing_, &dlyAnalog_,
+                                                           &plOn_, &plHall_, &dlySync_, &dlySyncCaption_, &dlyTap_, &dlyPresets_, &plPresets_, &fxNote_}) c->setVisible(spacePage);
     for (int b = 0; b < 5; ++b)
         for (auto& k : eqKnobs_[b]) k->setVisible(eqPage && b == eqCurve_.selected());
     for (auto* c : std::initializer_list<juce::Component*>{&pitchSlider_, &pitchValue_, &pitchNote_, &pitchDown12_, &pitchDown1_, &pitchUp1_, &pitchUp12_, &pitchZero_, &pitchFine_}) c->setVisible(pitchPage);
     for (auto* c : std::initializer_list<juce::Component*>{&tunerDisplay_, &tunerOn_, &tunerMute_, &tunerRef_}) c->setVisible(tunerPage);
-    for (auto& k : ampKnobs_) k->setVisible(ampPage);
+    for (auto& k : ampKnobs_) k->setVisible(ampPage && !face_);
+    if (face_) face_->setVisible(ampPage);
     if (!ampPage)
         for (int i = 0; i < 4; ++i) { selBox_[i].setVisible(false); selCaption_[i].setVisible(false); }
     for (auto* c : std::initializer_list<juce::Component*>{&input_, &output_, &inBar_, &outBar_, &tubes_, &cable_, &pickup_, &pickupCaption_, &gateOn_, &gateThreshold_, &gateRelease_}) c->setVisible(ampPage);
@@ -1196,6 +1276,54 @@ void SasEditor::resized() {
         tsDrive_.setBounds(in.removeFromLeft(in.getWidth() / 3));
         tsTone_.setBounds(in.removeFromLeft(in.getWidth() / 2));
         tsLevel_.setBounds(in);
+        repaint();
+        return;
+    }
+
+    if (spacePage) {
+        // Space page: the delay on the left, the reverb on the right; a strip with the presets underneath.
+        auto strip = area.removeFromBottom(30);
+        area.removeFromBottom(gap);
+        fxNote_.setBounds(strip);
+        auto delayPanel = area.removeFromLeft(area.getWidth() * 9 / 20);
+        area.removeFromLeft(gap);
+        auto reverbPanel = area;
+        panels_.push_back({delayPanel, "DELAY"});
+        {
+            auto in = delayPanel.reduced(8, 6);
+            auto head = in.removeFromTop(22);
+            dlyOn_.setBounds(head.removeFromRight(52));
+            dlyAnalog_.setBounds(head.removeFromRight(72));
+            dlyPing_.setBounds(head.removeFromRight(90));
+            auto bottom = in.removeFromBottom(34);
+            const int w = in.getWidth() / 4;
+            dlyTime_.setBounds(in.removeFromLeft(w));
+            dlyFb_.setBounds(in.removeFromLeft(w));
+            dlyMix_.setBounds(in.removeFromLeft(w));
+            dlyTone_.setBounds(in);
+            dlySyncCaption_.setBounds(bottom.removeFromTop(13));
+            dlyTap_.setBounds(bottom.removeFromRight(56));
+            bottom.removeFromRight(6);
+            dlyPresets_.setBounds(bottom.removeFromRight(86));
+            bottom.removeFromRight(6);
+            dlySync_.setBounds(bottom.removeFromLeft(130).withTrimmedBottom(2));
+        }
+        panels_.push_back({reverbPanel, "REVERB"});
+        {
+            auto in = reverbPanel.reduced(8, 6);
+            auto head = in.removeFromTop(22);
+            plOn_.setBounds(head.removeFromRight(56));
+            plHall_.setBounds(head.removeFromRight(62));
+            auto bottom = in.removeFromBottom(34);
+            plPresets_.setBounds(bottom.removeFromBottom(24).removeFromLeft(100));
+            const int w = in.getWidth() / 6;
+            plDecay_.setBounds(in.removeFromLeft(w));
+            plPre_.setBounds(in.removeFromLeft(w));
+            plTone_.setBounds(in.removeFromLeft(w));
+            plLow_.setBounds(in.removeFromLeft(w));
+            plMix_.setBounds(in.removeFromLeft(w));
+            plMod_.setBounds(in);
+        }
         repaint();
         return;
     }
@@ -1356,6 +1484,25 @@ void SasEditor::resized() {
     auto bottom = area.removeFromBottom(bottomH);
     area.removeFromBottom(gap);
 
+    if (face_) {
+        // An amp with a faceplate: its front fills the panel; its own switches (if any) go in a strip under it.
+        const int selectors = shownAmp_ >= 0 ? int(processor_.amps()[std::size_t(shownAmp_)].preamp.selectors.size()) : 0;
+        auto faceArea = area;
+        if (selectors > 0) {
+            auto strip = faceArea.removeFromBottom(46);
+            const int w = strip.getWidth() / selectors;
+            for (int i = 0; i < selectors; ++i) {
+                auto cell = strip.removeFromLeft(w).reduced(6, 2);
+                selCaption_[i].setBounds(cell.removeFromTop(16));
+                selBox_[i].setBounds(cell.removeFromTop(24));
+            }
+        }
+        for (int i = 0; i < 4; ++i) {
+            selBox_[i].setVisible(i < selectors);
+            selCaption_[i].setVisible(i < selectors);
+        }
+        face_->setBounds(faceArea);
+    } else {
     panels_.push_back({area, "AMP CONTROLS"});
     {
         auto row = area.reduced(6, 4);
@@ -1378,6 +1525,7 @@ void SasEditor::resized() {
         const int n = std::max<int>(1, int(ampKnobs_.size()));
         const int w = row.getWidth() / n;
         for (auto& k : ampKnobs_) k->setBounds(row.removeFromLeft(w));
+    }
     }
 
     const int knobW = std::clamp(bottom.getWidth() / 9, 56, 90);

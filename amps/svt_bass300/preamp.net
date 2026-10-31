@@ -20,10 +20,10 @@
 *  - the mid-range network: the cathode follower's output F; 6.8k + 220k and .68u + 620 from F to the pot's end, 470 + .68u from the other end
 *    to ground; the pot's wiper on the top tap of L1 (1 H over its whole length, 0.292 / 0.222 / 0.486 turns in the three sections, so tap 3 with
 *    .033u resonates near 3 kHz, tap 2 with .15u near 800 Hz, tap 1 alone is an inductor); 220k bleeders to ground;
-*  - V5 (6C4) is modelled with the 12AT7 triode (its mu is 17, the 12AT7 about 60: as a cathode follower it is almost the same);
+*  - V1b, V4b and V5 (the cathode followers) are ideal buffers with 450 to 550 ohm of output resistance, to keep the solver small;
 *  - the knobs are one bass and one treble for both channels (the drawing has one stack each), two volumes, one mid-range.
 
-.nodes x rb rd gin in jb1 jn1 jb2 jn2 g1 p1 k1 kb1 n1 jx jk jka jm vt1 wv1 uh1 g3 p3 k3 a1 bb1 w51 d1 t61 w61 b61 g3b p3b k3b m3 g4 p4a k4a k4b f e1 ve e2 vl e3 wm a3 a2 a1t s3 s2 tn g5 k5 m5 out g2 p2a k2a q2 vt2 wv2 uh2 p2b k2b a2s bb2 w52 d2 t62 w62 b62 pkb1 pkb2 pkk1 pkk2 pkk4
+.nodes x rb rd gin in jb1 jn1 jb2 jn2 g1 p1 k1 kb1 n1 jx jk jka jm vt1 wv1 uh1 g3 p3 k3 a1 bb1 w51 d1 t61 w61 b61 g3b p3b k3b m3 g4 p4a k4a k4b f e1 ve e2 vl e3 wm a3 a2 a1t s3 s2 tn g5 k5 m5 out mo g2 p2a k2a q2 vt2 wv2 uh2 p2b k2b a2s bb2 w52 d2 t62 w62 b62 pkb1 pkb2 pkk1 pkk2 pkk4
 
 * 430 V node (driven from the power amp at run time), 8.2k and 40u make the +300 V rail of the preamp.
 V VRAIL x 100 430
@@ -71,8 +71,10 @@ R R15 g2 0 5.6M
 T V1A g1 p1 k1 12AX7
 R R3 rd p1 220k
 R R5 k1 0 3k3
-T V1B p1 rd kb1 12AX7
-R R6 kb1 0 220k
+* V1b (a cathode follower in the drawing: 220k cathode load) as an ideal buffer with 550 ohm of output resistance: three of the four followers
+* of this preamp are buffers here (VCCS into a resistor), each tube taken out of the solver makes it much cheaper.
+G GB1 kb1 p1 0 1.8m
+R RB1 kb1 0 550
 C C2 kb1 n1 100n
 * SW1: direct / bass cut / ultra low.
 R SW_DIR n1 vt1 1
@@ -116,12 +118,12 @@ R R30 m3 0 7k5
 R R27 g3b m3 1M
 C C15 p3b g4 10n
 R R31 g4 0 1M
-R R35 k4b 0 56k
 * V4a (470k load, 3k3 cathode) DC-coupled to V4b, a cathode follower (3k3... 47k) that feeds the mid-range network at F.
 T V4A g4 p4a k4a 12AX7
 R R32 rb p4a 470k
 R R33 k4a 0 3k3
-T V4B p4a rb k4b 12AX7
+G GB4 k4b p4a 0 2m
+R RB4 k4b 0 500
 R R37 k4b f 47k
 * Mid-range network.
 R R36 f e1 6k8
@@ -149,12 +151,13 @@ R R41 a2 0 220k
 C C20 f c20 100n
 R R42 c20 tn 100k
 C C21 tn g5 20n
-T V5 g5 rb k5 12AT7
-R R43 g5 m5 1M
-R R44 k5 m5 1k
-R R45 m5 0 47k
+G GB5 k5 g5 0 2.2m
+R RB5 k5 0 450
+R R43 g5 0 1M
 C C22 k5 out 100n
-R R46 out 0 100k
+* Master volume (not in the drawing, which has none): a 100k log pot where the drawing has R46's 100k to ground, its wiper feeds the power amp.
+R VR_MST out mo 1
+R VR_MSB mo 0 1
 
 * Channel 2: V2a (220k, 3k3), 0.1u into the Ultra Lo coupling, volume 2 and Ultra Hi, V2b (100k load, 3k3 cathode), 0.1u into the stack.
 T V2A g2 p2a k2a 12AX7

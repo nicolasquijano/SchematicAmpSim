@@ -19,7 +19,7 @@
   "tolerance": 2e-06,
   "rail_source": "VRAIL",
   "input_source": "VIN",
-  "output_node": "out",
+  "output_node": "mo",
   "pot_min_ohms": 100,
   "jack_label": "INPUT",
   "knobs": [
@@ -88,6 +88,17 @@
      "bottom": "VR_MIDT",
      "total": 50000.0,
      "taper": "linear"
+    }
+   },
+   {
+    "name": "master",
+    "default": 1.0,
+    "pot": {
+     "type": "wiper",
+     "top": "VR_MST",
+     "bottom": "VR_MSB",
+     "total": 100000.0,
+     "taper": "log"
     }
    }
   ],
@@ -271,6 +282,11 @@
    "param": "treble",
    "knob": "treble",
    "label": "TREBLE"
+  },
+  {
+   "param": "master",
+   "knob": "master",
+   "label": "MASTER"
   }
  ],
  "power": {
@@ -289,13 +305,13 @@
     "name": "EL34",
     "model": "EL34",
     "pmax_w": 25.0,
-    "bias_scale": 0.7281
+    "bias_scale": 0.6976
    },
    {
     "name": "6L6GC",
     "model": "6L6GCDS",
     "pmax_w": 30.0,
-    "bias_scale": 0.8807
+    "bias_scale": 0.8728
    }
   ],
   "bias": {

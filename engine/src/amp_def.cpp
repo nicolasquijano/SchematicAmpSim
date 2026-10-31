@@ -364,8 +364,29 @@ AmpDef loadAmpDef(const std::string& jsonText, const FileReader& read) {
             k.label = str(u, "label", "ui." + k.param);
             if (u.contains("knob")) k.knob = str(u, "knob", "ui." + k.param);
             if (u.contains("power_knob")) k.powerKnob = str(u, "power_knob", "ui." + k.param);
+            if (u.contains("sub")) k.sub = str(u, "sub", "ui." + k.param);
             d.ui.push_back(std::move(k));
         }
+    if (j.contains("faceplate")) {
+        const auto& f = j.at("faceplate");
+        d.faceplate.style = str(f, "style", "faceplate");
+        const auto pair = [](const json& a) { return std::pair<double, double>{a.at(0).get<double>(), a.at(1).get<double>()}; };
+        if (f.contains("art")) d.faceplate.artW = f.at("art").at(0).get<double>(), d.faceplate.artH = f.at("art").at(1).get<double>();
+        d.faceplate.knobBox = numOr(f, "knob_box", 0.0);
+        d.faceplate.jackRadius = numOr(f, "jack_radius", 0.0);
+        if (f.contains("knobs")) for (const auto& k : f.at("knobs")) d.faceplate.knobs.push_back(pair(k));
+        if (f.contains("jacks"))
+            for (const auto& k : f.at("jacks")) {
+                d.faceplate.jacks.push_back(pair(k));
+                std::vector<int> values;
+                if (k.size() > 2) {
+                    if (k.at(2).is_array()) for (const auto& v : k.at(2)) values.push_back(v.get<int>());
+                    else values.push_back(k.at(2).get<int>());
+                }
+                if (values.empty()) values.push_back(int(d.faceplate.jacks.size()) - 1);
+                d.faceplate.jackValues.push_back(std::move(values));
+            }
+    }
     d.preamp = parsePreamp(need(j, "preamp", ""), read);
     if (j.contains("eco_preamp")) {
         json merged = j.at("preamp");

@@ -1,0 +1,88 @@
+{
+ "_note": "Saved for later: set \"ui\" and \"faceplate\" back into amp.json to switch this front on (art in this folder; face.vectorcraft is the editable source).",
+ "ui": [
+  {
+   "param": "power",
+   "power_knob": "power",
+   "label": "POWER"
+  },
+  {
+   "param": "presence",
+   "label": "PRESENCE"
+  },
+  {
+   "param": "bass",
+   "knob": "bass",
+   "label": "BASS"
+  },
+  {
+   "param": "middle",
+   "knob": "middle",
+   "label": "MIDDLE"
+  },
+  {
+   "param": "treble",
+   "knob": "treble",
+   "label": "TREBLE"
+  },
+  {
+   "param": "master",
+   "knob": "master",
+   "label": "MASTER"
+  },
+  {
+   "param": "volume",
+   "knob": "volume",
+   "label": "PREAMP"
+  }
+ ],
+ "faceplate": {
+  "style": "image",
+  "art": [
+   790,
+   330
+  ],
+  "knob_box": 75,
+  "jack_radius": 18,
+  "knobs": [
+   [
+    107.1,
+    206
+   ],
+   [
+    195.2,
+    206
+   ],
+   [
+    283.3,
+    206
+   ],
+   [
+    371.4,
+    206
+   ],
+   [
+    459.5,
+    206
+   ],
+   [
+    547.6,
+    206
+   ],
+   [
+    635.7,
+    206
+   ]
+  ],
+  "jacks": [
+   [
+    722,
+    172
+   ],
+   [
+    722,
+    238
+   ]
+  ]
+ }
+}

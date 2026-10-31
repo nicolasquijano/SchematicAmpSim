@@ -19,7 +19,7 @@
 
 S VAUDIO pin 1 0
 S VHT a 1 660
-S VBIAS bias 1k -56
+S VBIAS bias 1k -49
 V VSCR vs 20 350
 V VNEG neg 20 -150
 
@@ -42,10 +42,12 @@ C C3 pb1 gc1 100n
 C C4 kck gc2 100n
 R R16 gc1 bias 150k
 R R18 gc2 bias 150k
-T VCF1 gc1 vs kcf1 12AT7
-T VCF2 gc2 vs kcf2 12AT7
-R R24 kcf1 neg 47k
-R R25 kcf2 neg 47k
+* The followers as ideal voltage buffers with 250 ohm of output resistance (a VCCS into a resistor): the triodes made this stage
+* ~10 times more expensive to solve; the real ones are 12BH7 cathode followers at about 4 mA/V.
+G GF1 kcf1 gc1 0 4m
+G GF2 kcf2 gc2 0 4m
+R RF1 kcf1 0 250
+R RF2 kcf2 0 250
 R R29 kcf1 g1 15k7
 R R26 kcf2 g2 15k7
 * Bias supply, filtered.

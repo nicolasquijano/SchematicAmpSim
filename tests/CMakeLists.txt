@@ -21,6 +21,7 @@ add_executable(sas_tests
   test_stereo.cpp
   test_pitch.cpp
   test_eq.cpp
+  test_delay_plate.cpp
   test_version.cpp)
 target_compile_definitions(sas_tests PRIVATE
   SAS_GOLDEN_DIR="${CMAKE_SOURCE_DIR}/golden"

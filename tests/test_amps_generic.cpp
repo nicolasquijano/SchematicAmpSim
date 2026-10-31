@@ -864,10 +864,10 @@ TEST_CASE("American Bass 300 (SVT): the supply, the bias and the first stages ar
     Preamp pre(def, kFs, power.railX());
     const auto pnet = parseNetlist(def.preamp.netlistText, def.preamp.netlist);
     auto p = [&](const char* n) { return pre.solver().voltage(pnet.node(n)); };
-    INFO("V1a plate " << p("p1") << " V, V4b cathode " << p("k4b") << " V");
+    INFO("V1a plate " << p("p1") << " V, V4a plate " << p("p4a") << " V");
     CHECK(p("rb") > 280.0);
     CHECK(p("rb") < 420.0);                      // the +300 V rail
-    CHECK(std::abs(p("k4b") - 135.0) < 40.0);    // V4b's cathode follower
+    CHECK(std::abs(p("p4a") - 130.0) < 70.0);    // V4a's plate (V4b is a buffer here)
 }
 
 TEST_CASE("American Bass 300 (SVT): it is quiet at rest, the switches and the controls act") {
