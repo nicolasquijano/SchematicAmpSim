@@ -1929,3 +1929,20 @@ TEST_CASE("the rack page can be rendered to a picture", "[.screenshots]") {
         break;
     }
 }
+
+TEST_CASE("a mono-only unit that follows a stereo one says it sums to mono", "[rack]") {
+    JuceInit init;
+    SasProcessor p;
+    p.setRackOrder([] {
+        sas::RackOrder o;
+        for (auto s : {sas::SlotRef{ModuleType::Amp, 0}, {ModuleType::Cabinet, 0}, {ModuleType::Reverb, 0}, {ModuleType::Overdrive, 0}}) o.slots[std::size_t(o.count++)] = s;
+        return o;
+    }());
+    RackPage page(p);
+    page.setSize(900, 600);
+    REQUIRE(page.unitCount() == 4);
+    CHECK_FALSE(page.unitSumsToMono(0));  // the amp has a mono signal
+    CHECK_FALSE(page.unitSumsToMono(1));  // the cabinet makes it stereo
+    CHECK_FALSE(page.unitSumsToMono(2));  // the reverb is stereo
+    CHECK(page.unitSumsToMono(3));        // the overdrive after it is not
+}

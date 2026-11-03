@@ -1,6 +1,8 @@
 # Diseño: rack modular
 
-Estado: **propuesta de diseño, sin código del plugin tocado**. Fecha: 2026-11-03. Base: 0.3.0-beta.
+Estado: **implementado en la rama `feat/modular-rack`** (etapas 0 a 4; el lazo de la etapa 5 queda para la v2). Fecha: 2026-11-03. Base: 0.3.0-beta.
+
+Desvíos respecto de lo planeado, ya implementados: el gate es mono (no estéreo enlazado); el tipo de canal `Flexible` para phaser/chorus/vibe; `Rack::publish` toma un `Transition` (Immediate para cargar estados, Duck para ediciones); el cabinet es un módulo fino que llama a `SasProcessor::processCabinet` (las convoluciones siguen en el procesador); el amp y el cabinet se alojan en dos paneles del editor que las unidades del rack muestran; no hay racks de fábrica `.sasp`.
 
 ## 1. Idea y por qué
 

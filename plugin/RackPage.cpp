@@ -112,6 +112,14 @@ void RackPage::rebuild() {
         map_.chips.push_back({ModuleUnit::title(slot), slot.type == ModuleType::Amp});
         units_.push_back(std::move(unit));
     }
+    // Where a mono module follows a stereo one, the pair is summed: the unit says so.
+    bool stereo = false;
+    for (int i = 0; i < shown_.count; ++i) {
+        const auto channels = sas::moduleChannels(shown_.slots[std::size_t(i)].type);
+        units_[std::size_t(i)]->setSumsToMono(stereo && (channels == sas::Channels::MonoOnly || channels == sas::Channels::MonoToStereo));
+        if (channels == sas::Channels::MonoOnly) stereo = false;
+        else if (channels != sas::Channels::Flexible) stereo = true;
+    }
     map_.repaint();
     layoutUnits();
 }
@@ -151,6 +159,11 @@ void RackPage::timerCallback() {
         return;
     }
     for (auto& u : units_) u->tick();
+    {  // the unit that costs the most stands out
+        float most = 0.0f;
+        for (auto& u : units_) most = std::max(most, processor_.rack().moduleCpu(u->slot()));
+        for (auto& u : units_) u->setHot(most > 0.5f && processor_.rack().moduleCpu(u->slot()) >= most);
+    }
     if (++ticks_ % 4 == 0)
         for (auto& u : units_) u->refresh();  // the names of loaded models, at about 5 Hz
 }

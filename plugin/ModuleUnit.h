@@ -38,7 +38,11 @@ public:
     void mouseDown(const juce::MouseEvent&) override;
     void mouseDrag(const juce::MouseEvent&) override;
     void refresh();  // the names of loaded models (the page's timer calls it)
-    void tick() { body_->tick(); }
+    void tick();
+    // The rack page tells the unit where its module takes a stereo pair and sums it, and which unit costs the most.
+    void setSumsToMono(bool sums);
+    bool sumsToMono() const { return sumsToMono_; }
+    void setHot(bool hot);
     void setCpu(float percent);
 
     std::function<void(sas::SlotRef)> onRemove, onAddAfter;
@@ -56,6 +60,7 @@ private:
     std::unique_ptr<juce::FileChooser> chooser_;
     double lastTapMs_ = 0.0;
     float cpu_ = 0.0f;
+    bool sumsToMono_ = false, hot_ = false;
 };
 
 // A body that shows a HostPanel of the editor (and lets go of it when the unit goes away).

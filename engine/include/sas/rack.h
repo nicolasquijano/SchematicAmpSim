@@ -27,6 +27,9 @@ std::optional<ModuleType> moduleTypeFromName(std::string_view name);
 //  Flexible     takes whatever comes: r is nullptr while the signal is mono (the phaser, chorus and vibe have always run that way).
 enum class Channels { MonoOnly, MonoToStereo, Stereo, Flexible };
 
+// What each type of module does with the channels, without building one (the editor uses it to say where a mono module sums a stereo pair).
+Channels moduleChannels(ModuleType type);
+
 // A compressor or overdrive right in front of the amp is run by the amp's own front end (as it always was), not by the rack.
 enum class Fusion { None, Compressor, Overdrive };
 
@@ -88,9 +91,12 @@ private:
 public:
     // Sum of the latency of the active modules in the current order.
     double latencySamples() const;
+    // What the module used of the time of its blocks, in percent (a running average): 0 when it does not run. The audio thread writes, any thread reads.
+    float moduleCpu(SlotRef slot) const { return valid(slot) ? cpu_[std::size_t(slot.type)][std::size_t(slot.instance)].load() : 0.0f; }
     void reset();
 
 private:
+    std::atomic<float>& cpuOf(SlotRef s) { return cpu_[std::size_t(s.type)][std::size_t(s.instance)]; }
     std::atomic<Module*>& cell(SlotRef s) { return table_[std::size_t(s.type)][std::size_t(s.instance)]; }
     const std::atomic<Module*>& cell(SlotRef s) const { return table_[std::size_t(s.type)][std::size_t(s.instance)]; }
     static bool valid(SlotRef s) { return int(s.type) >= 0 && int(s.type) < kModuleTypeCount && s.instance >= 0 && s.instance < kMaxInstances; }
@@ -101,6 +107,7 @@ private:
     std::size_t nextOrder_ = 0;
     std::atomic<const RackOrder*> current_{nullptr};
     std::atomic<bool> duck_{false};
+    std::array<std::array<std::atomic<float>, kMaxInstances>, kModuleTypeCount> cpu_{};
     // Audio thread: the order in force and the fade in progress.
     const RackOrder* applied_ = nullptr;
     enum class Fade { Idle, Out, In };

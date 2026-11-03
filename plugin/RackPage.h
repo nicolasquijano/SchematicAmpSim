@@ -21,6 +21,7 @@ public:
     void rebuild();
     // The units took another height (the amp with a faceplate is taller than one with knobs).
     void relayout() { layoutUnits(); }
+    bool unitSumsToMono(int index) const { return units_[std::size_t(index)]->sumsToMono(); }
     // The "add module" menu, by category; an item's id is `idBase` plus the module type, and it is greyed out when that type cannot be added.
     static juce::PopupMenu addMenu(const SasProcessor& processor, int idBase);
     void showAddMenu(int insertAt, juce::Component& anchor);

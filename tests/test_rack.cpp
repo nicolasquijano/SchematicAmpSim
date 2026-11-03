@@ -179,3 +179,44 @@ TEST_CASE("a reverb tail survives being moved", "[rack]") {
     REQUIRE(still > 0.0);
     CHECK(moved >= 0.5 * still);
 }
+
+// ---------------------------------------------------------------- cost per module
+
+namespace {
+// Burns some time so the clock has something to read.
+struct Busy final : Module {
+    void prepare(double, int) override {}
+    void process(float* l, float*, std::size_t n) override {
+        float acc = 0.0f;
+        for (int k = 0; k < 200; ++k)
+            for (std::size_t i = 0; i < n; ++i) acc += std::sin(l[i] + float(k));
+        l[0] = acc * 0.0f + l[0];
+    }
+    bool active() const override { return on; }
+    Channels channels() const override { return Channels::MonoOnly; }
+    void reset() override {}
+    bool on = true;
+};
+}  // namespace
+
+TEST_CASE("moduleCpu is zero for modules that do not run and positive for a busy one", "[rack]") {
+    Rack rack;
+    rack.prepare(48000.0, 512);
+    rack.setModule(kA, std::make_unique<Busy>());
+    auto idle = std::make_unique<Busy>();
+    idle->on = false;
+    rack.setModule(kB, std::move(idle));
+    rack.publish(order({kA, kB}));
+    std::vector<float> l(512, 0.1f), r(512, 0.0f);
+    for (int i = 0; i < 20; ++i) rack.process(l.data(), r.data(), l.size());
+    CHECK(rack.moduleCpu(kA) > 0.0f);
+    CHECK(rack.moduleCpu(kB) == 0.0f);
+    CHECK(rack.moduleCpu(kC) == 0.0f);  // no module at all
+}
+
+TEST_CASE("the channels of every module type are known without building it", "[rack]") {
+    CHECK(moduleChannels(ModuleType::Amp) == Channels::MonoOnly);
+    CHECK(moduleChannels(ModuleType::Cabinet) == Channels::MonoToStereo);
+    CHECK(moduleChannels(ModuleType::Phaser) == Channels::Flexible);
+    CHECK(moduleChannels(ModuleType::Reverb) == Channels::Stereo);
+}

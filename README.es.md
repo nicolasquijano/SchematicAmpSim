@@ -21,7 +21,13 @@ Cada ampli tiene sus propios colores (la lista de amplis está a la izquierda). 
   <img src="docs/images/amps-new.png" alt="American Deluxe, American Boutique, American Lead 100 y British Mod 100" width="800">
 </p>
 
-La página **Cabinet**: dos respuestas al impulso con sus curvas, la mezcla A / B, la dinámica del parlante, los controles
+El **Rack**: todos los módulos en orden de señal, con un mapa del camino arriba y un **+** para agregar más.
+
+<p align="center">
+  <img src="docs/images/rack.png" alt="El rack: noise gate, dos overdrives, ampli con su condición, gabinete" width="800">
+</p>
+
+El módulo **Cabinet**: dos respuestas al impulso con sus curvas, la mezcla A / B, la dinámica del parlante, los controles
 estéreo y un modelo NAM de gabinete. La página **Effects**: compresor, overdrive, un pedal NAM y el estado del ampli
 (tubos, bias, ruido, desgaste, unidad). El **Tuner**:
 
@@ -126,7 +132,12 @@ de los proyectos guardados puede cambiar entre versiones 0.x. Las versiones y lo
 
 Amp, Volume, Volume 2, Bass, Middle, Treble, Presence, Master, Power, Input, Output, Quality, Cab (Off / Filter / IR / NAM), Jack, Vibrato (On, Speed, Intensity), Reverb y Resonance
 (en los amplis que los tienen), los controles de pedales (On, Drive, Tone, Level), el noise gate, la entrada de guitarra (pickup, cable) y la condición del ampli (tubos de potencia, Bias, ruido
-y zumbido, Wear, Unit). Qué perillas aplican depende del ampli elegido. El editor tiene ocho páginas: Amp, Cabinet, Effects, Pitch, EQ, Mod, Space y Tuner.
+y zumbido, Wear, Unit). Qué perillas aplican depende del ampli elegido. El editor tiene dos páginas: el **Rack** y el **Tuner**. Todo lo demás es un módulo del rack: el ampli (con su
+condición y el parlante), el gabinete, un noise gate, un compresor, overdrives, un pedal NAM, un phaser, un chorus, un vibe, un pitch shifter, un ecualizador, un delay y
+un reverb. El botón **+** agrega módulos (hasta doce además del ampli, y más de uno de la mayoría de los tipos) y se arrastran (o con las flechas) para ponerlos en
+el orden que quieras: un reverb antes del ampli, dos overdrives, un delay delante del gabinete. Mover un módulo no hace clic, cada unidad muestra cuánta CPU usa y un
+módulo mono que sigue a uno estéreo avisa que lo suma a mono. Los proyectos y presets de antes del rack se abren como estaban: el orden sale de los parámetros
+viejos y el sonido no cambia.
 
 ## Compilar
 

@@ -1,6 +1,7 @@
 #include "sas/rack.h"
 
 #include <algorithm>
+#include <chrono>
 
 namespace sas {
 
@@ -14,6 +15,19 @@ std::optional<ModuleType> moduleTypeFromName(std::string_view name) {
     for (int i = 0; i < kModuleTypeCount; ++i)
         if (name == kNames[i]) return static_cast<ModuleType>(i);
     return std::nullopt;
+}
+
+Channels moduleChannels(ModuleType type) {
+    switch (type) {
+        case ModuleType::Cabinet: return Channels::MonoToStereo;
+        case ModuleType::Phaser:
+        case ModuleType::Chorus:
+        case ModuleType::Vibe: return Channels::Flexible;
+        case ModuleType::Eq:
+        case ModuleType::Delay:
+        case ModuleType::Reverb: return Channels::Stereo;
+        default: return Channels::MonoOnly;
+    }
 }
 
 Rack::Rack() {
@@ -146,7 +160,11 @@ bool Rack::run(const RackOrder* order, float* l, float* r, std::size_t n) {
     }
     for (int k = 0; k < order->count; ++k) {
         Module* m = at(k);
-        if (!m || !m->active() || fused[k]) continue;
+        if (!m || !m->active() || fused[k]) {
+            if (valid(order->slots[std::size_t(k)])) cpuOf(order->slots[std::size_t(k)]).store(0.0f);
+            continue;
+        }
+        const auto t0 = std::chrono::steady_clock::now();
         switch (m->channels()) {
             case Channels::MonoOnly:
                 if (stereo) downmix();
@@ -168,6 +186,11 @@ bool Rack::run(const RackOrder* order, float* l, float* r, std::size_t n) {
                 m->process(l, stereo ? r : nullptr, n);
                 break;
         }
+        // The share of the block's time this module took, averaged over a few blocks.
+        const std::chrono::duration<double> took = std::chrono::steady_clock::now() - t0;
+        const float now = float(100.0 * took.count() / (double(n) / fs_));
+        auto& avg = cpuOf(order->slots[std::size_t(k)]);
+        avg.store(avg.load() * 0.9f + now * 0.1f);
     }
     return stereo;
 }

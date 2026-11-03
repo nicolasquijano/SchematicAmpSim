@@ -358,6 +358,23 @@ void ModuleUnit::refresh() {
                   juce::dontSendNotification);
 }
 
+void ModuleUnit::tick() {
+    body_->tick();
+    setCpu(processor_.rack().moduleCpu(slot_));
+}
+
+void ModuleUnit::setSumsToMono(bool sums) {
+    if (sums == sumsToMono_) return;
+    sumsToMono_ = sums;
+    repaint();
+}
+
+void ModuleUnit::setHot(bool hot) {
+    if (hot == hot_) return;
+    hot_ = hot;
+    repaint();
+}
+
 void ModuleUnit::setCpu(float percent) {
     if (std::abs(percent - cpu_) < 0.05f) return;
     cpu_ = percent;
@@ -381,10 +398,14 @@ void ModuleUnit::paint(juce::Graphics& g) {
         for (int c = 0; c < 2; ++c) g.fillEllipse(8.0f + float(c) * 6.0f, 8.0f + float(r) * 6.0f, 3.0f, 3.0f);
     g.setColour(accent);
     g.fillRoundedRectangle(24.0f, 11.0f, 3.0f, 9.0f, 1.5f);
-    if (cpu_ > 0.0f) {
+    g.setFont(AmpLookAndFeel::font(10.0f));
+    if (sumsToMono_) {
         g.setColour(label.withAlpha(0.8f));
-        g.setFont(AmpLookAndFeel::font(10.0f));
-        g.drawText(juce::String(cpu_, 1) + " %", getWidth() - 200, 0, 60, kHeaderHeight, juce::Justification::centredRight);
+        g.drawText("sums to mono", getWidth() - 400, 0, 100, kHeaderHeight, juce::Justification::centredRight);
+    }
+    if (cpu_ > 0.0f) {
+        g.setColour(hot_ ? accent : label.withAlpha(0.8f));
+        g.drawText(juce::String(cpu_, 1) + " % cpu", getWidth() - 300, 0, 70, kHeaderHeight, juce::Justification::centredRight);
     }
 }
 
