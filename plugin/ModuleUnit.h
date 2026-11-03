@@ -16,9 +16,13 @@ public:
     class Body : public juce::Component {
     public:
         virtual int height() const = 0;
+        virtual void tick() {}  // the page's timer (about 20 Hz): the spectrum behind an EQ curve
     };
 
-    ModuleUnit(SasProcessor& processor, sas::SlotRef slot);
+    // Gives the amp and the cabinet their body: the editor hosts its own panels there. Null = no body for that type.
+    using HostedBodyFactory = std::function<std::unique_ptr<Body>(sas::ModuleType)>;
+
+    ModuleUnit(SasProcessor& processor, sas::SlotRef slot, const HostedBodyFactory& hosted = {});
     ~ModuleUnit() override;
 
     sas::SlotRef slot() const { return slot_; }
@@ -34,6 +38,7 @@ public:
     void mouseDown(const juce::MouseEvent&) override;
     void mouseDrag(const juce::MouseEvent&) override;
     void refresh();  // the names of loaded models (the page's timer calls it)
+    void tick() { body_->tick(); }
     void setCpu(float percent);
 
     std::function<void(sas::SlotRef)> onRemove, onAddAfter;
@@ -51,4 +56,17 @@ private:
     std::unique_ptr<juce::FileChooser> chooser_;
     double lastTapMs_ = 0.0;
     float cpu_ = 0.0f;
+};
+
+// A body that shows a HostPanel of the editor (and lets go of it when the unit goes away).
+class PanelBody final : public ModuleUnit::Body {
+public:
+    PanelBody(HostPanel& panel, std::function<int()> height) : panel_(panel), height_(std::move(height)) { addAndMakeVisible(panel_); }
+    ~PanelBody() override { removeChildComponent(&panel_); }
+    int height() const override { return height_(); }
+    void resized() override { panel_.setBounds(getLocalBounds()); }
+
+private:
+    HostPanel& panel_;
+    std::function<int()> height_;
 };

@@ -223,8 +223,7 @@ SasProcessor::SasProcessor()
         for (int k = 0; k < RackState::maxInstances(static_cast<sas::ModuleType>(t)); ++k)
             for (const char* base : RackState::paramIds(static_cast<sas::ModuleType>(t)))
                 modParams_[std::size_t(t)][std::size_t(k)].push_back(apvts.getRawParameterValue(RackState::paramId(base, k)));
-    // Until the editor can add modules a new instance carries every module of the fixed-order plug-in, so its controls work.
-    rackOrder_ = RackState::fromLegacy(apvts, false, true);
+    rackOrder_ = RackState::defaultOrder();
     syncRack(sas::Transition::Immediate);
 }
 

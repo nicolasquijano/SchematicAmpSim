@@ -148,6 +148,28 @@ private:
 
 class RackPage;
 
+// One box drawn behind the controls of a panel: a rounded rectangle with a small accent mark and a caption.
+struct PanelBox {
+    juce::Rectangle<int> bounds;
+    juce::String caption;
+};
+void paintPanelBoxes(juce::Graphics&, const AmpLookAndFeel&, const std::vector<PanelBox>&);
+
+// A container for the controls of one big unit (the amp, the cabinet). The editor owns it and lays the controls out; a unit of the rack page
+// hosts it while it is on show.
+class HostPanel final : public juce::Component {
+public:
+    void paint(juce::Graphics& g) override {
+        if (const auto* look = dynamic_cast<const AmpLookAndFeel*>(&getLookAndFeel())) paintPanelBoxes(g, *look, panels);
+    }
+    void resized() override {
+        if (onResized) onResized();
+        repaint();
+    }
+    std::vector<PanelBox> panels;
+    std::function<void()> onResized;
+};
+
 class SasEditor final : public juce::AudioProcessorEditor, public juce::DragAndDropContainer, private juce::Timer, private juce::ListBoxModel {
 public:
     explicit SasEditor(SasProcessor&);
@@ -155,10 +177,10 @@ public:
 
     void paint(juce::Graphics&) override;
     void resized() override;
-    void updateSpectrum();  // analyses the latest output and hands it to the EQ curve (the timer calls it on the EQ page)
     void pollMeters();  // reads the processor's peaks into the level bars (the timer calls it)
     void updateTuner();  // runs the pitch detection on the latest input (the timer calls it)
-    void updateImpulseStatus();  // the impulse names and response curves of the Cabinet page (the timer calls it)
+    void updateImpulseStatus();  // the impulse names and response curves of the cabinet unit (the timer calls it)
+    juce::StringArray pageNames() const { return {rackTab_.getButtonText(), tunerTab_.getButtonText()}; }
 
 private:
     // The amp list (a ListBox over the amp parameter's choices).
@@ -171,17 +193,20 @@ private:
     void chooseImpulseResponse(int slot);
     void chooseNamModel();
     void chooseNamCab();
-    void chooseNamPedal();
-    void refreshNamPedal();
     void refreshNamCab();
     void refreshNam();
     void showImpulseMenu(int slot, juce::Component& anchor);  // the impulses built into the plugin, and "From file..."
     void showAmp(int index);  // rebuilds the amp-specific knobs, jack list and title
     void styleCombo(juce::ComboBox&, const char* paramId, std::unique_ptr<juce::AudioProcessorValueTreeState::ComboBoxAttachment>&);
     void styleCaption(juce::Label&, const juce::String&);
-    void setPage(int page);  // 0 = amp, 1 = effects, 2 = cabinet, 3 = tuner, 4 = pitch, 5 = EQ, 6 = space, 7 = mod, 8 = rack
+    void setPage(int page);  // 0 = rack, 1 = tuner
     void drawLogo(juce::Graphics&, juce::Rectangle<float>) const;
     void applyTheme(const sas::AmpDef&);  // colours of the shown amp
+    // The amp unit and the cabinet unit of the rack page: their controls live in two panels the editor owns.
+    void layoutAmpPanel();
+    void layoutCabPanel();
+    int ampPanelHeight() const;
+    int cabPanelHeight() const;
 
     SasProcessor& processor_;
     AmpLookAndFeel look_;
@@ -189,57 +214,17 @@ private:
     int page_ = 0;
     juce::String title_;
     juce::StringArray ampNames_;
-    struct Panel {
-        juce::Rectangle<int> bounds;
-        juce::String caption;
-    };
     juce::Rectangle<int> logoBounds_;  // the product mark and name, top of the left column
-    std::vector<Panel> panels_;  // drawn behind the controls, set by resized()
+    std::vector<PanelBox> panels_;  // drawn behind the controls of the editor itself (the tuner), set by resized()
+    HostPanel ampPanel_, cabPanel_;
 
-    std::vector<std::unique_ptr<KnobWithLabel>> ampKnobs_;  // first row, from the amp's "ui" block
+    std::vector<std::unique_ptr<KnobWithLabel>> ampKnobs_;  // first row of the amp unit, from the amp's "ui" block
     KnobWithLabel input_, output_;
-    KnobWithLabel tsDrive_, tsTone_, tsLevel_;
-    KnobWithLabel gateThreshold_, gateRelease_, cable_;
+    KnobWithLabel cable_;
     KnobWithLabel bias_, wear_, speaker_, blend_;
-    KnobWithLabel compSustain_, compBlend_, compTone_, compLevel_, tunerRef_, stereoWidth_, doubleAmount_, doubleTime_, pitchFine_, eqHpf_, eqLpf_;
-    EqCurve eqCurve_;
-    sas::SpectrumAnalyzer spectrum_;
-    std::vector<float> spectrumBuf_ = std::vector<float>(sas::SpectrumAnalyzer::kFft);
-    // The Space page: delay and reverb at the end of the chain.
-    KnobWithLabel dlyTime_, dlyFb_, dlyMix_, dlyTone_, plDecay_, plPre_, plTone_, plLow_, plMix_, plMod_, plShimmer_, phSpeed_, chRate_, chDepth_, vbSpeed_, vbIntensity_;
-    juce::ToggleButton dlyOn_{"On"}, dlyPing_{"Ping-pong"}, dlyAnalog_{"Analog"}, plOn_{"On"}, plHall_{"Hall"};
-    juce::ComboBox plShimInt_, dlySync_, phPos_, chMode_, chJuno_, chPos_, vbPos_;
-    juce::ToggleButton vbOn_{"On"}, vbVibrato_{"Vibrato"};
-    juce::Label vbPosCaption_;
-    std::unique_ptr<juce::AudioProcessorValueTreeState::ButtonAttachment> vbOnAtt_, vbVibratoAtt_;
-    std::unique_ptr<juce::AudioProcessorValueTreeState::ComboBoxAttachment> vbPosAtt_;
-    juce::ToggleButton chOn_{"On"};
-    juce::Label chModeCaption_, chJunoCaption_, chPosCaption_;
-    juce::TextButton modTab_{"Mod"};
-    std::unique_ptr<juce::AudioProcessorValueTreeState::ButtonAttachment> chOnAtt_;
-    std::unique_ptr<juce::AudioProcessorValueTreeState::ComboBoxAttachment> chModeAtt_, chJunoAtt_, chPosAtt_;
-    juce::ToggleButton phOn_{"On"}, phIntense_{"Intense"};
-    juce::Label phPosCaption_;
-    std::unique_ptr<juce::AudioProcessorValueTreeState::ButtonAttachment> phOnAtt_, phIntenseAtt_;
-    std::unique_ptr<juce::AudioProcessorValueTreeState::ComboBoxAttachment> phPosAtt_;
-    juce::Label dlySyncCaption_, fxNote_, plShimIntCaption_;
-    juce::TextButton dlyTap_{"Tap"}, dlyPresets_{"Presets"}, plPresets_{"Presets"}, spaceTab_{"Space"};
-    std::unique_ptr<juce::AudioProcessorValueTreeState::ButtonAttachment> dlyOnAtt_, dlyPingAtt_, dlyAnalogAtt_, plOnAtt_, plHallAtt_;
-    std::unique_ptr<juce::AudioProcessorValueTreeState::ComboBoxAttachment> dlySyncAtt_, plShimIntAtt_;
-    double lastTapMs_ = 0.0;
-    juce::ToggleButton eqOn_{"On"};
-    juce::TextButton eqReset_{"Reset"};
-    juce::Label eqBandLabel_;
-    std::unique_ptr<juce::AudioProcessorValueTreeState::ButtonAttachment> eqOnAtt_;
-    std::unique_ptr<KnobWithLabel> eqKnobs_[5][3];  // frequency, gain, Q of each band; only the selected band's are shown
-    void selectEqBand(int band);
+    KnobWithLabel tunerRef_, stereoWidth_, doubleAmount_, doubleTime_;
     juce::TextButton presets_{"Presets"};
     void showPresetMenu();
-    juce::Slider pitchSlider_{juce::Slider::LinearHorizontal, juce::Slider::NoTextBox};
-    juce::Label pitchValue_, pitchNote_;
-    juce::TextButton pitchDown12_{"-12"}, pitchDown1_{"-1"}, pitchUp1_{"+1"}, pitchUp12_{"+12"}, pitchZero_{"0"};
-    std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> pitchAtt_;
-    void updatePitchLabels();
     TunerDisplay tunerDisplay_;
     std::vector<float> tunerBuf_ = std::vector<float>(3072);
     int tunerTicks_ = 0, tunerHold_ = 0;
@@ -257,27 +242,19 @@ private:
     juce::Label selCaption_[4];
     std::unique_ptr<juce::AudioProcessorValueTreeState::ComboBoxAttachment> qualityAtt_, cabAtt_, pickupAtt_, noiseAtt_, unitAtt_;
     juce::Label ampCaption_, qualityCaption_, jackCaption_, cabCaption_, pickupCaption_, nameA_, nameB_, blendNote_, cabNote_, tubeCaption_, noiseCaption_, unitCaption_, idleLabel_, conditionNote_;
-    juce::ToggleButton tsOn_{"On"};
-    juce::ToggleButton gateOn_{"On"};
     juce::ToggleButton speakerIntense_{"Intense"};
-    juce::ToggleButton compOn_{"On"}, compFast_{"Fast"};
     juce::ToggleButton tunerOn_{"Tuner on"}, tunerMute_{"Mute output"};
     juce::ToggleButton vibrato_{"Vibrato"};  // shown only for amps that have an optical tremolo
-    std::unique_ptr<juce::AudioProcessorValueTreeState::ButtonAttachment> tsOnAtt_, gateOnAtt_, speakerIntenseAtt_, compOnAtt_, compFastAtt_, tunerOnAtt_, tunerMuteAtt_, vibratoAtt_;
-    juce::TextButton ampTab_{"Amp"}, cabTab_{"Cabinet"}, fxTab_{"Effects"}, pitchTab_{"Pitch"}, eqTab_{"EQ"}, tunerTab_{"Tuner"}, rackTab_{"Rack"};
-    std::unique_ptr<RackPage> rackPage_;  // the modular rack (page 8)
+    std::unique_ptr<juce::AudioProcessorValueTreeState::ButtonAttachment> speakerIntenseAtt_, tunerOnAtt_, tunerMuteAtt_, vibratoAtt_;
+    juce::TextButton rackTab_{"Rack"}, tunerTab_{"Tuner"};
     juce::TextButton loadA_{"Load..."}, clearA_{"Clear"}, loadB_{"Load..."}, clearB_{"Clear"};
     IrCurve curveA_, curveB_;
     juce::TextButton namLoad_{"Load model..."}, namClear_{"Clear"};  // the NAM Loader amp's model
     juce::Label namName_, namNote_;
-    juce::TextButton namCabLoad_{"Load NAM..."}, namCabClear_{"Clear"};  // the NAM cabinet on the Cabinet page
+    juce::TextButton namCabLoad_{"Load NAM..."}, namCabClear_{"Clear"};  // the NAM cabinet of the cabinet unit
     juce::Label namCabName_;
-    KnobWithLabel nmpDrive_, nmpLevel_;  // the NAM pedal on the Effects page
-    juce::ToggleButton nmpOn_{"On"};
-    juce::TextButton nmpLoad_{"Load..."}, nmpClear_{"Clear"};
-    juce::Label nmpName_;
-    std::unique_ptr<juce::AudioProcessorValueTreeState::ButtonAttachment> nmpOnAtt_;
     std::unique_ptr<juce::FileChooser> chooser_;
+    std::unique_ptr<RackPage> rackPage_;  // declared last: it goes first, and lets go of the two panels
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(SasEditor)
 };

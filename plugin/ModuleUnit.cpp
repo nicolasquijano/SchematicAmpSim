@@ -145,7 +145,7 @@ private:
 // The equaliser: the curve with its draggable bands, the knobs of the selected band, the high-pass and the low-pass.
 class EqBody final : public ModuleUnit::Body {
 public:
-    EqBody(SasProcessor& p, sas::SlotRef slot) : curve_(p.apvts, slot.instance) {
+    EqBody(SasProcessor& p, sas::SlotRef slot) : processor_(p), curve_(p.apvts, slot.instance) {
         addAndMakeVisible(curve_);
         hpf_ = std::make_unique<KnobWithLabel>(p.apvts, RackState::paramId(ids::eqHpf, slot.instance).toRawUTF8(), "HIGH-PASS");
         lpf_ = std::make_unique<KnobWithLabel>(p.apvts, RackState::paramId(ids::eqLpf, slot.instance).toRawUTF8(), "LOW-PASS");
@@ -166,6 +166,16 @@ public:
     }
 
     int height() const override { return 250; }
+
+    // What is sounding, in a silhouette behind the curve (the output of the whole rack).
+    void tick() override {
+        if (!isShowing()) return;
+        processor_.spectrumFeed().latest(buffer_.data(), buffer_.size());
+        spectrum_.setSampleRate(processor_.getSampleRate() > 0.0 ? processor_.getSampleRate() : 48000.0);
+        spectrum_.analyze(buffer_.data());
+        curve_.setSpectrum(&spectrum_.db());
+        curve_.repaint();  // it follows the parameters too, when the host or an automation moves them
+    }
 
     void resized() override {
         auto r = getLocalBounds().reduced(6, 2);
@@ -190,6 +200,9 @@ private:
         band_.setText("BAND " + juce::String(band + 1), juce::dontSendNotification);
         resized();
     }
+    SasProcessor& processor_;
+    sas::SpectrumAnalyzer spectrum_;
+    std::vector<float> buffer_ = std::vector<float>(sas::SpectrumAnalyzer::kFft);
     EqCurve curve_;
     std::unique_ptr<KnobWithLabel> hpf_, lpf_, knobs_[5][3];
     juce::Label band_;
@@ -226,11 +239,15 @@ bool ModuleUnit::parseDragDescription(const juce::String& text, sas::SlotRef& sl
     return true;
 }
 
-ModuleUnit::ModuleUnit(SasProcessor& processor, sas::SlotRef slot) : processor_(processor), slot_(slot) {
-    if (slot.type == ModuleType::Eq) body_ = std::make_unique<EqBody>(processor, slot);
-    else if (slot.type == ModuleType::Amp) body_ = std::make_unique<NoteBody>("The amp's controls are on the Amp page.");
-    else if (slot.type == ModuleType::Cabinet) body_ = std::make_unique<NoteBody>("The cabinet's controls are on the Cabinet page.");
-    else body_ = std::make_unique<ParamBody>(processor, slot);
+ModuleUnit::ModuleUnit(SasProcessor& processor, sas::SlotRef slot, const HostedBodyFactory& hosted) : processor_(processor), slot_(slot) {
+    if (slot.type == ModuleType::Amp || slot.type == ModuleType::Cabinet) {
+        if (hosted) body_ = hosted(slot.type);
+        if (!body_) body_ = std::make_unique<NoteBody>("The controls of this module are not available here.");
+    } else if (slot.type == ModuleType::Eq) {
+        body_ = std::make_unique<EqBody>(processor, slot);
+    } else {
+        body_ = std::make_unique<ParamBody>(processor, slot);
+    }
     addAndMakeVisible(*body_);
 
     name_.setText(title(slot), juce::dontSendNotification);

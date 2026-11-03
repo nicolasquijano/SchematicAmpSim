@@ -70,7 +70,7 @@ void RackPage::Map::mouseUp(const juce::MouseEvent& e) {
 
 // ------------------------------------------------------------------ page
 
-RackPage::RackPage(SasProcessor& processor) : processor_(processor) {
+RackPage::RackPage(SasProcessor& processor, ModuleUnit::HostedBodyFactory hosted) : processor_(processor), hosted_(std::move(hosted)) {
     addAndMakeVisible(map_);
     addAndMakeVisible(add_);
     addAndMakeVisible(viewport_);
@@ -82,7 +82,7 @@ RackPage::RackPage(SasProcessor& processor) : processor_(processor) {
     add_.setTooltip("Add a module at the end of the rack");
     add_.onClick = [this] { showAddMenu(-1, add_); };
     rebuild();
-    startTimerHz(6);
+    startTimerHz(20);
 }
 
 RackPage::~RackPage() { stopTimer(); }
@@ -94,7 +94,7 @@ void RackPage::rebuild() {
     map_.chips.clear();
     for (int i = 0; i < shown_.count; ++i) {
         const sas::SlotRef slot = shown_.slots[std::size_t(i)];
-        auto unit = std::make_unique<ModuleUnit>(processor_, slot);
+        auto unit = std::make_unique<ModuleUnit>(processor_, slot, hosted_);
         unit->onRemove = [this](sas::SlotRef s) {
             processor_.removeModule(s);
             rebuild();
@@ -150,7 +150,9 @@ void RackPage::timerCallback() {
         rebuild();
         return;
     }
-    for (auto& u : units_) u->refresh();
+    for (auto& u : units_) u->tick();
+    if (++ticks_ % 4 == 0)
+        for (auto& u : units_) u->refresh();  // the names of loaded models, at about 5 Hz
 }
 
 juce::PopupMenu RackPage::addMenu(const SasProcessor& processor, int idBase) {

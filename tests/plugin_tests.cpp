@@ -8,6 +8,7 @@
 #include <juce_audio_formats/juce_audio_formats.h>
 
 #include "PluginEditor.h"
+#include "RackState.h"
 #include "EqPresets.h"
 
 namespace {
@@ -43,6 +44,9 @@ void setParam(SasProcessor& p, const char* id, float plainValue) {
     auto* param = p.apvts.getParameter(id);
     param->setValueNotifyingHost(param->convertTo0to1(plainValue));
 }
+
+// The rack with every module of the fixed-order plug-in in it, so a test can switch any of them on through its parameters.
+void allModules(SasProcessor& p) { p.setRackOrder(RackState::fromLegacy(p.apvts, false, true)); }
 
 juce::File writeImpulse(const juce::String& name) {
     auto file = juce::File::getSpecialLocation(juce::File::tempDirectory).getChildFile(name);
@@ -919,7 +923,7 @@ TEST_CASE("readme screenshots", "[.screenshots]") {
         std::unique_ptr<juce::AudioProcessorEditor> ed(p.createEditor());
         ed->setSize(1000, 520);
         auto* se = dynamic_cast<SasEditor*>(ed.get());
-        for (int i = 0; i < 6; ++i) { run(p, 80, 196.0 * (1 + i % 3), 0.2); se->pollMeters(); se->updateSpectrum(); }
+        for (int i = 0; i < 6; ++i) { run(p, 80, 196.0 * (1 + i % 3), 0.2); se->pollMeters(); }
         clickTab(*ed, "EQ");
         savePng(ed->createComponentSnapshot(ed->getLocalBounds(), true, scale), "eq.png");
     }
@@ -947,7 +951,7 @@ TEST_CASE("the editor builds for every amp and can be rendered", "[slow]") {
                 p.applyEqPreset(3);
                 for (auto* c : ed->getChildren())
                     if (auto* b = dynamic_cast<juce::TextButton*>(c); b && b->getButtonText() == "EQ") { b->setToggleState(true, juce::dontSendNotification); b->onClick(); }
-                if (auto* se2 = dynamic_cast<SasEditor*>(ed.get())) for (int i = 0; i < 24; ++i) { run(p, 1, 220.0, 0.2); se2->updateSpectrum(); }
+                if (auto* se2 = dynamic_cast<SasEditor*>(ed.get())) for (int i = 0; i < 24; ++i) { run(p, 1, 220.0, 0.2); }
                 {
                     const auto ex = ed->createComponentSnapshot(ed->getLocalBounds());
                     juce::FileOutputStream o4(juce::File(dir).getChildFile("eq.png"));
@@ -1045,6 +1049,7 @@ TEST_CASE("the editor builds for every amp and can be rendered", "[slow]") {
 TEST_CASE("pitch shift: off by default with no delay, on it adds its latency and still plays; a semitone and a few cents are separate parameters") {
     JuceInit init;
     SasProcessor p;
+    allModules(p);
     p.prepareToPlay(48000.0, 512);
     setParam(p, ids::quality, 2.0f);
     CHECK(p.apvts.getParameter(ids::pitch) != nullptr);
@@ -1069,6 +1074,7 @@ TEST_CASE("pitch shift: off by default with no delay, on it adds its latency and
 TEST_CASE("eq: flat by default, and the post equaliser acts on the output") {
     JuceInit init;
     SasProcessor p;
+    allModules(p);
     p.prepareToPlay(48000.0, 512);
     setParam(p, ids::quality, 2.0f);
     for (int b = 0; b < 5; ++b) {
@@ -1222,6 +1228,7 @@ TEST_CASE("built-in cabinet impulses: three ship with the plugin, load into eith
 TEST_CASE("delay and reverb: off by default and invisible, on they add a tail, presets set both, and the state survives a project round trip") {
     JuceInit juceInit;
     SasProcessor proc;
+    allModules(proc);
     proc.prepareToPlay(48000.0, 512);
     CHECK(proc.apvts.getRawParameterValue(ids::dlyOn)->load() < 0.5f);
     CHECK(proc.apvts.getRawParameterValue(ids::plOn)->load() < 0.5f);
@@ -1508,6 +1515,7 @@ TEST_CASE("NAM cabinet: a model loaded as the cabinet plays after any amp, repla
 TEST_CASE("NAM pedal: a model in front of the amp plays when the switch is on, does nothing when it is off, and is kept in the project state") {
     JuceInit juceInit;
     SasProcessor proc;
+    allModules(proc);
     proc.prepareToPlay(48000.0, 512);
     CHECK(!proc.namPedalLoaded());
     CHECK(!proc.loadNamPedal(juce::File(SAS_NAM_EXAMPLES_DIR "/../README.md")));
@@ -1758,6 +1766,7 @@ TEST_CASE("two overdrive instances: the second one is audible and independent", 
 TEST_CASE("removing a NAM pedal clears its model from the state", "[rack]") {
     JuceInit init;
     SasProcessor p;
+    allModules(p);
     REQUIRE(p.loadNamPedal(juce::File(SAS_NAM_EXAMPLES_DIR "/wavenet.nam"), 0));
     REQUIRE(p.removeModule({ModuleType::NamPedal, 0}));
     CHECK_FALSE(p.namPedalLoaded(0));
@@ -1772,6 +1781,7 @@ TEST_CASE("removing a NAM pedal clears its model from the state", "[rack]") {
 TEST_CASE("latency follows the active modules and not their order", "[rack]") {
     JuceInit init;
     SasProcessor p;
+    allModules(p);
     p.prepareToPlay(48000.0, 256);
     juce::AudioBuffer<float> buf(2, 256);
     juce::MidiBuffer midi;
@@ -1847,10 +1857,75 @@ TEST_CASE("the add menu greys out a type that reached its limit", "[rack]") {
 
 TEST_CASE("a rack never holds more than twelve modules besides the amp", "[rack]") {
     JuceInit init;
-    SasProcessor p;  // a fresh instance carries every module of the fixed-order plug-in: twelve with the cabinet
+    SasProcessor p;
+    allModules(p);  // a fresh instance carries every module of the fixed-order plug-in: twelve with the cabinet
     CHECK_FALSE(p.canAdd(ModuleType::Delay));
     REQUIRE(p.removeModule({ModuleType::Delay, 0}));
     CHECK(p.canAdd(ModuleType::Delay));
     CHECK(p.addModule(ModuleType::Delay));
     CHECK_FALSE(p.addModule(ModuleType::Pitch));  // full again
+}
+
+// ---------------------------------------------------------------- modular rack: the editor
+
+namespace {
+juce::Component* findById(juce::Component& root, const juce::String& id) {
+    if (root.getComponentID() == id) return &root;
+    for (auto* child : root.getChildren())
+        if (auto* hit = findById(*child, id)) return hit;
+    return nullptr;
+}
+}  // namespace
+
+TEST_CASE("the editor has the Rack and Tuner pages, and the amp's condition lives in the amp unit", "[rack]") {
+    JuceInit init;
+    SasProcessor p;
+    p.prepareToPlay(48000.0, 512);
+    std::unique_ptr<juce::AudioProcessorEditor> base(p.createEditor());
+    auto* ed = dynamic_cast<SasEditor*>(base.get());
+    REQUIRE(ed != nullptr);
+    base->setSize(1100, 700);
+    CHECK(ed->pageNames() == juce::StringArray{"Rack", "Tuner"});
+    for (const char* id : {"cond_tube", "cond_bias", "cond_wear", "cond_unit", "cond_noise"}) {
+        auto* c = findById(*base, id);
+        REQUIRE(c != nullptr);
+        CHECK(c->findParentComponentOfClass<RackPage>() != nullptr);  // inside the rack page, not beside it
+    }
+}
+
+TEST_CASE("a new instance starts with just the amp and the cabinet", "[rack]") {
+    JuceInit init;
+    SasProcessor p;
+    CHECK(typesOf(p.rackOrder()) == std::vector<ModuleType>{ModuleType::Amp, ModuleType::Cabinet});
+}
+
+TEST_CASE("the rack page can be rendered to a picture", "[.screenshots]") {
+    JuceInit init;
+    const char* dir = std::getenv("SAS_SCREENSHOT_DIR");
+    if (!dir) { SKIP("SAS_SCREENSHOT_DIR is not set"); }
+    juce::File(dir).createDirectory();
+    SasProcessor p;
+    p.prepareToPlay(48000.0, 512);
+    p.setRackOrder([] {
+        sas::RackOrder o;
+        for (auto s : {sas::SlotRef{ModuleType::Gate, 0}, {ModuleType::Overdrive, 0}, {ModuleType::Overdrive, 1}, {ModuleType::Amp, 0}, {ModuleType::Cabinet, 0},
+                       {ModuleType::Eq, 0}, {ModuleType::Delay, 0}, {ModuleType::Reverb, 0}})
+            o.slots[std::size_t(o.count++)] = s;
+        return o;
+    }());
+    std::unique_ptr<juce::AudioProcessorEditor> ed(p.createEditor());
+    ed->setSize(1280, 1100);
+    run(p, 80, 196.0, 0.2);
+    for (int shot = 0; shot < 3; ++shot) {
+        if (auto* se = dynamic_cast<SasEditor*>(ed.get())) for (int i = 0; i < 12; ++i) se->pollMeters();
+        if (auto* page = findById(*ed, "") ) (void)page;
+        const auto img = ed->createComponentSnapshot(ed->getLocalBounds(), true, 1.0f);
+        juce::PNGImageFormat png;
+        juce::FileOutputStream out(juce::File(dir).getChildFile("rack" + juce::String(shot) + ".png"));
+        REQUIRE(out.openedOk());
+        out.setPosition(0);
+        out.truncate();
+        png.writeImageToStream(img, out);
+        break;
+    }
 }

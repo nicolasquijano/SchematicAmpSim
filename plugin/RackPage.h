@@ -9,7 +9,7 @@
 
 class RackPage final : public juce::Component, public juce::DragAndDropTarget, private juce::Timer {
 public:
-    explicit RackPage(SasProcessor& processor);
+    explicit RackPage(SasProcessor& processor, ModuleUnit::HostedBodyFactory hosted = {});
     ~RackPage() override;
 
     void resized() override;
@@ -19,6 +19,8 @@ public:
     sas::SlotRef unitSlot(int index) const { return units_[std::size_t(index)]->slot(); }
     // Builds the units again from the processor's order (done by itself when the order changes).
     void rebuild();
+    // The units took another height (the amp with a faceplate is taller than one with knobs).
+    void relayout() { layoutUnits(); }
     // The "add module" menu, by category; an item's id is `idBase` plus the module type, and it is greyed out when that type cannot be added.
     static juce::PopupMenu addMenu(const SasProcessor& processor, int idBase);
     void showAddMenu(int insertAt, juce::Component& anchor);
@@ -46,11 +48,13 @@ private:
     int dropIndexAt(juce::Point<int> pagePoint, sas::SlotRef dragged) const;
 
     SasProcessor& processor_;
+    ModuleUnit::HostedBodyFactory hosted_;
     Map map_;
     juce::TextButton add_{"+ Add module"};
     juce::Viewport viewport_;
     juce::Component list_;
     std::vector<std::unique_ptr<ModuleUnit>> units_;
     sas::RackOrder shown_;
+    int ticks_ = 0;
     int dropLine_ = -1;  // y in list_ of the insertion line while dragging, -1 when none
 };
