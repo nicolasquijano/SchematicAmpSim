@@ -44,7 +44,8 @@ add_library(sas_engine STATIC
   src/compressor.cpp
   ${_comp_gen}
   src/nam_model.cpp
-  src/chain.cpp)
+  src/chain.cpp
+  src/rack.cpp)
 target_include_directories(sas_engine PUBLIC include "${CMAKE_BINARY_DIR}/generated")
 target_link_libraries(sas_engine PUBLIC nlohmann_json::nlohmann_json PRIVATE sas_nam_core)
 target_link_libraries(sas_engine INTERFACE $<TARGET_OBJECTS:sas_nam_core>)

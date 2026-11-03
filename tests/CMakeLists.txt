@@ -27,7 +27,8 @@ add_executable(sas_tests
   test_vibe.cpp
   test_spectrum.cpp
   test_version.cpp
-  test_nam.cpp)
+  test_nam.cpp
+  test_rack.cpp)
 target_compile_definitions(sas_tests PRIVATE
   SAS_GOLDEN_DIR="${CMAKE_SOURCE_DIR}/golden"
   SAS_AMPS_DIR="${CMAKE_SOURCE_DIR}/amps"

@@ -1,0 +1,111 @@
+#include "sas/rack.h"
+
+#include <algorithm>
+
+namespace sas {
+
+namespace {
+constexpr const char* kNames[kModuleTypeCount] = {"Amp", "Cabinet", "Gate", "Compressor", "Overdrive", "NamPedal", "Phaser", "Chorus", "Vibe", "Pitch", "Eq", "Delay", "Reverb"};
+}
+
+const char* moduleTypeName(ModuleType t) { return kNames[std::size_t(t)]; }
+
+std::optional<ModuleType> moduleTypeFromName(std::string_view name) {
+    for (int i = 0; i < kModuleTypeCount; ++i)
+        if (name == kNames[i]) return static_cast<ModuleType>(i);
+    return std::nullopt;
+}
+
+Rack::Rack() {
+    for (auto& row : table_)
+        for (auto& c : row) c.store(nullptr);
+    current_.store(&orders_[0]);
+}
+
+Rack::~Rack() = default;
+
+void Rack::prepare(double fs, int maxBlock) {
+    fs_ = fs;
+    maxBlock_ = maxBlock;
+    for (auto& m : owned_) m->prepare(fs, maxBlock);
+}
+
+void Rack::setModule(SlotRef slot, std::unique_ptr<Module> module) {
+    if (!valid(slot)) return;
+    retired_.clear();  // retired a call ago: the audio thread has long left them
+    if (module) module->prepare(fs_, maxBlock_);
+    Module* old = cell(slot).exchange(module.get());
+    if (old)
+        for (auto& o : owned_)
+            if (o.get() == old) {
+                retired_.push_back(std::move(o));
+                break;
+            }
+    owned_.erase(std::remove(owned_.begin(), owned_.end(), nullptr), owned_.end());
+    if (module) owned_.push_back(std::move(module));
+}
+
+void Rack::removeModule(SlotRef slot) { setModule(slot, nullptr); }
+
+Module* Rack::module(SlotRef slot) const { return valid(slot) ? cell(slot).load() : nullptr; }
+
+void Rack::publish(const RackOrder& order) {
+    nextOrder_ = (nextOrder_ + 1) % orders_.size();
+    orders_[nextOrder_] = order;
+    current_.store(&orders_[nextOrder_]);
+}
+
+RackOrder Rack::order() const { return *current_.load(); }
+
+bool Rack::process(float* l, float* r, std::size_t n) {
+    const RackOrder* order = current_.load();
+    bool stereo = false;
+    auto downmix = [&] {
+        for (std::size_t i = 0; i < n; ++i) l[i] = 0.5f * (l[i] + r[i]);
+        stereo = false;
+    };
+    for (int k = 0; k < order->count; ++k) {
+        const SlotRef s = order->slots[std::size_t(k)];
+        Module* m = valid(s) ? cell(s).load() : nullptr;
+        if (!m || !m->active()) continue;
+        switch (m->channels()) {
+            case Channels::MonoOnly:
+                if (stereo) downmix();
+                m->process(l, nullptr, n);
+                break;
+            case Channels::MonoToStereo:
+                if (stereo) downmix();
+                m->process(l, r, n);
+                stereo = true;
+                break;
+            case Channels::Stereo:
+                if (!stereo) {
+                    std::copy(l, l + n, r);
+                    stereo = true;
+                }
+                m->process(l, r, n);
+                break;
+            case Channels::Flexible:
+                m->process(l, stereo ? r : nullptr, n);
+                break;
+        }
+    }
+    return stereo;
+}
+
+double Rack::latencySamples() const {
+    const RackOrder* order = current_.load();
+    double total = 0.0;
+    for (int k = 0; k < order->count; ++k) {
+        const SlotRef s = order->slots[std::size_t(k)];
+        const Module* m = valid(s) ? cell(s).load() : nullptr;
+        if (m && m->active()) total += m->latencySamples();
+    }
+    return total;
+}
+
+void Rack::reset() {
+    for (auto& m : owned_) m->reset();
+}
+
+}  // namespace sas
