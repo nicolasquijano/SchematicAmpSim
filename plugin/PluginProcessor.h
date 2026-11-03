@@ -8,6 +8,7 @@
 #include <memory>
 #include <vector>
 
+#include "RackState.h"
 #include "sas/amp_def.h"
 #include "sas/chain.h"
 #include "sas/chorus.h"
@@ -218,6 +219,10 @@ public:
     // The physical condition (tube, wear, unit) the "tube", "wear" and "unit" parameters ask for.
     sas::Condition wantedCondition() const;
 
+    // The rack: the order of the modules (docs/MODULAR_RACK.md). A new instance starts with the amp and the cabinet.
+    const sas::RackOrder& rackOrder() const { return rackOrder_; }
+    void setRackOrder(const sas::RackOrder& order) { rackOrder_ = RackState::fromTree(RackState::toTree(order)); }
+
     juce::AudioProcessorValueTreeState apvts;
 
 private:
@@ -235,6 +240,7 @@ private:
     static int makeKey(int amp, const sas::Condition& c) { return amp + 32 * (c.tube + 8 * (c.wear + 16 * c.unit)); }
 
     std::vector<sas::AmpDef> defs_;
+    sas::RackOrder rackOrder_ = RackState::defaultOrder();
 
     // Per amp: the APVTS value behind each preamp knob (nullptr = the knob's default) and presence.
     struct AmpParams {

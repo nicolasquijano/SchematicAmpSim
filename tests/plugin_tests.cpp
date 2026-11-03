@@ -1572,3 +1572,146 @@ TEST_CASE("legacy reference renders are stable and finite", "[rack]") {
         }
     }
 }
+
+// ---------------------------------------------------------------- modular rack: parameters, state and migration
+
+#include "RackState.h"
+
+namespace {
+
+using sas::ModuleType;
+
+std::vector<ModuleType> typesOf(const sas::RackOrder& o) {
+    std::vector<ModuleType> v;
+    for (int i = 0; i < o.count; ++i) v.push_back(o.slots[std::size_t(i)].type);
+    return v;
+}
+
+// Saves the processor's state as a preset file, lets `edit` change its XML, and loads it into `into`.
+template <class Edit>
+void roundTrip(SasProcessor& from, SasProcessor& into, Edit&& edit) {
+    const auto file = juce::File::getSpecialLocation(juce::File::tempDirectory).getChildFile("sas_rack_state.sasp");
+    REQUIRE(from.savePreset(file));
+    std::unique_ptr<juce::XmlElement> xml(juce::XmlDocument::parse(file));
+    REQUIRE(xml != nullptr);
+    edit(*xml);
+    REQUIRE(file.replaceWithText(xml->toString()));
+    REQUIRE(into.loadPreset(file));
+}
+
+void stripRack(juce::XmlElement& xml) {
+    while (auto* r = xml.getChildByName("RACK")) xml.removeChildElement(r, true);
+    xml.removeAttribute("rackVersion");
+}
+
+}  // namespace
+
+TEST_CASE("a state without RACK gets one from the old parameters", "[rack]") {
+    JuceInit init;
+    SECTION("effects after the amp, and the chain's pedals in front of it") {
+        SasProcessor a, b;
+        setParam(a, ids::phOn, 1); setParam(a, ids::phPost, 1);
+        setParam(a, ids::tsOn, 1); setParam(a, ids::compOn, 1); setParam(a, ids::dlyOn, 1);
+        roundTrip(a, b, stripRack);
+        CHECK(typesOf(b.rackOrder()) == std::vector<ModuleType>{ModuleType::Compressor, ModuleType::Overdrive, ModuleType::Amp, ModuleType::Cabinet, ModuleType::Phaser, ModuleType::Delay});
+    }
+    SECTION("every modulation in front of the amp keeps its old order") {
+        SasProcessor a, b;
+        for (const char* on : {ids::phOn, ids::chOn, ids::vbOn}) setParam(a, on, 1);
+        setParam(a, ids::chPost, 0);
+        roundTrip(a, b, stripRack);
+        CHECK(typesOf(b.rackOrder()) == std::vector<ModuleType>{ModuleType::Phaser, ModuleType::Chorus, ModuleType::Vibe, ModuleType::Amp, ModuleType::Cabinet});
+    }
+    SECTION("a plain old state is just the amp and the cabinet") {
+        SasProcessor a, b;
+        roundTrip(a, b, stripRack);
+        CHECK(typesOf(b.rackOrder()) == std::vector<ModuleType>{ModuleType::Amp, ModuleType::Cabinet});
+    }
+}
+
+TEST_CASE("a disabled-but-tuned delay is kept as a bypassed module", "[rack]") {
+    JuceInit init;
+    SasProcessor a, b;
+    setParam(a, ids::dlyMix, 60.0f);  // tuned, but the switch is off
+    roundTrip(a, b, stripRack);
+    CHECK(typesOf(b.rackOrder()) == std::vector<ModuleType>{ModuleType::Amp, ModuleType::Cabinet, ModuleType::Delay});
+    CHECK(b.apvts.getRawParameterValue(ids::dlyOn)->load() < 0.5f);
+    CHECK(b.apvts.getRawParameterValue(ids::dlyMix)->load() == Catch::Approx(60.0f));
+}
+
+TEST_CASE("unknown module type, newer rackVersion or too many modules loads what it understands", "[rack]") {
+    JuceInit init;
+    SasProcessor a, b;
+    roundTrip(a, b, [](juce::XmlElement& xml) {
+        stripRack(xml);
+        xml.setAttribute("rackVersion", 99);
+        auto* rack = xml.createNewChildElement("RACK");
+        auto add = [&](const char* type, int inst) {
+            auto* m = rack->createNewChildElement("M");
+            m->setAttribute("type", type);
+            m->setAttribute("inst", inst);
+        };
+        add("Foo", 0);       // unknown: dropped
+        add("Reverb", 0);
+        add("Reverb", 0);    // repeated: dropped
+        add("Reverb", 7);    // beyond the cap: dropped
+        add("Cabinet", 0);
+        for (int i = 0; i < 3; ++i) { add("Overdrive", i); add("Gate", i); add("Eq", i); add("Delay", i); }
+        add("Amp", 0);
+        add("Amp", 0);
+    });
+    const auto order = b.rackOrder();
+    CHECK(order.count <= sas::RackOrder::kMax);
+    int amps = 0, modules = 0;
+    for (int i = 0; i < order.count; ++i) (order.slots[std::size_t(i)].type == ModuleType::Amp ? amps : modules)++;
+    CHECK(amps == 1);
+    CHECK(modules <= RackState::kMaxModules);
+    CHECK(order.slots[0].type == ModuleType::Reverb);
+}
+
+TEST_CASE("a rack without an amp gets one in front of the cabinet", "[rack]") {
+    const auto order = RackState::fromTree([] {
+        juce::ValueTree rack("RACK");
+        for (const char* type : {"Gate", "Cabinet", "Reverb"}) {
+            juce::ValueTree m("M");
+            m.setProperty("type", type, nullptr);
+            m.setProperty("inst", 0, nullptr);
+            rack.appendChild(m, nullptr);
+        }
+        return rack;
+    }());
+    CHECK(typesOf(order) == std::vector<ModuleType>{ModuleType::Gate, ModuleType::Amp, ModuleType::Cabinet, ModuleType::Reverb});
+}
+
+TEST_CASE("the order and every extra instance's parameters survive a round trip", "[rack]") {
+    JuceInit init;
+    SasProcessor a, b;
+    sas::RackOrder order;
+    for (auto s : {sas::SlotRef{ModuleType::Overdrive, 1}, {ModuleType::Overdrive, 0}, {ModuleType::Amp, 0}, {ModuleType::Cabinet, 0}, {ModuleType::Reverb, 1}, {ModuleType::Reverb, 0}})
+        order.slots[std::size_t(order.count++)] = s;
+    a.setRackOrder(order);
+    setParam(a, "ts_drive__2", 8.0f);
+    setParam(a, "pl_decay__2", 5.0f);
+    roundTrip(a, b, [](juce::XmlElement&) {});
+    REQUIRE(b.rackOrder().count == order.count);
+    for (int i = 0; i < order.count; ++i) CHECK(b.rackOrder().slots[std::size_t(i)] == order.slots[std::size_t(i)]);
+    CHECK(b.apvts.getRawParameterValue("ts_drive__2")->load() == Catch::Approx(8.0f));
+    CHECK(b.apvts.getRawParameterValue("pl_decay__2")->load() == Catch::Approx(5.0f));
+}
+
+TEST_CASE("extra instances exist with their own names and the old position switches are not automatable", "[rack]") {
+    JuceInit init;
+    SasProcessor p;
+    REQUIRE(p.apvts.getParameter("ts_drive__2") != nullptr);
+    CHECK(p.apvts.getParameter("ts_drive__2")->getName(64) == "TS Drive 2");
+    CHECK(p.apvts.getParameter("ts_drive__4") != nullptr);
+    CHECK(p.apvts.getParameter("ts_drive__5") == nullptr);  // the cap is four
+    CHECK(p.apvts.getParameter("pl_mix__3") == nullptr);    // two reverbs
+    CHECK(p.apvts.getParameter("eq1_gain__2")->getName(64) == "EQ 1 gain 2");
+    for (const char* id : {ids::phPost, ids::chPost, ids::vbPost}) {
+        REQUIRE(p.apvts.getParameter(id) != nullptr);
+        CHECK_FALSE(p.apvts.getParameter(id)->isAutomatable());
+    }
+    CHECK(RackState::paramId("dly_mix", 0) == "dly_mix");
+    CHECK(RackState::paramId("dly_mix", 1) == "dly_mix__2");
+}

@@ -8,6 +8,7 @@
 #include <array>
 
 #include "PluginEditor.h"
+#include "RackState.h"
 #include "EqPresets.h"
 #include "sas/embedded_amps.h"
 
@@ -16,20 +17,8 @@ namespace {
 using Layout = juce::AudioProcessorValueTreeState::ParameterLayout;
 constexpr int kVersion = 1;
 
-// 0..10 knob, shown with one decimal like the amp's dial.
-std::unique_ptr<juce::AudioParameterFloat> knob(const char* id, const char* name, float def) {
-    return std::make_unique<juce::AudioParameterFloat>(
-        juce::ParameterID{id, kVersion}, name, juce::NormalisableRange<float>(0.0f, 10.0f, 0.0f), def,
-        juce::AudioParameterFloatAttributes().withStringFromValueFunction(
-            [](float v, int) { return juce::String(v, 1); }));
-}
-
-std::unique_ptr<juce::AudioParameterFloat> dbParam(const char* id, const char* name, float defaultDb = 0.0f) {
-    return std::make_unique<juce::AudioParameterFloat>(
-        juce::ParameterID{id, kVersion}, name, juce::NormalisableRange<float>(-24.0f, 24.0f, 0.0f), defaultDb,
-        juce::AudioParameterFloatAttributes().withLabel("dB").withStringFromValueFunction(
-            [](float v, int) { return juce::String(v, 1); }));
-}
+using RackState::dbParam;
+using RackState::knob;
 
 constexpr std::size_t kMaxChunk = 4096;
 constexpr std::size_t kMaxStoredIrBytes = 4 * 1024 * 1024;
@@ -69,123 +58,27 @@ Layout SasProcessor::createLayout(const std::vector<sas::AmpDef>& defs) {
     for (int i = 0; i < 4; ++i)
         l.add(std::make_unique<juce::AudioParameterChoice>(juce::ParameterID{ids::sel[i], kVersion}, "Amp switch " + juce::String(i + 1),
                                                            juce::StringArray{"Position 1", "Position 2", "Position 3", "Position 4", "Position 5"}, 0));
-    l.add(std::make_unique<juce::AudioParameterBool>(juce::ParameterID{ids::tsOn, kVersion}, "Tube Screamer", false));
-    l.add(knob(ids::tsDrive, "TS Drive", 5.0f));
-    l.add(knob(ids::tsTone, "TS Tone", 5.0f));
-    l.add(knob(ids::tsLevel, "TS Level", 5.0f));
+    RackState::addParams(l, sas::ModuleType::Overdrive, 0);
     l.add(std::make_unique<juce::AudioParameterChoice>(
         juce::ParameterID{ids::pickup, kVersion}, "Guitar pickup", juce::StringArray{"Off", "Single coil", "Humbucker", "P-90"}, 0));
     l.add(std::make_unique<juce::AudioParameterFloat>(juce::ParameterID{ids::cable, kVersion}, "Guitar cable", juce::NormalisableRange<float>(0.0f, 14.0f, 2.0f), 4.0f,
                                                        juce::AudioParameterFloatAttributes().withLabel("m").withStringFromValueFunction([](float v, int) { return juce::String(v, 0); })));
-    {
-        // The post equaliser. Frequencies and Q are on log scales; every gain starts at 0, so a new instance is flat.
-        const sas::EqParams def;
-        const float lo[5] = {20.0f, 60.0f, 200.0f, 1000.0f, 1000.0f}, hi[5] = {500.0f, 1500.0f, 6000.0f, 12000.0f, 16000.0f};
-        auto logRange = [](float a, float b) {
-            juce::NormalisableRange<float> r(a, b);
-            r.setSkewForCentre(std::sqrt(a * b));
-            return r;
-        };
-        l.add(std::make_unique<juce::AudioParameterBool>(juce::ParameterID{ids::eqOn, kVersion}, "EQ", true));
-        l.add(std::make_unique<juce::AudioParameterFloat>(juce::ParameterID{ids::eqHpf, kVersion}, "EQ high-pass", logRange(20.0f, 500.0f), 20.0f,
-                                                           juce::AudioParameterFloatAttributes().withLabel("Hz").withStringFromValueFunction([](float v, int) { return v <= 20.5f ? juce::String("off") : juce::String(v, 0); })));
-        l.add(std::make_unique<juce::AudioParameterFloat>(juce::ParameterID{ids::eqLpf, kVersion}, "EQ low-pass", logRange(2000.0f, 20000.0f), 20000.0f,
-                                                           juce::AudioParameterFloatAttributes().withLabel("Hz").withStringFromValueFunction([](float v, int) { return v >= 19500.0f ? juce::String("off") : juce::String(v, 0); })));
-        for (int b = 0; b < 5; ++b) {
-            const juce::String n(b + 1);
-            l.add(std::make_unique<juce::AudioParameterFloat>(juce::ParameterID{ids::eqFreq[b], kVersion}, "EQ " + n + " frequency", logRange(lo[b], hi[b]), float(def.band[std::size_t(b)].freq),
-                                                               juce::AudioParameterFloatAttributes().withLabel("Hz").withStringFromValueFunction([](float v, int) { return juce::String(v, 0); })));
-            l.add(std::make_unique<juce::AudioParameterFloat>(juce::ParameterID{ids::eqGain[b], kVersion}, "EQ " + n + " gain", juce::NormalisableRange<float>(-15.0f, 15.0f, 0.1f), 0.0f,
-                                                               juce::AudioParameterFloatAttributes().withLabel("dB").withStringFromValueFunction([](float v, int) { return juce::String(v, 1); })));
-            l.add(std::make_unique<juce::AudioParameterFloat>(juce::ParameterID{ids::eqQ[b], kVersion}, "EQ " + n + " Q", logRange(0.3f, 5.0f), float(def.band[std::size_t(b)].q),
-                                                               juce::AudioParameterFloatAttributes().withStringFromValueFunction([](float v, int) { return juce::String(v, 2); })));
-        }
-    }
-    l.add(std::make_unique<juce::AudioParameterInt>(juce::ParameterID{ids::pitch, kVersion}, "Pitch", -12, 12, 0, juce::AudioParameterIntAttributes().withLabel("st")));
-    l.add(std::make_unique<juce::AudioParameterInt>(juce::ParameterID{ids::pitchFine, kVersion}, "Pitch fine", -50, 50, 0, juce::AudioParameterIntAttributes().withLabel("cents")));
-    l.add(std::make_unique<juce::AudioParameterBool>(juce::ParameterID{ids::gateOn, kVersion}, "Noise gate", false));
-    l.add(std::make_unique<juce::AudioParameterFloat>(juce::ParameterID{ids::gateThreshold, kVersion}, "Gate threshold", juce::NormalisableRange<float>(-80.0f, -20.0f, 0.0f), -60.0f,
-                                                       juce::AudioParameterFloatAttributes().withLabel("dB").withStringFromValueFunction([](float v, int) { return juce::String(v, 0); })));
-    l.add(std::make_unique<juce::AudioParameterFloat>(juce::ParameterID{ids::gateRelease, kVersion}, "Gate release", juce::NormalisableRange<float>(20.0f, 500.0f, 0.0f, 0.5f), 120.0f,
-                                                       juce::AudioParameterFloatAttributes().withLabel("ms").withStringFromValueFunction([](float v, int) { return juce::String(v, 0); })));
-    {
-        auto hz = [](const char* id, const char* name, float lo, float hi, float def) {
-            juce::NormalisableRange<float> r(lo, hi, 0.0f);
-            r.setSkewForCentre(std::sqrt(lo * hi));
-            return std::make_unique<juce::AudioParameterFloat>(juce::ParameterID{id, kVersion}, name, r, def,
-                                                               juce::AudioParameterFloatAttributes().withLabel("Hz").withStringFromValueFunction([](float v, int) { return juce::String(v, 0); }));
-        };
-        auto pct = [](const char* id, const char* name, float lo, float hi, float def) {
-            return std::make_unique<juce::AudioParameterFloat>(juce::ParameterID{id, kVersion}, name, juce::NormalisableRange<float>(lo, hi, 0.0f), def,
-                                                               juce::AudioParameterFloatAttributes().withLabel("%").withStringFromValueFunction([](float v, int) { return juce::String(v, 0); }));
-        };
-        l.add(std::make_unique<juce::AudioParameterBool>(juce::ParameterID{ids::dlyOn, kVersion}, "Delay", false));
-        juce::NormalisableRange<float> time(20.0f, 1500.0f, 0.0f);
-        time.setSkewForCentre(350.0f);
-        l.add(std::make_unique<juce::AudioParameterFloat>(juce::ParameterID{ids::dlyTime, kVersion}, "Delay time", time, 380.0f,
-                                                           juce::AudioParameterFloatAttributes().withLabel("ms").withStringFromValueFunction([](float v, int) { return juce::String(v, 0); })));
-        l.add(std::make_unique<juce::AudioParameterChoice>(juce::ParameterID{ids::dlySync, kVersion}, "Delay sync", juce::StringArray{"Free", "1/4", "1/8 dotted", "1/8", "1/16"}, 0));
-        l.add(pct(ids::dlyFeedback, "Delay feedback", 0.0f, 92.0f, 35.0f));
-        l.add(pct(ids::dlyMix, "Delay mix", 0.0f, 100.0f, 25.0f));
-        l.add(hz(ids::dlyTone, "Delay tone", 1000.0f, 12000.0f, 6500.0f));
-        l.add(std::make_unique<juce::AudioParameterBool>(juce::ParameterID{ids::dlyPing, kVersion}, "Delay ping-pong", false));
-        l.add(std::make_unique<juce::AudioParameterBool>(juce::ParameterID{ids::dlyAnalog, kVersion}, "Delay analog", false));
-        l.add(std::make_unique<juce::AudioParameterBool>(juce::ParameterID{ids::plOn, kVersion}, "Reverb", false));
-        l.add(std::make_unique<juce::AudioParameterBool>(juce::ParameterID{ids::plHall, kVersion}, "Reverb hall", false));
-        juce::NormalisableRange<float> decay(0.3f, 8.0f, 0.0f);
-        decay.setSkewForCentre(2.0f);
-        l.add(std::make_unique<juce::AudioParameterFloat>(juce::ParameterID{ids::plDecay, kVersion}, "Reverb decay", decay, 2.0f,
-                                                           juce::AudioParameterFloatAttributes().withLabel("s").withStringFromValueFunction([](float v, int) { return juce::String(v, 1); })));
-        l.add(std::make_unique<juce::AudioParameterFloat>(juce::ParameterID{ids::plPre, kVersion}, "Reverb pre-delay", juce::NormalisableRange<float>(0.0f, 150.0f, 0.0f), 15.0f,
-                                                           juce::AudioParameterFloatAttributes().withLabel("ms").withStringFromValueFunction([](float v, int) { return juce::String(v, 0); })));
-        l.add(hz(ids::plTone, "Reverb tone", 2000.0f, 14000.0f, 8000.0f));
-        l.add(hz(ids::plLow, "Reverb low cut", 20.0f, 800.0f, 150.0f));
-        l.add(pct(ids::plMix, "Reverb mix", 0.0f, 100.0f, 22.0f));
-        l.add(pct(ids::plMod, "Reverb modulation", 0.0f, 100.0f, 30.0f));
-        l.add(pct(ids::plShimmer, "Reverb shimmer", 0.0f, 100.0f, 0.0f));
-        l.add(std::make_unique<juce::AudioParameterChoice>(juce::ParameterID{ids::plShimmerInt, kVersion}, "Reverb shimmer interval", juce::StringArray{"Octave", "Octave + 5th"}, 0));
-    }
-    l.add(std::make_unique<juce::AudioParameterBool>(juce::ParameterID{ids::phOn, kVersion}, "Phaser", false));
-    {
-        juce::NormalisableRange<float> speed(0.1f, 8.0f, 0.0f);
-        speed.setSkewForCentre(1.0f);
-        l.add(std::make_unique<juce::AudioParameterFloat>(juce::ParameterID{ids::phSpeed, kVersion}, "Phaser speed", speed, 0.8f,
-                                                           juce::AudioParameterFloatAttributes().withLabel("Hz").withStringFromValueFunction([](float v, int) { return juce::String(v, 2); })));
-    }
-    l.add(std::make_unique<juce::AudioParameterBool>(juce::ParameterID{ids::phIntense, kVersion}, "Phaser intense", false));
-    l.add(std::make_unique<juce::AudioParameterChoice>(juce::ParameterID{ids::phPost, kVersion}, "Phaser position", juce::StringArray{"Pre amp", "Post amp"}, 0));
-    l.add(std::make_unique<juce::AudioParameterBool>(juce::ParameterID{ids::chOn, kVersion}, "Chorus", false));
-    l.add(std::make_unique<juce::AudioParameterChoice>(juce::ParameterID{ids::chMode, kVersion}, "Chorus mode", juce::StringArray{"CE-2", "Juno"}, 0));
-    {
-        juce::NormalisableRange<float> rate(0.1f, 8.0f, 0.0f);
-        rate.setSkewForCentre(1.4f);
-        l.add(std::make_unique<juce::AudioParameterFloat>(juce::ParameterID{ids::chRate, kVersion}, "Chorus rate", rate, 1.2f,
-                                                           juce::AudioParameterFloatAttributes().withLabel("Hz").withStringFromValueFunction([](float v, int) { return juce::String(v, 2); })));
-    }
-    l.add(std::make_unique<juce::AudioParameterFloat>(juce::ParameterID{ids::chDepth, kVersion}, "Chorus depth", juce::NormalisableRange<float>(0.0f, 100.0f, 0.0f), 50.0f,
-                                                       juce::AudioParameterFloatAttributes().withLabel("%").withStringFromValueFunction([](float v, int) { return juce::String(v, 0); })));
-    l.add(std::make_unique<juce::AudioParameterChoice>(juce::ParameterID{ids::chJuno, kVersion}, "Chorus Juno button", juce::StringArray{"I", "II", "I+II"}, 0));
-    l.add(std::make_unique<juce::AudioParameterChoice>(juce::ParameterID{ids::chPost, kVersion}, "Chorus position", juce::StringArray{"Pre amp", "Post amp"}, 1));
-    l.add(std::make_unique<juce::AudioParameterBool>(juce::ParameterID{ids::vbOn, kVersion}, "Vibe", false));
-    {
-        juce::NormalisableRange<float> speed(0.3f, 10.0f, 0.0f);
-        speed.setSkewForCentre(3.0f);
-        l.add(std::make_unique<juce::AudioParameterFloat>(juce::ParameterID{ids::vbSpeed, kVersion}, "Vibe speed", speed, 3.0f,
-                                                           juce::AudioParameterFloatAttributes().withLabel("Hz").withStringFromValueFunction([](float v, int) { return juce::String(v, 2); })));
-    }
-    l.add(std::make_unique<juce::AudioParameterFloat>(juce::ParameterID{ids::vbIntensity, kVersion}, "Vibe intensity", juce::NormalisableRange<float>(0.0f, 100.0f, 0.0f), 70.0f,
-                                                       juce::AudioParameterFloatAttributes().withLabel("%").withStringFromValueFunction([](float v, int) { return juce::String(v, 0); })));
-    l.add(std::make_unique<juce::AudioParameterBool>(juce::ParameterID{ids::vbVibrato, kVersion}, "Vibe vibrato", false));
-    l.add(std::make_unique<juce::AudioParameterChoice>(juce::ParameterID{ids::vbPost, kVersion}, "Vibe position", juce::StringArray{"Pre amp", "Post amp"}, 0));
-    l.add(std::make_unique<juce::AudioParameterBool>(juce::ParameterID{ids::compOn, kVersion}, "Compressor", false));
-    l.add(knob(ids::compSustain, "Compressor sustain", 5.0f));
-    l.add(knob(ids::compBlend, "Compressor blend", 7.0f));
-    l.add(knob(ids::compTone, "Compressor tone", 5.0f));
-    l.add(knob(ids::compLevel, "Compressor level", 7.5f));
-    l.add(std::make_unique<juce::AudioParameterBool>(juce::ParameterID{ids::compFast, kVersion}, "Compressor fast release", false));
-    l.add(std::make_unique<juce::AudioParameterBool>(juce::ParameterID{ids::nmpOn, kVersion}, "NAM pedal", false));
-    l.add(dbParam(ids::nmpDrive, "NAM pedal drive"));
-    l.add(dbParam(ids::nmpLevel, "NAM pedal level"));
+    RackState::addParams(l, sas::ModuleType::Eq, 0);
+    RackState::addParams(l, sas::ModuleType::Pitch, 0);
+    RackState::addParams(l, sas::ModuleType::Gate, 0);
+    RackState::addParams(l, sas::ModuleType::Delay, 0);
+    RackState::addParams(l, sas::ModuleType::Reverb, 0);
+    RackState::addParams(l, sas::ModuleType::Phaser, 0);
+    l.add(std::make_unique<juce::AudioParameterChoice>(juce::ParameterID{ids::phPost, kVersion}, "Phaser position", juce::StringArray{"Pre amp", "Post amp"}, 0,
+                                                       juce::AudioParameterChoiceAttributes().withAutomatable(false)));  // read once, to place a module of an old project
+    RackState::addParams(l, sas::ModuleType::Chorus, 0);
+    l.add(std::make_unique<juce::AudioParameterChoice>(juce::ParameterID{ids::chPost, kVersion}, "Chorus position", juce::StringArray{"Pre amp", "Post amp"}, 1,
+                                                       juce::AudioParameterChoiceAttributes().withAutomatable(false)));  // read once, to place a module of an old project
+    RackState::addParams(l, sas::ModuleType::Vibe, 0);
+    l.add(std::make_unique<juce::AudioParameterChoice>(juce::ParameterID{ids::vbPost, kVersion}, "Vibe position", juce::StringArray{"Pre amp", "Post amp"}, 0,
+                                                       juce::AudioParameterChoiceAttributes().withAutomatable(false)));  // read once, to place a module of an old project
+    RackState::addParams(l, sas::ModuleType::Compressor, 0);
+    RackState::addParams(l, sas::ModuleType::NamPedal, 0);
     l.add(std::make_unique<juce::AudioParameterBool>(juce::ParameterID{ids::tunerOn, kVersion}, "Tuner", false));
     l.add(std::make_unique<juce::AudioParameterBool>(juce::ParameterID{ids::tunerMute, kVersion}, "Tuner mutes the output", true));
     l.add(std::make_unique<juce::AudioParameterFloat>(juce::ParameterID{ids::tunerRef, kVersion}, "Tuner reference", juce::NormalisableRange<float>(430.0f, 450.0f, 1.0f), 440.0f,
@@ -204,6 +97,7 @@ Layout SasProcessor::createLayout(const std::vector<sas::AmpDef>& defs) {
     l.add(std::make_unique<juce::AudioParameterChoice>(
         juce::ParameterID{ids::unit, kVersion}, "Unit",
         juce::StringArray{"Ideal", "Unit 1", "Unit 2", "Unit 3", "Unit 4", "Unit 5", "Unit 6", "Unit 7", "Unit 8", "Unit 9"}, 0));
+    RackState::addExtraInstances(l);
     return l;
 }
 
@@ -982,6 +876,9 @@ void SasProcessor::getStateInformation(juce::MemoryBlock& dest) {
             }
         }
     }
+    while (state.getChildWithName("RACK").isValid()) state.removeChild(state.getChildWithName("RACK"), nullptr);
+    state.appendChild(RackState::toTree(rackOrder_), nullptr);
+    state.setProperty("rackVersion", RackState::kRackVersion, nullptr);
     state.removeProperty("namData", nullptr);
     state.removeProperty("namName", nullptr);
     state.removeProperty("namCabData", nullptr);
@@ -1017,6 +914,9 @@ void SasProcessor::setStateInformation(const void* data, int size) {
     if (!xml || !xml->hasTagName(apvts.state.getType())) return;
     const auto tree = juce::ValueTree::fromXml(*xml);
     apvts.replaceState(tree);
+    // A state from before the rack has no order: it comes from the old parameters.
+    if (const auto rack = tree.getChildWithName("RACK"); rack.isValid()) rackOrder_ = RackState::fromTree(rack);
+    else rackOrder_ = RackState::fromLegacy(apvts, tree.hasProperty("namPedalData"));
     for (int s = 0; s < kIrSlots; ++s) {
         if (tree.hasProperty(kIrDataKey[s])) {
             juce::MemoryOutputStream out;

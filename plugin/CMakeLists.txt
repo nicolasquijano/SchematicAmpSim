@@ -31,7 +31,9 @@ target_sources(SchematicAmpSim PRIVATE
   AmpFace.cpp
   AmpFace.h
   PluginEditor.cpp
-  PluginEditor.h)
+  PluginEditor.h
+  RackState.cpp
+  RackState.h)
 
 target_compile_definitions(SchematicAmpSim PUBLIC
   JUCE_WEB_BROWSER=0
