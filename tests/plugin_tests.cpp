@@ -1546,3 +1546,29 @@ TEST_CASE("NAM pedal: a model in front of the amp plays when the switch is on, d
     proc.clearNamPedal();
     CHECK(!proc.namPedalLoaded());
 }
+
+// ---------------------------------------------------------------- modular rack: reference of the fixed-order chain
+
+#include "legacy_reference.h"
+
+TEST_CASE("legacy reference renders are stable and finite", "[rack]") {
+    JuceInit init;
+    const auto in = legacy::input();
+    for (const auto& c : legacy::cases()) {
+        SECTION(c.name) {
+            SasProcessor p;
+            c.setup(p);
+            const auto out = legacy::render(p, in);
+            double energy = 0.0;
+            for (float v : out) {
+                REQUIRE(std::isfinite(v));
+                energy += double(v) * v;
+            }
+            CHECK(std::sqrt(energy / double(out.size())) > 1e-6);
+            if (std::getenv("SAS_WRITE_GOLDEN")) legacy::writeGolden(c.name, out);
+            const auto ref = legacy::readGolden(c.name);
+            REQUIRE(ref.size() == out.size());
+            for (std::size_t i = 0; i < out.size(); ++i) REQUIRE(std::abs(out[i] - ref[i]) <= 1e-5f);
+        }
+    }
+}

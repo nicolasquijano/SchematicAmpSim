@@ -225,6 +225,21 @@ Recomendación: v2 **solo Efficient** (y Lite/Eco si las pruebas salen bien); no
   plate) es de otro orden de magnitud. **Hay que medirlo** (etapa 0): `bench_modules` por módulo, a 48/96 kHz, con y sin cola.
 - Casos caros a vigilar: **NAM pedal** (red neuronal, depende del modelo), **reverb con shimmer** (pitch shifter dentro de la cola), **pitch** (ventana de
   correlación), y el **Overdrive** independiente (2x). Por eso el tope de instancias: NAM pedal 2, Pitch 2, Reverb 2.
+- Medido con `sas_bench_modules` (% de un núcleo, 5 s de ruido, bloques de 256; el TS está medido al doble de tasa pero con una muestra por muestra del host, así que el 2x real vale aproximadamente el doble; el NAM es el modelo de ejemplo `wavenet.nam`, un modelo real puede costar mucho más):
+
+| Módulo | 48 kHz | 96 kHz |
+|---|---|---|
+| gate | 0,02 % | 0,03 % |
+| compresor (circuito) | 14,27 % | 24,93 % |
+| overdrive TS | 0,96 % | 1,73 % |
+| phaser / chorus / vibe | 0,13 / 0,08 / 0,28 % | 0,28 / 0,16 / 0,58 % |
+| pitch +7 | 0,28 % | 0,89 % |
+| EQ 5 bandas | 0,17 % | 0,34 % |
+| delay | 0,06 % | 0,12 % |
+| reverb plate / con shimmer | 0,47 / 0,93 % | 0,95 / 2,47 % |
+| NAM pedal (ejemplo) | 0,42 % | 0,84 % |
+
+  El **compresor** es el módulo caro (resuelve un circuito): los topes de instancias de la sección 4.1 se mantienen (Compresor 2).
 - Un módulo "off" no cuesta nada (se salta), salvo mientras suena su cola (`tailActive`).
 - El tope global de 12 acota el peor caso; además el editor muestra el **CPU por módulo** (medido con 2 lecturas del reloj de alta resolución por módulo y bloque,
   promediado) y un total, y resalta en ámbar el módulo más caro. Sin tope duro por CPU: la decisión de usar tres reverbs es del jugador.

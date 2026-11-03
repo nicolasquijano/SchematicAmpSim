@@ -49,3 +49,7 @@ set_target_properties(sas_compare_rate PROPERTIES INTERPROCEDURAL_OPTIMIZATION O
 # CPU of the whole chain per quality (Normal, Normal1x, Lite).
 add_executable(sas_bench_chain bench_chain.cpp)
 target_link_libraries(sas_bench_chain PRIVATE sas_engine sas_amps)
+
+# CPU of every rack module (docs/MODULAR_RACK.md, section 6).
+add_executable(sas_bench_modules bench_modules.cpp)
+target_link_libraries(sas_bench_modules PRIVATE sas_engine sas_amps)

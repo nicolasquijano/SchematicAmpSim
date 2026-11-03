@@ -41,7 +41,7 @@ add_executable(sas_plugin_tests plugin_tests.cpp)
 target_include_directories(sas_plugin_tests PRIVATE ${CMAKE_SOURCE_DIR}/plugin)
 target_link_libraries(sas_plugin_tests PRIVATE SchematicAmpSim sas_engine sas_amps juce::juce_audio_utils juce::juce_audio_formats
   juce::juce_dsp juce::juce_recommended_config_flags Catch2::Catch2WithMain)
-target_compile_definitions(sas_plugin_tests PRIVATE JUCE_WEB_BROWSER=0 JUCE_USE_CURL=0 SAS_NAM_EXAMPLES_DIR="${nam_SOURCE_DIR}/example_models")
+target_compile_definitions(sas_plugin_tests PRIVATE SAS_GOLDEN_DIR="${CMAKE_SOURCE_DIR}/golden" JUCE_WEB_BROWSER=0 JUCE_USE_CURL=0 SAS_NAM_EXAMPLES_DIR="${nam_SOURCE_DIR}/example_models")
 
 list(APPEND CMAKE_MODULE_PATH "${catch2_SOURCE_DIR}/extras")
 include(Catch)
