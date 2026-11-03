@@ -6,7 +6,7 @@ if(APPLE)
   set(CMAKE_OSX_DEPLOYMENT_TARGET "11.0" CACHE STRING "Oldest macOS the plugin runs on")
 endif()
 
-project(SchematicAmpSim VERSION 0.2.0 LANGUAGES C CXX)
+project(SchematicAmpSim VERSION 0.3.0 LANGUAGES C CXX)
 
 # The version lives here and nowhere else: bump VERSION above (and the suffix below) for a release, see docs/RELEASING.md.
 # "-beta" while the saved-project format may still change; empty for a stable 1.0 and later.
@@ -41,7 +41,15 @@ FetchContent_Declare(nlohmann_json
   GIT_REPOSITORY https://github.com/nlohmann/json.git
   GIT_TAG        v3.11.3
   GIT_SHALLOW    TRUE)
-FetchContent_MakeAvailable(JUCE Catch2 nlohmann_json)
+# Neural Amp Modeler Core (MIT): reads .nam models and runs them. Only its sources are used (SOURCE_SUBDIR points at a folder that does not
+# exist so its own CMake project is not added); Eigen comes in as its submodule. Never copied into the repository (third_party/ is ignored).
+FetchContent_Declare(nam
+  GIT_REPOSITORY https://github.com/sdatkinson/NeuralAmpModelerCore.git
+  GIT_TAG        v0.6.0
+  GIT_SHALLOW    TRUE
+  GIT_SUBMODULES Dependencies/eigen
+  SOURCE_SUBDIR  sas-not-a-cmake-project)
+FetchContent_MakeAvailable(JUCE Catch2 nlohmann_json nam)
 
 # ASIO (Windows, low-latency audio for the standalone application). Steinberg's ASIO SDK is offered under the Steinberg ASIO License or
 # under the GPL version 3; this project uses it under the GPL version 3 (the project is AGPL-3.0, which allows it). The SDK is fetched

@@ -4,12 +4,16 @@
 // decay gain (set from the decay time) and a low-pass (the tone), and the stereo output is taken from different lines for each ear. The
 // line lengths drift a few samples with slow oscillators so the tail does not ring on a pitch. A high-pass on the wet signal keeps the
 // low end clean. Switching it off lets the tail ring out.
+// Shimmer: a copy of the tail, shifted up an octave (or an octave and a fifth), is fed back into the input, so each pass of the tail climbs
+// higher and brighter: the sound of "shimmer" reverbs. The pitch shifter adds about 12 ms to that loop.
 
 #include <algorithm>
 #include <array>
 #include <cmath>
 #include <cstddef>
 #include <vector>
+
+#include "sas/pitch_shifter.h"
 
 namespace sas {
 
@@ -22,6 +26,8 @@ struct PlateParams {
     double lowCutHz = 150.0;  // high-pass on the wet signal
     double mix = 0.22;        // 0 .. 1
     double mod = 0.3;         // 0 .. 1, drift of the delay lines
+    double shimmer = 0.0;     // 0 .. 1, how much of the shifted tail is fed back (0 = off, and the shifter costs nothing)
+    bool shimmerFifth = false;  // false: +12 semitones, true: +19 (an octave and a fifth)
 };
 
 class PlateReverb {
@@ -48,6 +54,8 @@ public:
         for (auto& b : lineBuf_) std::fill(b.begin(), b.end(), 0.0f);
         for (auto& b : apBuf_) std::fill(b.begin(), b.end(), 0.0f);
         std::fill(preBuf_.begin(), preBuf_.end(), 0.0f);
+        shifter_.prepare(fs_);
+        shimmerBack_ = 0.0f;
         lineW_ = apW_ = preW_ = 0;
         lp_.fill(0.0f);
         hpState_[0] = hpState_[1] = 0.0f;
@@ -63,7 +71,7 @@ public:
                 for (auto& b : apBuf_) std::fill(b.begin(), b.end(), 0.0f);
             }
         }
-        if (target_.on && !p.on) tailLeft_ = long((std::min(p.decaySec, 9.0) * 1.3 + p.preMs * 0.001 + 0.2) * fs_);
+        if (target_.on && !p.on) tailLeft_ = long((std::min(p.decaySec, 9.0) * (p.shimmer > 0.0 ? 1.7 : 1.3) + p.preMs * 0.001 + 0.2) * fs_);
         if (!target_.on && p.on) tailLeft_ = 0;
         target_ = p;
         if (!ready_) {
@@ -85,6 +93,8 @@ public:
         std::array<float, kLines> gain{};
         for (int i = 0; i < kLines; ++i) gain[i] = float(std::pow(10.0, -3.0 * len_[i] / (fs_ * std::max(0.1, target_.decaySec))));
         const double depth = target_.mod * 6.0 * fs_ / 48000.0;
+        const double shimmerRatio = PitchShifter::ratioFromSemitones(target_.shimmerFifth ? 19.0 : 12.0);
+        const float shimmerGain = float(0.55 * std::clamp(target_.shimmer, 0.0, 1.0));
         for (std::size_t s = 0; s < n; ++s) {
             preCur_ += (target_.preMs - preCur_) * kParam;
             mixCur_ += (target_.mix - mixCur_) * kParam;
@@ -102,6 +112,7 @@ public:
                 x = z + 0.7f * v;
             }
             ++apW_;
+            x += shimmerBack_;  // the shifted tail of a moment ago (zero when the shimmer is off)
             // The eight lines.
             std::array<float, kLines> f{};
             for (int i = 0; i < kLines; ++i) {
@@ -125,6 +136,15 @@ public:
             ++lineW_;
             float wl = (lp_[0] + lp_[2] - lp_[4] - lp_[6]) * kOut;
             float wr = (lp_[1] - lp_[3] + lp_[5] - lp_[7]) * kOut;
+            // Shimmer: the wet signal up an octave, softly limited so the loop can never run away, back into the input next sample.
+            if (target_.shimmer > 0.0) {
+                float shifted = 0.0f;
+                const float wetMono = 0.5f * (wl + wr);
+                shifter_.process(&wetMono, &shifted, 1, shimmerRatio);
+                shimmerBack_ = std::tanh(shifted * 1.5f) * (1.0f / 1.5f) * shimmerGain;
+            } else {
+                shimmerBack_ = 0.0f;
+            }
             // High-pass on the wet signal.
             hpState_[0] += aLow * (wl - hpState_[0]);
             hpState_[1] += aLow * (wr - hpState_[1]);
@@ -143,6 +163,8 @@ public:
                 std::fill(preBuf_.begin(), preBuf_.end(), 0.0f);
                 lp_.fill(0.0f);
                 hpState_[0] = hpState_[1] = 0.0f;
+                shifter_.reset();
+                shimmerBack_ = 0.0f;
             }
         }
     }
@@ -181,6 +203,8 @@ private:
     std::array<double, kLines> len_{}, phase_{};
     std::array<float, kLines> lp_{};
     float hpState_[2] = {0, 0};
+    PitchShifter shifter_;
+    float shimmerBack_ = 0.0f;
     PlateParams target_;
     bool ready_ = false;
     double preCur_ = 15.0, mixCur_ = 0.22, inGain_ = 0.0;

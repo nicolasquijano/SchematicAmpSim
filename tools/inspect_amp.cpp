@@ -283,11 +283,12 @@ static int run(int argc, char** argv) {
 
     // Where does the signal go? Peak of selected nodes through the amp (first jack, default knobs).
     std::printf("\nstage peaks (volts, 220 Hz, first jack, default knobs):\n");
-    const char* preNodes[] = {"m1", "p4", "pb1", "pb2", "gb1", "gb2", "p5", "v1w", "p6a", "p6b", "p7a", "k7b", "so", "k8", "p8", "mo", "y", "o"};
+    const char* preNodes[] = {"p1", "aa", "bb", "ss", "nw", "p1a", "c7n", "x1", "p3b", "sj", "g4b", "p4b", "ci", "w3", "nm", "om", "mm", "m1", "p4", "pb1", "pb2", "gb1", "gb2", "p5", "v1w", "p6a", "p6b", "p7a", "k7b", "so", "k8", "p8", "mo", "y", "o"};
     const char* powNodes[] = {"pin", "gp", "ga", "pga", "g1", "t4", "pa", "pb", "g12", "g45", "pt", "t16"};
     for (double amp : {0.01, 0.5}) {
         sas::FullAmp a(def, kFs);
         a.setKnobs(knobs, def.power.presenceDefault);
+        a.setJack(std::size_t(std::getenv("SAS_JACK") ? std::atoi(std::getenv("SAS_JACK")) : 0));
         std::map<std::string, double> peak;
         const std::size_t n = std::size_t(0.5 * kFs);
         for (std::size_t i = 0; i < n; ++i) {

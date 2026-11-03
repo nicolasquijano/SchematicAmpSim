@@ -14,6 +14,8 @@ struct ReverbPreset {
     const char* name;
     bool on, hall;
     double decaySec, preMs, toneHz, lowCutHz, mix, mod;  // mix and mod in percent
+    double shimmer;                                       // percent; 0 = off
+    bool shimmerFifth;                                    // the shimmer goes up an octave and a fifth instead of an octave
 };
 
 inline constexpr DelayPreset kDelayPresets[] = {
@@ -36,20 +38,24 @@ inline constexpr DelayPreset kDelayPresets[] = {
 inline constexpr int kDelayPresetCount = int(sizeof(kDelayPresets) / sizeof(kDelayPresets[0]));
 
 inline constexpr ReverbPreset kReverbPresets[] = {
-    {"Off", false, false, 2.0, 15, 8000, 150, 22, 30},
+    {"Off", false, false, 2.0, 15, 8000, 150, 22, 30, 0, false},
     // A small room: a sense of space with almost no tail.
-    {"Tight room", true, false, 0.6, 5, 7500, 150, 16, 20},
+    {"Tight room", true, false, 0.6, 5, 7500, 150, 16, 20, 0, false},
     // A presence behind the guitar without washing it.
-    {"Short plate", true, false, 1.1, 8, 9000, 150, 20, 25},
-    // A bright plate: shimmer on top, good for cleans and chords.
-    {"Bright plate", true, false, 1.8, 10, 12000, 140, 24, 30},
+    {"Short plate", true, false, 1.1, 8, 9000, 150, 20, 25, 0, false},
+    // A bright plate: air on top, good for cleans and chords.
+    {"Bright plate", true, false, 1.8, 10, 12000, 140, 24, 30, 0, false},
     // A warm, darker plate that sits well behind a distorted guitar.
-    {"Warm plate", true, false, 2.2, 20, 5500, 180, 22, 30},
+    {"Warm plate", true, false, 2.2, 20, 5500, 180, 22, 30, 0, false},
     // A big room: slow, soft and far away, for slow chords and swells.
-    {"Big hall", true, true, 3.8, 35, 6500, 200, 28, 40},
+    {"Big hall", true, true, 3.8, 35, 6500, 200, 28, 40, 0, false},
     // A very long hall: for ambient parts and single held notes.
-    {"Cathedral", true, true, 7.0, 60, 5000, 250, 30, 50},
+    {"Cathedral", true, true, 7.0, 60, 5000, 250, 30, 50, 0, false},
     // A plate with a long, moving tail that fills the space.
-    {"Ambient wash", true, false, 5.5, 30, 6500, 200, 40, 60},
+    {"Ambient wash", true, false, 5.5, 30, 6500, 200, 40, 60, 0, false},
+    // The tail climbs an octave on every pass: bright, glassy and slowly rising.
+    {"Shimmer", true, false, 5.0, 20, 9000, 250, 35, 55, 45, false},
+    // The same with an octave and a fifth: more ethereal, for swells and held chords.
+    {"Angelic shimmer", true, true, 7.0, 40, 8000, 280, 32, 60, 35, true},
 };
 inline constexpr int kReverbPresetCount = int(sizeof(kReverbPresets) / sizeof(kReverbPresets[0]));

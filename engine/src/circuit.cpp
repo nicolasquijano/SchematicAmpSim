@@ -14,12 +14,14 @@ namespace {
 
 constexpr double kContFirstStep = 0.25;
 constexpr double kContGrowth = 1.6;
-constexpr std::size_t kContStageIters = 14;
 constexpr double kGmin = 1e-12;   // conductance from every node to ground
 constexpr double kGShort = 1e3;   // shorts inductor windings in the DC solve
 constexpr double kPi = 3.14159265358979323846;
 
 // SPICE-style junction limiting for a grid-cathode voltage (see circuit.rs).
+// Grid-cathode voltage below which a grid draws no appreciable current (a little under the onset used by limitGrid).
+constexpr double kGridFreeTop = 0.3;
+
 inline double limitGrid(double vnew, double vold) {
     constexpr double onset = 0.4, scale = 0.1;
     if (vnew > onset && vnew - vold > 2.0 * scale) {
@@ -522,6 +524,7 @@ bool Solver::newton(std::size_t maxIter, bool reuseLu) {
     const std::size_t p = p_;
     if (p == 0) return true;
     const double tol = tolerance;
+    if (fast_ && resetStepHint) lambdaHint_ = 1.0;
     const bool carryLu = chord && reuseLu && luValid_;  // the previous sample's factors serve the first iteration
     if (!carryLu) luValid_ = false;
     bool staleFirst = carryLu, retried = false;
@@ -535,7 +538,12 @@ bool Solver::newton(std::size_t maxIter, bool reuseLu) {
             if (gridPort_[r] && dx_[r] > 0.0) {
                 const double limited = limitGrid(x_[r] + dx_[r], x_[r]);
                 lambda = std::min(lambda, std::max((limited - x_[r]) / dx_[r], 1e-3));
-                lambda = std::min(lambda, std::max(gridUpLimit_[r] / dx_[r], 1e-3));
+                // The cap on how far a grid may rise in one iteration guards against landing deep in conduction, where the current is
+                // exponential. A step that stays below the conduction onset cannot do that, so inside that region the grid may take the full step.
+                // Only in the fast modes (tables): the formula mode is the one that matches the Rust reference to the last digits, and a
+                // different path of iterations lands on a different point within the tolerance.
+                const double room = fast_ ? std::max(gridUpLimit_[r], kGridFreeTop - x_[r]) : gridUpLimit_[r];
+                lambda = std::min(lambda, std::max(room / dx_[r], 1e-3));
             }
         }
         lambda = std::min(lambda, lambdaHint_);
@@ -554,6 +562,12 @@ bool Solver::newton(std::size_t maxIter, bool reuseLu) {
             }
             firstTrial = false;
             lambda *= 0.5;
+        }
+        if (trace) {
+            std::size_t worst = 0;
+            for (std::size_t r = 1; r < p; ++r)
+                if (std::abs(f_[r]) > std::abs(f_[worst])) worst = r;
+            trace(traceUser, NewtonTrace{it, accepted ? lambda : 0.0, fmax_, worst, accepted, x_.data()});
         }
         if (!accepted) {
             luValid_ = false;
@@ -579,13 +593,13 @@ bool Solver::continuation() {
     x_ = xGood_;
     eval(false);
     double tau = 0.0, dtau = kContFirstStep;
-    int budget = 40;  // bounded so one hard sample cannot stall an audio callback
+    int budget = contBudget;  // bounded so one hard sample cannot stall an audio callback
     while (tau < 1.0 && budget > 0) {
         --budget;
         const double t = std::min(tau + dtau, 1.0);
         for (std::size_t j = 0; j < p; ++j) pvec_[j] = pGood_[j] + t * (pTarget_[j] - pGood_[j]);
         xSave_ = x_;
-        if (newton(kContStageIters)) {
+        if (newton(contStageIters)) {
             tau = t;
             dtau = std::min(dtau * kContGrowth, 1.0);
         } else {
@@ -661,6 +675,16 @@ void Solver::reconstructVoltages() {
     }
 }
 
+std::size_t Solver::portDevice(std::size_t port) const {
+    for (std::size_t d = 0; d < devs_.size(); ++d)
+        if (port >= devs_[d].base && port < devs_[d].base + devs_[d].np) return d;
+    return NONE;
+}
+
+int Solver::deviceKind(std::size_t device) const { return device < devs_.size() ? int(devs_[device].dev.kind) : -1; }
+
+std::size_t Solver::devicePortBase(std::size_t device) const { return device < devs_.size() ? devs_[device].base : NONE; }
+
 void Solver::step() {
     SAS_PROF(ProfStep);
     std::fill(r_.begin(), r_.end(), 0.0);
@@ -693,7 +717,7 @@ void Solver::step() {
     }
     computeSrAndP();
     const bool plainOk = newton(plainIterations, true);
-    const bool solved = plainOk || continuation() || newton(30);
+    const bool solved = plainOk || continuation() || (finalIterations > 0 && newton(finalIterations));
     if (solved) {
         xGood_ = x_;
         pGood_ = pvec_;

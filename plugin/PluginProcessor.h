@@ -74,6 +74,9 @@ inline constexpr const char* compSustain = "comp_sustain";
 inline constexpr const char* compBlend = "comp_blend";
 inline constexpr const char* compTone = "comp_tone";
 inline constexpr const char* compLevel = "comp_level";
+inline constexpr const char* nmpOn = "nam_pedal_on";           // a NAM model of a pedal in front of the amp
+inline constexpr const char* nmpDrive = "nam_pedal_drive";     // dB into the model
+inline constexpr const char* nmpLevel = "nam_pedal_level";     // dB out of the model
 inline constexpr const char* compFast = "comp_fast";        // the pedal's Attack switch: fast release
 inline constexpr const char* tunerOn = "tuner_on";        // the chromatic tuner listens to the input
 inline constexpr const char* tunerMute = "tuner_mute";    // and silences the output while it is on
@@ -119,10 +122,12 @@ inline constexpr const char* plTone = "pl_tone";        // Hz, high-cut in the t
 inline constexpr const char* plLow = "pl_low";          // Hz, high-pass on the wet signal
 inline constexpr const char* plMix = "pl_mix";          // percent
 inline constexpr const char* plMod = "pl_mod";          // percent
+inline constexpr const char* plShimmer = "pl_shim";    // percent: the shifted tail fed back (0 = off)
+inline constexpr const char* plShimmerInt = "pl_shimint";  // 0 = octave, 1 = octave and a fifth
 }  // namespace ids
 
 // Cabinet source. Order is saved in projects: append only.
-enum class CabMode { Off = 0, Filter = 1, Ir = 2 };
+enum class CabMode { Off = 0, Filter = 1, Ir = 2, Nam = 3 };
 
 class SasProcessor final : public juce::AudioProcessor {
 public:
@@ -159,6 +164,28 @@ public:
     static int builtInImpulseResponseCount();
     static juce::String builtInImpulseResponseName(int index);
     bool loadBuiltInImpulseResponse(int index, int slot = 0);
+    // The Neural Amp Modeler loader amp ("NAM Loader"): the .nam model it runs. Message-thread calls. The model's bytes are kept in the project
+    // state, so a project opens with its model on another machine. A model that fails to load leaves the previous one in place.
+    bool loadNamModel(const juce::File& file);
+    void clearNamModel();
+    bool namModelLoaded() const { return namActive_.load() != nullptr; }
+    juce::String namModelName() const;
+    // Why the last load failed, or a warning about the loaded model (trained at another sample rate); empty when there is nothing to say.
+    juce::String namModelMessage() const;
+    // A Neural Amp Modeler model used as the cabinet ("NAM" in the Cabinet selector): captures of a speaker cabinet and microphone, run after
+    // the amp and the speaker in place of the impulse responses. Same rules as the amp's model: message-thread calls, kept in the project state.
+    bool loadNamCab(const juce::File& file);
+    void clearNamCab();
+    bool namCabLoaded() const { return namCabActive_.load() != nullptr; }
+    juce::String namCabName() const;
+    juce::String namCabMessage() const;
+    // A Neural Amp Modeler model of a pedal (overdrive, boost, fuzz...) in front of the amp, behind the other pedals of the Mod page. Same rules as the amp's
+    // model: message-thread calls, kept in the project state; it costs nothing while the switch is off.
+    bool loadNamPedal(const juce::File& file);
+    void clearNamPedal();
+    bool namPedalLoaded() const { return namPedalActive_.load() != nullptr; }
+    juce::String namPedalName() const;
+    juce::String namPedalMessage() const;
     // Presets: the whole state (amp, knobs, effects, EQ, pitch, impulse responses) as a text file, so a standalone session can keep its settings.
     static juce::File presetFolder();
     bool savePreset(const juce::File& file);
@@ -198,6 +225,9 @@ private:
 
     static juce::AudioProcessorValueTreeState::ParameterLayout createLayout(const std::vector<sas::AmpDef>& defs);
     bool loadImpulseResponseFromMemory(const void* data, std::size_t size, const juce::String& name, int slot);
+    bool loadNamFromMemory(const void* data, std::size_t size, const juce::String& name);
+    bool loadNamCabFromMemory(const void* data, std::size_t size, const juce::String& name);
+    bool loadNamPedalFromMemory(const void* data, std::size_t size, const juce::String& name);
     bool anyIrLoaded() const { return ir_[0].loaded.load() || ir_[1].loaded.load(); }
     sas::ChainSettings readSettings(bool irAvailable);
     void swapInBuiltChain();
@@ -242,6 +272,30 @@ private:
     float widthNow_ = 0.0f;             // the A / B width in force at the end of the last block
     sas::StereoDouble double_;
     mutable juce::CriticalSection irLock_;  // guards the slots' bytes / name / curve (message thread vs state calls)
+
+    // The NAM model: owned here, handed to the chain as a plain pointer (namActive_). The model before the current one is kept for one more
+    // load so the audio thread, which may still be inside it, never sees it freed.
+    std::shared_ptr<sas::NamModel> nam_, namPrev_;
+    std::atomic<sas::NamModel*> namActive_{nullptr};
+    juce::MemoryBlock namBytes_;
+    juce::String namName_, namMessage_;
+    double namRate_ = 0.0;
+    mutable juce::CriticalSection namLock_;
+    // The NAM cabinet, the same way.
+    std::shared_ptr<sas::NamModel> namCab_, namCabPrev_;
+    std::atomic<sas::NamModel*> namCabActive_{nullptr};
+    juce::MemoryBlock namCabBytes_;
+    juce::String namCabName_, namCabMessage_;
+    double namCabRate_ = 0.0;
+    bool namCabWasActive_ = false;
+    // The NAM pedal, the same way, with the gains in force at the end of the last block (ramped to the new ones).
+    std::shared_ptr<sas::NamModel> namPedal_, namPedalPrev_;
+    std::atomic<sas::NamModel*> namPedalActive_{nullptr};
+    juce::MemoryBlock namPedalBytes_;
+    juce::String namPedalName_, namPedalMessage_;
+    double namPedalRate_ = 0.0;
+    bool namPedalWasActive_ = false;
+    float nmpDriveNow_ = 1.0f, nmpLevelNow_ = 1.0f;
 
     sas::NoiseGate gate_;
     sas::PitchShifter pitch_;

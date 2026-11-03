@@ -405,11 +405,11 @@ SasEditor::SasEditor(SasProcessor& p)
       gateThreshold_(p.apvts, ids::gateThreshold, "THRESHOLD"), gateRelease_(p.apvts, ids::gateRelease, "RELEASE"), cable_(p.apvts, ids::cable, "CABLE m"),
       bias_(p.apvts, ids::bias, "BIAS"), wear_(p.apvts, ids::wear, "WEAR"), speaker_(p.apvts, ids::speaker, "DYNAMICS"), blend_(p.apvts, ids::irBlend, "BLEND"),
       compSustain_(p.apvts, ids::compSustain, "SUSTAIN"), compBlend_(p.apvts, ids::compBlend, "BLEND"), compTone_(p.apvts, ids::compTone, "TONE"),
-      compLevel_(p.apvts, ids::compLevel, "LEVEL"), tunerRef_(p.apvts, ids::tunerRef, "REF Hz"),
+      compLevel_(p.apvts, ids::compLevel, "LEVEL"), nmpDrive_(p.apvts, ids::nmpDrive, "DRIVE dB"), nmpLevel_(p.apvts, ids::nmpLevel, "LEVEL dB"), tunerRef_(p.apvts, ids::tunerRef, "REF Hz"),
       stereoWidth_(p.apvts, ids::irWidth, "WIDTH"), doubleAmount_(p.apvts, ids::doubleAmount, "DOUBLE"), doubleTime_(p.apvts, ids::doubleTime, "TIME"), pitchFine_(p.apvts, ids::pitchFine, "FINE cents"), eqHpf_(p.apvts, ids::eqHpf, "HIGH-PASS"), eqLpf_(p.apvts, ids::eqLpf, "LOW-PASS"), eqCurve_(p.apvts),
       dlyTime_(p.apvts, ids::dlyTime, "TIME ms"), dlyFb_(p.apvts, ids::dlyFeedback, "FEEDBACK"), dlyMix_(p.apvts, ids::dlyMix, "MIX"), dlyTone_(p.apvts, ids::dlyTone, "TONE"),
       plDecay_(p.apvts, ids::plDecay, "DECAY s"), plPre_(p.apvts, ids::plPre, "PRE-DELAY"), plTone_(p.apvts, ids::plTone, "TONE"), plLow_(p.apvts, ids::plLow, "LOW CUT"),
-      plMix_(p.apvts, ids::plMix, "MIX"), plMod_(p.apvts, ids::plMod, "MOD"), phSpeed_(p.apvts, ids::phSpeed, "SPEED Hz"),
+      plMix_(p.apvts, ids::plMix, "MIX"), plMod_(p.apvts, ids::plMod, "MOD"), plShimmer_(p.apvts, ids::plShimmer, "SHIMMER"), phSpeed_(p.apvts, ids::phSpeed, "SPEED Hz"),
       chRate_(p.apvts, ids::chRate, "RATE Hz"), chDepth_(p.apvts, ids::chDepth, "DEPTH"),
       vbSpeed_(p.apvts, ids::vbSpeed, "SPEED Hz"), vbIntensity_(p.apvts, ids::vbIntensity, "INTENSITY") {
     setLookAndFeel(&look_);
@@ -460,7 +460,7 @@ SasEditor::SasEditor(SasProcessor& p)
     };
     idleLabel_.setFont(AmpLookAndFeel::font(11.5f));
     addAndMakeVisible(idleLabel_);
-    conditionNote_.setText("Tubes, wear and unit rebuild the circuits; they act in Normal and High quality.", juce::dontSendNotification);
+    conditionNote_.setText("Tubes, wear and unit rebuild the circuits; they act in the Normal, High and Efficient qualities.", juce::dontSendNotification);
     conditionNote_.setFont(AmpLookAndFeel::font(10.5f));
     addAndMakeVisible(conditionNote_);
     // The jack list depends on the amp, so it is filled by showAmp() and wired by hand.
@@ -511,9 +511,6 @@ SasEditor::SasEditor(SasProcessor& p)
     speakerIntenseAtt_ = std::make_unique<juce::AudioProcessorValueTreeState::ButtonAttachment>(p.apvts, ids::speakerIntense, speakerIntense_);
     addAndMakeVisible(vibrato_);
     vibratoAtt_ = std::make_unique<juce::AudioProcessorValueTreeState::ButtonAttachment>(p.apvts, ids::vibOn, vibrato_);
-    addAndMakeVisible(levelMatch_);
-    levelMatch_.setTooltip("Raises the quieter jack so both play at a similar level");
-    levelMatchAtt_ = std::make_unique<juce::AudioProcessorValueTreeState::ButtonAttachment>(p.apvts, ids::levelMatch, levelMatch_);
 
     for (auto* l : {&nameA_, &nameB_}) {
         l->setFont(AmpLookAndFeel::font(11.5f));
@@ -533,6 +530,34 @@ SasEditor::SasEditor(SasProcessor& p)
     loadB_.onClick = [this] { showImpulseMenu(1, loadB_); };
     clearA_.onClick = [this] { processor_.clearImpulseResponse(0); };
     clearB_.onClick = [this] { processor_.clearImpulseResponse(1); };
+
+    for (auto* b : {&namLoad_, &namClear_}) addAndMakeVisible(*b);
+    for (auto* l : {&namName_, &namNote_}) {
+        l->setFont(AmpLookAndFeel::font(12.0f));
+        addAndMakeVisible(*l);
+    }
+    namNote_.setFont(AmpLookAndFeel::font(10.5f));
+    for (auto* c : std::initializer_list<juce::Component*>{&nmpDrive_, &nmpLevel_, &nmpOn_, &nmpLoad_, &nmpClear_, &nmpName_}) addAndMakeVisible(*c);
+    nmpOnAtt_ = std::make_unique<juce::AudioProcessorValueTreeState::ButtonAttachment>(p.apvts, ids::nmpOn, nmpOn_);
+    nmpName_.setFont(AmpLookAndFeel::font(11.0f));
+    nmpLoad_.onClick = [this] { chooseNamPedal(); };
+    nmpClear_.onClick = [this] {
+        processor_.clearNamPedal();
+        refreshNamPedal();
+    };
+    for (auto* b : {&namCabLoad_, &namCabClear_}) addAndMakeVisible(*b);
+    namCabName_.setFont(AmpLookAndFeel::font(11.0f));
+    addAndMakeVisible(namCabName_);
+    namCabLoad_.onClick = [this] { chooseNamCab(); };
+    namCabClear_.onClick = [this] {
+        processor_.clearNamCab();
+        refreshNamCab();
+    };
+    namLoad_.onClick = [this] { chooseNamModel(); };
+    namClear_.onClick = [this] {
+        processor_.clearNamModel();
+        refreshNam();
+    };
 
     addAndMakeVisible(pitchFine_);
     for (auto* c : std::initializer_list<juce::Component*>{&eqHpf_, &eqLpf_, &eqCurve_, &eqOn_, &eqReset_, &eqBandLabel_}) addAndMakeVisible(*c);
@@ -612,7 +637,7 @@ SasEditor::SasEditor(SasProcessor& p)
     styleCombo(vbPos_, ids::vbPost, vbPosAtt_);
     styleCaption(vbPosCaption_, "POSITION");
     // The Space page: delay and reverb.
-    for (auto* k : {&dlyTime_, &dlyFb_, &dlyMix_, &dlyTone_, &plDecay_, &plPre_, &plTone_, &plLow_, &plMix_, &plMod_}) addAndMakeVisible(*k);
+    for (auto* k : {&dlyTime_, &dlyFb_, &dlyMix_, &dlyTone_, &plDecay_, &plPre_, &plTone_, &plLow_, &plMix_, &plMod_, &plShimmer_}) addAndMakeVisible(*k);
     for (auto* b : {&dlyOn_, &dlyPing_, &dlyAnalog_, &plOn_, &plHall_}) addAndMakeVisible(*b);
     dlyOnAtt_ = std::make_unique<juce::AudioProcessorValueTreeState::ButtonAttachment>(p.apvts, ids::dlyOn, dlyOn_);
     dlyPingAtt_ = std::make_unique<juce::AudioProcessorValueTreeState::ButtonAttachment>(p.apvts, ids::dlyPing, dlyPing_);
@@ -622,6 +647,9 @@ SasEditor::SasEditor(SasProcessor& p)
     dlyAnalog_.setTooltip("Darker, steeper repeats with a little saturation and a slow wobble, like a tape or bucket-brigade unit");
     plHall_.setTooltip("Off: a plate. On: a larger, slower room");
     styleCombo(dlySync_, ids::dlySync, dlySyncAtt_);
+    styleCombo(plShimInt_, ids::plShimmerInt, plShimIntAtt_);
+    styleCaption(plShimIntCaption_, "SHIMMER INTERVAL");
+    plShimInt_.setTooltip("How far up the tail is shifted each time it comes back: an octave, or an octave and a fifth");
     styleCaption(dlySyncCaption_, "SYNC TO HOST TEMPO");
     addAndMakeVisible(dlyTap_);
     dlyTap_.setTooltip("Tap the tempo: the time of the delay becomes the gap between your last two taps");
@@ -754,7 +782,7 @@ void SasEditor::applyTheme(const sas::AmpDef& def) {
     look_.setTheme(EditorTheme::from(def.theme));
     for (auto* l : {&ampCaption_, &qualityCaption_, &jackCaption_, &cabCaption_, &pickupCaption_, &tubeCaption_, &noiseCaption_, &unitCaption_, &conditionNote_})
         l->setColour(juce::Label::textColourId, look_.label());
-    for (auto* l : {&nameA_, &nameB_, &blendNote_, &cabNote_}) l->setColour(juce::Label::textColourId, look_.label());
+    for (auto* l : {&nameA_, &nameB_, &blendNote_, &cabNote_, &namName_, &namNote_, &namCabName_, &nmpName_}) l->setColour(juce::Label::textColourId, look_.label());
     sendLookAndFeelChange();
     repaint();
 }
@@ -984,10 +1012,12 @@ void SasEditor::showAmp(int index) {
     bias_.setEnabled(def.power.bias.adjustable());
     bias_.setAlpha(def.power.bias.adjustable() ? 1.0f : 0.4f);
     vibrato_.setVisible(def.preamp.vibrato.present);
-    levelMatch_.setVisible(std::any_of(def.preamp.jacks.begin(), def.preamp.jacks.end(), [](const sas::JackDef& j) { return j.levelDb != 0.0; }));
     const int jackNow = int(processor_.apvts.getRawParameterValue(ids::jack)->load() + 0.5f);
-    jack_.setSelectedItemIndex(juce::jlimit(0, int(def.preamp.jacks.size()) - 1, jackNow), juce::dontSendNotification);
+    if (!def.preamp.jacks.empty()) jack_.setSelectedItemIndex(juce::jlimit(0, int(def.preamp.jacks.size()) - 1, jackNow), juce::dontSendNotification);
     refreshAmpList();
+    refreshNam();
+    refreshNamCab();
+    refreshNamPedal();
     resized();
     repaint();
 }
@@ -1031,6 +1061,9 @@ void SasEditor::timerCallback() {
     // Follows the amp parameter when the host or a restored state changes it.
     if (processor_.selectedAmpIndex() != shownAmp_) showAmp(processor_.selectedAmpIndex());
     if (face_) face_->repaint();  // the jacks follow the parameter
+    refreshNam();
+    refreshNamCab();
+    refreshNamPedal();
     const int jackNow = int(processor_.apvts.getRawParameterValue(ids::jack)->load() + 0.5f);
     if (jackNow < jack_.getNumItems() && jack_.getSelectedItemIndex() != jackNow)
         jack_.setSelectedItemIndex(jackNow, juce::dontSendNotification);
@@ -1137,6 +1170,73 @@ void SasEditor::showImpulseMenu(int slot, juce::Component& anchor) {
             if (auto* cab = processor_.apvts.getParameter(ids::cab)) cab->setValueNotifyingHost(cab->convertTo0to1(2.0f));  // audible right away
         }
     });
+}
+
+void SasEditor::chooseNamModel() {
+    chooser_ = std::make_unique<juce::FileChooser>("Choose a Neural Amp Modeler model", juce::File{}, "*.nam");
+    chooser_->launchAsync(juce::FileBrowserComponent::openMode | juce::FileBrowserComponent::canSelectFiles, [this](const juce::FileChooser& fc) {
+        const auto file = fc.getResult();
+        if (file == juce::File{}) return;
+        if (!processor_.loadNamModel(file))
+            juce::AlertWindow::showMessageBoxAsync(juce::MessageBoxIconType::WarningIcon, "Schematic Amp Sim",
+                                                   "Could not load that model: " + processor_.namModelMessage() + ".");
+        refreshNam();
+    });
+}
+
+// The loader's model name and any message about it; cheap enough to run on the timer.
+void SasEditor::refreshNam() {
+    const bool loaded = processor_.namModelLoaded();
+    const auto name = processor_.namModelName();
+    namName_.setText(loaded ? name : juce::String("No model loaded"), juce::dontSendNotification);
+    namNote_.setText(loaded ? processor_.namModelMessage() : juce::String("Load a .nam file; the signal passes through unchanged until then."),
+                     juce::dontSendNotification);
+    namClear_.setEnabled(loaded);
+}
+
+void SasEditor::chooseNamPedal() {
+    chooser_ = std::make_unique<juce::FileChooser>("Choose a Neural Amp Modeler pedal model", juce::File{}, "*.nam");
+    chooser_->launchAsync(juce::FileBrowserComponent::openMode | juce::FileBrowserComponent::canSelectFiles, [this](const juce::FileChooser& fc) {
+        const auto file = fc.getResult();
+        if (file == juce::File{}) return;
+        if (processor_.loadNamPedal(file)) {
+            if (auto* on = processor_.apvts.getParameter(ids::nmpOn)) on->setValueNotifyingHost(1.0f);  // audible right away
+        } else {
+            juce::AlertWindow::showMessageBoxAsync(juce::MessageBoxIconType::WarningIcon, "Schematic Amp Sim",
+                                                   "Could not load that model: " + processor_.namPedalMessage() + ".");
+        }
+        refreshNamPedal();
+    });
+}
+
+void SasEditor::refreshNamPedal() {
+    const bool loaded = processor_.namPedalLoaded();
+    const auto msg = processor_.namPedalMessage();
+    nmpName_.setText(loaded ? processor_.namPedalName() + (msg.isEmpty() ? juce::String() : "  (" + msg + ")") : juce::String("no pedal model"), juce::dontSendNotification);
+    nmpClear_.setEnabled(loaded);
+}
+
+void SasEditor::chooseNamCab() {
+    chooser_ = std::make_unique<juce::FileChooser>("Choose a Neural Amp Modeler cabinet model", juce::File{}, "*.nam");
+    chooser_->launchAsync(juce::FileBrowserComponent::openMode | juce::FileBrowserComponent::canSelectFiles, [this](const juce::FileChooser& fc) {
+        const auto file = fc.getResult();
+        if (file == juce::File{}) return;
+        if (processor_.loadNamCab(file)) {
+            // Switch the cabinet to NAM so the load is audible right away.
+            if (auto* cab = processor_.apvts.getParameter(ids::cab)) cab->setValueNotifyingHost(cab->convertTo0to1(3.0f));
+        } else {
+            juce::AlertWindow::showMessageBoxAsync(juce::MessageBoxIconType::WarningIcon, "Schematic Amp Sim",
+                                                   "Could not load that model: " + processor_.namCabMessage() + ".");
+        }
+        refreshNamCab();
+    });
+}
+
+void SasEditor::refreshNamCab() {
+    const bool loaded = processor_.namCabLoaded();
+    const auto msg = processor_.namCabMessage();
+    namCabName_.setText(loaded ? processor_.namCabName() + (msg.isEmpty() ? juce::String() : "  (" + msg + ")") : juce::String("no NAM cabinet"), juce::dontSendNotification);
+    namCabClear_.setEnabled(loaded);
 }
 
 void SasEditor::chooseImpulseResponse(int slot) {
@@ -1248,8 +1348,10 @@ void SasEditor::resized() {
         col.removeFromTop(gap);
         jackCaption_.setBounds(col.removeFromTop(16));
         jack_.setBounds(col.removeFromTop(24));
+        const bool hasJacks = shownAmp_ >= 0 && !processor_.amps()[std::size_t(shownAmp_)].preamp.jacks.empty();  // the NAM loader has none
+        jackCaption_.setVisible(hasJacks);
+        jack_.setVisible(hasJacks);
         col.removeFromTop(4);
-        if (levelMatch_.isVisible()) levelMatch_.setBounds(col.removeFromTop(22));
         if (vibrato_.isVisible()) vibrato_.setBounds(col.removeFromTop(22));
         col.removeFromTop(4);
         qualityCaption_.setBounds(col.removeFromTop(16));
@@ -1282,21 +1384,24 @@ void SasEditor::resized() {
     for (auto* c : std::initializer_list<juce::Component*>{&eqCurve_, &eqOn_, &eqReset_, &eqBandLabel_, &eqHpf_, &eqLpf_}) c->setVisible(eqPage);
     for (auto* c : std::initializer_list<juce::Component*>{&phSpeed_, &phOn_, &phIntense_, &phPos_, &phPosCaption_, &chRate_, &chDepth_, &chOn_, &chMode_, &chJuno_, &chPos_,
                                                            &chModeCaption_, &chJunoCaption_, &chPosCaption_, &vbSpeed_, &vbIntensity_, &vbOn_, &vbVibrato_, &vbPos_, &vbPosCaption_}) c->setVisible(modPage);
-    for (auto* c : std::initializer_list<juce::Component*>{&dlyTime_, &dlyFb_, &dlyMix_, &dlyTone_, &plDecay_, &plPre_, &plTone_, &plLow_, &plMix_, &plMod_, &dlyOn_, &dlyPing_, &dlyAnalog_,
+    for (auto* c : std::initializer_list<juce::Component*>{&dlyTime_, &dlyFb_, &dlyMix_, &dlyTone_, &plDecay_, &plPre_, &plTone_, &plLow_, &plMix_, &plMod_, &plShimmer_, &plShimInt_, &plShimIntCaption_, &dlyOn_, &dlyPing_, &dlyAnalog_,
                                                            &plOn_, &plHall_, &dlySync_, &dlySyncCaption_, &dlyTap_, &dlyPresets_, &plPresets_, &fxNote_}) c->setVisible(spacePage);
     for (int b = 0; b < 5; ++b)
         for (auto& k : eqKnobs_[b]) k->setVisible(eqPage && b == eqCurve_.selected());
     for (auto* c : std::initializer_list<juce::Component*>{&pitchSlider_, &pitchValue_, &pitchNote_, &pitchDown12_, &pitchDown1_, &pitchUp1_, &pitchUp12_, &pitchZero_, &pitchFine_}) c->setVisible(pitchPage);
     for (auto* c : std::initializer_list<juce::Component*>{&tunerDisplay_, &tunerOn_, &tunerMute_, &tunerRef_}) c->setVisible(tunerPage);
     for (auto& k : ampKnobs_) k->setVisible(ampPage && !face_);
+    const bool namAmp = shownAmp_ >= 0 && processor_.amps()[std::size_t(shownAmp_)].nam;
+    for (auto* c : std::initializer_list<juce::Component*>{&namLoad_, &namClear_, &namName_, &namNote_}) c->setVisible(ampPage && namAmp);
     if (face_) face_->setVisible(ampPage);
     if (!ampPage)
         for (int i = 0; i < 4; ++i) { selBox_[i].setVisible(false); selCaption_[i].setVisible(false); }
     for (auto* c : std::initializer_list<juce::Component*>{&input_, &output_, &inBar_, &outBar_, &tubes_, &cable_, &pickup_, &pickupCaption_, &gateOn_, &gateThreshold_, &gateRelease_}) c->setVisible(ampPage);
     for (auto* c : std::initializer_list<juce::Component*>{&cabCaption_, &cab_, &speaker_, &speakerIntense_, &blend_, &blendNote_, &loadA_, &clearA_, &nameA_, &curveA_,
-                                                           &loadB_, &clearB_, &nameB_, &curveB_, &cabNote_, &stereoWidth_, &doubleAmount_, &doubleTime_}) c->setVisible(cabPage);
+                                                           &loadB_, &clearB_, &nameB_, &curveB_, &cabNote_, &stereoWidth_, &doubleAmount_, &doubleTime_, &namCabLoad_, &namCabClear_, &namCabName_}) c->setVisible(cabPage);
     for (auto* c : std::initializer_list<juce::Component*>{&compOn_, &compFast_, &compSustain_, &compBlend_, &compTone_, &compLevel_, &tsOn_, &tsDrive_, &tsTone_, &tsLevel_,
-                                                           &bias_, &wear_, &tube_, &noise_, &unit_, &tubeCaption_, &noiseCaption_, &unitCaption_, &idleLabel_, &conditionNote_}) c->setVisible(fxPage);
+                                                           &bias_, &wear_, &tube_, &noise_, &unit_, &tubeCaption_, &noiseCaption_, &unitCaption_, &idleLabel_, &conditionNote_,
+                                                           &nmpDrive_, &nmpLevel_, &nmpOn_, &nmpLoad_, &nmpClear_, &nmpName_}) c->setVisible(fxPage);
 
     if (fxPage) {
         // Effects page, in signal order: compressor, overdrive; below them the state of the amp itself (the noise gate is on the Amp page).
@@ -1306,6 +1411,8 @@ void SasEditor::resized() {
         auto compPanel = fxRow.removeFromLeft(knobW * 4 + 12);
         fxRow.removeFromLeft(gap);
         auto tsPanel = fxRow.removeFromLeft(knobW * 3 + 12);
+        fxRow.removeFromLeft(gap);
+        auto nmpPanel = fxRow;
         panels_.push_back({compPanel, "COMPRESSOR"});
         {
             auto cin = compPanel.reduced(6, 4);
@@ -1347,6 +1454,20 @@ void SasEditor::resized() {
         tsDrive_.setBounds(in.removeFromLeft(in.getWidth() / 3));
         tsTone_.setBounds(in.removeFromLeft(in.getWidth() / 2));
         tsLevel_.setBounds(in);
+        panels_.push_back({nmpPanel, "NAM PEDAL"});
+        {
+            auto nin = nmpPanel.reduced(6, 4);
+            auto nhead = nin.removeFromTop(20);
+            nmpOn_.setBounds(nhead.removeFromRight(56));
+            auto nameRow = nin.removeFromBottom(16);
+            nmpName_.setBounds(nameRow);
+            auto btnRow = nin.removeFromBottom(24);
+            nmpClear_.setBounds(btnRow.removeFromRight(46));
+            btnRow.removeFromRight(4);
+            nmpLoad_.setBounds(btnRow);
+            nmpDrive_.setBounds(nin.removeFromLeft(nin.getWidth() / 2));
+            nmpLevel_.setBounds(nin);
+        }
         repaint();
         return;
     }
@@ -1440,17 +1561,24 @@ void SasEditor::resized() {
             auto head = in.removeFromTop(22);
             plOn_.setBounds(head.removeFromRight(56));
             plHall_.setBounds(head.removeFromRight(62));
-            auto bottom = in.removeFromBottom(34);
-            plPresets_.setBounds(bottom.removeFromBottom(24).removeFromLeft(100));
-            // Two rows of three: each knob gets twice the width it would in a single row.
+            auto bottom = in.removeFromBottom(40);
+            {
+                auto row = bottom.removeFromBottom(24);
+                plPresets_.setBounds(row.removeFromLeft(100));
+                row.removeFromLeft(12);
+                plShimInt_.setBounds(row.removeFromLeft(140));
+                plShimIntCaption_.setBounds(plShimInt_.getX(), plShimInt_.getY() - 14, 140, 14);
+            }
+            // Two rows of four (seven knobs): the second row has the shimmer, and its interval sits beside the Presets button.
             auto top = in.removeFromTop(in.getHeight() / 2);
-            const int w = in.getWidth() / 3;
+            const int w = in.getWidth() / 4;
             plDecay_.setBounds(top.removeFromLeft(w));
             plPre_.setBounds(top.removeFromLeft(w));
-            plTone_.setBounds(top);
-            plLow_.setBounds(in.removeFromLeft(w));
+            plTone_.setBounds(top.removeFromLeft(w));
+            plLow_.setBounds(top);
             plMix_.setBounds(in.removeFromLeft(w));
-            plMod_.setBounds(in);
+            plMod_.setBounds(in.removeFromLeft(w));
+            plShimmer_.setBounds(in.removeFromLeft(w));
         }
         repaint();
         return;
@@ -1565,7 +1693,7 @@ void SasEditor::resized() {
         slot(slotB, "IMPULSE B", loadB_, clearB_, nameB_, curveB_);
 
         // Bottom row: where the sound comes from, the A / B blend, the speaker, and the stereo.
-        auto cabPanel = area.removeFromLeft(140);
+        auto cabPanel = area.removeFromLeft(170);
         area.removeFromLeft(gap);
         auto blendPanel = area.removeFromLeft(96);
         area.removeFromLeft(gap);
@@ -1578,7 +1706,13 @@ void SasEditor::resized() {
             in.removeFromTop(20);
             cabCaption_.setBounds(in.removeFromTop(16));
             cab_.setBounds(in.removeFromTop(24));
-            in.removeFromTop(8);
+            in.removeFromTop(6);
+            auto nrow = in.removeFromTop(22);
+            namCabClear_.setBounds(nrow.removeFromRight(46));
+            nrow.removeFromRight(4);
+            namCabLoad_.setBounds(nrow);
+            namCabName_.setBounds(in.removeFromTop(18));
+            in.removeFromTop(2);
             cabNote_.setBounds(in);
         }
         panels_.push_back({blendPanel, "A / B BLEND"});
@@ -1650,6 +1784,17 @@ void SasEditor::resized() {
                 selBox_[i].setBounds(cell.removeFromTop(24));
             }
         }
+        if (shownAmp_ >= 0 && processor_.amps()[std::size_t(shownAmp_)].nam) {
+            // The NAM loader: the model's file and name along the bottom, the DRIVE and LEVEL knobs above.
+            auto strip = row.removeFromBottom(58);
+            auto buttons = strip.removeFromLeft(150);
+            namLoad_.setBounds(buttons.removeFromTop(26));
+            buttons.removeFromTop(4);
+            namClear_.setBounds(buttons.removeFromTop(24).removeFromLeft(70));
+            strip.removeFromLeft(10);
+            namName_.setBounds(strip.removeFromTop(24));
+            namNote_.setBounds(strip);
+        }
         const int n = std::max<int>(1, int(ampKnobs_.size()));
         const int w = row.getWidth() / n;
         for (auto& k : ampKnobs_) k->setBounds(row.removeFromLeft(w));
@@ -1682,8 +1827,9 @@ void SasEditor::resized() {
         pickup_.setBounds(gin.removeFromTop(24));
     }
     auto tubesPanel = bottom;
-    panels_.push_back({tubesPanel, "POWER TUBES"});
+    if (!(shownAmp_ >= 0 && processor_.amps()[std::size_t(shownAmp_)].nam)) panels_.push_back({tubesPanel, "POWER TUBES"});
     tubes_.setBounds(tubesPanel.reduced(8, 4).withTrimmedTop(18));
+    tubes_.setVisible(!(shownAmp_ >= 0 && processor_.amps()[std::size_t(shownAmp_)].nam));
     panels_.push_back({ioPanel, "LEVELS"});
     {
         auto in = ioPanel.reduced(6, 4);

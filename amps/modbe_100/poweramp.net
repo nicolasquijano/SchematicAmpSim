@@ -1,0 +1,83 @@
+* Modded-British 100 W head, power amp ("BE-100 v2" rev 1.5): C31 22n into a long-tailed 12AX7 phase inverter (V4) with the 470 / 10k
+* cathode network, the 47k + (220k || 4.7n) negative feedback from the speaker tap and the 5k Presence network on the feedback
+* node, 22n coupling, 220k grid returns to the bias line, four EL34 as two parallel pairs on fixed bias with 1.5k grid stoppers
+* and 1k screen resistors, the output transformer (16 / 8 / 4 ohm taps), and the supply: B+ is the node a, 10k + 4.7k to the
+* preamp rail x.
+*
+* Assumptions where the drawing is silent (change them here, not in code):
+*  - B+ at idle about 460 V (the drawing prints no voltages) and the transformer like the JCM800's (1.9k plate-to-plate, 3.5 H
+*    per primary half, taps for 16 / 8 / 4 ohm; the 4 ohm tap feeds the feedback);
+*  - bias: a Thevenin source behind 1k (about -55 V) in place of the rectified winding and the 25k trimmer;
+*  - the preamp rail load RPREAMP stands for everything on x (about 6 mA).
+
+.nodes pin ga kc f1 f2 gb pa pb dt db bias g45 g67 s45 s67 sb pt pbm npt npb a t16 t8 bk x nb pr fb1 m1
+
+S VAUDIO pin 100k 0
+S VHT a 1 470
+S VBIAS nb 1k -42
+
+* Phase inverter V4: input on V4A, feedback on V4B through 0.1u.
+C C31 pin ga 22n
+R R37 ga f1 1M
+R R39 kc f1 470
+R R41 f1 gb 1M
+C C35 gb f2 0.1u
+R R40 f1 f2 10k
+R R_VR9 f2 0 5k
+T V4A ga pa kc 12AX7
+T V4B gb pb kc 12AX7
+R R36 x pa 82k
+R R35 x pb 100k
+C C32 pa pb 100p
+C C18 pa dt 22n
+C C34 pb db 22n
+
+* Presence: 0.1u in series with the 5k pot (a variable resistor) to ground, on the feedback node.
+C C33 f2 pr 0.1u
+R VR_PRES pr 0 5k
+
+* Power-tube grid return and fixed bias.
+R R44 dt bias 220k
+R R45 bias db 220k
+C C41 bias 0 10u
+R RBIAS bias nb 1
+C C40 nb 0 10u
+
+* EL34s: each pair shares a 1.5k grid stopper, a 1k screen resistor per tube and the plate load.
+R R66 dt g45 1k5
+R R67 db g67 1k5
+P V5 g45 pt s45 0 EL34 2
+P V6 g67 pbm s67 0 EL34 2
+R R46 a s45 1k/2
+R R47 a s67 1k/2
+
+* Output transformer: plate-to-plate 1.9k, 3.5 H per primary half; windings are primary halves, then the 16R, 8R and 4R sections
+* of the secondary (turns relative to a half).
+R DCR_PT pt npt 40
+R DCR_PB pbm npb 40
+.param n16 = 2*1/sqrt(1900/16)
+* Core saturation: SAT is the flux (volt-seconds) where the extra magnetising current equals the linear one; ~full-power
+* plate-to-plate swing / (2 pi f), with f about 28-30 Hz for the large Marshall / Soldano / Peavey / Fender cores, 50 to 65 Hz for the small AC30 / tweed cores.
+.xfmr OT L=3.5 SAT=4.7
+  W npt a 1 pri
+  W a npb 1 pri
+  W t16 t8 0.2929*n16 sec
+  W t8 bk 0.2071*n16 sec
+  W bk 0 0.5*n16 sec
+  K pri pri 0.9998
+  K pri sec 0.9993
+  K sec sec 0.9998
+.end
+R RLOAD t16 0 16
+
+* Negative feedback from the 4 ohm tap: 47k, then 220k with 4.7n across it, to the phase-inverter feedback node.
+R R50 bk fb1 47k
+R R51 fb1 f2 220k
+C C36 fb1 f2 4n7
+
+* HT supply: 10k then 4.7k to the preamp rail, with 33u at each node.
+R R52 a m1 10k
+C C47 m1 0 33u
+R R53 m1 x 4k7
+C C48 x 0 33u
+R RPREAMP x 0 70k

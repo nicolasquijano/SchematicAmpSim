@@ -5,10 +5,26 @@ version numbers follow [Semantic Versioning](https://semver.org/) (see [docs/REL
 
 ## [Unreleased]
 
+## [0.3.0-beta] - 2026-11-03
+
+### Changed
+- The Windows **installer** now has two selectable components, the VST3 plug-in and the standalone application (full, VST3 only, standalone only or custom); the uninstaller, the licence and the README live in the application folder, not inside the VST3 folder.
+- The README is updated (new amps, NAM, Space, Mod and EQ pages, new screenshots) and there is a Spanish version, `README.es.md`.
+- The slow tests are tagged `[slow]`: `build.cmd test` runs the quick ones (about a minute and a half), `build.cmd test-all` everything.
+- A new **icon**: a glowing tube with a guitar jack and circuit symbols on a dark rounded square. It is the icon of the standalone application and of the installer; the artwork is in `plugin/icon/` (the VectorCraft file and PNGs).
+- The **American 5050** is now called **American 5051**.
+- The **Level match** switch is gone: the compensation between the jacks and modes of an amp is always on (it was on by default). Old projects load as before.
+
 ### Added
+- A **NAM pedal** on the Effects page: a Neural Amp Modeler model of an overdrive, boost or fuzz pedal in front of the amp (after the Mod page's pre-amp effects), with an On switch, Drive and Level in dB and its own Load... button. It works with every amp, the NAM Loader included, costs nothing while off, and the model is kept inside the project state.
+- A **NAM cabinet**: a fourth cabinet mode, "NAM", that runs a Neural Amp Modeler model of a speaker cabinet (with or without the microphone) after the amp and the speaker, in place of the impulse responses and the filter. It works with every amp, the NAM Loader included; the Cabinet page has its own Load NAM... button and name. The model is kept inside the project state, and with the mode on but no model loaded the plugin falls back to the cabinet filter.
+- Two more amps: the **American Deluxe** (a 22 W blackface combo with two 6V6GT, reverb and vibrato, from the '65 Deluxe Reverb reissue service manual) and the **American Boutique** (a 100 W overdrive head with a Clean / Overdrive switch, a Rock / Jazz tone switch and Deep and Bright switches, from a 1984 hand-built head's schematic). The **American Lead 100** is a 100 W two-channel super-lead head (Clean / Crunch and Overdrive channels, from a 1996 schematic with corrections) with four 6L6GC. The **British Mod 100** is a 100 W modded-British head with Clean, BE and HBE modes, from its published schematic. All four are solved circuits like the others; their Lite and Eco models are fitted. The reading of the Boutique's tone switches is documented in its netlist.
+- A **NAM Loader** amp (the last of the list): it runs a Neural Amp Modeler model (`.nam` file) in place of the circuits, with DRIVE into the model, a three-band tone control (BASS, MIDDLE, TREBLE) after it and LEVEL out of it, a Load model... button and the same pedals, noise gate, cabinet, EQ and effects as the other amps. The model's bytes are saved inside the project, so it opens on another machine with its model; the model is brought to a common loudness. It runs at the host rate; a model trained at another rate is flagged as off-pitch. Uses the Neural Amp Modeler Core (MIT), fetched by CMake into `third_party/` and never copied into the repository.
+- A fifth quality, **Efficient (2x/1x)**: the full circuits with the preamp at twice the host rate and the power amp at the host rate (a half-band filter between them). The power amp is 60 to 80 % of the cost of Normal; this uses 5 to 25 % less CPU on soft playing and about half on a loud, dense signal, with the same loudness and close tone, but a little more aliasing when the amp is driven hard and a tone difference of a few tenths of a dB. Normal stays as it was. Measured in `docs/PLAN_CPU.md`.
+- Faster solving of the output stage in Normal and High when it is driven hard (the SVT and the Hiwatt: up to ~25 % less CPU at full gain, with the same sound), and diagnostic tools (`sas_compare`, `sas_diag_newton`, `sas_compare_rate`, `sas_bench` per mode).
 - A Space page with a delay and a reverb at the end of the chain (after the cabinet and the EQ). The delay: up to 1.5 s, feedback, mix, a tone control in the repeats, ping-pong, an "analog" mode (darker, a little saturation and
   a slow wobble), tempo sync to the host (1/4, dotted 1/8, 1/8, 1/16) and a Tap button. The reverb: a plate or, with Hall, a larger room, with decay, pre-delay, tone, low cut, mix and modulation. Both let their tails ring out when switched off.
-  Each has its own list of factory presets (eight each) that only change that effect.
+  The reverb has a Shimmer knob: a copy of its tail shifted up an octave (or an octave and a fifth) is fed back into it, so the tail climbs on every pass. Each effect has its own list of factory presets (eight for the delay, ten for the reverb, two of them shimmer) that only change that effect.
 - A Mod page with a phaser, a chorus and a vibe, each with a Pre amp / Post amp switch (in front of the amp, or after the cabinet and the EQ). The phaser: four all-pass stages, the single Speed knob of the classic pedal and an Intense switch for the feedback version. The chorus has two modes in one effect: CE-2 (one voice, Rate and Depth) and Juno (two voices, one in each ear, with the fixed buttons I, II and I+II). The vibe has four unlike all-pass stages swept by a lamp-and-photocell model (Speed, Intensity, and a Chorus / Vibrato switch); it sits in front of the amp by default. All three are the behaviour of the originals in DSP, not their solved circuits (the solver has no JFETs, bucket-brigade chips or photocells).
 - The EQ page shows a silhouette of what is sounding behind the curve: the output spectrum in a sixth of an octave steps, tilted +4.5 dB per octave so the highs do not disappear, with a fast rise and a slow fall.
 - Eight cabinet impulse responses (4x12 OS Mix 1 to 3, Green Mix 1 to 3, Org Mix 1 and Fried Mix 1) built into the plugin: the Load buttons of the Cabinet page open a menu with them and "From file...". A new instance has Mix 1 loaded in slot A.
@@ -111,5 +127,6 @@ The first public release: a Windows VST3 with seven circuit-level amplifiers.
 - While the compressor or the overdrive is on, the pickup and cable of the Guitar Input panel have no effect.
 - The saved-project format may still change between 0.x versions.
 
+[0.3.0-beta]: https://github.com/nicolasquijano/SchematicAmpSim/releases/tag/v0.3.0-beta
 [0.2.0-beta]: https://github.com/nicolasquijano/SchematicAmpSim/releases/tag/v0.2.0-beta
 [0.1.0-beta]: https://github.com/nicolasquijano/SchematicAmpSim/releases/tag/v0.1.0-beta

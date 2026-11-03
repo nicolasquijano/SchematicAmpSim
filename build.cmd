@@ -1,7 +1,8 @@
 @echo off
 rem Builds SchematicAmpSim with the Visual Studio Build Tools already on this machine.
 rem   build.cmd                 configure + build everything
-rem   build.cmd test            ... and run the tests
+rem   build.cmd test            ... and run the quick tests
+rem   build.cmd test-all        ... and run every test, the slow ones too (about five minutes; run it before a release)
 rem   build.cmd target <name>   build one target (e.g. SchematicAmpSim_VST3, sas_tests)
 setlocal
 set "VS=C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools"
@@ -15,5 +16,7 @@ if /i "%~1"=="target" (
 ) else (
   cmake --build --preset release || exit /b 1
 )
-if /i "%~1"=="test" ctest --preset release || exit /b 1
+rem   test      the quick tests (the ones tagged [slow] are left out: about a minute and a half)
+if /i "%~1"=="test" ctest --preset release -LE slow || exit /b 1
+if /i "%~1"=="test-all" ctest --preset release || exit /b 1
 endlocal

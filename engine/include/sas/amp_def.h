@@ -244,6 +244,9 @@ struct AmpDef {
     // (see tools/sas_match_levels). Applied by the chain, not part of the circuit.
     double outputDb = 0.0;
     std::vector<UiKnob> ui;
+    // A loader for Neural Amp Modeler models ("nam": true in amp.json): no circuits at all, the chain runs the model the user loaded. Its
+    // knobs ("ui") are only the plugin parameters it reads (input drive and output level).
+    bool nam = false;
     FaceplateDef faceplate;  // the amp's own front (plugin/AmpFace.cpp) instead of the generic knob panel; style empty = generic
     PreampDef preamp;
     // Optional finer-split preamp for the Eco modes ("eco_preamp" in amp.json: it overrides the

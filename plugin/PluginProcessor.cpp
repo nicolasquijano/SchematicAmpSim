@@ -60,9 +60,9 @@ Layout SasProcessor::createLayout(const std::vector<sas::AmpDef>& defs) {
     l.add(dbParam(ids::output, "Output", -10.0f));
     // New qualities are only appended so saved projects keep theirs (same rule as the Rust build).
     l.add(std::make_unique<juce::AudioParameterChoice>(
-        juce::ParameterID{ids::quality, kVersion}, "Quality", juce::StringArray{"Normal (2x)", "High (4x)", "Lite (2x)", "Eco (2x)"}, 0));
+        juce::ParameterID{ids::quality, kVersion}, "Quality", juce::StringArray{"Normal (2x)", "High (4x)", "Lite (2x)", "Eco (2x)", "Efficient (2x/1x)"}, 0));
     l.add(std::make_unique<juce::AudioParameterChoice>(
-        juce::ParameterID{ids::cab, kVersion}, "Cabinet", juce::StringArray{"Off", "Filter", "IR"}, 1));
+        juce::ParameterID{ids::cab, kVersion}, "Cabinet", juce::StringArray{"Off", "Filter", "IR", "NAM"}, 1));
     l.add(std::make_unique<juce::AudioParameterChoice>(
         juce::ParameterID{ids::jack, kVersion}, "Input jack", juce::StringArray{"Jack 1", "Jack 2", "Jack 3", "Jack 4", "Jack 5", "Jack 6", "Jack 7", "Jack 8"}, 0));
     l.add(std::make_unique<juce::AudioParameterBool>(juce::ParameterID{ids::levelMatch, kVersion}, "Level match", true));
@@ -142,6 +142,8 @@ Layout SasProcessor::createLayout(const std::vector<sas::AmpDef>& defs) {
         l.add(hz(ids::plLow, "Reverb low cut", 20.0f, 800.0f, 150.0f));
         l.add(pct(ids::plMix, "Reverb mix", 0.0f, 100.0f, 22.0f));
         l.add(pct(ids::plMod, "Reverb modulation", 0.0f, 100.0f, 30.0f));
+        l.add(pct(ids::plShimmer, "Reverb shimmer", 0.0f, 100.0f, 0.0f));
+        l.add(std::make_unique<juce::AudioParameterChoice>(juce::ParameterID{ids::plShimmerInt, kVersion}, "Reverb shimmer interval", juce::StringArray{"Octave", "Octave + 5th"}, 0));
     }
     l.add(std::make_unique<juce::AudioParameterBool>(juce::ParameterID{ids::phOn, kVersion}, "Phaser", false));
     {
@@ -181,6 +183,9 @@ Layout SasProcessor::createLayout(const std::vector<sas::AmpDef>& defs) {
     l.add(knob(ids::compTone, "Compressor tone", 5.0f));
     l.add(knob(ids::compLevel, "Compressor level", 7.5f));
     l.add(std::make_unique<juce::AudioParameterBool>(juce::ParameterID{ids::compFast, kVersion}, "Compressor fast release", false));
+    l.add(std::make_unique<juce::AudioParameterBool>(juce::ParameterID{ids::nmpOn, kVersion}, "NAM pedal", false));
+    l.add(dbParam(ids::nmpDrive, "NAM pedal drive"));
+    l.add(dbParam(ids::nmpLevel, "NAM pedal level"));
     l.add(std::make_unique<juce::AudioParameterBool>(juce::ParameterID{ids::tunerOn, kVersion}, "Tuner", false));
     l.add(std::make_unique<juce::AudioParameterBool>(juce::ParameterID{ids::tunerMute, kVersion}, "Tuner mutes the output", true));
     l.add(std::make_unique<juce::AudioParameterFloat>(juce::ParameterID{ids::tunerRef, kVersion}, "Tuner reference", juce::NormalisableRange<float>(430.0f, 450.0f, 1.0f), 440.0f,
@@ -281,10 +286,10 @@ SasProcessor::SasProcessor()
                          .withOutput("Output", juce::AudioChannelSet::stereo(), true)),
       apvts(*this, nullptr, "SAS" /* state tag: part of saved projects */, createLayout([] {
                 std::vector<sas::AmpDef> defs;
-                for (const auto& id : sas::embeddedAmpIds()) defs.push_back(sas::loadEmbeddedAmp(id));
+                for (const auto& id : sas::embeddedAmpIds(true)) defs.push_back(sas::loadEmbeddedAmp(id));
                 return defs;
             }())) {
-    for (const auto& id : sas::embeddedAmpIds()) defs_.push_back(sas::loadEmbeddedAmp(id));
+    for (const auto& id : sas::embeddedAmpIds(true)) defs_.push_back(sas::loadEmbeddedAmp(id));
 
     // Resolve, per amp, which parameter drives each of its knobs (via its "ui" block).
     for (const auto& def : defs_) {
@@ -340,6 +345,36 @@ void SasProcessor::prepareToPlay(double sampleRate, int samplesPerBlock) {
     } else {
         chain_->reset();
     }
+    {
+        // The NAM pedal too.
+        const juce::ScopedLock lock(namLock_);
+        if (namPedal_ && namPedalRate_ != sampleRate && namPedalBytes_.getSize() > 0) {
+            const juce::MemoryBlock bytes = namPedalBytes_;
+            const juce::String name = namPedalName_;
+            const juce::ScopedUnlock unlock(namLock_);
+            loadNamPedalFromMemory(bytes.getData(), bytes.getSize(), name);
+        }
+    }
+    {
+        // The NAM cabinet too.
+        const juce::ScopedLock lock(namLock_);
+        if (namCab_ && namCabRate_ != sampleRate && namCabBytes_.getSize() > 0) {
+            const juce::MemoryBlock bytes = namCabBytes_;
+            const juce::String name = namCabName_;
+            const juce::ScopedUnlock unlock(namLock_);
+            loadNamCabFromMemory(bytes.getData(), bytes.getSize(), name);
+        }
+    }
+    {
+        // A model is tied to the rate it was prepared for: load it again from its bytes when the host rate changed.
+        const juce::ScopedLock lock(namLock_);
+        if (nam_ && namRate_ != sampleRate && namBytes_.getSize() > 0) {
+            const juce::MemoryBlock bytes = namBytes_;
+            const juce::String name = namName_;
+            const juce::ScopedUnlock unlock(namLock_);
+            loadNamFromMemory(bytes.getData(), bytes.getSize(), name);
+        }
+    }
     // The convolution is told the largest block it can ever get: processBlock hands it chunks of up to kMaxChunk whatever block size the host
     // announced here (some hosts send bigger ones), and a block above the announced maximum crashes it.
     juce::dsp::ProcessSpec spec{sampleRate, static_cast<juce::uint32>(kMaxChunk), 1};
@@ -374,12 +409,12 @@ sas::ChainSettings SasProcessor::readSettings(bool irAvailable) {
     s.presence = double(ap.presence->load()) / 10.0;
     s.inputDb = raw(ids::input);
     s.outputDb = raw(ids::output);
-    s.quality = static_cast<sas::Quality>(juce::jlimit(0, 3, int(raw(ids::quality) + 0.5)));
-    s.jack = std::size_t(juce::jlimit(0, int(def.preamp.jacks.size()) - 1, int(raw(ids::jack) + 0.5)));
-    const auto cab = static_cast<CabMode>(juce::jlimit(0, 2, int(raw(ids::cab) + 0.5)));
+    s.quality = static_cast<sas::Quality>(juce::jlimit(0, 4, int(raw(ids::quality) + 0.5)));
+    s.jack = def.preamp.jacks.empty() ? 0 : std::size_t(juce::jlimit(0, int(def.preamp.jacks.size()) - 1, int(raw(ids::jack) + 0.5)));
+    const auto cab = static_cast<CabMode>(juce::jlimit(0, 3, int(raw(ids::cab) + 0.5)));
     // With no IR loaded the IR mode falls back to the cab filter instead of the raw amp.
-    s.cabFilter = cab == CabMode::Filter || (cab == CabMode::Ir && !irAvailable);
-    s.jackLevelMatch = raw(ids::levelMatch) > 0.5;
+    s.cabFilter = cab == CabMode::Filter || (cab == CabMode::Ir && !irAvailable) || (cab == CabMode::Nam && namCabActive_.load() == nullptr);
+    s.jackLevelMatch = true;  // the jacks always play at a similar level; the old "level_match" parameter stays only so saved projects load
     s.selectors.clear();
     for (std::size_t i = 0; i < def.preamp.selectors.size() && i < 4; ++i)
         s.selectors.push_back(std::size_t(juce::jlimit(0, int(def.preamp.selectors[i].positions.size()) - 1, int(raw(ids::sel[i]) + 0.5))));
@@ -400,6 +435,15 @@ sas::ChainSettings SasProcessor::readSettings(bool irAvailable) {
     s.comp.fastRelease = raw(ids::compFast) > 0.5;
     s.speaker = raw(ids::speaker) / 10.0;
     s.speakerIntense = raw(ids::speakerIntense) > 0.5;
+    if (def.nam) {
+        // The loader's two knobs: DRIVE into the model and LEVEL out of it, 0..10 with 5 as unity, 2.4 dB per step.
+        s.nam = namActive_.load();
+        s.namDriveDb = (raw(ids::volume) - 5.0) * 2.4;
+        s.namLevelDb = (raw(ids::master) - 5.0) * 2.4;
+        s.namBass = raw(ids::bass) / 10.0;
+        s.namMid = raw(ids::middle) / 10.0;
+        s.namTreble = raw(ids::treble) / 10.0;
+    }
     s.noise = std::array<double, 3>{0.0, 0.5, 1.0}[std::size_t(juce::jlimit(0, 2, int(raw(ids::noise) + 0.5)))];
     return s;
 }
@@ -421,8 +465,16 @@ void SasProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::MidiBuff
 
     const bool aLoaded = ir_[0].loaded.load(), bLoaded = ir_[1].loaded.load();
     const bool irLoaded = aLoaded || bLoaded;
-    const auto cabParam = static_cast<CabMode>(juce::jlimit(0, 2, int(apvts.getRawParameterValue(ids::cab)->load() + 0.5f)));
+    const auto cabParam = static_cast<CabMode>(juce::jlimit(0, 3, int(apvts.getRawParameterValue(ids::cab)->load() + 0.5f)));
     const bool irActive = cabParam == CabMode::Ir && irLoaded;
+    sas::NamModel* const namPedal = apvts.getRawParameterValue(ids::nmpOn)->load() > 0.5f ? namPedalActive_.load() : nullptr;
+    if (namPedal && !namPedalWasActive_) namPedal->reset();
+    namPedalWasActive_ = namPedal != nullptr;
+    const float nmpDrive = std::pow(10.0f, apvts.getRawParameterValue(ids::nmpDrive)->load() / 20.0f);
+    const float nmpLevel = std::pow(10.0f, apvts.getRawParameterValue(ids::nmpLevel)->load() / 20.0f);
+    sas::NamModel* const namCab = cabParam == CabMode::Nam ? namCabActive_.load() : nullptr;
+    if (namCab && !namCabWasActive_) namCab->reset();
+    namCabWasActive_ = namCab != nullptr;
     chain_->setSettings(readSettings(irLoaded));
     gate_.setParams(apvts.getRawParameterValue(ids::gateOn)->load() > 0.5f, double(apvts.getRawParameterValue(ids::gateThreshold)->load()),
                     double(apvts.getRawParameterValue(ids::gateRelease)->load()));
@@ -468,6 +520,8 @@ void SasProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::MidiBuff
         pl.lowCutHz = raw(ids::plLow);
         pl.mix = std::clamp(raw(ids::plMix) / 100.0, 0.0, 1.0);
         pl.mod = std::clamp(raw(ids::plMod) / 100.0, 0.0, 1.0);
+        pl.shimmer = std::clamp(raw(ids::plShimmer) / 100.0, 0.0, 1.0);
+        pl.shimmerFifth = raw(ids::plShimmerInt) > 0.5;
         plate_.setParams(pl);
     }
     sas::PhaserParams phaserParams;
@@ -533,8 +587,21 @@ void SasProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::MidiBuff
         if (!phaserPost) phaser_.process(m, nullptr, std::size_t(n));  // the phaser in front of the amp (and of the other pedals)
         if (!chorusPost) chorus_.process(m, nullptr, std::size_t(n));  // then the chorus, if it is placed there
         if (!vibePost) vibe_.process(m, nullptr, std::size_t(n));      // and the vibe
+        if (namPedal) {  // then the NAM pedal, through two scratch blocks (the model reads its input while it writes), with the gains ramped over the block
+            float* t = mono2_.data();
+            float* o = monoR_.data();
+            for (int i = 0; i < n; ++i) t[i] = m[i] * (nmpDriveNow_ + (nmpDrive - nmpDriveNow_) * (float(i + 1) / float(n)));
+            namPedal->process(t, o, std::size_t(n));
+            for (int i = 0; i < n; ++i) m[i] = o[i] * (nmpLevelNow_ + (nmpLevel - nmpLevelNow_) * (float(i + 1) / float(n)));
+            nmpDriveNow_ = nmpDrive;
+            nmpLevelNow_ = nmpLevel;
+        }
 
         chain_->processAmp(m, m, std::size_t(n));
+        if (namCab) {  // the NAM cabinet: through a scratch block, the model reads its input while it writes
+            namCab->process(m, mono2_.data(), std::size_t(n));
+            std::copy(mono2_.data(), mono2_.data() + n, m);
+        }
         float* mR = monoR_.data();  // the right channel; the left one is m
         bool haveR = false;
         if (irActive) {
@@ -674,6 +741,180 @@ bool SasProcessor::loadImpulseResponseFromMemory(const void* data, std::size_t s
     return true;
 }
 
+// ------------------------------------------------------------------ NAM model
+
+namespace {
+constexpr std::size_t kMaxStoredNamBytes = 16 * 1024 * 1024;
+}
+
+bool SasProcessor::loadNamFromMemory(const void* data, std::size_t size, const juce::String& name) {
+    const double fs = sampleRate_ > 0.0 ? sampleRate_ : 48000.0;
+    std::string error;
+    auto model = sas::NamModel::loadFromMemory(data, size, name.toStdString(), fs, 512, error);
+    const juce::ScopedLock lock(namLock_);
+    if (!model) {
+        namMessage_ = error.empty() ? juce::String("the file could not be loaded") : juce::String(error);
+        return false;
+    }
+    namPrev_ = std::move(nam_);
+    nam_ = model;
+    namBytes_ = juce::MemoryBlock(data, size);
+    namName_ = name;
+    namRate_ = fs;
+    namMessage_ = model->rateMatches()
+                      ? juce::String()
+                      : "Trained at " + juce::String(model->trainedRate(), 0) + " Hz, played at " + juce::String(fs, 0) + " Hz: it will sound off-pitch.";
+    namActive_.store(model.get());
+    return true;
+}
+
+bool SasProcessor::loadNamModel(const juce::File& file) {
+    if (!file.existsAsFile() || file.getSize() > juce::int64(kMaxStoredNamBytes)) {
+        const juce::ScopedLock lock(namLock_);
+        namMessage_ = file.existsAsFile() ? "the file is too big" : "the file does not exist";
+        return false;
+    }
+    juce::MemoryBlock bytes;
+    if (!file.loadFileAsData(bytes)) {
+        const juce::ScopedLock lock(namLock_);
+        namMessage_ = "the file could not be read";
+        return false;
+    }
+    return loadNamFromMemory(bytes.getData(), bytes.getSize(), file.getFileNameWithoutExtension());
+}
+
+void SasProcessor::clearNamModel() {
+    const juce::ScopedLock lock(namLock_);
+    namActive_.store(nullptr);
+    namPrev_ = std::move(nam_);
+    nam_.reset();
+    namBytes_.reset();
+    namName_.clear();
+    namMessage_.clear();
+}
+
+juce::String SasProcessor::namModelName() const {
+    const juce::ScopedLock lock(namLock_);
+    return namName_;
+}
+
+juce::String SasProcessor::namModelMessage() const {
+    const juce::ScopedLock lock(namLock_);
+    return namMessage_;
+}
+
+bool SasProcessor::loadNamPedalFromMemory(const void* data, std::size_t size, const juce::String& name) {
+    const double fs = sampleRate_ > 0.0 ? sampleRate_ : 48000.0;
+    std::string error;
+    auto model = sas::NamModel::loadFromMemory(data, size, name.toStdString(), fs, int(kMaxChunk), error);
+    const juce::ScopedLock lock(namLock_);
+    if (!model) {
+        namPedalMessage_ = error.empty() ? juce::String("the file could not be loaded") : juce::String(error);
+        return false;
+    }
+    namPedalPrev_ = std::move(namPedal_);
+    namPedal_ = model;
+    namPedalBytes_ = juce::MemoryBlock(data, size);
+    namPedalName_ = name;
+    namPedalRate_ = fs;
+    namPedalMessage_ = model->rateMatches()
+                           ? juce::String()
+                           : "Trained at " + juce::String(model->trainedRate(), 0) + " Hz, played at " + juce::String(fs, 0) + " Hz: it will sound off-pitch.";
+    namPedalActive_.store(model.get());
+    return true;
+}
+
+bool SasProcessor::loadNamPedal(const juce::File& file) {
+    if (!file.existsAsFile() || file.getSize() > juce::int64(kMaxStoredNamBytes)) {
+        const juce::ScopedLock lock(namLock_);
+        namPedalMessage_ = file.existsAsFile() ? "the file is too big" : "the file does not exist";
+        return false;
+    }
+    juce::MemoryBlock bytes;
+    if (!file.loadFileAsData(bytes)) {
+        const juce::ScopedLock lock(namLock_);
+        namPedalMessage_ = "the file could not be read";
+        return false;
+    }
+    return loadNamPedalFromMemory(bytes.getData(), bytes.getSize(), file.getFileNameWithoutExtension());
+}
+
+void SasProcessor::clearNamPedal() {
+    const juce::ScopedLock lock(namLock_);
+    namPedalActive_.store(nullptr);
+    namPedalPrev_ = std::move(namPedal_);
+    namPedal_.reset();
+    namPedalBytes_.reset();
+    namPedalName_.clear();
+    namPedalMessage_.clear();
+}
+
+juce::String SasProcessor::namPedalName() const {
+    const juce::ScopedLock lock(namLock_);
+    return namPedalName_;
+}
+
+juce::String SasProcessor::namPedalMessage() const {
+    const juce::ScopedLock lock(namLock_);
+    return namPedalMessage_;
+}
+
+bool SasProcessor::loadNamCabFromMemory(const void* data, std::size_t size, const juce::String& name) {
+    const double fs = sampleRate_ > 0.0 ? sampleRate_ : 48000.0;
+    std::string error;
+    auto model = sas::NamModel::loadFromMemory(data, size, name.toStdString(), fs, int(kMaxChunk), error);
+    const juce::ScopedLock lock(namLock_);
+    if (!model) {
+        namCabMessage_ = error.empty() ? juce::String("the file could not be loaded") : juce::String(error);
+        return false;
+    }
+    namCabPrev_ = std::move(namCab_);
+    namCab_ = model;
+    namCabBytes_ = juce::MemoryBlock(data, size);
+    namCabName_ = name;
+    namCabRate_ = fs;
+    namCabMessage_ = model->rateMatches()
+                         ? juce::String()
+                         : "Trained at " + juce::String(model->trainedRate(), 0) + " Hz, played at " + juce::String(fs, 0) + " Hz: it will sound off-pitch.";
+    namCabActive_.store(model.get());
+    return true;
+}
+
+bool SasProcessor::loadNamCab(const juce::File& file) {
+    if (!file.existsAsFile() || file.getSize() > juce::int64(kMaxStoredNamBytes)) {
+        const juce::ScopedLock lock(namLock_);
+        namCabMessage_ = file.existsAsFile() ? "the file is too big" : "the file does not exist";
+        return false;
+    }
+    juce::MemoryBlock bytes;
+    if (!file.loadFileAsData(bytes)) {
+        const juce::ScopedLock lock(namLock_);
+        namCabMessage_ = "the file could not be read";
+        return false;
+    }
+    return loadNamCabFromMemory(bytes.getData(), bytes.getSize(), file.getFileNameWithoutExtension());
+}
+
+void SasProcessor::clearNamCab() {
+    const juce::ScopedLock lock(namLock_);
+    namCabActive_.store(nullptr);
+    namCabPrev_ = std::move(namCab_);
+    namCab_.reset();
+    namCabBytes_.reset();
+    namCabName_.clear();
+    namCabMessage_.clear();
+}
+
+juce::String SasProcessor::namCabName() const {
+    const juce::ScopedLock lock(namLock_);
+    return namCabName_;
+}
+
+juce::String SasProcessor::namCabMessage() const {
+    const juce::ScopedLock lock(namLock_);
+    return namCabMessage_;
+}
+
 int SasProcessor::builtInImpulseResponseCount() { return CabData::namedResourceListSize; }
 
 juce::String SasProcessor::builtInImpulseResponseName(int index) {
@@ -741,6 +982,33 @@ void SasProcessor::getStateInformation(juce::MemoryBlock& dest) {
             }
         }
     }
+    state.removeProperty("namData", nullptr);
+    state.removeProperty("namName", nullptr);
+    state.removeProperty("namCabData", nullptr);
+    state.removeProperty("namCabName", nullptr);
+    state.removeProperty("namPedalData", nullptr);
+    state.removeProperty("namPedalName", nullptr);
+    {
+        const juce::ScopedLock lock(namLock_);
+        if (namPedalBytes_.getSize() > 0 && namPedalBytes_.getSize() <= kMaxStoredNamBytes) {
+            state.setProperty("namPedalName", namPedalName_, nullptr);
+            state.setProperty("namPedalData", juce::Base64::toBase64(namPedalBytes_.getData(), namPedalBytes_.getSize()), nullptr);
+        }
+    }
+    {
+        const juce::ScopedLock lock(namLock_);
+        if (namCabBytes_.getSize() > 0 && namCabBytes_.getSize() <= kMaxStoredNamBytes) {
+            state.setProperty("namCabName", namCabName_, nullptr);
+            state.setProperty("namCabData", juce::Base64::toBase64(namCabBytes_.getData(), namCabBytes_.getSize()), nullptr);
+        }
+    }
+    {
+        const juce::ScopedLock lock(namLock_);
+        if (namBytes_.getSize() > 0 && namBytes_.getSize() <= kMaxStoredNamBytes) {
+            state.setProperty("namName", namName_, nullptr);
+            state.setProperty("namData", juce::Base64::toBase64(namBytes_.getData(), namBytes_.getSize()), nullptr);
+        }
+    }
     if (auto xml = state.createXml()) copyXmlToBinary(*xml, dest);
 }
 
@@ -757,6 +1025,27 @@ void SasProcessor::setStateInformation(const void* data, int size) {
         } else {
             clearImpulseResponse(s);
         }
+    }
+    if (tree.hasProperty("namData")) {
+        juce::MemoryOutputStream out;
+        if (juce::Base64::convertFromBase64(out, tree["namData"].toString()) && out.getDataSize() > 0)
+            if (!loadNamFromMemory(out.getData(), out.getDataSize(), tree["namName"].toString())) clearNamModel();
+    } else {
+        clearNamModel();
+    }
+    if (tree.hasProperty("namPedalData")) {
+        juce::MemoryOutputStream out;
+        if (juce::Base64::convertFromBase64(out, tree["namPedalData"].toString()) && out.getDataSize() > 0)
+            if (!loadNamPedalFromMemory(out.getData(), out.getDataSize(), tree["namPedalName"].toString())) clearNamPedal();
+    } else {
+        clearNamPedal();
+    }
+    if (tree.hasProperty("namCabData")) {
+        juce::MemoryOutputStream out;
+        if (juce::Base64::convertFromBase64(out, tree["namCabData"].toString()) && out.getDataSize() > 0)
+            if (!loadNamCabFromMemory(out.getData(), out.getDataSize(), tree["namCabName"].toString())) clearNamCab();
+    } else {
+        clearNamCab();
     }
 }
 
@@ -820,6 +1109,8 @@ void SasProcessor::applyReverbPreset(int index) {
     set(ids::plLow, p.lowCutHz);
     set(ids::plMix, p.mix);
     set(ids::plMod, p.mod);
+    set(ids::plShimmer, p.shimmer);
+    set(ids::plShimmerInt, p.shimmerFifth ? 1.0 : 0.0);
 }
 
 juce::File SasProcessor::presetFolder() {

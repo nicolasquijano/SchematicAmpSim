@@ -4,7 +4,8 @@ A guitar amp simulator that solves the real circuit instead of imitating it. Eac
 transcribed from its schematic into a text netlist, and the plugin runs a nonlinear circuit solver
 on it in real time: preamp stages, tone stack, phase inverter, output tubes and transformer included.
 
-VST3 for Windows, built with C++20 and [JUCE](https://juce.com).
+VST3 plug-in and standalone application for Windows, built with C++20 and [JUCE](https://juce.com). It can also run neural
+[Neural Amp Modeler](https://www.neuralampmodeler.com) models (amp, cabinet and pedal). Versión en español: [README.es.md](README.es.md).
 
 <p align="center">
   <img src="docs/images/amp-british-800.png" alt="Schematic Amp Sim: the Amp page, with the British 800" width="800">
@@ -12,20 +13,32 @@ VST3 for Windows, built with C++20 and [JUCE](https://juce.com).
 
 ## Screenshots
 
-Every amp has its own colours (the amp list is on the left). Four of the twelve:
+Every amp has its own colours (the amp list is on the left). Four of the sixteen, and then the newest four:
 
 <p align="center">
-  <img src="docs/images/amps.png" alt="American Twin, American Tweed, American 5050 and British Class A" width="800">
+  <img src="docs/images/amps.png" alt="American Twin, American Tweed, American 5051 and British Class A" width="800"><br>
+  <img src="docs/images/amps-new.png" alt="American Deluxe, American Boutique, American Lead 100 and British Mod 100" width="800">
 </p>
 
 The **Cabinet** page: two impulse responses with their response curves, the A / B blend, the speaker
-dynamics and the stereo controls. The **Effects** page: compressor, overdrive, noise gate and the state of
-the amp itself (tubes, bias, noise, wear, unit). The **Tuner**:
+dynamics and the stereo controls, and a NAM cabinet model. The **Effects** page: compressor, overdrive, a NAM
+pedal and the state of the amp itself (tubes, bias, noise, wear, unit). The **Tuner**:
 
 <p align="center">
   <img src="docs/images/cabinet.png" alt="The Cabinet page with two impulse responses" width="800"><br>
   <img src="docs/images/effects.png" alt="The Effects page: compressor, overdrive, gate and amp condition" width="800"><br>
   <img src="docs/images/tuner.png" alt="The chromatic tuner on an A2, in tune" width="800">
+</p>
+
+The **NAM Loader** amp runs a Neural Amp Modeler model in place of the circuits; the **Space** page has the delay and the
+reverb (with shimmer); the **Mod** page the phaser, the chorus and the vibe; the **EQ** page a five-band equaliser with the
+spectrum of what is sounding:
+
+<p align="center">
+  <img src="docs/images/nam-loader.png" alt="The NAM Loader amp with a model loaded" width="800"><br>
+  <img src="docs/images/space.png" alt="The Space page: delay and reverb" width="800"><br>
+  <img src="docs/images/mod.png" alt="The Mod page: phaser, chorus and vibe" width="800"><br>
+  <img src="docs/images/eq.png" alt="The EQ page with a preset and the spectrum" width="800">
 </p>
 
 (The pictures are rendered by the editor itself: see "Repository layout" for how to regenerate them.)
@@ -34,10 +47,13 @@ the amp itself (tubes, bias, noise, wear, unit). The **Tuner**:
 
 Get the latest version from the [Releases page](https://github.com/nicolasquijano/SchematicAmpSim/releases) (Windows 10/11, 64-bit, any VST3 host):
 
-- **`SchematicAmpSim-<version>-win64-setup.exe`**: the installer. It puts the plugin in `C:\Program Files\Common Files\VST3`.
+- **`SchematicAmpSim-<version>-win64-setup.exe`**: the installer. It lets you choose what to install: the **VST3 plug-in** (into the VST3 folder of all
+  users, `C:\Program Files\Common Files\VST3`, or of the current user only), the **standalone application** (runs without a DAW, with a Start menu
+  entry), or both.
 - **`SchematicAmpSim-<version>-win64.zip`**: the plugin bundle on its own, to copy into your VST3 folder by hand.
+- **`SchematicAmpSim-<version>-win64-standalone.zip`**: the standalone application on its own.
 
-Then rescan the plugins in your DAW. The current version is a **beta** (see the [changelog](CHANGELOG.md)): the saved-project format may
+If you installed the plug-in, rescan the plugins in your DAW. The current version is a **beta** (see the [changelog](CHANGELOG.md)): the saved-project format may
 still change between 0.x versions. Versioning and the steps of a release are in [docs/RELEASING.md](docs/RELEASING.md).
 
 ## Features
@@ -48,14 +64,14 @@ still change between 0.x versions. Versioning and the steps of a release are in 
 - **Amps are data, not code.** Each amp is a folder with a netlist and an `amp.json` that maps
   knobs, input jacks, presence, supply and output level onto circuit elements. Adding an amp means
   adding files; nothing is recompiled except to embed them.
-- **Twelve amps included** (display names are deliberately generic):
+- **Sixteen amps included** (plus the NAM Loader) (display names are deliberately generic):
   | Name | Circuit |
   |---|---|
   | British 800 | Cascading-gain preamp, 100 W-class EL34 power amp, High and Low input jacks |
   | British Plexi | Vintage 100 W-class EL34 head, two channels with jumper |
   | SLSH 100W | Modern 100 W head, 6550 output stage, two modes |
   | American Twin | Two-channel 85 W+ blackface-style amp, 12AT7 phase inverter, four 6L6GC on fixed bias with its optical vibrato and spring reverb (driver and recovery tubes as circuit, the spring tank behavioural) |
-  | American 5050 | Modern high-gain 120 W head: two channels (Rhythm with a Crunch voicing, Lead) through six gain stages, Marshall-type tone stack, 12AX7 phase inverter with presence and resonance in the feedback loop, four 6L6GC |
+  | American 5051 | Modern high-gain 120 W head: two channels (Rhythm with a Crunch voicing, Lead) through six gain stages, Marshall-type tone stack, 12AX7 phase inverter with presence and resonance in the feedback loop, four 6L6GC |
   | American Triple Stack | Three-channel modern high-gain 100 W+ head: a clean channel with a Pushed voicing and two high-gain channels each with Raw, Vintage and Modern voicings, three tone stacks, a shared 12AX7 gain chain with a cathode follower, four 6L6GC, silicon rectifier. Presence in the feedback loop; the effects loop and the channel switching are not modelled |
   | American Bass 50 | 1959-style 50 W tweed bass head: bright and normal channels with #1 and #2 inputs (jumpered or not), 12AY7 / 12AX7 preamp with cathode follower, the 250p / 56k tone stack, long-tailed phase inverter with 27k negative feedback and presence, two 6L6GC with fixed bias, GZ34 rectifier and choke |
   | British Hi-Fi | High-headroom 100 W head with huge transformers: brilliant and normal channels (a 1000p or a 22n coupling) mixed into a double triode, the passive 1000p / 220p treble, middle and bass stack, master volume, long-tailed 12AX7 phase inverter with the feedback injected into its tail and a presence network, four EL34 on fixed bias, silicon bridge supply with three filtered HT stages |
@@ -63,7 +79,19 @@ still change between 0.x versions. Versioning and the steps of a release are in 
   | American Bass 300 | 1972-style 300 W tube bass head: two channels (Bright and Normal inputs), the Ultra Lo and Ultra Hi switches, a Baxandall-type bass and treble stack, the mid-range network with its toroidal inductor and three frequencies, a 6C4 cathode follower, a cathodyne phase inverter with 12BH7 cathode-follower drivers and six 6550 at 660 V. No negative feedback. The amp's own switches are drop-downs under its knobs |
   | British Class A | Class A 30 W combo-style amp (Top Boost reissue drawing): Normal channel straight to the phase inverter, Brilliant channel through the Treble / Bass network, Cut control, four cathode-biased EL84 with no negative feedback (no vibrato or reverb) |
   | American Tweed | 1950s-style 12 W tweed combo: two channels with interactive volume pots and a tone control, 12AY7 / 12AX7 preamp, cathodyne phase inverter, two cathode-biased 6V6GT, no negative feedback, high-impedance 5Y3GT rectifier supply |
+  | American Deluxe | 1960s-style 22 W blackface combo: Normal and Vibrato channels (12AX7 preamp, Fender tone stack with a fixed middle), the reverb driver and recovery with its spring tank and the optical vibrato, a 12AT7 long-tailed phase inverter with the 820 ohm feedback, two 6V6GT on fixed bias, 5AR4 rectifier supply (reverb and vibrato are behavioural where the drawing has transformers and springs) |
+  | American Boutique | 100 W overdrive head in the style of a famous hand-built amp: a single input into a Fender-style stack with Treble, Middle, Bass, a Rock / Jazz switch, a Deep and a Bright switch, a Clean / Overdrive channel switch (two extra gain stages with Level and Ratio), Master, a long-tailed 12AX7 phase inverter with Presence and 4.7k negative feedback, four 6L6GC and the Twin's output transformer. The FET input and the 100 / 50 W switch are not modelled |
+  | American Lead 100 | 100 W two-channel super-lead head: a Clean / Crunch channel (V1a, with Crunch / Clean and Bright switches) and an Overdrive lead channel (V2a, V2b), both into V3b + V3a, the FX loop wired through, V4b + V4a, a Marshall-type tone stack, two Master volumes and the optocoupler channel switching (Clean / Lead), a long-tailed 12AX7 phase inverter with Presence and negative feedback, four 6L6GC. The footswitch circuit and the FX jacks are not modelled |
+  | British Mod 100 | 100 W modded-British three-mode head: Clean (V1A into a passive Bass / Treble stack and V1B), BE (the guitar into V2A) and HBE (V1A into V2A), a switched voicing network with Fat, V2B, Gain, V3A, a V3B cathode follower with the SAT clipper and the Voice switch, a Marshall-type stack with Middle and Master, a long-tailed 12AX7 phase inverter with Presence and 47k / 220k negative feedback, four EL34. The FX loop and the Line Out are not modelled |
 - **The loudspeaker is part of the circuit**: the output transformer drives a voice-coil resistance and inductance and the cone's mechanical resonance (typical 12 inch values scaled to each amp's load), so the amp's output voltage has the bass bump, the mid dip and the rising top of a tube amp into a real speaker. It can be turned off per amp with `"speaker_load": {"enabled": false}` in its `amp.json`. The output transformer also has winding capacitance and core loss (`transformer_parasitics`). The Lite mode does not reproduce the bump, the dip or the treble resonance.
+- **Neural Amp Modeler** (the [NAM](https://www.neuralampmodeler.com) core, MIT, is fetched by CMake and never copied into the repository): the **NAM Loader** amp
+  runs a `.nam` model in place of the circuits, with Drive, Level and a three-band tone; the **Cabinet** selector has a **NAM** mode for models of a speaker
+  cabinet; the **Effects** page has a **NAM pedal** (overdrive, boost, fuzz) in front of the amp. The models are stored inside the project, so it opens on another
+  machine with them. They run at the host rate: a model trained at another rate is flagged.
+- **Delay and reverb** (Space page): a delay of up to 1.5 s (feedback, tone, ping-pong, an analog mode, tempo sync and a tap button) and a plate or hall reverb with
+  decay, pre-delay, tone, low cut, modulation and **shimmer** (the tail shifted up an octave or a fifth and fed back), each with its own factory presets.
+- **Phaser, chorus and vibe** (Mod page), each in front of the amp or after the cabinet: a four-stage phaser, a chorus with a CE-2 mode and a Juno mode, and a
+  lamp-and-photocell vibe with Chorus and Vibrato modes.
 - **Pitch shift** (Pitch tab): -12 to +12 semitones and fine tuning in cents, for dropped tunings, octaves or tuning the recording. A granular two-head shifter that works on chords; it adds about 12 ms of delay only while a shift is set.
 - **Post equaliser** (EQ tab): five bands (low shelf, three bells, high shelf), a high-pass and a low-pass, with a draggable response curve and ten guitar presets (clean, blues, tight rhythm, lead, de-fizz, metal, jazz, country, classic rock, mix-ready); it works on the final stereo signal, after the cabinet, so it shapes the result without changing how the amp distorts.
 - **Standalone application and presets**: besides the VST3, `Schematic Amp Sim.exe` runs without a DAW (the gear button opens the audio settings: pick the ASIO driver of your interface (or Windows Audio exclusive mode) and the input channel of the guitar; the input starts muted to avoid feedback, unmute it once the monitoring is safe). The Presets button saves and loads the whole state as `.sasp` files in `%APPDATA%\Schematic Amp Sim\Presets`.
@@ -74,6 +102,7 @@ still change between 0.x versions. Versioning and the steps of a release are in 
   | High | Full circuit, 4x oversampling |
   | Lite | Full preamp circuit, behavioural power amp fitted against the full circuit |
   | Eco | Lite plus tabulated tube curves and a lighter solver; the multi-stage preamp is split in parts |
+  | Efficient | Full circuit with the preamp at 2x and the power amp at the host rate: lighter than Normal, close in tone |
 - **Amp condition** (Effects page): output-tube type (EL34 / 6L6GC / 6550 on the amps with a fixed bias,
   re-biased to the same share of the tube's dissipation rating), a bias control with the plate current in mA
   read from the circuit, noise and hum (hiss at the input, mains hum that depends on the pickup), wear
@@ -87,14 +116,15 @@ still change between 0.x versions. Versioning and the steps of a release are in 
 - **Compressor pedal** (Effects page, in front of everything else), solved as a circuit from a transcription of the Keeley Compressor Plus schematic (AionFX trace v1.0, `engine/data/compressor.net`): an LM13700 OTA gain cell, a transistor full-wave envelope detector and the feedback that closes the loop, with Sustain, Blend, Tone, Level and the Attack switch (which in the circuit selects fast or slow release). It needed two new devices in the engine: an Ebers-Moll NPN that saturates and the OTA. It costs about 9 % of a core while on. The transistor, OTA and diode values are typical figures; the drawing prints none.
 - **Chromatic tuner** (Tuner page): McLeod pitch detection on the raw input (60 Hz to 1.4 kHz, within a cent on clean notes, without octave errors on a weak fundamental), a needle meter, a reference pitch of 430 to 450 Hz and an option to mute the output while tuning.
 - **Level matching** across amps, jacks and modes, so switching does not jump in volume.
+- **Unit and wear**: the Unit selector picks an individual amp (component tolerances, repeatable) and Wear ages the tubes and capacitors.
 - Fast parameter smoothing, no allocations on the audio thread; switching amps builds the new
   circuits on a worker thread and swaps them in without stopping audio.
 
 ## Parameters
 
 Amp, Volume, Volume 2, Bass, Middle, Treble, Presence, Master, Power, Input, Output, Quality,
-Cab (Off / Filter / IR), Jack (1-4), Level match, Vibrato (On, Speed, Intensity) and Reverb and Resonance (amps that have them), the pedal controls (On, Drive, Tone, Level), the noise gate, the guitar input (pickup, cable) and the amp condition (Power tubes, Bias, Noise and hum, Wear, Unit).
-Which knobs apply depends on the selected amp. The editor has four pages: Amp, Cabinet, Effects and Tuner.
+Cab (Off / Filter / IR / NAM), Jack (1-4), Vibrato (On, Speed, Intensity) and Reverb and Resonance (amps that have them), the pedal controls (On, Drive, Tone, Level), the noise gate, the guitar input (pickup, cable) and the amp condition (Power tubes, Bias, Noise and hum, Wear, Unit).
+Which knobs apply depends on the selected amp. The editor has eight pages: Amp, Cabinet, Effects, Pitch, EQ, Mod, Space and Tuner.
 
 ## Building
 
@@ -104,7 +134,8 @@ fetched by CMake into `third_party/` on first configure.
 
 ```bat
 build.cmd              :: configure and build everything
-build.cmd test         :: ... and run the tests
+build.cmd test         :: ... and run the quick tests (about a minute and a half)
+build.cmd test-all     :: ... and run every test, the slow ones too (run it before a release)
 build.cmd target sas_tests
 ```
 
@@ -119,9 +150,10 @@ with the DAW closed, then rescan plugins.
 engine/    solver library, no JUCE dependency (linear algebra, devices, circuit, netlist, oversampling, chain)
 amps/      one folder per amp: amp.json + .net files, embedded into the build
 plugin/    JUCE processor, editor, parameters, cabinet convolution
-tests/     Catch2 unit tests and parity tests against reference data (100+ tests)
+tests/     Catch2 unit tests and parity tests against reference data (170+ tests; the slow ones are tagged `[slow]`)
 docs/      screenshots for this README (docs/images)
-tools/     sas_bench, sas_inspect, sas_fit_lite, sas_match_levels
+tools/     sas_bench, sas_bench_chain, sas_inspect, sas_fit_lite, sas_match_levels, sas_bias_cal, sas_compare
+plugin/icon/ the application icon (VectorCraft file and PNGs)
 golden/    reference output from the original Rust implementation
 ```
 
@@ -146,7 +178,7 @@ build\tests\sas_plugin_tests.exe "readme screenshots"
 
 ## Status
 
-Windows VST3 is released. macOS (VST3 and Audio Unit, one binary for Apple Silicon and Intel) is built and tested by GitHub Actions on every push, but has not been tried on a real Mac yet and is not notarized. Planned: AAX. The Eco mode and the level
+Windows VST3 and the standalone application are released. macOS (VST3 and Audio Unit, one binary for Apple Silicon and Intel) is built and tested by GitHub Actions on every push, but has not been tried on a real Mac yet and is not notarized. Planned: AAX. The Eco mode and the level
 matching have been verified with tests, not yet extensively by ear.
 
 ## License and trademarks
@@ -156,7 +188,7 @@ affiliated with or endorsed by any amplifier manufacturer; the circuits are inde
 transcriptions made for educational and research purposes, and the amp names are generic.
 
 Free software, licensed under the [GNU Affero General Public License v3.0](LICENSE). Contributions
-are welcome under the same license. The plugin is built on JUCE (used under AGPLv3), Catch2 (BSL-1.0)
-and nlohmann/json (MIT).
+are welcome under the same license. The plugin is built on JUCE (used under AGPLv3), Catch2 (BSL-1.0),
+nlohmann/json (MIT) and the Neural Amp Modeler Core by Steven Atkinson (MIT; the NAM Loader amp runs its models).
 
 ASIO is a trademark and software of Steinberg Media Technologies GmbH. The Windows standalone application is built with Steinberg's ASIO SDK, used under the GNU General Public License version 3.

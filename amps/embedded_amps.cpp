@@ -5,9 +5,13 @@
 
 namespace sas {
 
-std::vector<std::string> embeddedAmpIds() {
+std::vector<std::string> embeddedAmpIds(bool includeNam) {
     std::vector<std::pair<std::pair<int, std::string>, std::string>> keyed;
-    for (const auto& [id, files] : embeddedAmpFiles()) keyed.push_back({{loadEmbeddedAmp(id).order, id}, id});
+    for (const auto& [id, files] : embeddedAmpFiles()) {
+        const AmpDef d = loadEmbeddedAmp(id);
+        if (d.nam && !includeNam) continue;
+        keyed.push_back({{d.order, id}, id});
+    }
     std::sort(keyed.begin(), keyed.end());
     std::vector<std::string> ids;
     for (const auto& k : keyed) ids.push_back(k.second);

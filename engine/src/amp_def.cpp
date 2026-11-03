@@ -387,6 +387,10 @@ AmpDef loadAmpDef(const std::string& jsonText, const FileReader& read) {
                 d.faceplate.jackValues.push_back(std::move(values));
             }
     }
+    if (j.contains("nam") && j.at("nam").get<bool>()) {
+        d.nam = true;
+        return d;
+    }
     d.preamp = parsePreamp(need(j, "preamp", ""), read);
     if (j.contains("eco_preamp")) {
         json merged = j.at("preamp");

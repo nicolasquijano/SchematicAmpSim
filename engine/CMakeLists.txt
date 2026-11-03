@@ -20,6 +20,16 @@ const char* compressorNetlistText() {
 }  // namespace sas
 ")
 
+# The NAM core, compiled apart from the engine's strict warning flags. NAM_SAMPLE_FLOAT: float samples, as the rest of the chain.
+file(GLOB _nam_top CONFIGURE_DEPENDS "${nam_SOURCE_DIR}/NAM/*.cpp")
+file(GLOB _nam_sub CONFIGURE_DEPENDS "${nam_SOURCE_DIR}/NAM/*/*.cpp")
+# An object library: the model types register themselves from static initialisers, which a static library would drop at link time.
+add_library(sas_nam_core OBJECT ${_nam_top} ${_nam_sub})
+target_include_directories(sas_nam_core SYSTEM PUBLIC "${nam_SOURCE_DIR}" "${nam_SOURCE_DIR}/Dependencies/eigen" "${nam_SOURCE_DIR}/Dependencies/nlohmann")
+target_compile_definitions(sas_nam_core PUBLIC NAM_SAMPLE_FLOAT NAM_ENABLE_A2_FAST NOMINMAX WIN32_LEAN_AND_MEAN)
+target_compile_features(sas_nam_core PUBLIC cxx_std_20)
+set_target_properties(sas_nam_core PROPERTIES INTERPROCEDURAL_OPTIMIZATION ON)
+
 add_library(sas_engine STATIC
   src/version.cpp
   src/circuit.cpp
@@ -33,9 +43,11 @@ add_library(sas_engine STATIC
   src/condition.cpp
   src/compressor.cpp
   ${_comp_gen}
+  src/nam_model.cpp
   src/chain.cpp)
 target_include_directories(sas_engine PUBLIC include "${CMAKE_BINARY_DIR}/generated")
-target_link_libraries(sas_engine PUBLIC nlohmann_json::nlohmann_json)
+target_link_libraries(sas_engine PUBLIC nlohmann_json::nlohmann_json PRIVATE sas_nam_core)
+target_link_libraries(sas_engine INTERFACE $<TARGET_OBJECTS:sas_nam_core>)
 set_target_properties(sas_engine PROPERTIES INTERPROCEDURAL_OPTIMIZATION ON)
 target_compile_features(sas_engine PUBLIC cxx_std_20)
 # No /fp:fast: parity with the Rust reference needs strict IEEE behaviour.

@@ -26,11 +26,13 @@ add_executable(sas_tests
   test_chorus.cpp
   test_vibe.cpp
   test_spectrum.cpp
-  test_version.cpp)
+  test_version.cpp
+  test_nam.cpp)
 target_compile_definitions(sas_tests PRIVATE
   SAS_GOLDEN_DIR="${CMAKE_SOURCE_DIR}/golden"
   SAS_AMPS_DIR="${CMAKE_SOURCE_DIR}/amps"
-  SAS_TEST_DATA_DIR="${CMAKE_SOURCE_DIR}/tests/data")
+  SAS_TEST_DATA_DIR="${CMAKE_SOURCE_DIR}/tests/data"
+  SAS_NAM_EXAMPLES_DIR="${nam_SOURCE_DIR}/example_models")
 target_link_libraries(sas_tests PRIVATE sas_engine sas_amps Catch2::Catch2WithMain)
 
 # Processor tests need the plugin's shared code (JUCE); kept as a separate executable so the
@@ -39,9 +41,9 @@ add_executable(sas_plugin_tests plugin_tests.cpp)
 target_include_directories(sas_plugin_tests PRIVATE ${CMAKE_SOURCE_DIR}/plugin)
 target_link_libraries(sas_plugin_tests PRIVATE SchematicAmpSim sas_engine sas_amps juce::juce_audio_utils juce::juce_audio_formats
   juce::juce_dsp juce::juce_recommended_config_flags Catch2::Catch2WithMain)
-target_compile_definitions(sas_plugin_tests PRIVATE JUCE_WEB_BROWSER=0 JUCE_USE_CURL=0)
+target_compile_definitions(sas_plugin_tests PRIVATE JUCE_WEB_BROWSER=0 JUCE_USE_CURL=0 SAS_NAM_EXAMPLES_DIR="${nam_SOURCE_DIR}/example_models")
 
 list(APPEND CMAKE_MODULE_PATH "${catch2_SOURCE_DIR}/extras")
 include(Catch)
-catch_discover_tests(sas_tests)
-catch_discover_tests(sas_plugin_tests TEST_PREFIX "plugin: ")
+catch_discover_tests(sas_tests ADD_TAGS_AS_LABELS)
+catch_discover_tests(sas_plugin_tests TEST_PREFIX "plugin: " ADD_TAGS_AS_LABELS)

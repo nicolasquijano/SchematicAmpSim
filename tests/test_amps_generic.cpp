@@ -35,7 +35,7 @@ double rmsAt(A& amp, double hz, double peak, double seconds = 0.5) {
 
 }  // namespace
 
-TEST_CASE("every embedded amp loads, converges, and makes sound with every jack") {
+TEST_CASE("every embedded amp loads, converges, and makes sound with every jack", "[slow]") {
     const auto ids = embeddedAmpIds();
     REQUIRE(ids.size() >= 2);
     for (const auto& id : ids) {
@@ -72,7 +72,7 @@ TEST_CASE("every ui knob of every amp points at a real preamp knob") {
     }
 }
 
-TEST_CASE("Eco (triode tables) sounds the same as Lite on every amp") {
+TEST_CASE("Eco (triode tables) sounds the same as Lite on every amp", "[slow]") {
     for (const auto& id : embeddedAmpIds()) {
         const AmpDef def = loadEmbeddedAmp(id);
         for (double peak : {0.02, 0.1, 0.4}) {
@@ -283,7 +283,7 @@ TEST_CASE("Twin: jacks, channels and the ganged tone controls behave like the am
     }
 }
 
-TEST_CASE("Twin: the optical vibrato chops the signal only when it is on and the intensity is up") {
+TEST_CASE("Twin: the optical vibrato chops the signal only when it is on and the intensity is up", "[slow]") {
     const AmpDef def = loadEmbeddedAmp("twin_65");
     REQUIRE(def.preamp.vibrato.present);
     const std::size_t intensity = def.knobIndex("intensity");
@@ -552,7 +552,7 @@ TEST_CASE("tube rectifier: the 5Y3 and GZ34 supplies sag when the amp is driven,
     }
 }
 
-TEST_CASE("guitar input: a pickup's impedance makes a resonance that the cable lowers, and a pedal in front switches it off") {
+TEST_CASE("guitar input: a pickup's impedance makes a resonance that the cable lowers, and a pedal in front switches it off", "[slow]") {
     for (const char* id : {"plexi_1959", "tweed_5e3", "afd100"}) {
         DYNAMIC_SECTION(id) {
             const AmpDef def = loadEmbeddedAmp(id);
@@ -605,7 +605,7 @@ TEST_CASE("Triple Stack: supply, bias and the first plates are in the range the 
     CHECK(std::abs(p2a - 277.0) < 30.0);
 }
 
-TEST_CASE("Triple Stack: channel 1 is the clean one, channels 2 and 3 have much more gain, the tone controls and master act") {
+TEST_CASE("Triple Stack: channel 1 is the clean one, channels 2 and 3 have much more gain, the tone controls and master act", "[slow]") {
     const AmpDef def = loadEmbeddedAmp("triplestack_3ch");
     auto level = [&](const char* jack, const char* knob, double v, double hz, double peak = 0.0005) {
         FullAmp amp(def, kFs);
@@ -705,7 +705,7 @@ TEST_CASE("Hiwatt DR103: supply, bias, the inverter and the preamp plates are in
     CHECK(std::abs(p("p2") - 140.0) < 45.0);     // 140 V, same reason
 }
 
-TEST_CASE("Hiwatt DR103: the brilliant channel is thinner, each volume acts on its own channel, tone, master and presence act") {
+TEST_CASE("Hiwatt DR103: the brilliant channel is thinner, each volume acts on its own channel, tone, master and presence act", "[slow]") {
     const AmpDef def = loadEmbeddedAmp("hiwatt_dr103");
     auto level = [&](const char* jack, const char* knob, double v, double hz, double peak = 0.0005, double presence = 0.5) {
         FullAmp amp(def, kFs);

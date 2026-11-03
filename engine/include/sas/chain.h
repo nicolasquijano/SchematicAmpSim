@@ -12,6 +12,8 @@
 #include "sas/amp.h"
 #include "sas/cab.h"
 #include "sas/compressor.h"
+#include "sas/nam_model.h"
+#include "sas/nam_tone.h"
 #include "sas/noise.h"
 #include "sas/speaker.h"
 #include "sas/oversample.h"
@@ -20,7 +22,9 @@
 namespace sas {
 
 // Quality order is part of saved-project compatibility: new qualities are only ever appended.
-enum class Quality { Normal = 0, High = 1, Lite = 2, Eco = 3 };
+// Efficient: the preamp at 2x and the power amp at the host rate (SplitAmp). Cheaper than Normal and, unlike a plain 1x amp, it does not choke
+// on a hot input (the preamp at the host rate stops converging; docs/PLAN_CPU.md).
+enum class Quality { Normal = 0, High = 1, Lite = 2, Eco = 3, Efficient = 4 };
 
 // Knob values are normalised 0..1 here (the plugin shows 0..10).
 struct ChainSettings {
@@ -45,6 +49,12 @@ struct ChainSettings {
     bool speakerIntense = false;
     double noise = 0.0;    // hiss and hum level: 0 off, 1 a typical amp
     double bias = 1.0;     // output-tube bias supply, 1 = as drawn (amps with a bias control; full circuits only)
+    // The NAM loader amp (AmpDef::nam): the model to run (owned by the plugin, which keeps it alive until a block after it is replaced; null =
+    // the amp passes the signal through), the drive into it and the level out of it in dB, and whether it is brought to a common loudness.
+    NamModel* nam = nullptr;
+    double namDriveDb = 0.0, namLevelDb = 0.0;
+    double namBass = 0.5, namMid = 0.5, namTreble = 0.5;  // tone after the model, 0..1 with 0.5 flat (+-12 dB)
+    bool namNormalize = true;
 };
 
 // Linear ramp to a target over a fixed time; advance one sample or a whole control period.
@@ -102,19 +112,23 @@ public:
 
 private:
     static constexpr std::size_t kControlEvery = 32;
+    void processNam(const float* mono, float* out, std::size_t n);
 
     AmpDef def_;
     double fs_;
     ChainSettings target_;
     std::unique_ptr<FullAmp> amp2_, amp4_;
+    std::unique_ptr<SplitAmp> split_;  // Efficient: preamp at 2x, power amp at the host rate
     std::unique_ptr<LiteAmp> lite_, eco_;  // eco_: Lite power amp + triode tables
-    TubeScreamerFast ts2_, ts4_;
+    TubeScreamerFast ts1_, ts2_, ts4_;
     Oversampler os2_{1}, os4_{2};
     CabFilter cab_;
     Compressor comp_;           // the compressor pedal circuit, at the host rate
     SpeakerDynamics speaker_;   // between the amp and the cabinet
     AmpNoise noise2_, noise4_;  // at the 2x and 4x rates
     float ampTrim_ = 1.0f;  // the amp's output_db as a gain
+    Smoother namDriveDb_, namLevelDb_, namBass_, namMid_, namTreble_;
+    NamTone namTone_;
     Quality active_ = Quality::Normal;
     std::vector<Smoother> knobs_, powerKnobs_;
     Smoother bias_, presence_, tsDrive_, tsTone_, tsLevel_, inputDb_, outputDb_, jackCompDb_;

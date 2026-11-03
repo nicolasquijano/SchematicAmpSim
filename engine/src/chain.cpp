@@ -12,11 +12,12 @@ inline double dbToGain(double db) { return std::pow(10.0, db / 20.0); }
 Chain::Chain(const AmpDef& def, double fs)
     : def_(def), fs_(fs),
       // Normal and High use the triode tables: the same sound within ~1e-6, noticeably cheaper.
-      amp2_(std::make_unique<FullAmp>(def, fs * 2.0, false, true)),
-      amp4_(std::make_unique<FullAmp>(def, fs * 4.0, false, true)),
-      lite_(std::make_unique<LiteAmp>(def, fs * 2.0)),
-      eco_(std::make_unique<LiteAmp>(def, fs * 2.0, true)),
-      ts2_(fs * 2.0), ts4_(fs * 4.0), cab_(float(fs)), comp_(fs) {
+      amp2_(def.nam ? nullptr : std::make_unique<FullAmp>(def, fs * 2.0, false, true)),
+      amp4_(def.nam ? nullptr : std::make_unique<FullAmp>(def, fs * 4.0, false, true)),
+      split_(def.nam ? nullptr : std::make_unique<SplitAmp>(def, fs)),
+      lite_(def.nam ? nullptr : std::make_unique<LiteAmp>(def, fs * 2.0)),
+      eco_(def.nam ? nullptr : std::make_unique<LiteAmp>(def, fs * 2.0, true)),
+      ts1_(fs), ts2_(fs * 2.0), ts4_(fs * 4.0), cab_(float(fs)), comp_(fs) {
     ampTrim_ = float(dbToGain(def.outputDb));
     speaker_.prepare(fs);
     noise2_.prepare(fs * 2.0, def.power.supply.mainsHz);
@@ -43,6 +44,10 @@ Chain::Chain(const AmpDef& def, double fs)
     inputDb_.reset(0.0, fs, 20.0);
     outputDb_.reset(0.0, fs, 20.0);
     jackCompDb_.reset(def.preamp.jacks.empty() ? 0.0 : def.preamp.jacks[0].levelDb, fs, 20.0);
+    namDriveDb_.reset(0.0, fs, 20.0);
+    namLevelDb_.reset(0.0, fs, 20.0);
+    for (auto* s : {&namBass_, &namMid_, &namTreble_}) s->reset(0.5, fs, 40.0);
+    namTone_.prepare(fs);
 }
 
 void Chain::setSettings(const ChainSettings& s) {
@@ -58,7 +63,14 @@ void Chain::setSettings(const ChainSettings& s) {
     inputDb_.setTarget(s.inputDb);
     outputDb_.setTarget(s.outputDb);
     target_.quality = s.quality;
-    target_.jack = std::min(s.jack, def_.preamp.jacks.size() - 1);
+    target_.jack = def_.preamp.jacks.empty() ? 0 : std::min(s.jack, def_.preamp.jacks.size() - 1);
+    target_.nam = s.nam;
+    target_.namNormalize = s.namNormalize;
+    namDriveDb_.setTarget(s.namDriveDb);
+    namLevelDb_.setTarget(s.namLevelDb);
+    namBass_.setTarget(std::clamp(s.namBass, 0.0, 1.0));
+    namMid_.setTarget(std::clamp(s.namMid, 0.0, 1.0));
+    namTreble_.setTarget(std::clamp(s.namTreble, 0.0, 1.0));
     target_.selectors = s.selectors;
     target_.cabFilter = s.cabFilter;
     target_.tsOn = s.tsOn;
@@ -73,7 +85,7 @@ void Chain::setSettings(const ChainSettings& s) {
     noise2_.setPickup(s.pickup);
     noise4_.setPickup(s.pickup);
     target_.cableMeters = s.cableMeters;
-    jackCompDb_.setTarget(s.jackLevelMatch ? def_.preamp.jacks[target_.jack].levelDb : 0.0);
+    jackCompDb_.setTarget(s.jackLevelMatch && !def_.preamp.jacks.empty() ? def_.preamp.jacks[target_.jack].levelDb : 0.0);
 }
 
 void Chain::snap(const ChainSettings& s) {
@@ -87,33 +99,48 @@ void Chain::snap(const ChainSettings& s) {
     tsLevel_.reset(std::clamp(s.tsLevel, 0.0, 1.0), fs_, 40.0);
     inputDb_.reset(s.inputDb, fs_, 20.0);
     outputDb_.reset(s.outputDb, fs_, 20.0);
-    jackCompDb_.reset(s.jackLevelMatch ? def_.preamp.jacks[std::min(s.jack, def_.preamp.jacks.size() - 1)].levelDb : 0.0, fs_, 20.0);
+    jackCompDb_.reset(s.jackLevelMatch && !def_.preamp.jacks.empty() ? def_.preamp.jacks[std::min(s.jack, def_.preamp.jacks.size() - 1)].levelDb : 0.0, fs_, 20.0);
+    namDriveDb_.reset(s.namDriveDb, fs_, 20.0);
+    namLevelDb_.reset(s.namLevelDb, fs_, 20.0);
+    namBass_.reset(std::clamp(s.namBass, 0.0, 1.0), fs_, 40.0);
+    namMid_.reset(std::clamp(s.namMid, 0.0, 1.0), fs_, 40.0);
+    namTreble_.reset(std::clamp(s.namTreble, 0.0, 1.0), fs_, 40.0);
     setSettings(s);
 }
 
 double Chain::idleMilliamps() const {
+    if (def_.nam) return 0.0;
     switch (active_) {
         case Quality::Normal: return amp2_->power().idleMilliamps();
         case Quality::High: return amp4_->power().idleMilliamps();
+        case Quality::Efficient: return split_->power().idleMilliamps();
         default: return 0.0;
     }
 }
 
 double Chain::latencySamples() const {
+    if (def_.nam) return 0.0;  // the model runs at the host rate
     return std::ceil(target_.quality == Quality::High ? os4_.latencySamples() : os2_.latencySamples());
 }
 
 void Chain::reset() {
     os2_.reset();
     os4_.reset();
+    if (split_) split_->reset();
+    if (target_.nam) target_.nam->reset();
     cab_.reset();
 }
 
 void Chain::processAmp(const float* mono, float* out, std::size_t n) {
+    if (def_.nam) {
+        processNam(mono, out, n);
+        return;
+    }
     if (target_.quality != active_) {
         active_ = target_.quality;
         os2_.reset();
         os4_.reset();
+        if (split_) split_->reset();
     }
     const Quality quality = active_;
     const bool tsOn = target_.tsOn;
@@ -152,6 +179,16 @@ void Chain::processAmp(const float* mono, float* out, std::size_t n) {
                     amp4_->setSourceOhms(sourceOhms);
                     amp4_->setGuitar(target_.pickup, target_.cableMeters, pedalOn);
                     ts4_.setControls(ts);
+                    break;
+                case Quality::Efficient:
+                    split_->setKnobs(knobScratch_, presence, powerScratch_);
+                    split_->power().setBias(bias);
+                    split_->setJack(target_.jack);
+                    for (std::size_t i = 0; i < target_.selectors.size(); ++i) split_->setSelector(i, target_.selectors[i]);
+                    split_->setVibrato(target_.vibratoOn, target_.vibratoSpeed);
+                    split_->setSourceOhms(sourceOhms);
+                    split_->setGuitar(target_.pickup, target_.cableMeters, pedalOn);
+                    ts2_.setControls(ts);
                     break;
                 case Quality::Lite:
                     lite_->setKnobs(knobScratch_, presence, powerScratch_);
@@ -193,6 +230,9 @@ void Chain::processAmp(const float* mono, float* out, std::size_t n) {
                     return float(amp4_->process((tsOn ? ts4_.process(double(s)) : double(s)) * comp + noise4_.next()));
                 });
                 break;
+            case Quality::Efficient:
+                volts = split_->process(vin, [&](double s) { return (tsOn ? ts2_.process(s) : s) * comp + noise2_.next(); });
+                break;
             case Quality::Eco:
                 volts = os2_.process(vin, [&](float s) {
                     return float(eco_->process((tsOn ? ts2_.process(double(s)) : double(s)) * comp + noise2_.next()));
@@ -208,6 +248,45 @@ void Chain::processAmp(const float* mono, float* out, std::size_t n) {
         float y = speaker_.process(volts / float(kOutputFullScaleVolts)) * ampTrim_;
         if (cabOn) y = cab_.process(y);
         out[i] = y;
+    }
+}
+
+// The loader amp: input gain -> [compressor] -> [TS808] -> drive -> model -> level -> speaker -> cab filter, all at the host rate (the models
+// are trained at it). Without a model loaded the signal goes through at the same level, so the plugin is not silent while one is chosen.
+void Chain::processNam(const float* mono, float* out, std::size_t n) {
+    constexpr std::size_t kBlock = 256;
+    // What the model's output (about +-1 for a loud signal) becomes in speaker volts: 100 V is full scale, and the amps sit about 6 dB below it.
+    constexpr float kVolts = float(kOutputFullScaleVolts) * 0.5f;
+    const bool tsOn = target_.tsOn, compOn = target_.compOn, cabOn = target_.cabFilter;
+    NamModel* model = target_.nam;
+    const float norm = model && target_.namNormalize ? model->normalizeGain() : 1.0f;
+    float in[kBlock], y[kBlock];
+    for (std::size_t at = 0; at < n; at += kBlock) {
+        const std::size_t m = std::min(kBlock, n - at);
+        for (std::size_t i = 0; i < m; ++i) {
+            if (i % kControlEvery == 0) {
+                const double steps = double(kControlEvery);
+                ts1_.setControls({std::clamp(tsDrive_.nextStep(steps), 0.0, 1.0), std::clamp(tsTone_.nextStep(steps), 0.0, 1.0),
+                                  std::clamp(tsLevel_.nextStep(steps), 0.0, 1.0)});
+            }
+            float v = float(double(mono[at + i]) * dbToGain(inputDb_.next()));
+            if (compOn) v = float(comp_.process(double(v)));
+            if (tsOn) v = float(ts1_.process(double(v)));
+            in[i] = float(double(v) * dbToGain(namDriveDb_.next()));
+        }
+        if (model) model->process(in, y, m);
+        else std::copy(in, in + m, y);
+        for (std::size_t i = 0; i < m; ++i) {
+            if (i % kControlEvery == 0) {
+                const double steps = double(kControlEvery);
+                namTone_.setGains((namBass_.nextStep(steps) - 0.5) * 24.0, (namMid_.nextStep(steps) - 0.5) * 24.0, (namTreble_.nextStep(steps) - 0.5) * 24.0);
+            }
+            const float toned = namTone_.flat() ? y[i] : namTone_.process(y[i]);
+            const float volts = toned * norm * kVolts * float(dbToGain(namLevelDb_.next()));
+            float s = speaker_.process(volts / float(kOutputFullScaleVolts)) * ampTrim_;
+            if (cabOn) s = cab_.process(s);
+            out[at + i] = s;
+        }
     }
 }
 

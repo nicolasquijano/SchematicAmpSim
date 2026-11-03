@@ -1,0 +1,133 @@
+* Boutique 100 W overdrive head, preamp (drawing "Dumble #124 11/84, Sky upgrd '88 - 100W Overdrive Special", rev 1.7
+* by Odourboy, 6 Mar 2008). One input (the NOR jack: 1M to ground, 33k to the grid), V1 CL1, a Fender-style tone stack
+* with Treble, Middle and Bass, a Rock / Jazz switch, a Deep (mid boost) switch and a Bright switch on the Volume pot,
+* V1 CL2, and then either straight to the Master (Clean) or through the overdrive channel (V2 OD1, Level, V2 OD2,
+* Ratio) to the Master (OD): the OD / Clean relay RLY2.
+*
+* Not modelled: the FET input (J2, Q1 NTE452: the solver has no JFET), the PAB relay RLY1 (left in its released state,
+* its contacts only add 22M resistors), the send / return jacks, the 100 W / 50 W switch (all four tubes on).
+*
+* Reading notes where the drawing is hard to follow (change them here, not in code):
+*  - tone stack: 150k from CL1's plate to the node na; 0.01u from na to the Middle rheostat (250k to ground); 0.1u
+*    from na to the top nd of the Bass pot (500k) with 0.001u across it and 10k to ground at its bottom; the Bass wiper
+*    has 0.005u to ground; the Treble pot (250k) takes the plate through 0.002u (and 4.7M to ground), the 300p being
+*    in series with it and shorted by the Deep switch; the treble wiper is the output to the Volume pot. Rock ties the
+*    bottom of the Treble pot to nd; Jazz puts the 100k of the drawing between them (the drawing's switch is hard to read).
+*  - CL2 has the 10M + 0.05u + 10M + 10M network from its plate to its grid (a very light feedback / bias path).
+*  - the preamp rail is one node (B+4 and B+5 are within a few volts of each other: 2.2k between them).
+
+* Rail node x (about 300 V), driven from the power amp at run time.
+V VRAIL x 100 300
+* The guitar behind a variable source resistance.
+I VIN gin 1
+R RSRC gin in 7k
+* The guitar behind its source impedance. RSRC is the plain 7k source: the "Off" setting, and what a pedal in front of the amp
+* looks like. A pickup replaces it with its own impedance as seen from the open-circuit voltage (the recording): the
+* coil (winding resistance RPU + inductance) in parallel with its winding capacitance CPU and an eddy-current loss resistor
+* RPL, then the cable capacitance (200 pF per 2 m, switched in steps of 200, 400 and 800 pF). The engine sets the values:
+* single coil = coil 1 (2.5 H), humbucker and P-90 = coil 2 (5 H) with their own resistances; open = 1e12.
+R RPU1 gin pkb1 1e12
+.xfmr LPU1 L=2.5
+  W pkb1 in 1 pu
+.end
+R RPU2 gin pkb2 1e12
+.xfmr LPU2 L=5
+  W pkb2 in 1 pu
+.end
+C CPU gin in 110p
+R RPL gin in 1e12
+R SWK1 in pkk1 1e12
+C CCAB1 pkk1 0 200p
+R SWK2 in pkk2 1e12
+C CCAB2 pkk2 0 400p
+R SWK4 in pkk4 1e12
+C CCAB4 pkk4 0 800p
+
+
+* Input: the NOR jack. 1M to ground, 33k stopper.
+R RJ1 in 0 1M
+R R33K in ng 33k
+
+* V1 CL1 (one triode of a dual triode): 100k plate load, 1.5k / 10u cathode.
+T V1B ng p1 k1 12AX7
+R R100A x p1 100k
+R RK1 k1 0 1k5
+C CK1 k1 0 10u
+
+* Tone stack.
+C C002 p1 nb 2n
+R R4M7 nb 0 4M7
+C C300 nb nc 300p
+R SW_DEEP nb nc 1e12
+R VR_TT nc tw 1
+R VR_TB tw nf 1
+R SW_ROCK nf nd 1
+R SW_JAZZ nf nd 1e12
+R R150 p1 na 150k
+C C01A na nm 0.01u
+R VR_MID nm 0 1
+C C01B na nd 0.1u
+R VR_BASS_T nd bw 1
+R VR_BASS_B bw ne 1
+C C0001 nd ne 1n
+R R10K ne 0 10k
+C C0005 bw 0 5n
+
+* Volume (1M, audio taper) with the Bright cap, then 500p || 220k into CL2's grid.
+R VR_VT tw vw 1
+R VR_VB vw 0 1
+C CBR tw bt 300p
+R SW_BRIGHT bt vw 1e12
+C C500 vw g2 500p
+R R220 vw g2 220k
+
+* V1 CL2 and its plate-to-grid 10M network.
+T V1A g2 p2 k2 12AX7
+R R100B x p2 100k
+R RK2 k2 0 1k5
+C CK2 k2 0 10u
+R R10MA p2 y1 10M
+C C005A y1 y2 0.05u
+R R10MB y2 y3 10M
+R R10MC y3 g2 10M
+C C005B p2 q 0.05u
+
+* OD / Clean relay: Clean sends CL2 to the Master, OD sends it to the overdrive channel.
+R SW_CLEAN q mt 1
+R SW_OD q od0 1e12
+
+* Overdrive channel: 120k into the OD Trim (350k), 68k stopper, V2 OD1 (100k plate load on B+4, 1.5k / 4.7u cathode,
+* 270p plate to cathode), 0.01u and 100k into the Level pot (250k), 180k stopper, V2 OD2 (same stage), 0.005u and 150k
+* into the Ratio pot (100k) whose wiper joins the Master.
+R R120 od0 odt 120k
+R VR_ODT_T odt ow 1
+R VR_ODT_B ow 0 1
+R R68 ow g3 68k
+T V2B g3 p3 k3 12AX7
+R R100C x p3 100k
+R RK3 k3 0 1k5
+C CK3 k3 0 4u7
+C C270A p3 k3 270p
+C C001 p3 lv 0.01u
+R R100D lv lt 100k
+R VR_LV_T lt lw 1
+R VR_LV_B lw 0 1
+R R180 lw g4 180k
+T V2A g4 p4 k4 12AX7
+R R100E x p4 100k
+R RK4 k4 0 1k5
+C CK4 k4 0 4u7
+C C270B p4 k4 270p
+C C0005B p4 rt 5n
+R R150B rt rr 150k
+R VR_RAT_T rr rw 1
+R VR_RAT_B rw 0 1
+R R_RATW rw mt 1
+
+* Master (1M, audio taper, 15p across its top): the cut for the power amp is at its wiper mw.
+R VR_MS_T mt mw 1
+R VR_MS_B mw 0 1
+C C15 mt mw 15p
+* Load of the phase inverter input: 0.02u coupling and the 1M grid leak (the real ones are in the power amp).
+C C02L mw pl 20n
+R RPI pl 0 1M

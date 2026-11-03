@@ -173,3 +173,43 @@ TEST_CASE("plate: both rooms are stable and finite, the hall rings longer, off l
         CHECK(x[10] == 0.5f);
     }
 }
+
+TEST_CASE("plate: shimmer puts the tail an octave up, and stays stable") {
+    auto render = [](double shimmer, bool fifth) {
+        sas::PlateReverb rv;
+        sas::PlateParams p;
+        p.on = true;
+        p.decaySec = 3.0;
+        p.mix = 1.0;
+        p.preMs = 0.0;
+        p.lowCutHz = 20.0;
+        p.shimmer = shimmer;
+        p.shimmerFifth = fifth;
+        rv.setParams(p);
+        rv.prepare(kFs);
+        std::vector<float> l(static_cast<std::size_t>(6.0 * kFs)), r(l.size());
+        for (std::size_t i = 0; i < std::size_t(0.5 * kFs); ++i) l[i] = r[i] = 0.3f * float(std::sin(2.0 * 3.14159265358979 * 440.0 * double(i) / kFs));
+        run(rv, l, r);
+        return l;
+    };
+    // The level of one frequency in a stretch of the tail (Goertzel).
+    auto level = [](const std::vector<float>& v, double hz, std::size_t from, std::size_t to) {
+        const double w = 2.0 * 3.14159265358979 * hz / kFs, c = 2.0 * std::cos(w);
+        double s1 = 0, s2 = 0;
+        for (std::size_t i = from; i < to; ++i) { const double s = double(v[i]) + c * s1 - s2; s2 = s1; s1 = s; }
+        return std::sqrt(s1 * s1 + s2 * s2 - c * s1 * s2) / double(to - from);
+    };
+    const auto dry = render(0.0, false), shim = render(1.0, false), fifth = render(1.0, true);
+    for (float v : shim) REQUIRE(std::isfinite(v));
+    for (float v : fifth) REQUIRE(std::isfinite(v));
+    const std::size_t a = std::size_t(1.5 * kFs), b = std::size_t(3.0 * kFs);
+    INFO("880 Hz in the tail: with shimmer " << level(shim, 880.0, a, b) << ", without " << level(dry, 880.0, a, b));
+    CHECK(level(shim, 880.0, a, b) > 3.0 * level(dry, 880.0, a, b));
+    CHECK(level(fifth, 440.0 * std::pow(2.0, 19.0 / 12.0), a, b) > 3.0 * level(dry, 440.0 * std::pow(2.0, 19.0 / 12.0), a, b));
+    // The tail still dies away (the loop has less than unity gain).
+    auto rmsAt = [](const std::vector<float>& v, double from, double to) { double e = 0; for (std::size_t i = std::size_t(from * kFs); i < std::size_t(to * kFs); ++i) e += double(v[i]) * v[i]; return std::sqrt(e / ((to - from) * kFs)); };
+    CHECK(rmsAt(shim, 5.5, 6.0) < 0.5 * rmsAt(shim, 1.5, 2.0));
+    double peak = 0;
+    for (float v : shim) peak = std::max(peak, double(std::fabs(v)));
+    CHECK(peak < 3.0);
+}

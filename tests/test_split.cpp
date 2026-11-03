@@ -57,7 +57,7 @@ TEST_CASE("AFD100 split preamp has two stages joined at the tone stack output") 
     CHECK(pre.solver(1).nodeCount() < 20);
 }
 
-TEST_CASE("AFD100 split preamp matches the monolithic circuit") {
+TEST_CASE("AFD100 split preamp matches the monolithic circuit", "[slow]") {
     const AmpDef split = loadEmbeddedAmp("afd100"), full = monolithic();
 
     {  // DC: the second part starts from the first part's V7B cathode and the same rails.
@@ -102,7 +102,7 @@ TEST_CASE("AFD100 split preamp matches the monolithic circuit") {
     }
 }
 
-TEST_CASE("AFD100 Eco preamp (three parts, tables) matches the monolithic circuit") {
+TEST_CASE("AFD100 Eco preamp (three parts, tables) matches the monolithic circuit", "[slow]") {
     const AmpDef eco = loadEmbeddedAmp("afd100"), full = monolithic();
     REQUIRE(eco.hasEcoPreamp);
     {

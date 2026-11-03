@@ -1,0 +1,126 @@
+{
+  "id": "deluxe_reverb",
+  "order": 12,
+  "output_db": 9.0,
+  "name": "American Deluxe",
+
+  "theme": {
+    "background": "#0b0c0e",
+    "panel": "#17191d",
+    "edge": "#3b4048",
+    "accent": "#c7a6e0",
+    "label": "#8a929c",
+    "text": "#e3e8ee",
+    "knob_top": "#d9dde2",
+    "knob_bottom": "#8c939b",
+    "pointer": "#16181b"
+  },
+
+  "preamp": {
+    "netlist": "preamp.net",
+    "tolerance": 2e-6,
+    "rail_source": "VRAIL",
+    "input_source": "VIN",
+    "output_node": "m1",
+    "pot_min_ohms": 100,
+    "jack_label": "INPUT",
+    "knobs": [
+      { "name": "vibrato_volume", "default": 0.5, "pot": { "type": "wiper", "top": "VR_VT_V", "bottom": "VR_VB_V", "total": 1e6, "taper": "log30" } },
+      { "name": "normal_volume",  "default": 0.5, "pot": { "type": "wiper", "top": "VR_VT_N", "bottom": "VR_VB_N", "total": 1e6, "taper": "log30" } },
+      { "name": "bass",   "default": 0.6, "pot": { "type": "variable", "resistor": "VR_BASS_V", "total": 250e3, "taper": "log10",
+                                                 "also": [ { "resistor": "VR_BASS_N" } ] } },
+      { "name": "treble", "default": 0.6, "pot": { "type": "wiper", "top": "VR_TT_V", "bottom": "VR_TB_V", "total": 250e3, "taper": "log30",
+                                                 "also": [ { "top": "VR_TT_N", "bottom": "VR_TB_N" } ] } },
+      { "name": "intensity", "default": 0.5, "pot": { "type": "wiper", "top": "VR_INT_T", "bottom": "VR_INT_B", "total": 50e3, "taper": "revlog" } },
+      { "name": "reverb", "default": 0.3, "pot": { "type": "wiper", "top": "VR_REV_T", "bottom": "VR_REV_B", "total": 100e3, "taper": "linear" } }
+    ],
+    "reverb": {
+      "netlist": "reverb.net",
+      "rail_source": "VRAIL",
+      "grid_source": "VG3",
+      "grid_node": "gv3",
+      "out_node": "pv4",
+      "main_source": "VREVOUT",
+      "tank_in_node": "ts",
+      "tank_out_source": "VREV",
+      "gain": 0.00147,
+      "springs": [
+        { "delay_ms": 33, "sections": 80, "coefficient": -0.5, "loop_gain": 0.92, "loss_hz": 3500 },
+        { "delay_ms": 41, "sections": 80, "coefficient": -0.5, "loop_gain": 0.92, "loss_hz": 3500 }
+      ]
+    },
+    "vibrato": {
+      "netlist": "vibrato.net",
+      "rail_source": "VRAIL",
+      "led": { "from": "x", "to": "ln", "ohms": 100e3 },
+      "switch": { "resistor": "SW_VIB", "on_ohms": 10e3, "off_ohms": 1e12 },
+      "speed": { "resistor": "R_SPEED", "total": 3e6, "taper": "log10", "invert": true, "default": 0.5 },
+      "cell": { "resistor": "R_CELL", "dark_ohms": 2e6, "ohms_at_1ma": 4e3, "exponent": 0.8, "attack_s": 0.004, "release_s": 0.03 },
+      "control_samples": 64
+    },
+    "source_ohms": { "resistors": ["RSRC"], "default": 7000, "min": 10 },
+    "jacks": [
+      { "name": "vibrato1", "label": "Vibrato 1", "drive": "VIN", "resistors": {
+          "SW_V1": 1, "SW_V2": 1e12, "SW_VTN": 1,    "SW_VNG": 1e12, "SW_N1": 1e12, "SW_N2": 1e12, "SW_NTN": 1, "SW_NNG": 1 } },
+      { "name": "vibrato2", "label": "Vibrato 2", "level_db": 6.4, "drive": "VIN", "resistors": {
+          "SW_V1": 1e12, "SW_V2": 1, "SW_VTN": 1e12, "SW_VNG": 1,    "SW_N1": 1e12, "SW_N2": 1e12, "SW_NTN": 1, "SW_NNG": 1 } },
+      { "name": "normal1",  "label": "Normal 1",  "level_db": 2.3, "drive": "VIN", "resistors": {
+          "SW_N1": 1, "SW_N2": 1e12, "SW_NTN": 1,    "SW_NNG": 1e12, "SW_V1": 1e12, "SW_V2": 1e12, "SW_VTN": 1, "SW_VNG": 1 } },
+      { "name": "normal2",  "label": "Normal 2",  "level_db": 8.6, "drive": "VIN", "resistors": {
+          "SW_N1": 1e12, "SW_N2": 1, "SW_NTN": 1e12, "SW_NNG": 1,    "SW_V1": 1e12, "SW_V2": 1e12, "SW_VTN": 1, "SW_VNG": 1 } }
+    ]
+  },
+
+  "ui": [
+    { "param": "volume",  "knob": "vibrato_volume", "label": "VIB CHAN" },
+    { "param": "volume2", "knob": "normal_volume",  "label": "NORM CHAN" },
+    { "param": "bass",    "knob": "bass",           "label": "BASS" },
+    { "param": "treble",  "knob": "treble",         "label": "TREBLE" },
+    { "param": "vib_speed",     "label": "SPEED" },
+    { "param": "vib_intensity", "knob": "intensity", "label": "INTENSITY" },
+    { "param": "reverb",        "knob": "reverb",    "label": "REVERB" }
+  ],
+
+  "power": {
+    "transformer_parasitics": { "primary_pf": 150, "core_loss_ohms": 168000 },
+    "tubes": [
+      { "name": "6V6GT", "model": "6V6GT", "pmax_w": 14.0, "bias_scale": 1.0 }
+    ],
+    "bias": { "source": "VBIAS", "idle_resistors": ["DCR_PT", "DCR_PB"], "tubes_per_half": 1 },
+    "netlist": "poweramp.net",
+    "tolerance": 1e-4,
+    "input_source": "VAUDIO",
+    "ht_source": "VHT",
+    "ht_node": "a",
+    "rail_node": "x",
+    "output_node": "t8",
+    "load_resistor": "RLOAD",
+    "supply": {
+      "mains_hz": 60,
+      "vac_peak": 474,
+      "rect_source_ohms": 60,
+      "ht_dc_source": 394,
+      "rect_drop": 15,
+      "rect_tube": { "volts": 30, "amps": 0.2 },
+      "reservoir_farads": 69e-6,
+      "tie_ohms": 15,
+      "settle_seconds": 0.15
+    }
+  },
+
+  "lite": {
+  "base_gain_db": 19.7284,
+  "high_pass_hz": 69.4802,
+  "shelf_hz": 150,
+  "presence_db": [0, 0, 0, 0, 0],
+  "sag_table": [[0, 0], [2.54648, 0.226572], [5.09296, 0.927415], [9.5493, 3.47118], [15.9155, 9.83558], [22.2817, 13.0521], [28.6479, 13.0521], [35.0141, 13.0521], [44.5634, 13.0521], [57.2958, 13.0521], [82.7606, 13.0521], [127.324, 13.5783]],
+  "rail_x_idle": 264.194,
+  "rail_sag_fraction": 0.58,
+  "ceiling_light": 28.6903,
+  "ceiling_heavy": 16.9044,
+  "ceiling_decay": 1.85353,
+  "knee": 7.48929,
+  "sag_attack_s": 0.01,
+  "sag_release_s": 0.06
+}
+}

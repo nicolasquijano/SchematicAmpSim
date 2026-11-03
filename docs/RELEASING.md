@@ -50,7 +50,9 @@ Build output (`build/`, `build-*/`, `dist/`) and the dependencies fetched into `
 
 ## The installer
 
-`installer/schematic-amp-sim.iss` (Inno Setup 6 or 7) installs the bundle into the VST3 folder: for all users
+`installer/schematic-amp-sim.iss` (Inno Setup 6 or 7) has two components, chosen on the "Select Components" page (full, VST3 only, standalone only, custom):
+the **VST3 plug-in** and the **standalone application** (in Program Files, with a Start menu entry). The uninstaller, the licence and the README (English and
+Spanish) go to the application folder, never inside the VST3 folder. The plug-in bundle goes into the VST3 folder: for all users
 (`C:\Program Files\Common Files\VST3\Schematic Amp Sim.vst3`, needs an administrator) or only for the current user
 (`%LOCALAPPDATA%\Programs\Common\VST3\Schematic Amp Sim.vst3`, no administrator); the setup asks which. It shows the license and registers an
 uninstaller. The `AppId` GUID in it identifies the product so that a newer installer replaces the older install: never change it. The installer

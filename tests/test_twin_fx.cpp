@@ -44,7 +44,7 @@ std::vector<double> windowRms(const std::vector<float>& v, std::size_t from, std
 
 }  // namespace
 
-TEST_CASE("American Twin: the vibrato modulates the level in every quality") {
+TEST_CASE("American Twin: the vibrato modulates the level in every quality", "[slow]") {
     const auto def = loadEmbeddedAmp("twin_65");
     REQUIRE(def.preamp.vibrato.present);
     for (Quality q : {Quality::Normal, Quality::High, Quality::Lite, Quality::Eco}) {

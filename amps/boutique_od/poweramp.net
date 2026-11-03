@@ -1,0 +1,77 @@
+* Boutique 100 W overdrive head, power amp (drawing "Dumble #124 ... 100W Overdrive Special" rev 1.7): the Fender Twin
+* arrangement. A 12AX7 long-tailed phase inverter (V4) with the 24k / 820 cathode network, the 4.7k negative feedback from
+* the speaker tap with the Presence network (390 ohm, and 2k with 1u), four 6L6GC as two parallel pairs on fixed bias with
+* 5.1k grid stoppers and 470 ohm screen resistors, the Twin's output transformer (125A129A), and the supply with the
+* 4H / 100 ohm choke and the 2.2k / 22k / 2.2k filter. B+ (node a, B+1) is the rectifier/reservoir, integrated by the
+* engine.
+*
+* Assumptions where the drawing is silent (change them here, not in code):
+*  - the PI tube type is not printed: a 12AX7 (the plate loads are 110k / 120k with the 5k balance pot at its centre);
+*  - output transformer: 2.1k plate-to-plate onto the 4 ohm load, like the Twin it comes from, 5 H per primary half;
+*  - bias: -50 V Thevenin behind 1k (the drawing derives it from a rectified winding and a 10k trim);
+*  - the preamp rail load RPREAMP stands for the four preamp triodes and the OD stage (about 4.5 mA).
+
+.nodes pin gp gn cc f k pa pb pga pgb g1 g2 cbias a t4 y x pt pbm npt npb s1 s2 b2 pr
+
+S VAUDIO pin 130k 0
+S VHT a 15 440
+S VBIAS cbias 1k -50
+
+* Phase inverter: V4B's grid on the master through 0.02u; V4A's grid tied to the feedback node f through 0.1u. The
+* cathodes share 820 + 24k, the node f being at the 24k / 390 junction.
+C C20 pin gp 20n
+R R1MA gp cc 1M
+R R1MB gn cc 1M
+R R820 cc k 820
+R R24K cc f 24k
+R R390 f 0 390
+C C21 f gn 0.1u
+T V4B gp pa k 12AX7
+T V4A gn pb k 12AX7
+R R110 y pa 112k5
+R R120 y pb 122k5
+
+* Negative feedback from the speaker tap, and the Presence rheostat (2k) with its 1u.
+R R_NFB t4 f 4k7
+R VR_PRES f pr 1
+C C_PR pr 0 1u
+
+* Coupling to the power tubes (0.1u), 220k grid leaks to the bias line, 5.1k stoppers (two per side in parallel).
+C C22 pa pga 0.1u
+C C23 pb pgb 0.1u
+R R220A pga cbias 220k
+R R220B pgb cbias 220k
+R R51A pga g1 5k1/2
+R R51B pgb g2 5k1/2
+C C36 cbias 0 22u
+
+* 6L6GC: two tubes on each half; screens on B+2 through 470 each.
+P V7 g1 pt s1 0 6L6GCDS 2
+P V9 g2 pbm s2 0 6L6GCDS 2
+R R_S1 b2 s1 470/2
+R R_S2 b2 s2 470/2
+
+* Output transformer: primary halves around the B+ centre tap, one 4 ohm secondary.
+R DCR_PT pt npt 35
+R DCR_PB pbm npb 35
+.param n4 = 2*1/sqrt(2100/4)
+* Core saturation: SAT is the flux (volt-seconds) where the extra magnetising current equals the linear one; ~full-power
+* plate-to-plate swing / (2 pi f), with f about 28-30 Hz for the large Marshall / Soldano / Peavey / Fender cores, 50 to 65 Hz for the small AC30 / tweed cores.
+.xfmr OT L=5 SAT=3.7
+  W npt a 1 pri
+  W a npb 1 pri
+  W t4 0 n4 sec
+  K pri pri 0.9998
+  K pri sec 0.9993
+.end
+R RLOAD t4 0 4
+
+* Supply: the 4H / 100 ohm choke to B+2 (20u), 2.2k to B+3 (20u, the phase inverter plates), 22k to B+4 / B+5 (20u,
+* the preamp, 2.2k between them left out).
+R R_CHOKE a b2 100
+C C_B2 b2 0 20u
+R R_B3 b2 y 2k2
+C C_B3 y 0 20u
+R R_B4 y x 22k
+C C_B4 x 0 20u
+R RPREAMP x 0 50k

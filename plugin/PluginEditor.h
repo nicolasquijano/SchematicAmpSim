@@ -165,6 +165,12 @@ private:
 
     void timerCallback() override;
     void chooseImpulseResponse(int slot);
+    void chooseNamModel();
+    void chooseNamCab();
+    void chooseNamPedal();
+    void refreshNamPedal();
+    void refreshNamCab();
+    void refreshNam();
     void showImpulseMenu(int slot, juce::Component& anchor);  // the impulses built into the plugin, and "From file..."
     void showAmp(int index);  // rebuilds the amp-specific knobs, jack list and title
     void styleCombo(juce::ComboBox&, const char* paramId, std::unique_ptr<juce::AudioProcessorValueTreeState::ComboBoxAttachment>&);
@@ -196,9 +202,9 @@ private:
     sas::SpectrumAnalyzer spectrum_;
     std::vector<float> spectrumBuf_ = std::vector<float>(sas::SpectrumAnalyzer::kFft);
     // The Space page: delay and reverb at the end of the chain.
-    KnobWithLabel dlyTime_, dlyFb_, dlyMix_, dlyTone_, plDecay_, plPre_, plTone_, plLow_, plMix_, plMod_, phSpeed_, chRate_, chDepth_, vbSpeed_, vbIntensity_;
+    KnobWithLabel dlyTime_, dlyFb_, dlyMix_, dlyTone_, plDecay_, plPre_, plTone_, plLow_, plMix_, plMod_, plShimmer_, phSpeed_, chRate_, chDepth_, vbSpeed_, vbIntensity_;
     juce::ToggleButton dlyOn_{"On"}, dlyPing_{"Ping-pong"}, dlyAnalog_{"Analog"}, plOn_{"On"}, plHall_{"Hall"};
-    juce::ComboBox dlySync_, phPos_, chMode_, chJuno_, chPos_, vbPos_;
+    juce::ComboBox plShimInt_, dlySync_, phPos_, chMode_, chJuno_, chPos_, vbPos_;
     juce::ToggleButton vbOn_{"On"}, vbVibrato_{"Vibrato"};
     juce::Label vbPosCaption_;
     std::unique_ptr<juce::AudioProcessorValueTreeState::ButtonAttachment> vbOnAtt_, vbVibratoAtt_;
@@ -212,10 +218,10 @@ private:
     juce::Label phPosCaption_;
     std::unique_ptr<juce::AudioProcessorValueTreeState::ButtonAttachment> phOnAtt_, phIntenseAtt_;
     std::unique_ptr<juce::AudioProcessorValueTreeState::ComboBoxAttachment> phPosAtt_;
-    juce::Label dlySyncCaption_, fxNote_;
+    juce::Label dlySyncCaption_, fxNote_, plShimIntCaption_;
     juce::TextButton dlyTap_{"Tap"}, dlyPresets_{"Presets"}, plPresets_{"Presets"}, spaceTab_{"Space"};
     std::unique_ptr<juce::AudioProcessorValueTreeState::ButtonAttachment> dlyOnAtt_, dlyPingAtt_, dlyAnalogAtt_, plOnAtt_, plHallAtt_;
-    std::unique_ptr<juce::AudioProcessorValueTreeState::ComboBoxAttachment> dlySyncAtt_;
+    std::unique_ptr<juce::AudioProcessorValueTreeState::ComboBoxAttachment> dlySyncAtt_, plShimIntAtt_;
     double lastTapMs_ = 0.0;
     juce::ToggleButton eqOn_{"On"};
     juce::TextButton eqReset_{"Reset"};
@@ -252,12 +258,20 @@ private:
     juce::ToggleButton speakerIntense_{"Intense"};
     juce::ToggleButton compOn_{"On"}, compFast_{"Fast"};
     juce::ToggleButton tunerOn_{"Tuner on"}, tunerMute_{"Mute output"};
-    juce::ToggleButton levelMatch_{"Level match"};  // shown only for amps whose jacks differ in level
     juce::ToggleButton vibrato_{"Vibrato"};  // shown only for amps that have an optical tremolo
-    std::unique_ptr<juce::AudioProcessorValueTreeState::ButtonAttachment> tsOnAtt_, gateOnAtt_, speakerIntenseAtt_, compOnAtt_, compFastAtt_, tunerOnAtt_, tunerMuteAtt_, levelMatchAtt_, vibratoAtt_;
+    std::unique_ptr<juce::AudioProcessorValueTreeState::ButtonAttachment> tsOnAtt_, gateOnAtt_, speakerIntenseAtt_, compOnAtt_, compFastAtt_, tunerOnAtt_, tunerMuteAtt_, vibratoAtt_;
     juce::TextButton ampTab_{"Amp"}, cabTab_{"Cabinet"}, fxTab_{"Effects"}, pitchTab_{"Pitch"}, eqTab_{"EQ"}, tunerTab_{"Tuner"};
     juce::TextButton loadA_{"Load..."}, clearA_{"Clear"}, loadB_{"Load..."}, clearB_{"Clear"};
     IrCurve curveA_, curveB_;
+    juce::TextButton namLoad_{"Load model..."}, namClear_{"Clear"};  // the NAM Loader amp's model
+    juce::Label namName_, namNote_;
+    juce::TextButton namCabLoad_{"Load NAM..."}, namCabClear_{"Clear"};  // the NAM cabinet on the Cabinet page
+    juce::Label namCabName_;
+    KnobWithLabel nmpDrive_, nmpLevel_;  // the NAM pedal on the Effects page
+    juce::ToggleButton nmpOn_{"On"};
+    juce::TextButton nmpLoad_{"Load..."}, nmpClear_{"Clear"};
+    juce::Label nmpName_;
+    std::unique_ptr<juce::AudioProcessorValueTreeState::ButtonAttachment> nmpOnAtt_;
     std::unique_ptr<juce::FileChooser> chooser_;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(SasEditor)

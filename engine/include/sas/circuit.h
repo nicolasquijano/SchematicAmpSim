@@ -132,6 +132,10 @@ public:
 
     // Tunables / counters (public like the Rust fields).
     std::size_t plainIterations = 24;
+    // Work limits of a sample that plain Newton did not solve: the continuation (stages of at most contStageIters iterations, contBudget
+    // stages) and the last-resort Newton of finalIterations (0 = none). The defaults are the original values.
+    std::size_t finalIterations = 30, contStageIters = 14;
+    int contBudget = 40;
     double tolerance = 1e-3;
     // Chord mode: the first Newton iteration of a sample reuses the previous sample's LU factors instead of factorising
     // again (a stale Jacobian costs a few more iterations but saves most factorisations; a failed first step refactors).
@@ -141,6 +145,26 @@ public:
     std::uint64_t continuationRuns = 0, jacobianFactorizations = 0, newtonFailures = 0,
                   newtonSoftFailures = 0, newtonIterations = 0;
     double worstFailedResidual = 0.0;
+    // Start every sample's Newton solve with full steps (true), or carry the step-length cap of the previous sample over (false, the old way).
+    // Only acts in the fast modes (tables); the formula mode keeps the old path so it still matches the Rust reference.
+    bool resetStepHint = true;
+
+    // Diagnostics (tools/diag_newton.cpp): called after every Newton iteration when set. Off by default; one test of a null pointer per
+    // iteration otherwise.
+    struct NewtonTrace {
+        std::size_t iteration;  // within this call of newton()
+        double lambda;          // the step length accepted (1 = full Newton step), or 0 when no step was accepted
+        double fmax;            // largest residual after the step
+        std::size_t worstPort;  // the port with that residual
+        bool accepted;
+        const double* x;        // the port voltages after the step (portCount() of them)
+    };
+    void (*trace)(void* user, const NewtonTrace&) = nullptr;
+    void* traceUser = nullptr;
+    // The device (in netlist order) a port belongs to, its kind and its first port; for reading traces.
+    std::size_t portDevice(std::size_t port) const;
+    int deviceKind(std::size_t device) const;
+    std::size_t devicePortBase(std::size_t device) const;
 
 private:
     static constexpr std::size_t NONE = static_cast<std::size_t>(-1);

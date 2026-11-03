@@ -1,0 +1,40 @@
+* Fender '65 Deluxe Reverb reissue vibrato (optical tremolo), drawing 041285 rev B: V5A is a three-section RC
+* phase-shift oscillator (speed pot in the first section), V5B a pulse driver whose plate current lights the LED
+* of the optocoupler OP1 through R47. The photocell side (OP1 pins 3/4) is part of preamp.net: it shunts the
+* mixing node through the Intensity pot, and the engine sets its resistance from the LED current. This circuit is
+* solved at a low rate of its own (see "vibrato" in amp.json). Same circuit as the Twin's with the Deluxe's values.
+*
+* The footswitch / Vibrato-off state is the bias reference node t31: about -7 V (V5A cut off) when off (the
+* drawing says -6.8 V at TP26), about -0.2 V when the footswitch brings it to ground through R36 10k.
+
+V VRAIL x 100 330
+
+* V5A oscillator: 220k plate load, 2.7k / 22u cathode, the three-section network (.022u, .01u, .01u) with the 100k
+* and the 3M speed pot in the first section and 1M to the bias reference in the others.
+R R43 x p5a 220k
+T V5A n3 p5a k5a 12AX7
+R R44 k5a 0 2k7
+C C23 k5a 0 22u
+C C22 p5a n1 22n
+C C21 n1 n2 10n
+C C20 n2 n3 10n
+R R41 n1 ns 100k
+R R_SPEED ns 0 1.5M
+R R39 n2 t31 1M
+R R40 n3 t31 1M
+
+* Bias reference: -49 V (TP5) through 2.2M against 390k to ground and 4.7u; the footswitch shorts it to ground.
+V VBIAS bs 1k -49
+R R38 bs t31 2M2
+R R37 t31 0 390k
+C C19 t31 0 4.7u
+R SW_VIB t31 0 1e12
+
+* V5B driver and the LED: 100k from the rail, the LED (pins 2 -> 1) in series with the plate, 10M across.
+T V5B n2 p5b k5b 12AX7
+R R46 k5b 0 100k
+C C24 k5b 0 22u
+R R47 x ln 100k
+D LED ln p5b SIGNAL
+R R45 ln p5b 10M
+C C40 p5b 0 22n

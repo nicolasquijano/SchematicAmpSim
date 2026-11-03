@@ -1,0 +1,26 @@
+{
+  "id": "nam_loader",
+  "order": 16,
+  "name": "NAM Loader",
+  "nam": true,
+
+  "ui": [
+    { "param": "volume", "label": "DRIVE" },
+    { "param": "bass",   "label": "BASS" },
+    { "param": "middle", "label": "MIDDLE" },
+    { "param": "treble", "label": "TREBLE" },
+    { "param": "master", "label": "LEVEL" }
+  ],
+
+  "theme": {
+    "background": "#0c0f10",
+    "panel": "#171c1e",
+    "edge": "#34413f",
+    "accent": "#4cc2b0",
+    "label": "#7fa39d",
+    "text": "#e2eeea",
+    "knob_top": "#2e3a38",
+    "knob_bottom": "#101514",
+    "pointer": "#bff0e6"
+  }
+}

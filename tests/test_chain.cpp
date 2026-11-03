@@ -84,7 +84,11 @@ TEST_CASE("chain reports the oversampler latency and handles every quality") {
     chain.setSettings(s);
     CHECK(chain.latencySamples() == l2);
 
-    for (Quality q : {Quality::Normal, Quality::High, Quality::Lite, Quality::Eco, Quality::Normal}) {
+    s.quality = Quality::Efficient;
+    chain.setSettings(s);
+    CHECK(chain.latencySamples() == l2);  // one half-band up and one down, like the 2x modes
+
+    for (Quality q : {Quality::Normal, Quality::High, Quality::Lite, Quality::Eco, Quality::Efficient, Quality::Normal}) {
         s.quality = q;
         chain.setSettings(s);
         const auto out = run(chain, sine(110.0, 0.1, 4800));
@@ -133,7 +137,7 @@ TEST_CASE("level match lifts the JCM800's quiet Low jack and leaves High alone")
     CHECK(level(1, true, 0.3) < 1.0);
 }
 
-TEST_CASE("every amp and every jack plays at the same loudness at the reference input") {
+TEST_CASE("every amp and every jack plays at the same loudness at the reference input", "[slow]") {
     // The reference input is the level of the author's recorded guitar (rms ~0.05): a three-sine
     // guitar-like signal of 0.1 V peak. Amps differ at other playing levels (their gains and
     // saturation differ), but at the reference they must agree; see tools/sas_match_levels.
@@ -183,4 +187,29 @@ TEST_CASE("output gain follows the dB setting and non-finite samples are zeroed"
     std::vector<float> bad{1.0f, INFINITY, NAN, 0.5f};
     chain.applyOutput(bad.data(), bad.size());
     for (float v : bad) CHECK(std::isfinite(v));
+}
+
+TEST_CASE("the Efficient quality (preamp at 2x, power amp at the host rate) plays at the level of Normal and keeps the amp's idle current") {
+    const auto& def = jcm800();
+    auto level = [&](Quality q, double peak) {
+        Chain chain(def, kFs);
+        auto s = defaults(def);
+        s.quality = q;
+        chain.setSettings(s);
+        chain.snap(s);
+        const auto out = run(chain, sine(220.0, peak, 14400));
+        for (float v : out) REQUIRE(std::isfinite(v));
+        return 20.0 * std::log10(rms(out, 7200) + 1e-12);
+    };
+    for (double peak : {0.02, 0.1, 0.3}) {
+        const double normal = level(Quality::Normal, peak), efficient = level(Quality::Efficient, peak);
+        INFO("peak " << peak << ": normal " << normal << " dB, efficient " << efficient << " dB");
+        CHECK(std::abs(efficient - normal) < 1.0);  // the tone differs a little (docs/PLAN_CPU.md), the loudness does not
+    }
+    Chain chain(def, kFs);
+    auto s = defaults(def);
+    s.quality = Quality::Efficient;
+    chain.setSettings(s);
+    run(chain, sine(110.0, 0.05, 2400));
+    CHECK(chain.idleMilliamps() > 5.0);
 }

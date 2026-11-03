@@ -1,8 +1,10 @@
 ; Inno Setup script for the Windows installer of Schematic Amp Sim.
 ; Build it with package.cmd (which passes the version), or by hand:
 ;   ISCC /DAppVersion=0.1.0 /DAppVersionFull=0.1.0-beta installer\schematic-amp-sim.iss
-; It installs the VST3 bundle into the VST3 folder of all users (C:\Program Files\Common Files\VST3) or of the current user only, and (a task, on by default)
-; the standalone application, which needs no DAW, with a Start menu entry.
+; Two components, both selectable on the "Select Components" page (full / VST3 only / standalone only / custom):
+;  - the VST3 plug-in: the bundle goes into the VST3 folder of all users (C:\Program Files\Common Files\VST3) or of the current user only;
+;  - the standalone application, which needs no DAW, in Program Files with a Start menu entry.
+; The uninstaller, the licence and the README live in the application folder, never inside the VST3 folder (a DAW would scan them).
 
 #ifndef AppVersion
   #define AppVersion "0.0.0"
@@ -22,10 +24,11 @@ AppPublisherURL=https://github.com/nicolasquijano/SchematicAmpSim
 AppSupportURL=https://github.com/nicolasquijano/SchematicAmpSim/issues
 AppUpdatesURL=https://github.com/nicolasquijano/SchematicAmpSim/releases
 VersionInfoVersion={#AppVersion}
-DefaultDirName={autocf64}\VST3\Schematic Amp Sim.vst3
-DisableDirPage=auto
+DefaultDirName={autopf}\Schematic Amp Sim
+DisableDirPage=yes
 DisableProgramGroupPage=yes
 LicenseFile=..\LICENSE
+SetupIconFile=..\plugin\icon\icon.ico
 OutputDir=..\dist
 OutputBaseFilename=SchematicAmpSim-{#AppVersionFull}-win64-setup
 Compression=lzma2
@@ -43,18 +46,26 @@ UninstallDisplayName=Schematic Amp Sim {#AppVersionFull}
 Name: "english"; MessagesFile: "compiler:Default.isl"
 Name: "spanish"; MessagesFile: "compiler:Languages\Spanish.isl"
 
-[Tasks]
-Name: "standalone"; Description: "Install the standalone application (it runs without a DAW) and add it to the Start menu"; GroupDescription: "Standalone application:"
+[Types]
+Name: "full"; Description: "Full installation: VST3 plug-in and standalone application"
+Name: "vst3"; Description: "VST3 plug-in only (for your DAW)"
+Name: "standalone"; Description: "Standalone application only (runs without a DAW)"
+Name: "custom"; Description: "Custom installation"; Flags: iscustom
+
+[Components]
+Name: "vst3"; Description: "VST3 plug-in (rescan the plugins in your DAW to see it)"; Types: full vst3 custom
+Name: "standalone"; Description: "Standalone application (runs without a DAW) and its Start menu entry"; Types: full standalone custom
 
 [Files]
 ; The whole bundle: Contents\x86_64-win\Schematic Amp Sim.vst3 (the DLL) and Contents\Resources\moduleinfo.json.
-Source: "..\build\plugin\SchematicAmpSim_artefacts\Release\VST3\Schematic Amp Sim.vst3\*"; DestDir: "{app}"; Flags: recursesubdirs createallsubdirs ignoreversion
-Source: "..\build\plugin\SchematicAmpSim_artefacts\Release\Standalone\Schematic Amp Sim.exe"; DestDir: "{autopf}\Schematic Amp Sim"; Flags: ignoreversion; Tasks: standalone
+Source: "..\build\plugin\SchematicAmpSim_artefacts\Release\VST3\Schematic Amp Sim.vst3\*"; DestDir: "{autocf64}\VST3\Schematic Amp Sim.vst3"; Flags: recursesubdirs createallsubdirs ignoreversion; Components: vst3
+Source: "..\build\plugin\SchematicAmpSim_artefacts\Release\Standalone\Schematic Amp Sim.exe"; DestDir: "{app}"; Flags: ignoreversion; Components: standalone
 Source: "..\LICENSE"; DestDir: "{app}"; Flags: ignoreversion
 Source: "..\README.md"; DestDir: "{app}"; Flags: ignoreversion
+Source: "..\README.es.md"; DestDir: "{app}"; Flags: ignoreversion
 
 [Icons]
-Name: "{autoprograms}\Schematic Amp Sim"; Filename: "{autopf}\Schematic Amp Sim\Schematic Amp Sim.exe"; Tasks: standalone
+Name: "{autoprograms}\Schematic Amp Sim"; Filename: "{app}\Schematic Amp Sim.exe"; Components: standalone
 
 [Messages]
-FinishedLabel=Schematic Amp Sim was installed in the VST3 folder: rescan the plugins in your DAW to see it. The standalone application, if you chose it, is in the Start menu.
+FinishedLabel=Schematic Amp Sim was installed. If you chose the VST3 plug-in, rescan the plugins in your DAW to see it; the standalone application, if you chose it, is in the Start menu.

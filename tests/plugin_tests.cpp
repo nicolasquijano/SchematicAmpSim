@@ -504,7 +504,7 @@ TEST_CASE("real impulse responses from SAS_TEST_IR_DIR are applied", "[.realir]"
     }
 }
 
-TEST_CASE("an impulse response is applied for any IR rate, host rate, load order, re-preparation and block size") {
+TEST_CASE("an impulse response is applied for any IR rate, host rate, load order, re-preparation and block size", "[slow]") {
     JuceInit init;
     // A cabinet-like IR: a tap and an echo 2 ms later, written at `irRate`, mono or stereo.
     auto writeIr = [](double irRate, int channels, const juce::String& name) {
@@ -799,6 +799,8 @@ TEST_CASE("readme screenshots", "[.screenshots]") {
         setParam(p, ids::noise, 2.0f);
         setParam(p, ids::wear, 3.0f);
         p.prepareToPlay(48000.0, 512);
+        REQUIRE(p.loadNamPedal(juce::File(SAS_NAM_EXAMPLES_DIR "/wavenet.nam")));
+        setParam(p, ids::nmpOn, 1.0f);
         std::unique_ptr<juce::AudioProcessorEditor> ed(p.createEditor());
         ed->setSize(1000, 520);
         play(p, *dynamic_cast<SasEditor*>(ed.get()), 196.0, 0.2);
@@ -857,9 +859,73 @@ TEST_CASE("readme screenshots", "[.screenshots]") {
         clickTab(*ed, "Tuner");
         savePng(ed->createComponentSnapshot(ed->getLocalBounds(), true, scale), "tuner.png");
     }
+
+    // The newest amps in one picture.
+    {
+        const char* ids4[4] = {"deluxe_reverb", "boutique_od", "superlead_100", "modbe_100"};
+        juce::Image montage(juce::Image::RGB, 1600, 820, true);
+        {
+            juce::Graphics g(montage);
+            g.fillAll(juce::Colours::black);
+            for (int i = 0; i < 4; ++i) {
+                const auto shot = ampPage(ids4[i], 1.0f);
+                g.drawImageAt(shot, (i % 2) * 800, (i / 2) * 410);
+            }
+        }
+        savePng(montage, "amps-new.png");
+    }
+
+    // The NAM Loader with a model loaded.
+    {
+        SasProcessor p;
+        setParam(p, "amp", float(ampIndex(p, "nam_loader")));
+        p.prepareToPlay(48000.0, 512);
+        REQUIRE(p.loadNamModel(juce::File(SAS_NAM_EXAMPLES_DIR "/wavenet.nam")));
+        std::unique_ptr<juce::AudioProcessorEditor> ed(p.createEditor());
+        ed->setSize(1000, 520);
+        play(p, *dynamic_cast<SasEditor*>(ed.get()), 196.0, 0.2);
+        savePng(ed->createComponentSnapshot(ed->getLocalBounds(), true, scale), "nam-loader.png");
+    }
+
+    // The Space page (delay and reverb on), the Mod page (phaser, chorus and vibe on) and the EQ page with a preset and the spectrum.
+    {
+        SasProcessor p;
+        setParam(p, ids::dlyOn, 1.0f);
+        setParam(p, ids::plOn, 1.0f);
+        setParam(p, ids::plShimmer, 25.0f);
+        p.prepareToPlay(48000.0, 512);
+        std::unique_ptr<juce::AudioProcessorEditor> ed(p.createEditor());
+        ed->setSize(1000, 520);
+        play(p, *dynamic_cast<SasEditor*>(ed.get()), 196.0, 0.2);
+        clickTab(*ed, "Space");
+        savePng(ed->createComponentSnapshot(ed->getLocalBounds(), true, scale), "space.png");
+    }
+    {
+        SasProcessor p;
+        setParam(p, ids::phOn, 1.0f);
+        setParam(p, ids::chOn, 1.0f);
+        setParam(p, ids::vbOn, 1.0f);
+        p.prepareToPlay(48000.0, 512);
+        std::unique_ptr<juce::AudioProcessorEditor> ed(p.createEditor());
+        ed->setSize(1000, 520);
+        play(p, *dynamic_cast<SasEditor*>(ed.get()), 196.0, 0.2);
+        clickTab(*ed, "Mod");
+        savePng(ed->createComponentSnapshot(ed->getLocalBounds(), true, scale), "mod.png");
+    }
+    {
+        SasProcessor p;
+        p.prepareToPlay(48000.0, 512);
+        p.applyEqPreset(3);
+        std::unique_ptr<juce::AudioProcessorEditor> ed(p.createEditor());
+        ed->setSize(1000, 520);
+        auto* se = dynamic_cast<SasEditor*>(ed.get());
+        for (int i = 0; i < 6; ++i) { run(p, 80, 196.0 * (1 + i % 3), 0.2); se->pollMeters(); se->updateSpectrum(); }
+        clickTab(*ed, "EQ");
+        savePng(ed->createComponentSnapshot(ed->getLocalBounds(), true, scale), "eq.png");
+    }
 }
 
-TEST_CASE("the editor builds for every amp and can be rendered") {
+TEST_CASE("the editor builds for every amp and can be rendered", "[slow]") {
     JuceInit juceInit;
     SasProcessor p;
     const char* dir = std::getenv("SAS_EDITOR_PNG_DIR");  // set it to also write a picture of every amp's editor
@@ -1193,6 +1259,12 @@ TEST_CASE("delay and reverb: off by default and invisible, on they add a tail, p
     other.setStateInformation(state.getData(), int(state.getSize()));
     CHECK(other.apvts.getRawParameterValue(ids::plHall)->load() > 0.5f);
     CHECK(other.apvts.getRawParameterValue(ids::plDecay)->load() == Catch::Approx(3.8f).margin(0.05f));
+    CHECK(other.apvts.getRawParameterValue(ids::plShimmer)->load() < 0.5f);
+    proc.applyReverbPreset(9);  // "Angelic shimmer": the shimmer is a part of the preset, and the next preset clears it
+    CHECK(proc.apvts.getRawParameterValue(ids::plShimmer)->load() > 20.0f);
+    CHECK(proc.apvts.getRawParameterValue(ids::plShimmerInt)->load() > 0.5f);
+    proc.applyReverbPreset(2);
+    CHECK(proc.apvts.getRawParameterValue(ids::plShimmer)->load() < 0.5f);
 }
 
 TEST_CASE("phaser: off by default, on it changes the sound before the amp and after it, and the position is a saved parameter") {
@@ -1314,4 +1386,163 @@ TEST_CASE("vibe: off by default, on it changes the sound in both modes and posit
     other.setStateInformation(state.getData(), int(state.getSize()));
     CHECK(other.apvts.getRawParameterValue(ids::vbVibrato)->load() > 0.5f);
     CHECK(other.apvts.getRawParameterValue(ids::vbPost)->load() > 0.5f);
+}
+
+TEST_CASE("quality: the Efficient choice (preamp 2x, power amp at the host rate) plays, keeps the latency of the 2x modes and is saved") {
+    JuceInit juceInit;
+    SasProcessor proc;
+    proc.prepareToPlay(48000.0, 512);
+    auto* quality = dynamic_cast<juce::AudioParameterChoice*>(proc.apvts.getParameter(ids::quality));
+    REQUIRE(quality != nullptr);
+    CHECK(quality->choices.size() == 5);
+    CHECK(quality->choices[4].contains("Efficient"));
+    juce::MidiBuffer midi;
+    auto play = [&]() {
+        double energy = 0.0;
+        for (int blk = 0; blk < 40; ++blk) {
+            juce::AudioBuffer<float> b(2, 512);
+            fill(b, 330.0, 0.1, 48000.0, blk * 512);
+            proc.processBlock(b, midi);
+            for (int i = 0; i < 512; ++i) REQUIRE(std::isfinite(b.getSample(0, i)));
+            if (blk > 20) energy += rms(b) * rms(b);
+        }
+        return energy;
+    };
+    setParam(proc, ids::quality, 0.0f);
+    const double normal = play();
+    const int normalLatency = proc.getLatencySamples();
+    setParam(proc, ids::quality, 4.0f);
+    const double efficient = play();
+    CHECK(proc.getLatencySamples() == normalLatency);
+    INFO("energy normal " << normal << ", efficient " << efficient);
+    CHECK(efficient > 0.3 * normal);
+    CHECK(efficient < 3.0 * normal);
+    juce::MemoryBlock state;
+    proc.getStateInformation(state);
+    SasProcessor other;
+    other.setStateInformation(state.getData(), int(state.getSize()));
+    CHECK(other.apvts.getRawParameterValue(ids::quality)->load() > 3.5f);
+}
+
+TEST_CASE("NAM loader: the amp is in the list, loads a model, plays it and keeps it in the project state") {
+    JuceInit juceInit;
+    SasProcessor proc;
+    proc.prepareToPlay(48000.0, 512);
+    int namIndex = -1;
+    for (int i = 0; i < int(proc.amps().size()); ++i)
+        if (proc.amps()[std::size_t(i)].nam) namIndex = i;
+    REQUIRE(namIndex >= 0);
+    CHECK(!proc.namModelLoaded());
+    CHECK(!proc.loadNamModel(juce::File(SAS_NAM_EXAMPLES_DIR "/../README.md")));  // not a model: refused, with a reason
+    CHECK(proc.namModelMessage().isNotEmpty());
+    REQUIRE(proc.loadNamModel(juce::File(SAS_NAM_EXAMPLES_DIR "/wavenet.nam")));
+    CHECK(proc.namModelName() == "wavenet");
+
+    setParam(proc, ids::amp, float(namIndex));
+    juce::MidiBuffer midi;
+    double energy = 0.0;
+    for (int blk = 0; blk < 400; ++blk) {  // the chain for the new amp is built in the background and swapped in
+        juce::AudioBuffer<float> b(2, 512);
+        fill(b, 220.0, 0.2, 48000.0, blk * 512);
+        proc.processBlock(b, midi);
+        for (int i = 0; i < 512; ++i) REQUIRE(std::isfinite(b.getSample(0, i)));
+        if (blk > 300) energy += rms(b) * rms(b);
+        if (proc.runningAmpIndex() != namIndex) juce::Thread::sleep(5);
+    }
+    CHECK(proc.runningAmpIndex() == namIndex);
+    CHECK(energy > 1e-6);
+
+    juce::MemoryBlock state;
+    proc.getStateInformation(state);
+    SasProcessor other;
+    other.setStateInformation(state.getData(), int(state.getSize()));
+    CHECK(other.namModelLoaded());
+    CHECK(other.namModelName() == "wavenet");
+    proc.clearNamModel();
+    CHECK(!proc.namModelLoaded());
+}
+
+TEST_CASE("NAM cabinet: a model loaded as the cabinet plays after any amp, replaces the filter, and is kept in the project state") {
+    JuceInit juceInit;
+    SasProcessor proc;
+    proc.prepareToPlay(48000.0, 512);
+    auto* cab = dynamic_cast<juce::AudioParameterChoice*>(proc.apvts.getParameter(ids::cab));
+    REQUIRE(cab != nullptr);
+    CHECK(cab->choices.size() == 4);
+    CHECK(cab->choices[3] == "NAM");
+    CHECK(!proc.namCabLoaded());
+    CHECK(!proc.loadNamCab(juce::File(SAS_NAM_EXAMPLES_DIR "/../README.md")));
+    CHECK(proc.namCabMessage().isNotEmpty());
+
+    juce::MidiBuffer midi;
+    auto play = [&]() {
+        double energy = 0.0;
+        for (int blk = 0; blk < 40; ++blk) {
+            juce::AudioBuffer<float> b(2, 512);
+            fill(b, 330.0, 0.1, 48000.0, blk * 512);
+            proc.processBlock(b, midi);
+            for (int i = 0; i < 512; ++i) REQUIRE(std::isfinite(b.getSample(0, i)));
+            if (blk > 20) energy += rms(b) * rms(b);
+        }
+        return energy;
+    };
+    setParam(proc, ids::cab, 3.0f);  // NAM with nothing loaded: falls back to the cabinet filter, so it still plays
+    const double fallback = play();
+    CHECK(fallback > 1e-6);
+    REQUIRE(proc.loadNamCab(juce::File(SAS_NAM_EXAMPLES_DIR "/wavenet.nam")));
+    CHECK(proc.namCabName() == "wavenet");
+    const double withModel = play();
+    CHECK(withModel > 1e-8);
+    CHECK(withModel != fallback);
+
+    juce::MemoryBlock state;
+    proc.getStateInformation(state);
+    SasProcessor other;
+    other.setStateInformation(state.getData(), int(state.getSize()));
+    CHECK(other.namCabLoaded());
+    CHECK(other.namCabName() == "wavenet");
+    proc.clearNamCab();
+    CHECK(!proc.namCabLoaded());
+}
+
+TEST_CASE("NAM pedal: a model in front of the amp plays when the switch is on, does nothing when it is off, and is kept in the project state") {
+    JuceInit juceInit;
+    SasProcessor proc;
+    proc.prepareToPlay(48000.0, 512);
+    CHECK(!proc.namPedalLoaded());
+    CHECK(!proc.loadNamPedal(juce::File(SAS_NAM_EXAMPLES_DIR "/../README.md")));
+    CHECK(proc.namPedalMessage().isNotEmpty());
+    juce::MidiBuffer midi;
+    auto play = [&]() {
+        double energy = 0.0;
+        for (int blk = 0; blk < 40; ++blk) {
+            juce::AudioBuffer<float> b(2, 512);
+            fill(b, 330.0, 0.1, 48000.0, blk * 512);
+            proc.processBlock(b, midi);
+            for (int i = 0; i < 512; ++i) REQUIRE(std::isfinite(b.getSample(0, i)));
+            if (blk > 20) energy += rms(b) * rms(b);
+        }
+        return energy;
+    };
+    play();  // warm-up: the amp's supply settles
+    const double without = play();
+    REQUIRE(proc.loadNamPedal(juce::File(SAS_NAM_EXAMPLES_DIR "/wavenet.nam")));
+    CHECK(proc.namPedalName() == "wavenet");
+    CHECK(std::abs(play() - without) < 0.03 * without);  // loaded but switched off: the same sound (the supply still drifts a little between runs)
+    setParam(proc, ids::nmpOn, 1.0f);
+    const double on = play();
+    CHECK(on > 1e-8);
+    CHECK(on != without);
+    setParam(proc, ids::nmpLevel, -12.0f);
+    const double quieter = play();
+    CHECK(quieter < on);
+
+    juce::MemoryBlock state;
+    proc.getStateInformation(state);
+    SasProcessor other;
+    other.setStateInformation(state.getData(), int(state.getSize()));
+    CHECK(other.namPedalLoaded());
+    CHECK(other.namPedalName() == "wavenet");
+    proc.clearNamPedal();
+    CHECK(!proc.namPedalLoaded());
 }

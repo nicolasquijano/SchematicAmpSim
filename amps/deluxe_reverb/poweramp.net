@@ -1,0 +1,73 @@
+* Fender '65 Deluxe Reverb reissue power amp (drawing 041285 rev B): 12AT7 long-tailed phase inverter (V6) with the
+* 820 ohm feedback resistor and the 22k / 47 ohm cathode network, two 6V6GT on fixed bias, the output transformer, and
+* the supply. B+ (node a) is the rectifier/reservoir, integrated by the engine; 10k + 22u to the phase inverter plates
+* (y, 311 V) and 10k + 22u to the preamp (x, 261 V). Same topology as the Twin's with half the output stage.
+*
+* Assumptions where the drawing is silent (change them here, not in code):
+*  - output transformer: 8k plate-to-plate onto the 8 ohm speaker, 10 H per primary half, 60 ohm per half, coupling
+*    like the other amps (the usual figure quoted for the Deluxe Reverb);
+*  - screens: 470 ohm each to B+ (R62, R63 on the drawing);
+*  - bias: the -37 V of TP36 as a Thevenin source behind 1k with the 22u filter (adjusted by the pot), about 30 mA a tube;
+*  - the preamp rail load RPREAMP stands for everything on X (preamp, reverb and vibrato stages): 5 mA, the drop the
+*    schematic shows across the second 10k (TP3 311 V -> TP4 261 V).
+
+.nodes pin gp gn cc f k pa pb pga pgb g1 g2 cbias a t8 y x pt pbm npt npb s1 s2
+
+S VAUDIO pin 130k 0
+S VHT a 15 394
+S VBIAS cbias 1k -30
+
+* Phase inverter: grid of V6A on the mixer through 1n; V6B's grid is tied to the feedback node f through 0.1u. The
+* cathodes share 470 + 22k + 47, the node f being at the 22k / 47 junction.
+C C25 pin gp 1n
+R R49 gp cc 1M
+R R52 gn cc 1M
+R R51 cc k 470
+R R50 cc f 22k
+R R53 f 0 47
+C C26 f gn 0.1u
+T V6A gp pa k 12AT7
+T V6B gn pb k 12AT7
+R R54 y pa 82k
+R R55 y pb 100k
+
+* Negative feedback: the speaker tap through 820 to f.
+R R64 t8 f 820
+
+* Coupling to the power tubes (0.1u), 220k grid leaks to the bias line, 1.5k stoppers.
+C C27 pa pga 0.1u
+C C28 pb pgb 0.1u
+R R56 pga cbias 220k
+R R57 pgb cbias 220k
+R R60 pga g1 1k5
+R R61 pgb g2 1k5
+C C29 cbias 0 22u
+
+* 6V6GT: V7 on the BRN half, V8 on the BLU half (cathodes grounded, fixed bias); screens on B+ through 470.
+P V7 g1 pt s1 0 6V6GT 1
+P V8 g2 pbm s2 0 6V6GT 1
+R R62 a s1 470
+R R63 a s2 470
+
+* Output transformer (041318): primary halves around the B+ centre tap, one 8 ohm secondary.
+R DCR_PT pt npt 60
+R DCR_PB pbm npb 60
+.param n8 = 2*1/sqrt(8000/8)
+* Core saturation: SAT is the flux (volt-seconds) where the extra magnetising current equals the linear one; ~full-power
+* plate-to-plate swing / (2 pi f), with f about 28-30 Hz for the large Marshall / Soldano / Peavey / Fender cores, 50 to 65 Hz for the small AC30 / tweed cores.
+.xfmr OT L=10 SAT=1.7
+  W npt a 1 pri
+  W a npb 1 pri
+  W t8 0 n8 sec
+  K pri pri 0.9998
+  K pri sec 0.9993
+.end
+R RLOAD t8 0 8
+
+* Supply filters: 10k + 22u to the phase-inverter plates (311 V), then 10k + 22u (261 V) with the load of everything
+* on the preamp rail.
+R R67 a y 10k
+C C34 y 0 22u
+R R68 y x 10k
+C C35 x 0 22u
+R RPREAMP x 0 52k

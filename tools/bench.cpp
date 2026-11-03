@@ -46,7 +46,9 @@ int main() {
     constexpr double fs = 96000.0, seconds = 3.0;
     const std::size_t n = std::size_t(fs * seconds);
     struct Case { const char* name; double volume, master, amp; };
-    const Case cases[] = {{"clean", 0.2, 0.5, 0.05}, {"crunch", 0.6, 0.5, 0.15}, {"lead", 1.0, 0.8, 0.3}};
+    // "lead" is a hot guitar at full gain; "lead-hot" the old extreme case (0.3 V of input), kept to compare with older numbers.
+    const Case cases[] = {{"clean", 0.2, 0.5, 0.05}, {"crunch", 0.6, 0.5, 0.15}, {"lead", 1.0, 0.8, 0.12}, {"lead-hot", 1.0, 0.8, 0.3}};
+    const bool detail = std::getenv("SAS_BENCH_DETAIL") != nullptr;  // also the reference circuits and the LU-reuse sweep
     double sink = 0;
     std::vector<std::pair<std::string, sas::AmpDef>> amps;
     // SAS_BENCH_AMP=<id> runs just that amp.
@@ -96,33 +98,40 @@ int main() {
                 std::printf("  %-7s power amp is %.0f%% of the solver cycles\n", c.name, 100.0 * (fullTotal - preTotal) / fullTotal);
             }
 #endif
-            sas::FullAmp full(def, fs);
-            full.setKnobs(knobs, def.power.presenceDefault);
-            const double pf = percent([&] { for (double x : in) sink += full.process(x); }, seconds);
+            // The Normal mode exactly as the plugin builds it (circuits at 2x of a 48 kHz host): triode and pentode tables, LU reuse.
+            sas::FullAmp normal(def, fs, false, true);
+            normal.setKnobs(knobs, def.power.presenceDefault);
+            const double pn = percent([&] { for (double x : in) sink += normal.process(x); }, seconds);
+            std::uint64_t preIt = 0, preCont = 0;
+            for (std::size_t s = 0; s < normal.pre().stageCount(); ++s) {
+                preIt += normal.pre().solver(s).newtonIterations;
+                preCont += normal.pre().solver(s).continuationRuns;
+            }
+            const auto& pws = normal.power().solver();
             sas::LiteAmp lite(def, fs);
             lite.setKnobs(knobs, def.power.presenceDefault);
             const double pl = percent([&] { for (double x : in) sink += lite.process(x); }, seconds);
-            sas::FullAmp tab(def, fs, false, true, false);  // full circuits, triodes and pentodes through tables
-            tab.setKnobs(knobs, def.power.presenceDefault);
-            const double pt = percent([&] { for (double x : in) sink += tab.process(x); }, seconds);
-            std::printf("  %-7s tables %6.1f %%  (iter %.2f, fact %.2f)", c.name, pt, double(tab.power().solver().newtonIterations) / double(n),
-                        double(tab.power().solver().jacobianFactorizations) / double(n));
-            for (double keep : {0.0625, 0.25, 0.6}) {
-                sas::FullAmp chord(def, fs, false, true, true);
-                chord.setChord(true, keep);
-                chord.setKnobs(knobs, def.power.presenceDefault);
-                const double pc = percent([&] { for (double x : in) sink += chord.process(x); }, seconds);
-                std::printf("   chord keep %.2f: %6.1f %% (iter %.2f, fact %.2f, fail %llu)", keep, pc, double(chord.power().solver().newtonIterations) / double(n),
-                            double(chord.power().solver().jacobianFactorizations) / double(n), (unsigned long long)chord.newtonFailures());
-            }
-            std::printf("%c", 10);
             sas::LiteAmp eco(def, fs, true);  // Lite power amp + triode tables
             eco.setKnobs(knobs, def.power.presenceDefault);
             const double pe = percent([&] { for (double x : in) sink += eco.process(x); }, seconds);
-            const auto& ps = full.pre().solver(0);
-            std::printf("  %-7s full %6.1f %%   lite %6.1f %%   eco %6.1f %%   | preamp: %zu stage(s), stage 1 = %zu nodes %zu ports, %.1f it/sample %llu cont\n",
-                        c.name, pf, pl, pe, full.pre().stageCount(), ps.nodeCount(), ps.portCount(), double(ps.newtonIterations) / double(n),
-                        (unsigned long long)ps.continuationRuns);
+            std::printf("  %-8s normal %6.1f %%  (it/sample preamp %5.2f power %5.2f, rescues %6llu + %llu, failures %llu)   lite %5.1f %%   eco %5.1f %%   | %zu stage(s), stage 1 = %zu ports%c",
+                        c.name, pn, double(preIt) / double(n), double(pws.newtonIterations) / double(n), (unsigned long long)preCont,
+                        (unsigned long long)pws.continuationRuns, (unsigned long long)normal.newtonFailures(), pl, pe, normal.pre().stageCount(),
+                        normal.pre().solver(0).portCount(), 10);
+            if (detail) {
+                sas::FullAmp full(def, fs);  // device formulas, no LU reuse (the reference)
+                full.setKnobs(knobs, def.power.presenceDefault);
+                const double pf = percent([&] { for (double x : in) sink += full.process(x); }, seconds);
+                std::printf("           reference (formulas) %6.1f %%", pf);
+                for (double keep : {0.0625, 0.25, 0.6}) {
+                    sas::FullAmp chord(def, fs, false, true, true);
+                    chord.setChord(true, keep);
+                    chord.setKnobs(knobs, def.power.presenceDefault);
+                    const double pc = percent([&] { for (double x : in) sink += chord.process(x); }, seconds);
+                    std::printf("   keep %.2f: %6.1f %%", keep, pc);
+                }
+                std::printf("%c", 10);
+            }
         }
     }
     {

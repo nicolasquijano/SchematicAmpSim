@@ -20,7 +20,10 @@ juce_add_plugin(SchematicAmpSim
   COPY_PLUGIN_AFTER_BUILD FALSE
   VST3_CATEGORIES Fx Distortion
   AU_MAIN_TYPE kAudioUnitType_Effect
-  BUNDLE_ID com.nicolasquijano.schematicampsim)
+  BUNDLE_ID com.nicolasquijano.schematicampsim
+  # The application icon (the standalone: the window, the taskbar and the .exe); drawn in plugin/icon/icon.vectorcraft.
+  ICON_BIG "${CMAKE_CURRENT_SOURCE_DIR}/icon/icon-256.png"
+  ICON_SMALL "${CMAKE_CURRENT_SOURCE_DIR}/icon/icon-64.png")
 
 target_sources(SchematicAmpSim PRIVATE
   PluginProcessor.cpp
