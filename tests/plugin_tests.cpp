@@ -1787,3 +1787,70 @@ TEST_CASE("latency follows the active modules and not their order", "[rack]") {
     REQUIRE(p.moveModule({ModuleType::Pitch, 0}, p.rackOrder().count - 1));
     CHECK(latency() == shifted);  // moving it does not change the sum
 }
+
+// ---------------------------------------------------------------- modular rack: the page
+
+#include "RackPage.h"
+
+TEST_CASE("the rack page lists the modules in order and follows add, move and remove", "[rack]") {
+    JuceInit init;
+    SasProcessor p;
+    p.setRackOrder([] {
+        sas::RackOrder o;
+        for (auto s : {sas::SlotRef{ModuleType::Gate, 0}, {ModuleType::Overdrive, 0}, {ModuleType::Amp, 0}, {ModuleType::Cabinet, 0}, {ModuleType::Reverb, 0}}) o.slots[std::size_t(o.count++)] = s;
+        return o;
+    }());
+    RackPage page(p);
+    page.setSize(900, 600);
+    REQUIRE(page.unitCount() == 5);
+    for (int i = 0; i < 5; ++i) CHECK(page.unitSlot(i) == p.rackOrder().slots[std::size_t(i)]);
+
+    REQUIRE(p.addModule(ModuleType::Overdrive));  // goes in front of the amp, behind the first overdrive
+    page.rebuild();
+    REQUIRE(page.unitCount() == 6);
+    CHECK(page.unitSlot(2) == sas::SlotRef{ModuleType::Overdrive, 1});
+    CHECK(page.unitSlot(3).type == ModuleType::Amp);
+
+    REQUIRE(p.moveModule({ModuleType::Reverb, 0}, 0));  // a reverb before everything
+    page.rebuild();
+    CHECK(page.unitSlot(0).type == ModuleType::Reverb);
+
+    REQUIRE(p.removeModule({ModuleType::Overdrive, 0}));
+    page.rebuild();
+    CHECK(page.unitCount() == 5);
+    CHECK_FALSE(p.removeModule({ModuleType::Amp, 0}));  // the amp stays
+}
+
+TEST_CASE("the add menu greys out a type that reached its limit", "[rack]") {
+    JuceInit init;
+    SasProcessor p;
+    p.setRackOrder([] {
+        sas::RackOrder o;
+        for (int i = 0; i < 4; ++i) o.slots[std::size_t(o.count++)] = {ModuleType::Overdrive, i};
+        o.slots[std::size_t(o.count++)] = {ModuleType::Amp, 0};
+        return o;
+    }());
+    CHECK_FALSE(p.canAdd(ModuleType::Overdrive));
+    CHECK(p.canAdd(ModuleType::Gate));
+    CHECK_FALSE(p.addModule(ModuleType::Overdrive));
+    const auto menu = RackPage::addMenu(p, 100);
+    bool sawOverdrive = false, sawGate = false;
+    juce::PopupMenu::MenuItemIterator it(menu, true);
+    while (it.next()) {
+        const auto& item = it.getItem();
+        if (item.itemID == 100 + int(ModuleType::Overdrive)) { sawOverdrive = true; CHECK_FALSE(item.isEnabled); }
+        if (item.itemID == 100 + int(ModuleType::Gate)) { sawGate = true; CHECK(item.isEnabled); }
+    }
+    CHECK(sawOverdrive);
+    CHECK(sawGate);
+}
+
+TEST_CASE("a rack never holds more than twelve modules besides the amp", "[rack]") {
+    JuceInit init;
+    SasProcessor p;  // a fresh instance carries every module of the fixed-order plug-in: twelve with the cabinet
+    CHECK_FALSE(p.canAdd(ModuleType::Delay));
+    REQUIRE(p.removeModule({ModuleType::Delay, 0}));
+    CHECK(p.canAdd(ModuleType::Delay));
+    CHECK(p.addModule(ModuleType::Delay));
+    CHECK_FALSE(p.addModule(ModuleType::Pitch));  // full again
+}

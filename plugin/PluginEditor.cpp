@@ -1,4 +1,6 @@
 #include "PluginEditor.h"
+#include "RackPage.h"
+#include "RackState.h"
 #include "EqPresets.h"
 #include "FxPresets.h"
 
@@ -689,7 +691,10 @@ SasEditor::SasEditor(SasProcessor& p)
     spaceTab_.setRadioGroupId(7);
     spaceTab_.onClick = [this] { setPage(6); };
 
-    for (auto* t : {&ampTab_, &cabTab_, &fxTab_, &pitchTab_, &eqTab_, &tunerTab_}) {
+    rackPage_ = std::make_unique<RackPage>(p);
+    addChildComponent(*rackPage_);
+    rackTab_.onClick = [this] { setPage(8); };
+    for (auto* t : {&ampTab_, &cabTab_, &fxTab_, &pitchTab_, &eqTab_, &tunerTab_, &rackTab_}) {
         t->setClickingTogglesState(true);
         t->setRadioGroupId(7);
         addAndMakeVisible(*t);
@@ -799,17 +804,19 @@ void SasEditor::selectEqBand(int band) {
 
 // ------------------------------------------------------------------ equaliser curve
 
-EqCurve::EqCurve(juce::AudioProcessorValueTreeState& apvts) : apvts_(apvts) { setRepaintsOnMouseActivity(true); }
+EqCurve::EqCurve(juce::AudioProcessorValueTreeState& apvts, int instance) : apvts_(apvts), instance_(instance) { setRepaintsOnMouseActivity(true); }
+
+juce::String EqCurve::pid(const char* baseId) const { return RackState::paramId(baseId, instance_); }
 
 sas::EqParams EqCurve::params() const {
     sas::EqParams p;
-    p.on = apvts_.getRawParameterValue(ids::eqOn)->load() > 0.5f;
-    p.hpfHz = double(apvts_.getRawParameterValue(ids::eqHpf)->load());
-    p.lpfHz = double(apvts_.getRawParameterValue(ids::eqLpf)->load());
+    p.on = apvts_.getRawParameterValue(pid(ids::eqOn))->load() > 0.5f;
+    p.hpfHz = double(apvts_.getRawParameterValue(pid(ids::eqHpf))->load());
+    p.lpfHz = double(apvts_.getRawParameterValue(pid(ids::eqLpf))->load());
     for (int b = 0; b < 5; ++b) {
-        p.band[std::size_t(b)].freq = double(apvts_.getRawParameterValue(ids::eqFreq[b])->load());
-        p.band[std::size_t(b)].gainDb = double(apvts_.getRawParameterValue(ids::eqGain[b])->load());
-        p.band[std::size_t(b)].q = double(apvts_.getRawParameterValue(ids::eqQ[b])->load());
+        p.band[std::size_t(b)].freq = double(apvts_.getRawParameterValue(pid(ids::eqFreq[b]))->load());
+        p.band[std::size_t(b)].gainDb = double(apvts_.getRawParameterValue(pid(ids::eqGain[b]))->load());
+        p.band[std::size_t(b)].q = double(apvts_.getRawParameterValue(pid(ids::eqQ[b]))->load());
     }
     return p;
 }
@@ -836,7 +843,7 @@ int EqCurve::nodeAt(juce::Point<float> p) const {
     return best;
 }
 
-void EqCurve::setPlain(const char* id, double value, bool gesture) {
+void EqCurve::setPlain(const juce::String& id, double value, bool gesture) {
     if (auto* q = apvts_.getParameter(id)) {
         if (gesture) q->beginChangeGesture();
         q->setValueNotifyingHost(q->convertTo0to1(float(value)));
@@ -850,36 +857,36 @@ void EqCurve::mouseDown(const juce::MouseEvent& e) {
         dragging_ = hit;
         selected_ = hit;
         if (onSelect) onSelect(hit);
-        for (auto* id : {ids::eqFreq[hit], ids::eqGain[hit]})
+        for (const auto& id : {pid(ids::eqFreq[hit]), pid(ids::eqGain[hit])})
             if (auto* q = apvts_.getParameter(id)) q->beginChangeGesture();
     }
 }
 
 void EqCurve::mouseDrag(const juce::MouseEvent& e) {
     if (dragging_ < 0) return;
-    const auto fr = apvts_.getParameterRange(ids::eqFreq[dragging_]), gr = apvts_.getParameterRange(ids::eqGain[dragging_]);
-    setPlain(ids::eqFreq[dragging_], juce::jlimit(double(fr.start), double(fr.end), hzAt(e.position.x)), false);
-    setPlain(ids::eqGain[dragging_], juce::jlimit(double(gr.start), double(gr.end), dbAt(e.position.y)), false);
+    const auto fr = apvts_.getParameterRange(pid(ids::eqFreq[dragging_])), gr = apvts_.getParameterRange(pid(ids::eqGain[dragging_]));
+    setPlain(pid(ids::eqFreq[dragging_]), juce::jlimit(double(fr.start), double(fr.end), hzAt(e.position.x)), false);
+    setPlain(pid(ids::eqGain[dragging_]), juce::jlimit(double(gr.start), double(gr.end), dbAt(e.position.y)), false);
 }
 
 void EqCurve::mouseUp(const juce::MouseEvent&) {
     if (dragging_ < 0) return;
-    for (auto* id : {ids::eqFreq[dragging_], ids::eqGain[dragging_]})
+    for (const auto& id : {pid(ids::eqFreq[dragging_]), pid(ids::eqGain[dragging_])})
         if (auto* q = apvts_.getParameter(id)) q->endChangeGesture();
     dragging_ = -1;
 }
 
 void EqCurve::mouseDoubleClick(const juce::MouseEvent& e) {
     const int hit = nodeAt(e.position);
-    if (hit >= 0) setPlain(ids::eqGain[hit], 0.0, true);
+    if (hit >= 0) setPlain(pid(ids::eqGain[hit]), 0.0, true);
 }
 
 void EqCurve::mouseWheelMove(const juce::MouseEvent& e, const juce::MouseWheelDetails& w) {
     int band = nodeAt(e.position);
     if (band < 0) band = selected_;
-    const auto r = apvts_.getParameterRange(ids::eqQ[band]);
-    const double q = double(apvts_.getRawParameterValue(ids::eqQ[band])->load()) * std::pow(1.25, double(w.deltaY) * 4.0);
-    setPlain(ids::eqQ[band], juce::jlimit(double(r.start), double(r.end), q), true);
+    const auto r = apvts_.getParameterRange(pid(ids::eqQ[band]));
+    const double q = double(apvts_.getRawParameterValue(pid(ids::eqQ[band]))->load()) * std::pow(1.25, double(w.deltaY) * 4.0);
+    setPlain(pid(ids::eqQ[band]), juce::jlimit(double(r.start), double(r.end), q), true);
 }
 
 void EqCurve::paint(juce::Graphics& g) {
@@ -1378,9 +1385,13 @@ void SasEditor::resized() {
         cabTab_.setBounds(head.removeFromRight(74).withTrimmedTop(6).withTrimmedBottom(2));
         head.removeFromRight(4);
         ampTab_.setBounds(head.removeFromRight(54).withTrimmedTop(6).withTrimmedBottom(2));
+        head.removeFromRight(4);
+        rackTab_.setBounds(head.removeFromRight(54).withTrimmedTop(6).withTrimmedBottom(2));
         area.removeFromTop(4);
     }
     const bool ampPage = page_ == 0, fxPage = page_ == 1, cabPage = page_ == 2, tunerPage = page_ == 3, pitchPage = page_ == 4, eqPage = page_ == 5, spacePage = page_ == 6, modPage = page_ == 7;
+    rackPage_->setVisible(page_ == 8);
+    if (page_ == 8) rackPage_->setBounds(area);
     for (auto* c : std::initializer_list<juce::Component*>{&eqCurve_, &eqOn_, &eqReset_, &eqBandLabel_, &eqHpf_, &eqLpf_}) c->setVisible(eqPage);
     for (auto* c : std::initializer_list<juce::Component*>{&phSpeed_, &phOn_, &phIntense_, &phPos_, &phPosCaption_, &chRate_, &chDepth_, &chOn_, &chMode_, &chJuno_, &chPos_,
                                                            &chModeCaption_, &chJunoCaption_, &chPosCaption_, &vbSpeed_, &vbIntensity_, &vbOn_, &vbVibrato_, &vbPos_, &vbPosCaption_}) c->setVisible(modPage);

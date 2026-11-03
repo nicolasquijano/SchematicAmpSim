@@ -87,7 +87,7 @@ private:
 // band (left / right = frequency, up / down = gain, wheel = Q, double click = gain back to 0).
 class EqCurve final : public juce::Component {
 public:
-    explicit EqCurve(juce::AudioProcessorValueTreeState& apvts);
+    explicit EqCurve(juce::AudioProcessorValueTreeState& apvts, int instance = 0);
     void paint(juce::Graphics&) override;
     void mouseDown(const juce::MouseEvent&) override;
     void mouseDrag(const juce::MouseEvent&) override;
@@ -108,9 +108,11 @@ private:
     double hzAt(float x) const;
     double dbAt(float y) const;
     int nodeAt(juce::Point<float> p) const;
-    void setPlain(const char* id, double value, bool gesture);
+    void setPlain(const juce::String& id, double value, bool gesture);
+    juce::String pid(const char* baseId) const;  // the id of this instance's parameter
 
     juce::AudioProcessorValueTreeState& apvts_;
+    int instance_ = 0;
     int selected_ = 2, dragging_ = -1;
     const std::array<float, sas::SpectrumAnalyzer::kPoints>* spectrum_ = nullptr;
 };
@@ -144,7 +146,9 @@ private:
     float level_ = 0.0f, shown_ = 0.0f, mA_ = 0.0f;
 };
 
-class SasEditor final : public juce::AudioProcessorEditor, private juce::Timer, private juce::ListBoxModel {
+class RackPage;
+
+class SasEditor final : public juce::AudioProcessorEditor, public juce::DragAndDropContainer, private juce::Timer, private juce::ListBoxModel {
 public:
     explicit SasEditor(SasProcessor&);
     ~SasEditor() override;
@@ -175,7 +179,7 @@ private:
     void showAmp(int index);  // rebuilds the amp-specific knobs, jack list and title
     void styleCombo(juce::ComboBox&, const char* paramId, std::unique_ptr<juce::AudioProcessorValueTreeState::ComboBoxAttachment>&);
     void styleCaption(juce::Label&, const juce::String&);
-    void setPage(int page);  // 0 = amp, 1 = effects, 2 = cabinet, 3 = tuner, 4 = pitch, 5 = EQ
+    void setPage(int page);  // 0 = amp, 1 = effects, 2 = cabinet, 3 = tuner, 4 = pitch, 5 = EQ, 6 = space, 7 = mod, 8 = rack
     void drawLogo(juce::Graphics&, juce::Rectangle<float>) const;
     void applyTheme(const sas::AmpDef&);  // colours of the shown amp
 
@@ -260,7 +264,8 @@ private:
     juce::ToggleButton tunerOn_{"Tuner on"}, tunerMute_{"Mute output"};
     juce::ToggleButton vibrato_{"Vibrato"};  // shown only for amps that have an optical tremolo
     std::unique_ptr<juce::AudioProcessorValueTreeState::ButtonAttachment> tsOnAtt_, gateOnAtt_, speakerIntenseAtt_, compOnAtt_, compFastAtt_, tunerOnAtt_, tunerMuteAtt_, vibratoAtt_;
-    juce::TextButton ampTab_{"Amp"}, cabTab_{"Cabinet"}, fxTab_{"Effects"}, pitchTab_{"Pitch"}, eqTab_{"EQ"}, tunerTab_{"Tuner"};
+    juce::TextButton ampTab_{"Amp"}, cabTab_{"Cabinet"}, fxTab_{"Effects"}, pitchTab_{"Pitch"}, eqTab_{"EQ"}, tunerTab_{"Tuner"}, rackTab_{"Rack"};
+    std::unique_ptr<RackPage> rackPage_;  // the modular rack (page 8)
     juce::TextButton loadA_{"Load..."}, clearA_{"Clear"}, loadB_{"Load..."}, clearB_{"Clear"};
     IrCurve curveA_, curveB_;
     juce::TextButton namLoad_{"Load model..."}, namClear_{"Clear"};  // the NAM Loader amp's model
