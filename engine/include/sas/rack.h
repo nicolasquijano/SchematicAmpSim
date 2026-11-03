@@ -27,6 +27,9 @@ std::optional<ModuleType> moduleTypeFromName(std::string_view name);
 //  Flexible     takes whatever comes: r is nullptr while the signal is mono (the phaser, chorus and vibe have always run that way).
 enum class Channels { MonoOnly, MonoToStereo, Stereo, Flexible };
 
+// A compressor or overdrive right in front of the amp is run by the amp's own front end (as it always was), not by the rack.
+enum class Fusion { None, Compressor, Overdrive };
+
 class Module {
 public:
     virtual ~Module() = default;
@@ -39,6 +42,10 @@ public:
     virtual bool buffered() const { return false; }
     virtual Channels channels() const = 0;
     virtual void reset() = 0;
+    virtual Fusion fusion() const { return Fusion::None; }
+    virtual bool isAmp() const { return false; }
+    // Only for the amp: the rack tells it, each block, which pedals it must run itself and whether another pedal loads its input.
+    virtual void setFrontEnd(Module* /*compressor*/, Module* /*overdrive*/, bool /*pedalBefore*/) {}
 };
 
 struct SlotRef {

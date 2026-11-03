@@ -39,6 +39,10 @@ struct ChainSettings {
     bool vibratoOn = false;      // optical tremolo of amps that have one
     double vibratoSpeed = 0.5;
     bool cabFilter = true;
+    // False when the cabinet module of the rack applies the filter after the chain (docs/MODULAR_RACK.md): the chain then leaves it out.
+    bool cabFilterInChain = true;
+    // A buffering pedal (compressor, overdrive) that the rack runs outside the chain sits in front of the amp: it loads the input like the chain's own.
+    bool pedalBefore = false;
     bool tsOn = false;
     bool compOn = false;   // the compressor pedal, in front of everything else
     CompControls comp;

@@ -5,6 +5,7 @@
 
 #include "sas/chain.h"
 #include "sas/embedded_amps.h"
+#include "sas/rack_modules.h"
 #include "amp_fixture.h"
 
 using namespace sas;
@@ -212,4 +213,127 @@ TEST_CASE("the Efficient quality (preamp at 2x, power amp at the host rate) play
     chain.setSettings(s);
     run(chain, sine(110.0, 0.05, 2400));
     CHECK(chain.idleMilliamps() > 5.0);
+}
+
+// ---------------------------------------------------------------- the amp as a rack module (docs/MODULAR_RACK.md, sections 3.4 and 3.5)
+
+namespace {
+
+struct Unity final : Module {  // an active mono module that changes nothing: it only stands between two others
+    void prepare(double, int) override {}
+    void process(float*, float*, std::size_t) override {}
+    bool active() const override { return true; }
+    Channels channels() const override { return Channels::MonoOnly; }
+    void reset() override {}
+};
+
+std::vector<float> chainBlocks(Chain& c, std::vector<float> in) {
+    for (std::size_t at = 0; at < in.size(); at += 256) c.processAmp(in.data() + at, in.data() + at, std::min<std::size_t>(256, in.size() - at));
+    return in;
+}
+
+std::vector<float> rackBlocks(Rack& rack, std::vector<float> in) {
+    std::vector<float> r(in.size());
+    for (std::size_t at = 0; at < in.size(); at += 256) rack.process(in.data() + at, r.data() + at, std::min<std::size_t>(256, in.size() - at));
+    return in;
+}
+
+RackOrder orderOf(std::initializer_list<ModuleType> types) {
+    RackOrder o;
+    for (auto t : types) o.slots[std::size_t(o.count++)] = {t, 0};
+    return o;
+}
+
+}  // namespace
+
+TEST_CASE("chain without the cab filter plus an outside CabFilter equals the old chain", "[rack]") {
+    const auto& def = jcm800();
+    for (Quality q : {Quality::Normal, Quality::Efficient}) {
+        Chain a(def, kFs), b(def, kFs);
+        auto s = defaults(def);
+        s.quality = q;
+        s.cabFilter = true;
+        a.setSettings(s);
+        s.cabFilterInChain = false;
+        b.setSettings(s);
+        CabFilter cab{float(kFs)};
+        const auto in = sine(220.0, 0.1, 9600);
+        const auto want = run(a, in);
+        auto got = chainBlocks(b, in);
+        for (auto& v : got) v = cab.process(v);
+        b.applyOutput(got.data(), got.size());
+        CHECK(got == want);
+    }
+}
+
+TEST_CASE("compressor and overdrive right before the amp are fused into the chain's own front end", "[rack]") {
+    const auto& def = jcm800();
+    auto s = defaults(def);
+    CompControls comp;
+    comp.sustain = 0.7;
+    const TsControls ts{0.6, 0.4, 0.5};
+
+    Chain ref(def, kFs);
+    auto sr = s;
+    sr.compOn = true;
+    sr.comp = comp;
+    sr.tsOn = true;
+    sr.tsDrive = ts.drive;
+    sr.tsTone = ts.tone;
+    sr.tsLevel = ts.level;
+    ref.setSettings(sr);
+    const auto in = sine(220.0, 0.1, 9600);
+    const auto want = chainBlocks(ref, in);
+
+    Chain chain(def, kFs);
+    Rack rack;
+    rack.prepare(kFs, 256);
+    auto amp = std::make_unique<AmpModule>();
+    amp->setChain(&chain);
+    amp->setSettings(s);
+    rack.setModule({ModuleType::Amp, 0}, std::move(amp));
+    rack.setModule({ModuleType::Compressor, 0}, std::make_unique<CompressorModule>());
+    rack.setModule({ModuleType::Overdrive, 0}, std::make_unique<OverdriveModule>());
+    static_cast<CompressorModule*>(rack.module({ModuleType::Compressor, 0}))->setParams(true, comp);
+    static_cast<OverdriveModule*>(rack.module({ModuleType::Overdrive, 0}))->setParams(true, ts);
+    rack.publish(orderOf({ModuleType::Compressor, ModuleType::Overdrive, ModuleType::Amp}));
+    const auto got = rackBlocks(rack, in);
+    CHECK(got == want);
+}
+
+TEST_CASE("a pedal that cannot be fused still loads the amp's input like one", "[rack]") {
+    const auto& def = jcm800();
+    auto s = defaults(def);
+    const TsControls ts{0.6, 0.4, 0.5};
+    const auto in = sine(220.0, 0.1, 9600);
+
+    // By hand: the overdrive on its own, then an amp told a pedal sits in front of it.
+    OverdriveModule alone;
+    alone.prepare(kFs, 256);
+    alone.setParams(true, ts);
+    alone.snapControls();
+    auto pre = in;
+    for (std::size_t at = 0; at < pre.size(); at += 256) alone.process(pre.data() + at, nullptr, std::min<std::size_t>(256, pre.size() - at));
+    Chain ref(def, kFs);
+    auto sr = s;
+    sr.pedalBefore = true;
+    ref.setSettings(sr);
+    const auto want = chainBlocks(ref, pre);
+
+    Chain chain(def, kFs);
+    Rack rack;
+    rack.prepare(kFs, 256);
+    auto amp = std::make_unique<AmpModule>();
+    amp->setChain(&chain);
+    amp->setSettings(s);
+    rack.setModule({ModuleType::Amp, 0}, std::move(amp));
+    rack.setModule({ModuleType::Overdrive, 0}, std::make_unique<OverdriveModule>());
+    rack.setModule({ModuleType::Gate, 0}, std::make_unique<Unity>());  // stands between the overdrive and the amp
+    auto* od = static_cast<OverdriveModule*>(rack.module({ModuleType::Overdrive, 0}));
+    od->setParams(true, ts);
+    od->snapControls();
+    rack.publish(orderOf({ModuleType::Overdrive, ModuleType::Gate, ModuleType::Amp}));
+    const auto got = rackBlocks(rack, in);
+    CHECK(got == want);
+    CHECK(rms(got, 2400) > 1e-4);
 }

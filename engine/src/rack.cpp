@@ -64,10 +64,42 @@ bool Rack::process(float* l, float* r, std::size_t n) {
         for (std::size_t i = 0; i < n; ++i) l[i] = 0.5f * (l[i] + r[i]);
         stereo = false;
     };
-    for (int k = 0; k < order->count; ++k) {
+    auto at = [&](int k) -> Module* {
         const SlotRef s = order->slots[std::size_t(k)];
-        Module* m = valid(s) ? cell(s).load() : nullptr;
-        if (!m || !m->active()) continue;
+        return valid(s) ? cell(s).load() : nullptr;
+    };
+    // The pedals in front of the amp: up to a compressor and an overdrive (in that order) right before it go into the amp's front end.
+    bool fused[RackOrder::kMax] = {};
+    for (int a = 0; a < order->count; ++a) {
+        Module* amp = at(a);
+        if (!amp || !amp->isAmp() || !amp->active()) continue;
+        Module *comp = nullptr, *ts = nullptr;
+        for (int j = a - 1; j >= 0; --j) {
+            Module* m = at(j);
+            if (!m || !m->active()) continue;
+            const Fusion f = m->fusion();
+            if (f == Fusion::Overdrive && !ts && !comp) {
+                ts = m;
+                fused[j] = true;
+                continue;
+            }
+            if (f == Fusion::Compressor) {
+                comp = m;
+                fused[j] = true;
+            }
+            break;
+        }
+        bool pedalBefore = false;
+        for (int j = 0; j < a; ++j) {
+            Module* m = at(j);
+            if (!fused[j] && m && m->active() && m->buffered()) pedalBefore = true;
+        }
+        amp->setFrontEnd(comp, ts, pedalBefore);
+        break;
+    }
+    for (int k = 0; k < order->count; ++k) {
+        Module* m = at(k);
+        if (!m || !m->active() || fused[k]) continue;
         switch (m->channels()) {
             case Channels::MonoOnly:
                 if (stereo) downmix();

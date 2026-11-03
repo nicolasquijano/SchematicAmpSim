@@ -76,15 +76,19 @@ public:
     }
     bool active() const override { return on_ && comp_; }
     bool buffered() const override { return true; }
+    Fusion fusion() const override { return Fusion::Compressor; }
     Channels channels() const override { return Channels::MonoOnly; }
     void reset() override {}
+    const CompControls& controls() const { return controls_; }
     void setParams(bool on, const CompControls& c) {
+        controls_ = c;
         on_ = on;
         if (on && comp_) comp_->setControls(c);
     }
 
 private:
     std::unique_ptr<Compressor> comp_;
+    CompControls controls_;
     bool on_ = false;
 };
 
@@ -112,6 +116,8 @@ public:
     }
     bool active() const override { return on_ && ts_; }
     bool buffered() const override { return true; }
+    Fusion fusion() const override { return Fusion::Overdrive; }
+    const TsControls& controls() const { return target_; }
     Channels channels() const override { return Channels::MonoOnly; }
     double latencySamples() const override { return double(os_.latencySamples()); }
     void reset() override { os_.reset(); }
@@ -182,6 +188,39 @@ private:
     PitchShifter pitch_;
     double ratio_ = 1.0;
     bool active_ = false;
+};
+
+// The amp: runs the Chain (the circuits, the speaker and, unless the cabinet module takes it, the cabinet filter). The chain is owned by the
+// plugin, which builds a new one off the audio thread when the amp or its condition changes and swaps it in with setChain().
+class AmpModule final : public Module {
+public:
+    void prepare(double, int) override {}
+    void process(float* l, float*, std::size_t n) override;
+    bool active() const override { return chain_.load() != nullptr; }
+    Channels channels() const override { return Channels::MonoOnly; }
+    double latencySamples() const override {
+        const Chain* c = chain_.load();
+        return c ? c->latencySamples() : 0.0;
+    }
+    void reset() override {
+        if (Chain* c = chain_.load()) c->reset();
+    }
+    bool isAmp() const override { return true; }
+    void setFrontEnd(Module* compressor, Module* overdrive, bool pedalBefore) override {
+        comp_ = compressor;
+        ts_ = overdrive;
+        pedalBefore_ = pedalBefore;
+    }
+    void setChain(Chain* chain) { chain_.store(chain); }
+    Chain* chain() const { return chain_.load(); }
+    // The settings of the block (audio thread); the front end's pedals are added on top of them.
+    void setSettings(const ChainSettings& s) { base_ = s; }
+
+private:
+    std::atomic<Chain*> chain_{nullptr};
+    ChainSettings base_, work_;
+    Module *comp_ = nullptr, *ts_ = nullptr;
+    bool pedalBefore_ = false;
 };
 
 }  // namespace sas

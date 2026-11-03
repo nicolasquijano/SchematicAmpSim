@@ -73,6 +73,8 @@ void Chain::setSettings(const ChainSettings& s) {
     namTreble_.setTarget(std::clamp(s.namTreble, 0.0, 1.0));
     target_.selectors = s.selectors;
     target_.cabFilter = s.cabFilter;
+    target_.cabFilterInChain = s.cabFilterInChain;
+    target_.pedalBefore = s.pedalBefore;
     target_.tsOn = s.tsOn;
     target_.vibratoOn = s.vibratoOn;
     target_.vibratoSpeed = std::clamp(s.vibratoSpeed, 0.0, 1.0);
@@ -145,8 +147,8 @@ void Chain::processAmp(const float* mono, float* out, std::size_t n) {
     const Quality quality = active_;
     const bool tsOn = target_.tsOn;
     const bool compOn = target_.compOn;
-    const bool pedalOn = tsOn || compOn;  // a pedal in front of the amp replaces the guitar's own impedance
-    const bool cabOn = target_.cabFilter;
+    const bool pedalOn = tsOn || compOn || target_.pedalBefore;  // a pedal in front of the amp replaces the guitar's own impedance
+    const bool cabOn = target_.cabFilter && target_.cabFilterInChain;
     const double sourceOhms = pedalOn ? kTsOutputOhms : def_.preamp.sourceOhmsDefault;
     std::size_t sinceUpdate = kControlEvery;
 
@@ -257,7 +259,7 @@ void Chain::processNam(const float* mono, float* out, std::size_t n) {
     constexpr std::size_t kBlock = 256;
     // What the model's output (about +-1 for a loud signal) becomes in speaker volts: 100 V is full scale, and the amps sit about 6 dB below it.
     constexpr float kVolts = float(kOutputFullScaleVolts) * 0.5f;
-    const bool tsOn = target_.tsOn, compOn = target_.compOn, cabOn = target_.cabFilter;
+    const bool tsOn = target_.tsOn, compOn = target_.compOn, cabOn = target_.cabFilter && target_.cabFilterInChain;
     NamModel* model = target_.nam;
     const float norm = model && target_.namNormalize ? model->normalizeGain() : 1.0f;
     float in[kBlock], y[kBlock];

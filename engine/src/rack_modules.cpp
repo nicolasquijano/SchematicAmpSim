@@ -29,4 +29,24 @@ void NamPedalModule::setParams(bool on, double driveDb, double levelDb) {
     wasActive_ = now;
 }
 
+void AmpModule::process(float* l, float*, std::size_t n) {
+    Chain* c = chain_.load();
+    if (!c) return;
+    work_ = base_;
+    if (comp_) {
+        work_.compOn = true;
+        work_.comp = static_cast<CompressorModule*>(comp_)->controls();
+    }
+    if (ts_) {
+        const TsControls& t = static_cast<OverdriveModule*>(ts_)->controls();
+        work_.tsOn = true;
+        work_.tsDrive = t.drive;
+        work_.tsTone = t.tone;
+        work_.tsLevel = t.level;
+    }
+    work_.pedalBefore = pedalBefore_;
+    c->setSettings(work_);
+    c->processAmp(l, l, n);
+}
+
 }  // namespace sas
