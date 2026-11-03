@@ -254,11 +254,11 @@ bool flag(const juce::AudioProcessorValueTreeState& apvts, const char* id) {
 
 }  // namespace
 
-sas::RackOrder fromLegacy(const juce::AudioProcessorValueTreeState& apvts, bool namPedalLoaded) {
+sas::RackOrder fromLegacy(const juce::AudioProcessorValueTreeState& apvts, bool namPedalLoaded, bool everyModule) {
     sas::RackOrder o;
     auto add = [&](ModuleType t) { o.slots[std::size_t(o.count++)] = {t, 0}; };
     auto addIf = [&](ModuleType t) {
-        if (modified(apvts, t) || (t == ModuleType::NamPedal && namPedalLoaded)) add(t);
+        if (everyModule || modified(apvts, t) || (t == ModuleType::NamPedal && namPedalLoaded)) add(t);
     };
     // The order the fixed-order plug-in ran in: pitch, gate, the modulation set "pre amp", the NAM pedal, the chain's compressor and overdrive,
     // the amp and the cabinet, the equaliser, the modulation set "post amp", delay and reverb.

@@ -4,6 +4,7 @@
 #include <juce_audio_processors/juce_audio_processors.h>
 #include <juce_dsp/juce_dsp.h>
 
+#include <array>
 #include <atomic>
 #include <memory>
 #include <vector>
@@ -17,6 +18,7 @@
 #include "sas/eq.h"
 #include "sas/gate.h"
 #include "sas/phaser.h"
+#include "sas/rack_modules.h"
 #include "sas/pitch_shifter.h"
 #include "sas/plate.h"
 #include "sas/spectrum.h"
@@ -182,20 +184,20 @@ public:
     juce::String namCabMessage() const;
     // A Neural Amp Modeler model of a pedal (overdrive, boost, fuzz...) in front of the amp, behind the other pedals of the Mod page. Same rules as the amp's
     // model: message-thread calls, kept in the project state; it costs nothing while the switch is off.
-    bool loadNamPedal(const juce::File& file);
-    void clearNamPedal();
-    bool namPedalLoaded() const { return namPedalActive_.load() != nullptr; }
-    juce::String namPedalName() const;
-    juce::String namPedalMessage() const;
+    bool loadNamPedal(const juce::File& file, int instance = 0);
+    void clearNamPedal(int instance = 0);
+    bool namPedalLoaded(int instance = 0) const { return namPedals_[instance].active.load() != nullptr; }
+    juce::String namPedalName(int instance = 0) const;
+    juce::String namPedalMessage(int instance = 0) const;
     // Presets: the whole state (amp, knobs, effects, EQ, pitch, impulse responses) as a text file, so a standalone session can keep its settings.
     static juce::File presetFolder();
     bool savePreset(const juce::File& file);
     bool loadPreset(const juce::File& file);
     // One of the factory presets of the equaliser (EqPresets.h; 0 = flat): sets only the EQ parameters and switches the EQ on.
-    void applyEqPreset(int index);
+    void applyEqPreset(int index, int instance = 0);
     const sas::SpectrumFeed& spectrumFeed() const { return spectrumFeed_; }
-    void applyDelayPreset(int index);   // each effect has its own presets (plugin/FxPresets.h)
-    void applyReverbPreset(int index);
+    void applyDelayPreset(int index, int instance = 0);   // each effect has its own presets (plugin/FxPresets.h)
+    void applyReverbPreset(int index, int instance = 0);
     void clearImpulseResponse(int slot = 0);
     juce::String impulseResponseName(int slot = 0) const;
     // Magnitude response of the loaded IR in dB (mean 0), log-spaced from 50 Hz to 10 kHz; empty when nothing is loaded.
@@ -221,7 +223,15 @@ public:
 
     // The rack: the order of the modules (docs/MODULAR_RACK.md). A new instance starts with the amp and the cabinet.
     const sas::RackOrder& rackOrder() const { return rackOrder_; }
-    void setRackOrder(const sas::RackOrder& order) { rackOrder_ = RackState::fromTree(RackState::toTree(order)); }
+    const sas::Rack& rack() const { return rack_; }
+    void setRackOrder(const sas::RackOrder& order);
+    // Message thread. They build or retire the module, move it and publish the new order (the output ducks for a moment so nothing clicks).
+    // addModule puts a new module at `insertAt` (-1: where it usually goes: pedals in front of the amp, the cabinet behind it, the time effects last)
+    // and returns false when the type is at its limit or the rack is full.
+    bool addModule(sas::ModuleType type, int insertAt = -1);
+    bool canAdd(sas::ModuleType type) const;
+    bool removeModule(sas::SlotRef slot);
+    bool moveModule(sas::SlotRef slot, int newIndex);
 
     juce::AudioProcessorValueTreeState apvts;
 
@@ -232,15 +242,23 @@ private:
     bool loadImpulseResponseFromMemory(const void* data, std::size_t size, const juce::String& name, int slot);
     bool loadNamFromMemory(const void* data, std::size_t size, const juce::String& name);
     bool loadNamCabFromMemory(const void* data, std::size_t size, const juce::String& name);
-    bool loadNamPedalFromMemory(const void* data, std::size_t size, const juce::String& name);
+    bool loadNamPedalFromMemory(const void* data, std::size_t size, const juce::String& name, int instance);
     bool anyIrLoaded() const { return ir_[0].loaded.load() || ir_[1].loaded.load(); }
     sas::ChainSettings readSettings(bool irAvailable);
     void swapInBuiltChain();
+    friend class CabinetModule;
+    // The rack (docs/MODULAR_RACK.md).
+    std::unique_ptr<sas::Module> makeModule(sas::ModuleType type);
+    void syncRack(sas::Transition how);
+    sas::AmpModule* ampModule() const { return static_cast<sas::AmpModule*>(rack_.module({sas::ModuleType::Amp, 0})); }
+    double moduleParam(sas::SlotRef slot, const char* baseId) const;
+    void applyModuleParams(const sas::RackOrder& order);
+    // The cabinet's work: filter, NAM cabinet or impulse responses, double tracking (called by CabinetModule on the audio thread).
+    void processCabinet(class CabinetModule& cab, float* l, float* r, std::size_t n);
     int wantedKey() const;
     static int makeKey(int amp, const sas::Condition& c) { return amp + 32 * (c.tube + 8 * (c.wear + 16 * c.unit)); }
 
     std::vector<sas::AmpDef> defs_;
-    sas::RackOrder rackOrder_ = RackState::defaultOrder();
 
     // Per amp: the APVTS value behind each preamp knob (nullptr = the knob's default) and presence.
     struct AmpParams {
@@ -294,25 +312,24 @@ private:
     juce::String namCabName_, namCabMessage_;
     double namCabRate_ = 0.0;
     bool namCabWasActive_ = false;
-    // The NAM pedal, the same way, with the gains in force at the end of the last block (ramped to the new ones).
-    std::shared_ptr<sas::NamModel> namPedal_, namPedalPrev_;
-    std::atomic<sas::NamModel*> namPedalActive_{nullptr};
-    juce::MemoryBlock namPedalBytes_;
-    juce::String namPedalName_, namPedalMessage_;
-    double namPedalRate_ = 0.0;
-    bool namPedalWasActive_ = false;
-    float nmpDriveNow_ = 1.0f, nmpLevelNow_ = 1.0f;
+    // The NAM pedals (one per instance of the module), the same way. The module ramps the gains over each block.
+    struct NamPedalSlot {
+        std::shared_ptr<sas::NamModel> model, prev;
+        std::atomic<sas::NamModel*> active{nullptr};
+        juce::MemoryBlock bytes;
+        juce::String name, message;
+        double rate = 0.0;
+    };
+    static constexpr int kNamPedalSlots = 2;
+    NamPedalSlot namPedals_[kNamPedalSlots];
 
-    sas::NoiseGate gate_;
-    sas::PitchShifter pitch_;
-    sas::ParametricEq eq_;
-    sas::Phaser phaser_;
+    sas::Rack rack_;
+    sas::RackOrder rackOrder_;
+    std::array<std::array<std::vector<std::atomic<float>*>, sas::Rack::kMaxInstances>, sas::kModuleTypeCount> modParams_;
+    // What the cabinet module needs this block (set by processBlock).
+    sas::NamModel* cabNamCab_ = nullptr;
+    bool cabIrActive_ = false, cabALoaded_ = false, cabBLoaded_ = false;
     sas::SpectrumFeed spectrumFeed_;  // the output, for the picture of what is sounding on the EQ page
-    sas::Chorus chorus_;
-    sas::Vibe vibe_;
-    sas::StereoDelay delay_;
-    sas::PlateReverb plate_;
-    bool pitchWasActive_ = false;
     sas::TunerFeed tuner_;
     std::atomic<float> inputPeak_{0.0f}, outputPeak_{0.0f}, gateGain_{1.0f}, idleMa_{0.0f};
     std::vector<float> mono_;

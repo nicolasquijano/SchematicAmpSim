@@ -8,6 +8,7 @@
 #include <array>
 
 #include "PluginEditor.h"
+#include "CabinetModule.h"
 #include "RackState.h"
 #include "EqPresets.h"
 #include "sas/embedded_amps.h"
@@ -164,7 +165,13 @@ void SasProcessor::swapInBuiltChain() {
     // Start the new circuits at the current knob positions instead of ramping from their defaults.
     activeAmp_ = amp;
     activeKey_ = key;
-    built->snap(readSettings(anyIrLoaded()));
+    if (auto* amp = ampModule()) {
+        amp->setSettings(readSettings(anyIrLoaded()));
+        amp->snapChain(*built);
+        amp->setChain(built);
+    } else {
+        built->snap(readSettings(anyIrLoaded()));
+    }
     sas::Chain* old = chain_.release();
     chain_.reset(built);
     // The builder frees it; if it has not yet freed the previous one, do it here (rare).
@@ -211,6 +218,14 @@ SasProcessor::SasProcessor()
     for (int i = 0; i < builtInImpulseResponseCount(); ++i)
         if (builtInImpulseResponseName(i) == "4x12 OS Mix 1") firstCab = i;
     loadBuiltInImpulseResponse(firstCab, 0);
+    // The parameters of every module instance, found once (the audio thread reads them by pointer).
+    for (int t = 0; t < sas::kModuleTypeCount; ++t)
+        for (int k = 0; k < RackState::maxInstances(static_cast<sas::ModuleType>(t)); ++k)
+            for (const char* base : RackState::paramIds(static_cast<sas::ModuleType>(t)))
+                modParams_[std::size_t(t)][std::size_t(k)].push_back(apvts.getRawParameterValue(RackState::paramId(base, k)));
+    // Until the editor can add modules a new instance carries every module of the fixed-order plug-in, so its controls work.
+    rackOrder_ = RackState::fromLegacy(apvts, false, true);
+    syncRack(sas::Transition::Immediate);
 }
 
 SasProcessor::~SasProcessor() {
@@ -239,14 +254,16 @@ void SasProcessor::prepareToPlay(double sampleRate, int samplesPerBlock) {
     } else {
         chain_->reset();
     }
-    {
-        // The NAM pedal too.
+    if (auto* amp = ampModule()) amp->setChain(chain_.get());
+    for (int i = 0; i < kNamPedalSlots; ++i) {
+        // The NAM pedals too.
         const juce::ScopedLock lock(namLock_);
-        if (namPedal_ && namPedalRate_ != sampleRate && namPedalBytes_.getSize() > 0) {
-            const juce::MemoryBlock bytes = namPedalBytes_;
-            const juce::String name = namPedalName_;
+        auto& slot = namPedals_[i];
+        if (slot.model && slot.rate != sampleRate && slot.bytes.getSize() > 0) {
+            const juce::MemoryBlock bytes = slot.bytes;
+            const juce::String name = slot.name;
             const juce::ScopedUnlock unlock(namLock_);
-            loadNamPedalFromMemory(bytes.getData(), bytes.getSize(), name);
+            loadNamPedalFromMemory(bytes.getData(), bytes.getSize(), name, i);
         }
     }
     {
@@ -276,15 +293,7 @@ void SasProcessor::prepareToPlay(double sampleRate, int samplesPerBlock) {
     for (auto& slot : ir_) slot.conv.prepare(spec);
     irWasActive_ = false;
     latencyReported_ = -1;
-    gate_.prepare(sampleRate);
-    pitch_.prepare(sampleRate);
-    eq_.prepare(sampleRate);
-    delay_.prepare(sampleRate);
-    phaser_.prepare(sampleRate);
-    chorus_.prepare(sampleRate);
-    vibe_.prepare(sampleRate);
-    plate_.prepare(sampleRate);
-    pitchWasActive_ = false;
+    rack_.prepare(sampleRate, int(kMaxChunk));
     tuner_.prepare(sampleRate);
     double_.prepare(sampleRate);
 }
@@ -308,25 +317,18 @@ sas::ChainSettings SasProcessor::readSettings(bool irAvailable) {
     const auto cab = static_cast<CabMode>(juce::jlimit(0, 3, int(raw(ids::cab) + 0.5)));
     // With no IR loaded the IR mode falls back to the cab filter instead of the raw amp.
     s.cabFilter = cab == CabMode::Filter || (cab == CabMode::Ir && !irAvailable) || (cab == CabMode::Nam && namCabActive_.load() == nullptr);
+    s.cabFilterInChain = false;  // the cabinet module applies it
     s.jackLevelMatch = true;  // the jacks always play at a similar level; the old "level_match" parameter stays only so saved projects load
     s.selectors.clear();
     for (std::size_t i = 0; i < def.preamp.selectors.size() && i < 4; ++i)
         s.selectors.push_back(std::size_t(juce::jlimit(0, int(def.preamp.selectors[i].positions.size()) - 1, int(raw(ids::sel[i]) + 0.5))));
     s.vibratoOn = raw(ids::vibOn) > 0.5;
     s.vibratoSpeed = double(ap.vibSpeed->load()) / 10.0;
-    s.tsOn = raw(ids::tsOn) > 0.5;
+    s.tsOn = false;  // the overdrive and the compressor are rack modules: the amp module takes the ones next to it
+    s.compOn = false;
     s.pickup = int(raw(ids::pickup) + 0.5);
     s.cableMeters = int(raw(ids::cable) + 0.5);
-    s.tsDrive = raw(ids::tsDrive) / 10.0;
-    s.tsTone = raw(ids::tsTone) / 10.0;
-    s.tsLevel = raw(ids::tsLevel) / 10.0;
     s.bias = 0.75 + 0.05 * raw(ids::bias);
-    s.compOn = raw(ids::compOn) > 0.5;
-    s.comp.sustain = raw(ids::compSustain) / 10.0;
-    s.comp.blend = raw(ids::compBlend) / 10.0;
-    s.comp.tone = raw(ids::compTone) / 10.0;
-    s.comp.level = raw(ids::compLevel) / 10.0;
-    s.comp.fastRelease = raw(ids::compFast) > 0.5;
     s.speaker = raw(ids::speaker) / 10.0;
     s.speakerIntense = raw(ids::speakerIntense) > 0.5;
     if (def.nam) {
@@ -340,6 +342,140 @@ sas::ChainSettings SasProcessor::readSettings(bool irAvailable) {
     }
     s.noise = std::array<double, 3>{0.0, 0.5, 1.0}[std::size_t(juce::jlimit(0, 2, int(raw(ids::noise) + 0.5)))];
     return s;
+}
+
+double SasProcessor::moduleParam(sas::SlotRef slot, const char* baseId) const {
+    const auto& names = RackState::paramIds(slot.type);
+    const auto& cache = modParams_[std::size_t(slot.type)][std::size_t(slot.instance)];
+    for (std::size_t i = 0; i < names.size() && i < cache.size(); ++i)
+        if (names[i] == baseId) return double(cache[i]->load());
+    return 0.0;
+}
+
+// Hands each module of the rack the parameters of its instance. Audio thread.
+void SasProcessor::applyModuleParams(const sas::RackOrder& order) {
+    using T = sas::ModuleType;
+    double bpm = 0.0;  // the host tempo, asked once, when a delay wants it
+    bool gateSeen = false;
+    for (int i = 0; i < order.count; ++i) {
+        const sas::SlotRef s = order.slots[std::size_t(i)];
+        sas::Module* m = rack_.module(s);
+        if (!m) continue;
+        auto p = [&](const char* id) { return moduleParam(s, id); };
+        switch (s.type) {
+            case T::Gate: {
+                auto* g = static_cast<sas::GateModule*>(m);
+                g->setParams(p(ids::gateOn) > 0.5, p(ids::gateThreshold), p(ids::gateRelease));
+                if (!gateSeen) {
+                    gateSeen = true;
+                    gateGain_.store(float(g->gain()));
+                }
+                break;
+            }
+            case T::Compressor: {
+                sas::CompControls c;
+                c.sustain = p(ids::compSustain) / 10.0;
+                c.blend = p(ids::compBlend) / 10.0;
+                c.tone = p(ids::compTone) / 10.0;
+                c.level = p(ids::compLevel) / 10.0;
+                c.fastRelease = p(ids::compFast) > 0.5;
+                static_cast<sas::CompressorModule*>(m)->setParams(p(ids::compOn) > 0.5, c);
+                break;
+            }
+            case T::Overdrive:
+                static_cast<sas::OverdriveModule*>(m)->setParams(p(ids::tsOn) > 0.5, {p(ids::tsDrive) / 10.0, p(ids::tsTone) / 10.0, p(ids::tsLevel) / 10.0});
+                break;
+            case T::NamPedal: {
+                auto* n = static_cast<sas::NamPedalModule*>(m);
+                n->setModel(namPedals_[s.instance].active.load());
+                n->setParams(p(ids::nmpOn) > 0.5, p(ids::nmpDrive), p(ids::nmpLevel));
+                break;
+            }
+            case T::Phaser: {
+                sas::PhaserParams q;
+                q.on = p(ids::phOn) > 0.5;
+                q.speedHz = p(ids::phSpeed);
+                q.intense = p(ids::phIntense) > 0.5;
+                static_cast<sas::PhaserModule*>(m)->setParams(q);
+                break;
+            }
+            case T::Chorus: {
+                sas::ChorusParams q;
+                q.on = p(ids::chOn) > 0.5;
+                q.juno = p(ids::chMode) > 0.5;
+                q.rateHz = p(ids::chRate);
+                q.depth = p(ids::chDepth) / 100.0;
+                q.junoButton = int(p(ids::chJuno) + 0.5);
+                static_cast<sas::ChorusModule*>(m)->setParams(q);
+                break;
+            }
+            case T::Vibe: {
+                sas::VibeParams q;
+                q.on = p(ids::vbOn) > 0.5;
+                q.speedHz = p(ids::vbSpeed);
+                q.intensity = p(ids::vbIntensity) / 100.0;
+                q.vibrato = p(ids::vbVibrato) > 0.5;
+                static_cast<sas::VibeModule*>(m)->setParams(q);
+                break;
+            }
+            case T::Pitch:
+                static_cast<sas::PitchModule*>(m)->setSemitones(p(ids::pitch) + p(ids::pitchFine) / 100.0);
+                break;
+            case T::Eq: {
+                sas::EqParams q;
+                q.on = p(ids::eqOn) > 0.5;
+                q.hpfHz = p(ids::eqHpf);
+                q.lpfHz = p(ids::eqLpf);
+                for (int b = 0; b < 5; ++b) {
+                    q.band[std::size_t(b)].freq = p(ids::eqFreq[b]);
+                    q.band[std::size_t(b)].gainDb = p(ids::eqGain[b]);
+                    q.band[std::size_t(b)].q = p(ids::eqQ[b]);
+                }
+                static_cast<sas::EqModule*>(m)->setParams(q);
+                break;
+            }
+            case T::Delay: {
+                sas::DelayParams d;
+                d.on = p(ids::dlyOn) > 0.5;
+                d.timeMs = p(ids::dlyTime);
+                if (const int sync = int(p(ids::dlySync) + 0.5); sync > 0) {
+                    // Tied to the host tempo (120 bpm when the host does not say): a quarter note, a dotted eighth, an eighth, a sixteenth.
+                    if (bpm <= 0.0) {
+                        bpm = 120.0;
+                        if (auto* head = getPlayHead())
+                            if (auto pos = head->getPosition())
+                                if (auto b = pos->getBpm()) bpm = std::clamp(*b, 30.0, 300.0);
+                    }
+                    static constexpr double kBeats[] = {1.0, 1.0, 0.75, 0.5, 0.25};
+                    d.timeMs = std::clamp(60000.0 / bpm * kBeats[std::min(sync, 4)], 20.0, sas::StereoDelay::kMaxMs);
+                }
+                d.feedback = std::clamp(p(ids::dlyFeedback) / 100.0, 0.0, 0.92);
+                d.mix = std::clamp(p(ids::dlyMix) / 100.0, 0.0, 1.0);
+                d.toneHz = p(ids::dlyTone);
+                d.pingPong = p(ids::dlyPing) > 0.5;
+                d.analog = p(ids::dlyAnalog) > 0.5;
+                static_cast<sas::DelayModule*>(m)->setParams(d);
+                break;
+            }
+            case T::Reverb: {
+                sas::PlateParams pl;
+                pl.on = p(ids::plOn) > 0.5;
+                pl.hall = p(ids::plHall) > 0.5;
+                pl.decaySec = p(ids::plDecay);
+                pl.preMs = p(ids::plPre);
+                pl.toneHz = p(ids::plTone);
+                pl.lowCutHz = p(ids::plLow);
+                pl.mix = std::clamp(p(ids::plMix) / 100.0, 0.0, 1.0);
+                pl.mod = std::clamp(p(ids::plMod) / 100.0, 0.0, 1.0);
+                pl.shimmer = std::clamp(p(ids::plShimmer) / 100.0, 0.0, 1.0);
+                pl.shimmerFifth = p(ids::plShimmerInt) > 0.5;
+                static_cast<sas::ReverbModule*>(m)->setParams(pl);
+                break;
+            }
+            default: break;
+        }
+    }
+    if (!gateSeen) gateGain_.store(1.0f);
 }
 
 void SasProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::MidiBuffer&) {
@@ -361,94 +497,23 @@ void SasProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::MidiBuff
     const bool irLoaded = aLoaded || bLoaded;
     const auto cabParam = static_cast<CabMode>(juce::jlimit(0, 3, int(apvts.getRawParameterValue(ids::cab)->load() + 0.5f)));
     const bool irActive = cabParam == CabMode::Ir && irLoaded;
-    sas::NamModel* const namPedal = apvts.getRawParameterValue(ids::nmpOn)->load() > 0.5f ? namPedalActive_.load() : nullptr;
-    if (namPedal && !namPedalWasActive_) namPedal->reset();
-    namPedalWasActive_ = namPedal != nullptr;
-    const float nmpDrive = std::pow(10.0f, apvts.getRawParameterValue(ids::nmpDrive)->load() / 20.0f);
-    const float nmpLevel = std::pow(10.0f, apvts.getRawParameterValue(ids::nmpLevel)->load() / 20.0f);
     sas::NamModel* const namCab = cabParam == CabMode::Nam ? namCabActive_.load() : nullptr;
     if (namCab && !namCabWasActive_) namCab->reset();
     namCabWasActive_ = namCab != nullptr;
-    chain_->setSettings(readSettings(irLoaded));
-    gate_.setParams(apvts.getRawParameterValue(ids::gateOn)->load() > 0.5f, double(apvts.getRawParameterValue(ids::gateThreshold)->load()),
-                    double(apvts.getRawParameterValue(ids::gateRelease)->load()));
+    cabNamCab_ = namCab;
+    cabIrActive_ = irActive;
+    cabALoaded_ = aLoaded;
+    cabBLoaded_ = bLoaded;
+    // With no IR loaded the IR mode falls back to the cab filter instead of the raw amp (and so does a NAM cabinet that has no model).
+    const bool cabFilterOn = cabParam == CabMode::Filter || (cabParam == CabMode::Ir && !irLoaded) || (cabParam == CabMode::Nam && namCab == nullptr);
+    const double irLatency = irActive ? double(std::max(aLoaded ? ir_[0].conv.getLatency() : 0, bLoaded ? ir_[1].conv.getLatency() : 0)) : 0.0;
+    if (auto* cab = static_cast<CabinetModule*>(rack_.module({sas::ModuleType::Cabinet, 0}))) cab->setBlock(cabFilterOn, irLatency);
+    if (auto* amp = ampModule()) amp->setSettings(readSettings(irLoaded));
+    const sas::RackOrder order = rack_.order();
+    applyModuleParams(order);
 
-    {
-        sas::EqParams eq;
-        eq.on = apvts.getRawParameterValue(ids::eqOn)->load() > 0.5f;
-        eq.hpfHz = double(apvts.getRawParameterValue(ids::eqHpf)->load());
-        eq.lpfHz = double(apvts.getRawParameterValue(ids::eqLpf)->load());
-        for (int b = 0; b < 5; ++b) {
-            eq.band[std::size_t(b)].freq = double(apvts.getRawParameterValue(ids::eqFreq[b])->load());
-            eq.band[std::size_t(b)].gainDb = double(apvts.getRawParameterValue(ids::eqGain[b])->load());
-            eq.band[std::size_t(b)].q = double(apvts.getRawParameterValue(ids::eqQ[b])->load());
-        }
-        eq_.setParams(eq);
-    }
-    {
-        auto raw = [this](const char* id) { return double(apvts.getRawParameterValue(id)->load()); };
-        sas::DelayParams d;
-        d.on = raw(ids::dlyOn) > 0.5;
-        d.timeMs = raw(ids::dlyTime);
-        if (const int sync = int(raw(ids::dlySync) + 0.5); sync > 0) {
-            // Tied to the host tempo (120 bpm when the host does not say): a quarter note, a dotted eighth, an eighth, a sixteenth.
-            double bpm = 120.0;
-            if (auto* head = getPlayHead())
-                if (auto pos = head->getPosition())
-                    if (auto b = pos->getBpm()) bpm = std::clamp(*b, 30.0, 300.0);
-            static constexpr double kBeats[] = {1.0, 1.0, 0.75, 0.5, 0.25};
-            d.timeMs = std::clamp(60000.0 / bpm * kBeats[std::min(sync, 4)], 20.0, sas::StereoDelay::kMaxMs);
-        }
-        d.feedback = std::clamp(raw(ids::dlyFeedback) / 100.0, 0.0, 0.92);
-        d.mix = std::clamp(raw(ids::dlyMix) / 100.0, 0.0, 1.0);
-        d.toneHz = raw(ids::dlyTone);
-        d.pingPong = raw(ids::dlyPing) > 0.5;
-        d.analog = raw(ids::dlyAnalog) > 0.5;
-        delay_.setParams(d);
-        sas::PlateParams pl;
-        pl.on = raw(ids::plOn) > 0.5;
-        pl.hall = raw(ids::plHall) > 0.5;
-        pl.decaySec = raw(ids::plDecay);
-        pl.preMs = raw(ids::plPre);
-        pl.toneHz = raw(ids::plTone);
-        pl.lowCutHz = raw(ids::plLow);
-        pl.mix = std::clamp(raw(ids::plMix) / 100.0, 0.0, 1.0);
-        pl.mod = std::clamp(raw(ids::plMod) / 100.0, 0.0, 1.0);
-        pl.shimmer = std::clamp(raw(ids::plShimmer) / 100.0, 0.0, 1.0);
-        pl.shimmerFifth = raw(ids::plShimmerInt) > 0.5;
-        plate_.setParams(pl);
-    }
-    sas::PhaserParams phaserParams;
-    phaserParams.on = apvts.getRawParameterValue(ids::phOn)->load() > 0.5f;
-    phaserParams.speedHz = double(apvts.getRawParameterValue(ids::phSpeed)->load());
-    phaserParams.intense = apvts.getRawParameterValue(ids::phIntense)->load() > 0.5f;
-    const bool phaserPost = apvts.getRawParameterValue(ids::phPost)->load() > 0.5f;
-    // The same unit sits in one place at a time; the part of the chain it is not in sees it switched off.
-    phaser_.setParams(phaserParams);
-    sas::ChorusParams chorusParams;
-    chorusParams.on = apvts.getRawParameterValue(ids::chOn)->load() > 0.5f;
-    chorusParams.juno = apvts.getRawParameterValue(ids::chMode)->load() > 0.5f;
-    chorusParams.rateHz = double(apvts.getRawParameterValue(ids::chRate)->load());
-    chorusParams.depth = double(apvts.getRawParameterValue(ids::chDepth)->load()) / 100.0;
-    chorusParams.junoButton = int(apvts.getRawParameterValue(ids::chJuno)->load() + 0.5f);
-    const bool chorusPost = apvts.getRawParameterValue(ids::chPost)->load() > 0.5f;
-    chorus_.setParams(chorusParams);
-    sas::VibeParams vibeParams;
-    vibeParams.on = apvts.getRawParameterValue(ids::vbOn)->load() > 0.5f;
-    vibeParams.speedHz = double(apvts.getRawParameterValue(ids::vbSpeed)->load());
-    vibeParams.intensity = double(apvts.getRawParameterValue(ids::vbIntensity)->load()) / 100.0;
-    vibeParams.vibrato = apvts.getRawParameterValue(ids::vbVibrato)->load() > 0.5f;
-    const bool vibePost = apvts.getRawParameterValue(ids::vbPost)->load() > 0.5f;
-    vibe_.setParams(vibeParams);
-    // The pitch shifter sits in front of everything and adds its own delay only while it is shifting.
-    const double pitchSemitones = double(apvts.getRawParameterValue(ids::pitch)->load()) + double(apvts.getRawParameterValue(ids::pitchFine)->load()) / 100.0;
-    const bool pitchActive = std::fabs(pitchSemitones) > 1e-6;
-    if (pitchActive && !pitchWasActive_) pitch_.reset();
-    pitchWasActive_ = pitchActive;
-    const double pitchRatio = sas::PitchShifter::ratioFromSemitones(pitchSemitones);
-
-    // Latency follows the quality, the convolution and the pitch shifter; report it when it changes.
-    const int latency = int(chain_->latencySamples()) + (pitchActive ? int(pitch_.latencySamples()) : 0) + (irActive ? std::max(aLoaded ? ir_[0].conv.getLatency() : 0, bLoaded ? ir_[1].conv.getLatency() : 0) : 0);
+    // Latency follows the quality, the convolution and the pitch shifters; report it when it changes.
+    const int latency = int(rack_.latencySamples());
     if (latency != latencyReported_) {
         latencyReported_ = latency;
         setLatencySamples(latency);
@@ -459,7 +524,6 @@ void SasProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::MidiBuff
 
     const bool tunerOn = apvts.getRawParameterValue(ids::tunerOn)->load() > 0.5f;
     const bool tunerMuted = tunerOn && apvts.getRawParameterValue(ids::tunerMute)->load() > 0.5f;
-    gateGain_.store(float(gate_.gain()));
     idleMa_.store(float(chain_->idleMilliamps()));
     for (int start = 0; start < numSamples; start += int(kMaxChunk)) {
         const int n = std::min<int>(int(kMaxChunk), numSamples - start);
@@ -475,75 +539,9 @@ void SasProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::MidiBuff
         for (int i = 0; i < n; ++i) m[i] *= inv;
         float inPeak = 0.0f;
         for (int i = 0; i < n; ++i) inPeak = std::max(inPeak, std::fabs(m[i]));
-        if (tunerOn) tuner_.push(m, std::size_t(n));  // the raw input, before the pitch shifter and the gate
-        if (pitchActive) pitch_.process(m, m, std::size_t(n), pitchRatio);
-        gate_.process(m, std::size_t(n));
-        if (!phaserPost) phaser_.process(m, nullptr, std::size_t(n));  // the phaser in front of the amp (and of the other pedals)
-        if (!chorusPost) chorus_.process(m, nullptr, std::size_t(n));  // then the chorus, if it is placed there
-        if (!vibePost) vibe_.process(m, nullptr, std::size_t(n));      // and the vibe
-        if (namPedal) {  // then the NAM pedal, through two scratch blocks (the model reads its input while it writes), with the gains ramped over the block
-            float* t = mono2_.data();
-            float* o = monoR_.data();
-            for (int i = 0; i < n; ++i) t[i] = m[i] * (nmpDriveNow_ + (nmpDrive - nmpDriveNow_) * (float(i + 1) / float(n)));
-            namPedal->process(t, o, std::size_t(n));
-            for (int i = 0; i < n; ++i) m[i] = o[i] * (nmpLevelNow_ + (nmpLevel - nmpLevelNow_) * (float(i + 1) / float(n)));
-            nmpDriveNow_ = nmpDrive;
-            nmpLevelNow_ = nmpLevel;
-        }
-
-        chain_->processAmp(m, m, std::size_t(n));
-        if (namCab) {  // the NAM cabinet: through a scratch block, the model reads its input while it writes
-            namCab->process(m, mono2_.data(), std::size_t(n));
-            std::copy(mono2_.data(), mono2_.data() + n, m);
-        }
+        if (tunerOn) tuner_.push(m, std::size_t(n));  // the raw input, before anything in the rack
         float* mR = monoR_.data();  // the right channel; the left one is m
-        bool haveR = false;
-        if (irActive) {
-            auto convolve = [n](IrSlot& slot, float* data) {
-                float* chans[1] = {data};
-                juce::dsp::AudioBlock<float> block(chans, 1, std::size_t(n));
-                slot.conv.process(juce::dsp::ProcessContextReplacing<float>(block));
-            };
-            if (aLoaded && bLoaded) {
-                // Both slots: an equal-power blend, and the width that separates them: at 0 both ears get the blend, at 10 the left ear gets A and the
-                // right ear B (two microphones, one on each side). Ramped over the block so a knob move does not click.
-                const double theta = juce::jlimit(0.0, 1.0, double(apvts.getRawParameterValue(ids::irBlend)->load()) / 10.0) * (juce::MathConstants<double>::pi * 0.5);
-                const float gA = float(std::cos(theta)), gB = float(std::sin(theta));
-                const float width = juce::jlimit(0.0f, 1.0f, apvts.getRawParameterValue(ids::irWidth)->load() / 10.0f);
-                float* m2 = mono2_.data();
-                std::copy(m, m + n, m2);
-                convolve(ir_[0], m);
-                convolve(ir_[1], m2);
-                for (int i = 0; i < n; ++i) {
-                    const float t = float(i + 1) / float(n);
-                    const float ga = blendGainA_ + (gA - blendGainA_) * t, gb = blendGainB_ + (gB - blendGainB_) * t;
-                    const float w = widthNow_ + (width - widthNow_) * t;
-                    const float a = m[i], b = m2[i];
-                    const float blend = a * ga + b * gb;
-                    m[i] = (1.0f - w) * blend + w * a;
-                    mR[i] = (1.0f - w) * blend + w * b;
-                }
-                blendGainA_ = gA;
-                blendGainB_ = gB;
-                widthNow_ = width;
-                haveR = true;
-            } else {
-                convolve(aLoaded ? ir_[0] : ir_[1], m);
-                blendGainA_ = aLoaded ? 1.0f : 0.0f;  // so a second slot loaded later fades in from this state
-                blendGainB_ = aLoaded ? 0.0f : 1.0f;
-            }
-        }
-        if (!haveR) std::copy(m, m + n, mR);
-        // Automatic double tracking widens whatever the cabinet left (identical channels, or the A / B pair).
-        double_.setAmount(double(apvts.getRawParameterValue(ids::doubleAmount)->load()) / 10.0,
-                          8.0 + 22.0 * double(apvts.getRawParameterValue(ids::doubleTime)->load()) / 10.0);
-        double_.process(m, mR, std::size_t(n));
-        eq_.process(m, mR, std::size_t(n));  // the post equaliser, on the stereo pair after the cabinet and the doubling
-        if (phaserPost) phaser_.process(m, mR, std::size_t(n));  // or the phaser after the amp, cabinet and EQ
-        if (chorusPost) chorus_.process(m, mR, std::size_t(n));  // and the chorus after it
-        if (vibePost) vibe_.process(m, mR, std::size_t(n));      // then the vibe
-        delay_.process(m, mR, std::size_t(n));  // then the time effects: the delay into the reverb
-        plate_.process(m, mR, std::size_t(n));
+        if (!rack_.process(m, mR, std::size_t(n))) std::copy(m, m + n, mR);
         chain_->applyOutputStereo(m, mR, std::size_t(n));
         if (tunerMuted) {  // tuning: nobody wants to hear the amp
             std::fill(m, m + n, 0.0f);
@@ -563,6 +561,180 @@ void SasProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::MidiBuff
                 std::copy(ch % 2 == 0 ? m : mR, (ch % 2 == 0 ? m : mR) + n, out);
         }
     }
+}
+
+// The cabinet: the filter (or the NAM cabinet, or the impulse responses), then the automatic double tracking. A mono signal in, a stereo pair out.
+void SasProcessor::processCabinet(CabinetModule& cab, float* m, float* mR, std::size_t nn) {
+    const int n = int(nn);
+    if (cab.filterOn())
+        for (int i = 0; i < n; ++i) m[i] = cab.filter().process(m[i]);
+    if (cabNamCab_) {  // the NAM cabinet: through a scratch block, the model reads its input while it writes
+        cabNamCab_->process(m, mono2_.data(), std::size_t(n));
+        std::copy(mono2_.data(), mono2_.data() + n, m);
+    }
+    bool haveR = false;
+    if (cabIrActive_) {
+        const bool aLoaded = cabALoaded_, bLoaded = cabBLoaded_;
+        auto convolve = [n](IrSlot& slot, float* data) {
+            float* chans[1] = {data};
+            juce::dsp::AudioBlock<float> block(chans, 1, std::size_t(n));
+            slot.conv.process(juce::dsp::ProcessContextReplacing<float>(block));
+        };
+        if (aLoaded && bLoaded) {
+            // Both slots: an equal-power blend, and the width that separates them: at 0 both ears get the blend, at 10 the left ear gets A and the
+            // right ear B (two microphones, one on each side). Ramped over the block so a knob move does not click.
+            const double theta = juce::jlimit(0.0, 1.0, double(apvts.getRawParameterValue(ids::irBlend)->load()) / 10.0) * (juce::MathConstants<double>::pi * 0.5);
+            const float gA = float(std::cos(theta)), gB = float(std::sin(theta));
+            const float width = juce::jlimit(0.0f, 1.0f, apvts.getRawParameterValue(ids::irWidth)->load() / 10.0f);
+            float* m2 = mono2_.data();
+            std::copy(m, m + n, m2);
+            convolve(ir_[0], m);
+            convolve(ir_[1], m2);
+            for (int i = 0; i < n; ++i) {
+                const float t = float(i + 1) / float(n);
+                const float ga = blendGainA_ + (gA - blendGainA_) * t, gb = blendGainB_ + (gB - blendGainB_) * t;
+                const float w = widthNow_ + (width - widthNow_) * t;
+                const float a = m[i], b = m2[i];
+                const float blend = a * ga + b * gb;
+                m[i] = (1.0f - w) * blend + w * a;
+                mR[i] = (1.0f - w) * blend + w * b;
+            }
+            blendGainA_ = gA;
+            blendGainB_ = gB;
+            widthNow_ = width;
+            haveR = true;
+        } else {
+            convolve(aLoaded ? ir_[0] : ir_[1], m);
+            blendGainA_ = aLoaded ? 1.0f : 0.0f;  // so a second slot loaded later fades in from this state
+            blendGainB_ = aLoaded ? 0.0f : 1.0f;
+        }
+    }
+    if (!haveR) std::copy(m, m + n, mR);
+    // Automatic double tracking widens whatever the cabinet left (identical channels, or the A / B pair).
+    double_.setAmount(double(apvts.getRawParameterValue(ids::doubleAmount)->load()) / 10.0,
+                      8.0 + 22.0 * double(apvts.getRawParameterValue(ids::doubleTime)->load()) / 10.0);
+    double_.process(m, mR, std::size_t(n));
+}
+
+void CabinetModule::process(float* l, float* r, std::size_t n) { owner_.processCabinet(*this, l, r, n); }
+
+// ------------------------------------------------------------------ the rack
+
+std::unique_ptr<sas::Module> SasProcessor::makeModule(sas::ModuleType type) {
+    using T = sas::ModuleType;
+    switch (type) {
+        case T::Amp: {
+            auto amp = std::make_unique<sas::AmpModule>();
+            amp->setChain(chain_.get());
+            return amp;
+        }
+        case T::Cabinet: return std::make_unique<CabinetModule>(*this);
+        case T::Gate: return std::make_unique<sas::GateModule>();
+        case T::Compressor: return std::make_unique<sas::CompressorModule>();
+        case T::Overdrive: return std::make_unique<sas::OverdriveModule>();
+        case T::NamPedal: return std::make_unique<sas::NamPedalModule>();
+        case T::Phaser: return std::make_unique<sas::PhaserModule>();
+        case T::Chorus: return std::make_unique<sas::ChorusModule>();
+        case T::Vibe: return std::make_unique<sas::VibeModule>();
+        case T::Pitch: return std::make_unique<sas::PitchModule>();
+        case T::Eq: return std::make_unique<sas::EqModule>();
+        case T::Delay: return std::make_unique<sas::DelayModule>();
+        case T::Reverb: return std::make_unique<sas::ReverbModule>();
+    }
+    return nullptr;
+}
+
+// Makes the rack match `rackOrder_`: builds the modules that are new (here, on the message thread), publishes the order, retires the ones that are gone.
+void SasProcessor::syncRack(sas::Transition how) {
+    auto inOrder = [this](sas::SlotRef s) {
+        for (int i = 0; i < rackOrder_.count; ++i)
+            if (rackOrder_.slots[std::size_t(i)] == s) return true;
+        return false;
+    };
+    for (int t = 0; t < sas::kModuleTypeCount; ++t)
+        for (int k = 0; k < RackState::maxInstances(static_cast<sas::ModuleType>(t)); ++k) {
+            const sas::SlotRef s{static_cast<sas::ModuleType>(t), k};
+            if (inOrder(s) && !rack_.module(s)) rack_.setModule(s, makeModule(s.type));
+        }
+    rack_.publish(rackOrder_, how);
+    for (int t = 0; t < sas::kModuleTypeCount; ++t)
+        for (int k = 0; k < RackState::maxInstances(static_cast<sas::ModuleType>(t)); ++k) {
+            const sas::SlotRef s{static_cast<sas::ModuleType>(t), k};
+            if (!inOrder(s) && rack_.module(s)) rack_.removeModule(s);
+        }
+}
+
+void SasProcessor::setRackOrder(const sas::RackOrder& order) {
+    rackOrder_ = RackState::fromTree(RackState::toTree(order));
+    syncRack(sas::Transition::Immediate);
+}
+
+bool SasProcessor::canAdd(sas::ModuleType type) const {
+    int modules = 0, instances = 0;
+    for (int i = 0; i < rackOrder_.count; ++i) {
+        if (rackOrder_.slots[std::size_t(i)].type != sas::ModuleType::Amp) ++modules;
+        if (rackOrder_.slots[std::size_t(i)].type == type) ++instances;
+    }
+    return type != sas::ModuleType::Amp && modules < RackState::kMaxModules && instances < RackState::maxInstances(type);
+}
+
+bool SasProcessor::addModule(sas::ModuleType type, int insertAt) {
+    if (!canAdd(type)) return false;
+    int instance = 0;
+    for (; instance < RackState::maxInstances(type); ++instance) {
+        bool used = false;
+        for (int i = 0; i < rackOrder_.count; ++i) used = used || rackOrder_.slots[std::size_t(i)] == sas::SlotRef{type, instance};
+        if (!used) break;
+    }
+    const sas::SlotRef slot{type, instance};
+    int ampAt = 0;
+    for (int i = 0; i < rackOrder_.count; ++i)
+        if (rackOrder_.slots[std::size_t(i)].type == sas::ModuleType::Amp) ampAt = i;
+    if (insertAt < 0) {
+        using T = sas::ModuleType;
+        switch (type) {
+            case T::Gate: case T::Overdrive: case T::NamPedal: case T::Pitch: insertAt = ampAt; break;
+            case T::Compressor:  // in front of the overdrives that sit next to the amp, so the amp can run both as it always did
+                insertAt = ampAt;
+                while (insertAt > 0 && rackOrder_.slots[std::size_t(insertAt - 1)].type == T::Overdrive) --insertAt;
+                break;
+            case T::Cabinet: insertAt = ampAt + 1; break;
+            default: insertAt = rackOrder_.count; break;
+        }
+    }
+    insertAt = juce::jlimit(0, rackOrder_.count, insertAt);
+    RackState::resetParams(apvts, slot);
+    for (int i = rackOrder_.count; i > insertAt; --i) rackOrder_.slots[std::size_t(i)] = rackOrder_.slots[std::size_t(i - 1)];
+    rackOrder_.slots[std::size_t(insertAt)] = slot;
+    ++rackOrder_.count;
+    syncRack(sas::Transition::Duck);
+    return true;
+}
+
+bool SasProcessor::removeModule(sas::SlotRef slot) {
+    if (slot.type == sas::ModuleType::Amp) return false;
+    int at = -1;
+    for (int i = 0; i < rackOrder_.count; ++i)
+        if (rackOrder_.slots[std::size_t(i)] == slot) at = i;
+    if (at < 0) return false;
+    for (int i = at; i + 1 < rackOrder_.count; ++i) rackOrder_.slots[std::size_t(i)] = rackOrder_.slots[std::size_t(i + 1)];
+    --rackOrder_.count;
+    syncRack(sas::Transition::Duck);
+    if (slot.type == sas::ModuleType::NamPedal) clearNamPedal(slot.instance);  // its model goes with it, so it is not kept in the project
+    return true;
+}
+
+bool SasProcessor::moveModule(sas::SlotRef slot, int newIndex) {
+    int at = -1;
+    for (int i = 0; i < rackOrder_.count; ++i)
+        if (rackOrder_.slots[std::size_t(i)] == slot) at = i;
+    if (at < 0) return false;
+    for (int i = at; i + 1 < rackOrder_.count; ++i) rackOrder_.slots[std::size_t(i)] = rackOrder_.slots[std::size_t(i + 1)];
+    newIndex = juce::jlimit(0, rackOrder_.count - 1, newIndex);
+    for (int i = rackOrder_.count - 1; i > newIndex; --i) rackOrder_.slots[std::size_t(i)] = rackOrder_.slots[std::size_t(i - 1)];
+    rackOrder_.slots[std::size_t(newIndex)] = slot;
+    syncRack(sas::Transition::Duck);
+    return true;
 }
 
 // ------------------------------------------------------------------ impulse response
@@ -697,60 +869,66 @@ juce::String SasProcessor::namModelMessage() const {
     return namMessage_;
 }
 
-bool SasProcessor::loadNamPedalFromMemory(const void* data, std::size_t size, const juce::String& name) {
+bool SasProcessor::loadNamPedalFromMemory(const void* data, std::size_t size, const juce::String& name, int instance) {
+    if (instance < 0 || instance >= kNamPedalSlots) return false;
+    auto& slot = namPedals_[instance];
     const double fs = sampleRate_ > 0.0 ? sampleRate_ : 48000.0;
     std::string error;
     auto model = sas::NamModel::loadFromMemory(data, size, name.toStdString(), fs, int(kMaxChunk), error);
     const juce::ScopedLock lock(namLock_);
     if (!model) {
-        namPedalMessage_ = error.empty() ? juce::String("the file could not be loaded") : juce::String(error);
+        slot.message = error.empty() ? juce::String("the file could not be loaded") : juce::String(error);
         return false;
     }
-    namPedalPrev_ = std::move(namPedal_);
-    namPedal_ = model;
-    namPedalBytes_ = juce::MemoryBlock(data, size);
-    namPedalName_ = name;
-    namPedalRate_ = fs;
-    namPedalMessage_ = model->rateMatches()
-                           ? juce::String()
-                           : "Trained at " + juce::String(model->trainedRate(), 0) + " Hz, played at " + juce::String(fs, 0) + " Hz: it will sound off-pitch.";
-    namPedalActive_.store(model.get());
+    slot.prev = std::move(slot.model);
+    slot.model = model;
+    slot.bytes = juce::MemoryBlock(data, size);
+    slot.name = name;
+    slot.rate = fs;
+    slot.message = model->rateMatches()
+                       ? juce::String()
+                       : "Trained at " + juce::String(model->trainedRate(), 0) + " Hz, played at " + juce::String(fs, 0) + " Hz: it will sound off-pitch.";
+    slot.active.store(model.get());
     return true;
 }
 
-bool SasProcessor::loadNamPedal(const juce::File& file) {
+bool SasProcessor::loadNamPedal(const juce::File& file, int instance) {
+    if (instance < 0 || instance >= kNamPedalSlots) return false;
+    auto& slot = namPedals_[instance];
     if (!file.existsAsFile() || file.getSize() > juce::int64(kMaxStoredNamBytes)) {
         const juce::ScopedLock lock(namLock_);
-        namPedalMessage_ = file.existsAsFile() ? "the file is too big" : "the file does not exist";
+        slot.message = file.existsAsFile() ? "the file is too big" : "the file does not exist";
         return false;
     }
     juce::MemoryBlock bytes;
     if (!file.loadFileAsData(bytes)) {
         const juce::ScopedLock lock(namLock_);
-        namPedalMessage_ = "the file could not be read";
+        slot.message = "the file could not be read";
         return false;
     }
-    return loadNamPedalFromMemory(bytes.getData(), bytes.getSize(), file.getFileNameWithoutExtension());
+    return loadNamPedalFromMemory(bytes.getData(), bytes.getSize(), file.getFileNameWithoutExtension(), instance);
 }
 
-void SasProcessor::clearNamPedal() {
+void SasProcessor::clearNamPedal(int instance) {
+    if (instance < 0 || instance >= kNamPedalSlots) return;
+    auto& slot = namPedals_[instance];
     const juce::ScopedLock lock(namLock_);
-    namPedalActive_.store(nullptr);
-    namPedalPrev_ = std::move(namPedal_);
-    namPedal_.reset();
-    namPedalBytes_.reset();
-    namPedalName_.clear();
-    namPedalMessage_.clear();
+    slot.active.store(nullptr);
+    slot.prev = std::move(slot.model);
+    slot.model.reset();
+    slot.bytes.reset();
+    slot.name.clear();
+    slot.message.clear();
 }
 
-juce::String SasProcessor::namPedalName() const {
+juce::String SasProcessor::namPedalName(int instance) const {
     const juce::ScopedLock lock(namLock_);
-    return namPedalName_;
+    return namPedals_[instance].name;
 }
 
-juce::String SasProcessor::namPedalMessage() const {
+juce::String SasProcessor::namPedalMessage(int instance) const {
     const juce::ScopedLock lock(namLock_);
-    return namPedalMessage_;
+    return namPedals_[instance].message;
 }
 
 bool SasProcessor::loadNamCabFromMemory(const void* data, std::size_t size, const juce::String& name) {
@@ -860,6 +1038,9 @@ std::vector<float> SasProcessor::impulseResponseCurve(int slot) const {
 // ------------------------------------------------------------------ state
 
 // Slot A keeps the property names of the first versions ("irData" / "irName"), so older projects still load.
+// The NAM pedal of the first instance keeps the property names of the first versions; the others add their number.
+static juce::String namPedalKey(const char* base, int instance) { return instance == 0 ? juce::String(base) : juce::String(base) + juce::String(instance + 1); }
+
 static const char* const kIrDataKey[SasProcessor::kIrSlots] = {"irData", "irDataB"};
 static const char* const kIrNameKey[SasProcessor::kIrSlots] = {"irName", "irNameB"};
 
@@ -883,13 +1064,18 @@ void SasProcessor::getStateInformation(juce::MemoryBlock& dest) {
     state.removeProperty("namName", nullptr);
     state.removeProperty("namCabData", nullptr);
     state.removeProperty("namCabName", nullptr);
-    state.removeProperty("namPedalData", nullptr);
-    state.removeProperty("namPedalName", nullptr);
+    for (int i = 0; i < kNamPedalSlots; ++i) {
+        state.removeProperty(namPedalKey("namPedalData", i), nullptr);
+        state.removeProperty(namPedalKey("namPedalName", i), nullptr);
+    }
     {
         const juce::ScopedLock lock(namLock_);
-        if (namPedalBytes_.getSize() > 0 && namPedalBytes_.getSize() <= kMaxStoredNamBytes) {
-            state.setProperty("namPedalName", namPedalName_, nullptr);
-            state.setProperty("namPedalData", juce::Base64::toBase64(namPedalBytes_.getData(), namPedalBytes_.getSize()), nullptr);
+        for (int i = 0; i < kNamPedalSlots; ++i) {
+            const auto& slot = namPedals_[i];
+            if (slot.bytes.getSize() > 0 && slot.bytes.getSize() <= kMaxStoredNamBytes) {
+                state.setProperty(namPedalKey("namPedalName", i), slot.name, nullptr);
+                state.setProperty(namPedalKey("namPedalData", i), juce::Base64::toBase64(slot.bytes.getData(), slot.bytes.getSize()), nullptr);
+            }
         }
     }
     {
@@ -917,6 +1103,7 @@ void SasProcessor::setStateInformation(const void* data, int size) {
     // A state from before the rack has no order: it comes from the old parameters.
     if (const auto rack = tree.getChildWithName("RACK"); rack.isValid()) rackOrder_ = RackState::fromTree(rack);
     else rackOrder_ = RackState::fromLegacy(apvts, tree.hasProperty("namPedalData"));
+    syncRack(sas::Transition::Immediate);
     for (int s = 0; s < kIrSlots; ++s) {
         if (tree.hasProperty(kIrDataKey[s])) {
             juce::MemoryOutputStream out;
@@ -933,12 +1120,14 @@ void SasProcessor::setStateInformation(const void* data, int size) {
     } else {
         clearNamModel();
     }
-    if (tree.hasProperty("namPedalData")) {
-        juce::MemoryOutputStream out;
-        if (juce::Base64::convertFromBase64(out, tree["namPedalData"].toString()) && out.getDataSize() > 0)
-            if (!loadNamPedalFromMemory(out.getData(), out.getDataSize(), tree["namPedalName"].toString())) clearNamPedal();
-    } else {
-        clearNamPedal();
+    for (int i = 0; i < kNamPedalSlots; ++i) {
+        if (tree.hasProperty(namPedalKey("namPedalData", i))) {
+            juce::MemoryOutputStream out;
+            if (juce::Base64::convertFromBase64(out, tree[namPedalKey("namPedalData", i)].toString()) && out.getDataSize() > 0)
+                if (!loadNamPedalFromMemory(out.getData(), out.getDataSize(), tree[namPedalKey("namPedalName", i)].toString(), i)) clearNamPedal(i);
+        } else {
+            clearNamPedal(i);
+        }
     }
     if (tree.hasProperty("namCabData")) {
         juce::MemoryOutputStream out;
@@ -949,11 +1138,11 @@ void SasProcessor::setStateInformation(const void* data, int size) {
     }
 }
 
-void SasProcessor::applyEqPreset(int index) {
+void SasProcessor::applyEqPreset(int index, int instance) {
     if (index < 0 || index >= kEqPresetCount) return;
     const EqPreset& p = kEqPresets[index];
-    auto set = [this](const char* id, double value) {
-        if (auto* q = apvts.getParameter(id)) {
+    auto set = [this, instance](const char* id, double value) {
+        if (auto* q = apvts.getParameter(RackState::paramId(id, instance))) {
             q->beginChangeGesture();
             q->setValueNotifyingHost(q->convertTo0to1(float(value)));
             q->endChangeGesture();
@@ -969,11 +1158,11 @@ void SasProcessor::applyEqPreset(int index) {
     }
 }
 
-void SasProcessor::applyDelayPreset(int index) {
+void SasProcessor::applyDelayPreset(int index, int instance) {
     if (index < 0 || index >= kDelayPresetCount) return;
     const DelayPreset& p = kDelayPresets[index];
-    auto set = [this](const char* id, double value) {
-        if (auto* q = apvts.getParameter(id)) {
+    auto set = [this, instance](const char* id, double value) {
+        if (auto* q = apvts.getParameter(RackState::paramId(id, instance))) {
             q->beginChangeGesture();
             q->setValueNotifyingHost(q->convertTo0to1(float(value)));
             q->endChangeGesture();
@@ -990,11 +1179,11 @@ void SasProcessor::applyDelayPreset(int index) {
     set(ids::dlyAnalog, p.analog ? 1.0 : 0.0);
 }
 
-void SasProcessor::applyReverbPreset(int index) {
+void SasProcessor::applyReverbPreset(int index, int instance) {
     if (index < 0 || index >= kReverbPresetCount) return;
     const ReverbPreset& p = kReverbPresets[index];
-    auto set = [this](const char* id, double value) {
-        if (auto* q = apvts.getParameter(id)) {
+    auto set = [this, instance](const char* id, double value) {
+        if (auto* q = apvts.getParameter(RackState::paramId(id, instance))) {
             q->beginChangeGesture();
             q->setValueNotifyingHost(q->convertTo0to1(float(value)));
             q->endChangeGesture();

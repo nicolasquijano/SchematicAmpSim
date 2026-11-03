@@ -215,8 +215,11 @@ public:
     Chain* chain() const { return chain_.load(); }
     // The settings of the block (audio thread); the front end's pedals are added on top of them.
     void setSettings(const ChainSettings& s) { base_ = s; }
+    // Starts a new chain at the current settings (the chain about to replace a running one).
+    void snapChain(Chain& chain);
 
 private:
+    void compose();
     std::atomic<Chain*> chain_{nullptr};
     ChainSettings base_, work_;
     Module *comp_ = nullptr, *ts_ = nullptr;

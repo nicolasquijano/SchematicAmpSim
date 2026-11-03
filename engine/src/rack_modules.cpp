@@ -29,9 +29,7 @@ void NamPedalModule::setParams(bool on, double driveDb, double levelDb) {
     wasActive_ = now;
 }
 
-void AmpModule::process(float* l, float*, std::size_t n) {
-    Chain* c = chain_.load();
-    if (!c) return;
+void AmpModule::compose() {
     work_ = base_;
     if (comp_) {
         work_.compOn = true;
@@ -45,8 +43,19 @@ void AmpModule::process(float* l, float*, std::size_t n) {
         work_.tsLevel = t.level;
     }
     work_.pedalBefore = pedalBefore_;
+}
+
+void AmpModule::process(float* l, float*, std::size_t n) {
+    Chain* c = chain_.load();
+    if (!c) return;
+    compose();
     c->setSettings(work_);
     c->processAmp(l, l, n);
+}
+
+void AmpModule::snapChain(Chain& chain) {
+    compose();
+    chain.snap(work_);
 }
 
 }  // namespace sas

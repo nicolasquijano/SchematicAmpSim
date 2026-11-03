@@ -1551,27 +1551,6 @@ TEST_CASE("NAM pedal: a model in front of the amp plays when the switch is on, d
 
 #include "legacy_reference.h"
 
-TEST_CASE("legacy reference renders are stable and finite", "[rack]") {
-    JuceInit init;
-    const auto in = legacy::input();
-    for (const auto& c : legacy::cases()) {
-        SECTION(c.name) {
-            SasProcessor p;
-            c.setup(p);
-            const auto out = legacy::render(p, in);
-            double energy = 0.0;
-            for (float v : out) {
-                REQUIRE(std::isfinite(v));
-                energy += double(v) * v;
-            }
-            CHECK(std::sqrt(energy / double(out.size())) > 1e-6);
-            if (std::getenv("SAS_WRITE_GOLDEN")) legacy::writeGolden(c.name, out);
-            const auto ref = legacy::readGolden(c.name);
-            REQUIRE(ref.size() == out.size());
-            for (std::size_t i = 0; i < out.size(); ++i) REQUIRE(std::abs(out[i] - ref[i]) <= 1e-5f);
-        }
-    }
-}
 
 // ---------------------------------------------------------------- modular rack: parameters, state and migration
 
@@ -1714,4 +1693,97 @@ TEST_CASE("extra instances exist with their own names and the old position switc
     }
     CHECK(RackState::paramId("dly_mix", 0) == "dly_mix");
     CHECK(RackState::paramId("dly_mix", 1) == "dly_mix__2");
+}
+
+// The fixed-order plug-in's renders (golden/rack_legacy_*) must be reproduced by the rack that a state without RACK migrates to.
+TEST_CASE("legacy states migrate to a rack that sounds the same", "[rack]") {
+    JuceInit init;
+    const auto in = legacy::input();
+    for (const auto& c : legacy::cases()) {
+        SECTION(c.name) {
+            SasProcessor configured;
+            c.setup(configured);
+            SasProcessor p;
+            roundTrip(configured, p, stripRack);  // an old project: no RACK, the order comes from the old parameters
+            const auto out = legacy::render(p, in);
+            double energy = 0.0;
+            for (float v : out) {
+                REQUIRE(std::isfinite(v));
+                energy += double(v) * v;
+            }
+            CHECK(std::sqrt(energy / double(out.size())) > 1e-6);
+            if (std::getenv("SAS_WRITE_GOLDEN")) legacy::writeGolden(c.name, out);
+            const auto ref = legacy::readGolden(c.name);
+            REQUIRE(ref.size() == out.size());
+            for (std::size_t i = 0; i < out.size(); ++i) REQUIRE(std::abs(out[i] - ref[i]) <= 1e-5f);
+        }
+    }
+}
+
+TEST_CASE("a fresh instance renders the legacy default too", "[rack]") {
+    JuceInit init;
+    SasProcessor p;
+    const auto out = legacy::render(p, legacy::input());
+    const auto ref = legacy::readGolden("default");
+    REQUIRE(ref.size() == out.size());
+    for (std::size_t i = 0; i < out.size(); ++i) REQUIRE(std::abs(out[i] - ref[i]) <= 1e-5f);
+}
+
+TEST_CASE("two overdrive instances: the second one is audible and independent", "[rack]") {
+    JuceInit init;
+    const auto in = legacy::input();
+    auto render = [&](bool second, float secondDrive) {
+        SasProcessor p;
+        p.setRackOrder([&] {
+            sas::RackOrder o;
+            for (auto s : {sas::SlotRef{ModuleType::Overdrive, 0}, {ModuleType::Overdrive, 1}, {ModuleType::Amp, 0}, {ModuleType::Cabinet, 0}}) o.slots[std::size_t(o.count++)] = s;
+            return o;
+        }());
+        setParam(p, ids::tsOn, 1);
+        setParam(p, "ts_on__2", second ? 1.0f : 0.0f);
+        setParam(p, "ts_drive__2", secondDrive);
+        return legacy::render(p, in);
+    };
+    const auto one = render(false, 5.0f), two = render(true, 5.0f), twoHot = render(true, 9.0f);
+    auto diff = [](const std::vector<float>& a, const std::vector<float>& b) {
+        double d = 0;
+        for (std::size_t i = 0; i < a.size(); ++i) d += std::abs(double(a[i]) - double(b[i]));
+        return d / double(a.size());
+    };
+    CHECK(diff(one, two) > 1e-4);     // the second pedal changes the sound
+    CHECK(diff(two, twoHot) > 1e-4);  // and its own knob is what drives it
+    for (float v : twoHot) REQUIRE(std::isfinite(v));
+}
+
+TEST_CASE("removing a NAM pedal clears its model from the state", "[rack]") {
+    JuceInit init;
+    SasProcessor p;
+    REQUIRE(p.loadNamPedal(juce::File(SAS_NAM_EXAMPLES_DIR "/wavenet.nam"), 0));
+    REQUIRE(p.removeModule({ModuleType::NamPedal, 0}));
+    CHECK_FALSE(p.namPedalLoaded(0));
+    REQUIRE(p.addModule(ModuleType::NamPedal));  // a new one starts empty
+    juce::MemoryBlock state;
+    p.getStateInformation(state);
+    const std::unique_ptr<juce::XmlElement> xml(juce::AudioProcessor::getXmlFromBinary(state.getData(), int(state.getSize())));
+    REQUIRE(xml != nullptr);
+    CHECK_FALSE(xml->hasAttribute("namPedalData"));
+}
+
+TEST_CASE("latency follows the active modules and not their order", "[rack]") {
+    JuceInit init;
+    SasProcessor p;
+    p.prepareToPlay(48000.0, 256);
+    juce::AudioBuffer<float> buf(2, 256);
+    juce::MidiBuffer midi;
+    auto latency = [&] {
+        buf.clear();
+        p.processBlock(buf, midi);
+        return p.getLatencySamples();
+    };
+    const int base = latency();
+    setParam(p, ids::pitch, 7.0f);
+    const int shifted = latency();
+    CHECK(shifted > base);
+    REQUIRE(p.moveModule({ModuleType::Pitch, 0}, p.rackOrder().count - 1));
+    CHECK(latency() == shifted);  // moving it does not change the sum
 }

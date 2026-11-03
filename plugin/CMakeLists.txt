@@ -32,6 +32,7 @@ target_sources(SchematicAmpSim PRIVATE
   AmpFace.h
   PluginEditor.cpp
   PluginEditor.h
+  CabinetModule.h
   RackState.cpp
   RackState.h)
 

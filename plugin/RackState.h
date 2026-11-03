@@ -38,7 +38,7 @@ std::unique_ptr<juce::AudioParameterFloat> dbParam(const juce::String& id, const
 sas::RackOrder defaultOrder();
 // The rack the fixed-order plug-in's parameters describe (used for states saved before the rack existed). `namPedalLoaded`: the state carries a model
 // for the NAM pedal, which keeps the module even when it is off.
-sas::RackOrder fromLegacy(const juce::AudioProcessorValueTreeState& apvts, bool namPedalLoaded);
+sas::RackOrder fromLegacy(const juce::AudioProcessorValueTreeState& apvts, bool namPedalLoaded, bool everyModule = false);
 juce::ValueTree toTree(const sas::RackOrder& order);
 // Tolerant: unknown types, repeated or out-of-range instances and anything beyond the limits are dropped; the amp is always there.
 sas::RackOrder fromTree(const juce::ValueTree& rack);
