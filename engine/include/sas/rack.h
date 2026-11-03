@@ -60,6 +60,10 @@ struct RackOrder {
     int count = 0;
 };
 
+// How a new order takes effect. Duck: the output fades out (8 ms), the order changes at silence and fades back in, so moving a module
+// while playing does not click; the modules keep their state (a reverb keeps its tail). Immediate: at the next block (state loads).
+enum class Transition { Immediate, Duck };
+
 class Rack {
 public:
     static constexpr int kMaxInstances = 4;
@@ -73,12 +77,15 @@ public:
     void removeModule(SlotRef slot);
     Module* module(SlotRef slot) const;
     // Message thread: the order the next block will run. Entries without a module are skipped.
-    void publish(const RackOrder& order);
+    void publish(const RackOrder& order, Transition how = Transition::Immediate);
     RackOrder order() const;
 
     // Audio thread. `r` is a buffer of at least n floats the rack may use for the right channel. Returns true when the result is a stereo pair
     // (l, r); false when it is mono (r is meaningless: copy l).
     bool process(float* l, float* r, std::size_t n);
+private:
+    bool run(const RackOrder* order, float* l, float* r, std::size_t n);
+public:
     // Sum of the latency of the active modules in the current order.
     double latencySamples() const;
     void reset();
@@ -93,6 +100,12 @@ private:
     std::array<RackOrder, 4> orders_{};  // a ring: the audio thread reads one pointer per block
     std::size_t nextOrder_ = 0;
     std::atomic<const RackOrder*> current_{nullptr};
+    std::atomic<bool> duck_{false};
+    // Audio thread: the order in force and the fade in progress.
+    const RackOrder* applied_ = nullptr;
+    enum class Fade { Idle, Out, In };
+    Fade fade_ = Fade::Idle;
+    int fadeLeft_ = 0, fadeLen_ = 384;
     double fs_ = 48000.0;
     int maxBlock_ = 512;
 };

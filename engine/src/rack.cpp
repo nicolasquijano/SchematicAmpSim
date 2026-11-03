@@ -27,6 +27,7 @@ Rack::~Rack() = default;
 void Rack::prepare(double fs, int maxBlock) {
     fs_ = fs;
     maxBlock_ = maxBlock;
+    fadeLen_ = std::max(1, int(0.008 * fs));
     for (auto& m : owned_) m->prepare(fs, maxBlock);
 }
 
@@ -49,16 +50,62 @@ void Rack::removeModule(SlotRef slot) { setModule(slot, nullptr); }
 
 Module* Rack::module(SlotRef slot) const { return valid(slot) ? cell(slot).load() : nullptr; }
 
-void Rack::publish(const RackOrder& order) {
+void Rack::publish(const RackOrder& order, Transition how) {
     nextOrder_ = (nextOrder_ + 1) % orders_.size();
     orders_[nextOrder_] = order;
+    duck_.store(how == Transition::Duck);
     current_.store(&orders_[nextOrder_]);
 }
 
 RackOrder Rack::order() const { return *current_.load(); }
 
 bool Rack::process(float* l, float* r, std::size_t n) {
-    const RackOrder* order = current_.load();
+    const RackOrder* wanted = current_.load();
+    if (!applied_) applied_ = wanted;
+    if (wanted != applied_ && fade_ == Fade::Idle && !duck_.load()) applied_ = wanted;
+    // Chunks: the block is cut where a fade-out ends, because the order changes there.
+    struct Piece { std::size_t from, len; bool stereo; };
+    Piece pieces[5];
+    int count = 0;
+    bool anyStereo = false, anyMono = false;
+    std::size_t done = 0;
+    while (done < n) {
+        if (fade_ == Fade::Idle && wanted != applied_) {
+            fade_ = Fade::Out;
+            fadeLeft_ = fadeLen_;
+        }
+        std::size_t len = n - done;
+        if (fade_ != Fade::Idle) len = std::min<std::size_t>(len, std::size_t(fadeLeft_));
+        const bool stereo = run(applied_, l + done, r + done, len);
+        if (fade_ != Fade::Idle) {
+            for (std::size_t i = 0; i < len; ++i) {
+                const float t = float(fadeLeft_ - int(i) - 1) / float(fadeLen_);  // 1 -> 0 over a fade
+                const float g = fade_ == Fade::Out ? t : 1.0f - t;
+                l[done + i] *= g;
+                if (stereo) r[done + i] *= g;
+            }
+            fadeLeft_ -= int(len);
+            if (fadeLeft_ <= 0) {
+                if (fade_ == Fade::Out) {
+                    applied_ = wanted;  // silence: the new order starts here
+                    fade_ = Fade::In;
+                    fadeLeft_ = fadeLen_;
+                } else {
+                    fade_ = Fade::Idle;
+                }
+            }
+        }
+        if (count < 5) pieces[count++] = {done, len, stereo};
+        (stereo ? anyStereo : anyMono) = true;
+        done += len;
+    }
+    if (anyStereo && anyMono)
+        for (int p = 0; p < count; ++p)
+            if (!pieces[p].stereo) std::copy(l + pieces[p].from, l + pieces[p].from + pieces[p].len, r + pieces[p].from);
+    return anyStereo;
+}
+
+bool Rack::run(const RackOrder* order, float* l, float* r, std::size_t n) {
     bool stereo = false;
     auto downmix = [&] {
         for (std::size_t i = 0; i < n; ++i) l[i] = 0.5f * (l[i] + r[i]);

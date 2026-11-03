@@ -108,3 +108,74 @@ TEST_CASE("module type names round trip and unknown names are refused", "[rack]"
     }
     CHECK_FALSE(moduleTypeFromName("Foo").has_value());
 }
+
+// ---------------------------------------------------------------- structure changes while playing
+
+#include "sas/rack_modules.h"
+
+namespace {
+
+float maxStep(const std::vector<float>& v) {
+    float m = 0.0f;
+    for (std::size_t i = 1; i < v.size(); ++i) m = std::max(m, std::abs(v[i] - v[i - 1]));
+    return m;
+}
+
+// Plays a 1 kHz sine for `blocks` blocks of 64 samples, changing the order after `at` of them.
+std::vector<float> playAndReorder(Transition how, int at, int blocks) {
+    Rack rack;
+    rack.prepare(48000.0, 64);
+    rack.setModule(kA, std::make_unique<Gain>(2.0f));
+    rack.setModule(kB, std::make_unique<Add>(1.0f));
+    rack.publish(order({kA, kB}));
+    std::vector<float> out;
+    std::vector<float> l(64), r(64);
+    for (int b = 0; b < blocks; ++b) {
+        if (b == at) rack.publish(order({kB, kA}), how);
+        for (std::size_t i = 0; i < 64; ++i) l[i] = 0.5f * float(std::sin(2.0 * 3.14159265358979 * 1000.0 * double(out.size() + i) / 48000.0));
+        rack.process(l.data(), r.data(), 64);
+        out.insert(out.end(), l.begin(), l.end());
+    }
+    return out;
+}
+
+}  // namespace
+
+TEST_CASE("reordering a rack does not click when it ducks, and does without it", "[rack]") {
+    const auto ducked = playAndReorder(Transition::Duck, 10, 40);
+    const auto cut = playAndReorder(Transition::Immediate, 10, 40);
+    CHECK(maxStep(ducked) < 0.2f);
+    CHECK(maxStep(cut) > 0.5f);  // the DC step between 2x+1 and 2(x+1) is what the duck hides
+    // After the transition the new order is in force: 2(x+1) swings between 1 and 3.
+    float lo = 9.0f;
+    for (std::size_t i = ducked.size() - 480; i < ducked.size(); ++i) lo = std::min(lo, ducked[i]);
+    CHECK(lo > 0.9f);
+}
+
+TEST_CASE("a reverb tail survives being moved", "[rack]") {
+    auto tailEnergy = [](bool move) {
+        Rack rack;
+        rack.prepare(48000.0, 64);
+        auto reverb = std::make_unique<ReverbModule>();
+        PlateParams p;
+        p.on = true;
+        p.mix = 1.0;
+        reverb->setParams(p);
+        rack.setModule(kA, std::move(reverb));
+        rack.setModule(kB, std::make_unique<Gain>(1.0f));
+        rack.publish(order({kA, kB}));
+        std::vector<float> l(64), r(64);
+        double energy = 0.0;
+        for (int b = 0; b < 160; ++b) {
+            if (b == 40 && move) rack.publish(order({kB, kA}), Transition::Duck);
+            for (std::size_t i = 0; i < 64; ++i) l[i] = b < 10 ? 0.3f * float(std::sin(0.2 * double(b * 64 + int(i)))) : 0.0f;
+            std::fill(r.begin(), r.end(), 0.0f);
+            const bool stereo = rack.process(l.data(), r.data(), 64);
+            if (b >= 80) for (std::size_t i = 0; i < 64; ++i) energy += double(l[i]) * l[i] + (stereo ? double(r[i]) * r[i] : 0.0);
+        }
+        return energy;
+    };
+    const double still = tailEnergy(false), moved = tailEnergy(true);
+    REQUIRE(still > 0.0);
+    CHECK(moved >= 0.5 * still);
+}
