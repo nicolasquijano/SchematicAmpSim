@@ -250,7 +250,7 @@ private:
     // The rack (docs/MODULAR_RACK.md).
     std::unique_ptr<sas::Module> makeModule(sas::ModuleType type);
     void syncRack(sas::Transition how);
-    sas::AmpModule* ampModule() const { return static_cast<sas::AmpModule*>(rack_.module({sas::ModuleType::Amp, 0})); }
+    sas::AmpModule* ampModule() const { return static_cast<sas::AmpModule*>(rack_.audioModule({sas::ModuleType::Amp, 0})); }
     double moduleParam(sas::SlotRef slot, const char* baseId) const;
     void applyModuleParams(const sas::RackOrder& order);
     // The cabinet's work: filter, NAM cabinet or impulse responses, double tracking (called by CabinetModule on the audio thread).

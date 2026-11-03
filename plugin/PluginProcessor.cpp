@@ -358,7 +358,7 @@ void SasProcessor::applyModuleParams(const sas::RackOrder& order) {
     bool gateSeen = false;
     for (int i = 0; i < order.count; ++i) {
         const sas::SlotRef s = order.slots[std::size_t(i)];
-        sas::Module* m = rack_.module(s);
+        sas::Module* m = rack_.audioModule(s);
         if (!m) continue;
         auto p = [&](const char* id) { return moduleParam(s, id); };
         switch (s.type) {
@@ -506,7 +506,7 @@ void SasProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::MidiBuff
     // With no IR loaded the IR mode falls back to the cab filter instead of the raw amp (and so does a NAM cabinet that has no model).
     const bool cabFilterOn = cabParam == CabMode::Filter || (cabParam == CabMode::Ir && !irLoaded) || (cabParam == CabMode::Nam && namCab == nullptr);
     const double irLatency = irActive ? double(std::max(aLoaded ? ir_[0].conv.getLatency() : 0, bLoaded ? ir_[1].conv.getLatency() : 0)) : 0.0;
-    if (auto* cab = static_cast<CabinetModule*>(rack_.module({sas::ModuleType::Cabinet, 0}))) cab->setBlock(cabFilterOn, irLatency);
+    if (auto* cab = static_cast<CabinetModule*>(rack_.audioModule({sas::ModuleType::Cabinet, 0}))) cab->setBlock(cabFilterOn, irLatency);
     if (auto* amp = ampModule()) amp->setSettings(readSettings(irLoaded));
     const sas::RackOrder order = rack_.order();
     applyModuleParams(order);
@@ -661,6 +661,7 @@ void SasProcessor::syncRack(sas::Transition how) {
             const sas::SlotRef s{static_cast<sas::ModuleType>(t), k};
             if (!inOrder(s) && rack_.module(s)) rack_.removeModule(s);
         }
+    rack_.collect();
 }
 
 void SasProcessor::setRackOrder(const sas::RackOrder& order) {
@@ -692,11 +693,17 @@ bool SasProcessor::addModule(sas::ModuleType type, int insertAt) {
     if (insertAt < 0) {
         using T = sas::ModuleType;
         switch (type) {
-            case T::Gate: case T::Overdrive: case T::NamPedal: case T::Pitch: insertAt = ampAt; break;
+            case T::Overdrive: insertAt = ampAt; break;  // next to the amp, behind a compressor
             case T::Compressor:  // in front of the overdrives that sit next to the amp, so the amp can run both as it always did
                 insertAt = ampAt;
                 while (insertAt > 0 && rackOrder_.slots[std::size_t(insertAt - 1)].type == T::Overdrive) --insertAt;
                 break;
+            case T::Gate: case T::NamPedal: case T::Pitch: {
+                // In front of the compressor and the overdrive that sit next to the amp, so the amp keeps running them as it always did.
+                insertAt = ampAt;
+                while (insertAt > 0 && (rackOrder_.slots[std::size_t(insertAt - 1)].type == T::Overdrive || rackOrder_.slots[std::size_t(insertAt - 1)].type == T::Compressor)) --insertAt;
+                break;
+            }
             case T::Cabinet: insertAt = ampAt + 1; break;
             default: insertAt = rackOrder_.count; break;
         }
@@ -1101,7 +1108,7 @@ void SasProcessor::setStateInformation(const void* data, int size) {
     apvts.replaceState(tree);
     // A state from before the rack has no order: it comes from the old parameters.
     if (const auto rack = tree.getChildWithName("RACK"); rack.isValid()) rackOrder_ = RackState::fromTree(rack);
-    else rackOrder_ = RackState::fromLegacy(apvts, tree.hasProperty("namPedalData"));
+    else rackOrder_ = RackState::fromLegacy(apvts, tree.hasProperty("namPedalData"), true);  // every module: their switches may be automated
     syncRack(sas::Transition::Immediate);
     for (int s = 0; s < kIrSlots; ++s) {
         if (tree.hasProperty(kIrDataKey[s])) {

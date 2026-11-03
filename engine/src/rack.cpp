@@ -42,31 +42,54 @@ void Rack::prepare(double fs, int maxBlock) {
     fs_ = fs;
     maxBlock_ = maxBlock;
     fadeLen_ = std::max(1, int(0.008 * fs));
-    for (auto& m : owned_) m->prepare(fs, maxBlock);
+    for (auto& row : owned_)
+        for (auto& m : row)
+            if (m) m->prepare(fs, maxBlock);
+}
+
+void Rack::retire(SlotRef slot, std::unique_ptr<Module> module, std::uint64_t needGen) {
+    // `blocks_ + 1`: a block that is running now has ended, or one has run since.
+    retired_.push_back({std::move(module), slot, needGen, blocks_.load() + 1});
+}
+
+void Rack::collect() {
+    const auto applied = appliedGen_.load(), blocks = blocks_.load();
+    for (auto it = retired_.begin(); it != retired_.end();) {
+        if (applied >= it->needGen && blocks >= it->needBlocks) {
+            Module* expected = it->module.get();
+            cell(it->slot).compare_exchange_strong(expected, nullptr);  // unless a newer module took the slot
+            it = retired_.erase(it);
+        } else {
+            ++it;
+        }
+    }
 }
 
 void Rack::setModule(SlotRef slot, std::unique_ptr<Module> module) {
     if (!valid(slot)) return;
-    retired_.clear();  // retired a call ago: the audio thread has long left them
+    collect();
     if (module) module->prepare(fs_, maxBlock_);
-    Module* old = cell(slot).exchange(module.get());
-    if (old)
-        for (auto& o : owned_)
-            if (o.get() == old) {
-                retired_.push_back(std::move(o));
-                break;
-            }
-    owned_.erase(std::remove(owned_.begin(), owned_.end(), nullptr), owned_.end());
-    if (module) owned_.push_back(std::move(module));
+    auto& owned = owned_[std::size_t(slot.type)][std::size_t(slot.instance)];
+    auto old = std::move(owned);
+    owned = std::move(module);
+    cell(slot).store(owned.get());  // the audio thread takes the new one at its next lookup
+    if (old) retire(slot, std::move(old), 0);
 }
 
-void Rack::removeModule(SlotRef slot) { setModule(slot, nullptr); }
+void Rack::removeModule(SlotRef slot) {
+    if (!valid(slot)) return;
+    collect();
+    auto old = std::move(owned_[std::size_t(slot.type)][std::size_t(slot.instance)]);
+    // The cell keeps it: an order that is fading out may still run it. It is freed once the order without it is applied (the one published last).
+    if (old) retire(slot, std::move(old), gen_);
+}
 
-Module* Rack::module(SlotRef slot) const { return valid(slot) ? cell(slot).load() : nullptr; }
+Module* Rack::module(SlotRef slot) const { return valid(slot) ? owned_[std::size_t(slot.type)][std::size_t(slot.instance)].get() : nullptr; }
 
 void Rack::publish(const RackOrder& order, Transition how) {
     nextOrder_ = (nextOrder_ + 1) % orders_.size();
     orders_[nextOrder_] = order;
+    orders_[nextOrder_].gen = ++gen_;
     duck_.store(how == Transition::Duck);
     current_.store(&orders_[nextOrder_]);
 }
@@ -116,6 +139,9 @@ bool Rack::process(float* l, float* r, std::size_t n) {
     if (anyStereo && anyMono)
         for (int p = 0; p < count; ++p)
             if (!pieces[p].stereo) std::copy(l + pieces[p].from, l + pieces[p].from + pieces[p].len, r + pieces[p].from);
+    // The order that is in force now is the one that was asked for and no fade is under way: older ones, and what they held, are done with.
+    if (fade_ == Fade::Idle && applied_ == wanted) appliedGen_.store(wanted->gen);
+    blocks_.fetch_add(1);
     return anyStereo;
 }
 
@@ -125,41 +151,11 @@ bool Rack::run(const RackOrder* order, float* l, float* r, std::size_t n) {
         for (std::size_t i = 0; i < n; ++i) l[i] = 0.5f * (l[i] + r[i]);
         stereo = false;
     };
-    auto at = [&](int k) -> Module* {
-        const SlotRef s = order->slots[std::size_t(k)];
-        return valid(s) ? cell(s).load() : nullptr;
-    };
-    // The pedals in front of the amp: up to a compressor and an overdrive (in that order) right before it go into the amp's front end.
-    bool fused[RackOrder::kMax] = {};
-    for (int a = 0; a < order->count; ++a) {
-        Module* amp = at(a);
-        if (!amp || !amp->isAmp() || !amp->active()) continue;
-        Module *comp = nullptr, *ts = nullptr;
-        for (int j = a - 1; j >= 0; --j) {
-            Module* m = at(j);
-            if (!m || !m->active()) continue;
-            const Fusion f = m->fusion();
-            if (f == Fusion::Overdrive && !ts && !comp) {
-                ts = m;
-                fused[j] = true;
-                continue;
-            }
-            if (f == Fusion::Compressor) {
-                comp = m;
-                fused[j] = true;
-            }
-            break;
-        }
-        bool pedalBefore = false;
-        for (int j = 0; j < a; ++j) {
-            Module* m = at(j);
-            if (!fused[j] && m && m->active() && m->buffered()) pedalBefore = true;
-        }
-        amp->setFrontEnd(comp, ts, pedalBefore);
-        break;
-    }
+    const Fusions f = scanFusion(*order);
+    if (f.amp >= 0) at(*order, f.amp)->setFrontEnd(f.comp, f.overdrive, f.pedalBefore);
+    const bool* fused = f.fused;
     for (int k = 0; k < order->count; ++k) {
-        Module* m = at(k);
+        Module* m = at(*order, k);
         if (!m || !m->active() || fused[k]) {
             if (valid(order->slots[std::size_t(k)])) cpuOf(order->slots[std::size_t(k)]).store(0.0f);
             continue;
@@ -195,19 +191,56 @@ bool Rack::run(const RackOrder* order, float* l, float* r, std::size_t n) {
     return stereo;
 }
 
+Module* Rack::at(const RackOrder& order, int k) const {
+    const SlotRef s = order.slots[std::size_t(k)];
+    return valid(s) ? cell(s).load() : nullptr;
+}
+
+// A compressor and an overdrive right before the amp (in that order, by position: whether they are on or not does not matter, so switching a
+// neighbour on or off never moves them in or out of the amp) are run by the amp itself, as they always were.
+Rack::Fusions Rack::scanFusion(const RackOrder& order) const {
+    Fusions f;
+    for (int a = 0; a < order.count; ++a) {
+        Module* m = at(order, a);
+        if (m && m->isAmp() && m->active()) {
+            f.amp = a;
+            break;
+        }
+    }
+    if (f.amp < 0) return f;
+    int j = f.amp - 1;
+    if (j >= 0)
+        if (Module* m = at(order, j); m && m->fusion() == Fusion::Overdrive) {
+            f.overdrive = m;
+            f.fused[j--] = true;
+        }
+    if (j >= 0)
+        if (Module* m = at(order, j); m && m->fusion() == Fusion::Compressor) {
+            f.comp = m;
+            f.fused[j] = true;
+        }
+    for (int k = 0; k < f.amp; ++k) {
+        Module* m = at(order, k);
+        if (!f.fused[k] && m && m->active() && m->buffered()) f.pedalBefore = true;
+    }
+    return f;
+}
+
 double Rack::latencySamples() const {
     const RackOrder* order = current_.load();
+    const Fusions f = scanFusion(*order);
     double total = 0.0;
     for (int k = 0; k < order->count; ++k) {
-        const SlotRef s = order->slots[std::size_t(k)];
-        const Module* m = valid(s) ? cell(s).load() : nullptr;
-        if (m && m->active()) total += m->latencySamples();
+        const Module* m = at(*order, k);
+        if (m && !f.fused[k] && m->active()) total += m->latencySamples();  // a pedal the amp runs has no latency of its own
     }
     return total;
 }
 
 void Rack::reset() {
-    for (auto& m : owned_) m->reset();
+    for (auto& row : owned_)
+        for (auto& m : row)
+            if (m) m->reset();
 }
 
 }  // namespace sas

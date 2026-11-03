@@ -219,10 +219,11 @@ TEST_CASE("the Efficient quality (preamp at 2x, power amp at the host rate) play
 
 namespace {
 
-struct Unity final : Module {  // an active mono module that changes nothing: it only stands between two others
+struct Unity final : Module {  // a mono module that changes nothing: it only stands between two others
     void prepare(double, int) override {}
     void process(float*, float*, std::size_t) override {}
-    bool active() const override { return true; }
+    bool active() const override { return on; }
+    bool on = true;
     Channels channels() const override { return Channels::MonoOnly; }
     void reset() override {}
 };
@@ -336,4 +337,53 @@ TEST_CASE("a pedal that cannot be fused still loads the amp's input like one", "
     const auto got = rackBlocks(rack, in);
     CHECK(got == want);
     CHECK(rms(got, 2400) > 1e-4);
+}
+
+TEST_CASE("a fused overdrive adds no latency of its own, an unfused one does", "[rack]") {
+    const auto& def = jcm800();
+    auto build = [&](std::initializer_list<ModuleType> types, bool unityBetween) {
+        auto chain = std::make_unique<Chain>(def, kFs);
+        Rack rack;
+        rack.prepare(kFs, 256);
+        auto amp = std::make_unique<AmpModule>();
+        amp->setChain(chain.get());
+        amp->setSettings(defaults(def));
+        rack.setModule({ModuleType::Amp, 0}, std::move(amp));
+        rack.setModule({ModuleType::Overdrive, 0}, std::make_unique<OverdriveModule>());
+        static_cast<OverdriveModule*>(rack.module({ModuleType::Overdrive, 0}))->setParams(true, TsControls{});
+        if (unityBetween) rack.setModule({ModuleType::Gate, 0}, std::make_unique<Unity>());
+        rack.publish(orderOf(types));
+        std::vector<float> l(256, 0.0f), r(256, 0.0f);
+        rack.process(l.data(), r.data(), 256);
+        const double latency = rack.latencySamples();
+        return std::make_pair(latency, chain->latencySamples());
+    };
+    const auto fused = build({ModuleType::Overdrive, ModuleType::Amp}, false);
+    CHECK(fused.first == fused.second);  // only the amp's own
+    const auto apart = build({ModuleType::Overdrive, ModuleType::Gate, ModuleType::Amp}, true);
+    CHECK(apart.first > apart.second);   // its own oversampler counts
+}
+
+TEST_CASE("which pedals are fused depends on the order, not on what else is switched on", "[rack]") {
+    const auto& def = jcm800();
+    const TsControls ts{0.6, 0.4, 0.5};
+    auto render = [&](bool between) {
+        Chain chain(def, kFs);
+        Rack rack;
+        rack.prepare(kFs, 256);
+        auto amp = std::make_unique<AmpModule>();
+        amp->setChain(&chain);
+        amp->setSettings(defaults(def));
+        rack.setModule({ModuleType::Amp, 0}, std::move(amp));
+        rack.setModule({ModuleType::Overdrive, 0}, std::make_unique<OverdriveModule>());
+        auto* od = static_cast<OverdriveModule*>(rack.module({ModuleType::Overdrive, 0}));
+        od->setParams(true, ts);
+        od->snapControls();
+        auto gate = std::make_unique<Unity>();
+        gate->on = between;
+        rack.setModule({ModuleType::Gate, 0}, std::move(gate));
+        rack.publish(orderOf({ModuleType::Overdrive, ModuleType::Gate, ModuleType::Amp}));
+        return rackBlocks(rack, sine(220.0, 0.1, 4800));
+    };
+    CHECK(render(false) == render(true));  // an inactive neighbour does not turn the fusion on
 }

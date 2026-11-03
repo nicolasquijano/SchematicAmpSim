@@ -31,11 +31,11 @@ void NamPedalModule::setParams(bool on, double driveDb, double levelDb) {
 
 void AmpModule::compose() {
     work_ = base_;
-    if (comp_) {
+    if (comp_ && comp_->active()) {
         work_.compOn = true;
         work_.comp = static_cast<CompressorModule*>(comp_)->controls();
     }
-    if (ts_) {
+    if (ts_ && ts_->active()) {
         const TsControls& t = static_cast<OverdriveModule*>(ts_)->controls();
         work_.tsOn = true;
         work_.tsDrive = t.drive;

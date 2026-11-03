@@ -220,3 +220,51 @@ TEST_CASE("the channels of every module type are known without building it", "[r
     CHECK(moduleChannels(ModuleType::Phaser) == Channels::Flexible);
     CHECK(moduleChannels(ModuleType::Reverb) == Channels::Stereo);
 }
+
+// ---------------------------------------------------------------- the review's findings: lifetime and removal
+
+namespace {
+int gDestroyed = 0;
+struct Tracked final : Module {
+    ~Tracked() override { ++gDestroyed; }
+    void prepare(double, int) override {}
+    void process(float* l, float*, std::size_t n) override { for (std::size_t i = 0; i < n; ++i) l[i] += 1.0f; }
+    bool active() const override { return true; }
+    Channels channels() const override { return Channels::MonoOnly; }
+    void reset() override {}
+};
+}  // namespace
+
+TEST_CASE("a removed module is freed only after the audio thread has applied the order without it", "[rack]") {
+    gDestroyed = 0;
+    Rack rack;
+    rack.prepare(48000.0, 64);
+    rack.setModule(kA, std::make_unique<Tracked>());
+    rack.publish(order({kA}));
+    std::vector<float> l(64, 0.0f), r(64, 0.0f);
+    rack.process(l.data(), r.data(), 64);
+    rack.publish(order({}), Transition::Duck);
+    rack.removeModule(kA);
+    CHECK(rack.module(kA) == nullptr);
+    rack.setModule(kB, std::make_unique<Gain>(1.0f));  // other message-thread calls must not free it either
+    rack.setModule(kC, std::make_unique<Gain>(1.0f));
+    rack.collect();
+    CHECK(gDestroyed == 0);  // the audio thread has not run a block since: it may still be inside it
+    for (int b = 0; b < 20; ++b) rack.process(l.data(), r.data(), 64);  // the fade out and in
+    rack.collect();
+    CHECK(gDestroyed == 1);
+}
+
+TEST_CASE("a module being removed keeps playing through the fade out", "[rack]") {
+    Rack rack;
+    rack.prepare(48000.0, 64);
+    rack.setModule(kA, std::make_unique<Tracked>());
+    rack.publish(order({kA}));
+    std::vector<float> l(64, 0.0f), r(64, 0.0f);
+    rack.process(l.data(), r.data(), 64);
+    rack.publish(order({}), Transition::Duck);
+    rack.removeModule(kA);
+    std::fill(l.begin(), l.end(), 0.0f);
+    rack.process(l.data(), r.data(), 64);
+    CHECK(l[0] > 0.9f);  // still the module's +1, faded only slightly: the tail is not cut
+}

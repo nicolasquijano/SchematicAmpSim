@@ -1600,28 +1600,32 @@ TEST_CASE("a state without RACK gets one from the old parameters", "[rack]") {
         setParam(a, ids::phOn, 1); setParam(a, ids::phPost, 1);
         setParam(a, ids::tsOn, 1); setParam(a, ids::compOn, 1); setParam(a, ids::dlyOn, 1);
         roundTrip(a, b, stripRack);
-        CHECK(typesOf(b.rackOrder()) == std::vector<ModuleType>{ModuleType::Compressor, ModuleType::Overdrive, ModuleType::Amp, ModuleType::Cabinet, ModuleType::Phaser, ModuleType::Delay});
+        using T = ModuleType;
+        CHECK(typesOf(b.rackOrder()) == std::vector<T>{T::Pitch, T::Gate, T::Vibe, T::NamPedal, T::Compressor, T::Overdrive, T::Amp, T::Cabinet, T::Eq, T::Phaser, T::Chorus, T::Delay, T::Reverb});
     }
     SECTION("every modulation in front of the amp keeps its old order") {
         SasProcessor a, b;
         for (const char* on : {ids::phOn, ids::chOn, ids::vbOn}) setParam(a, on, 1);
         setParam(a, ids::chPost, 0);
         roundTrip(a, b, stripRack);
-        CHECK(typesOf(b.rackOrder()) == std::vector<ModuleType>{ModuleType::Phaser, ModuleType::Chorus, ModuleType::Vibe, ModuleType::Amp, ModuleType::Cabinet});
+        using T = ModuleType;
+        CHECK(typesOf(b.rackOrder()) == std::vector<T>{T::Pitch, T::Gate, T::Phaser, T::Chorus, T::Vibe, T::NamPedal, T::Compressor, T::Overdrive, T::Amp, T::Cabinet, T::Eq, T::Delay, T::Reverb});
     }
-    SECTION("a plain old state is just the amp and the cabinet") {
+    SECTION("a plain old state keeps every module, so the automation of any switch still has something to drive") {
         SasProcessor a, b;
         roundTrip(a, b, stripRack);
-        CHECK(typesOf(b.rackOrder()) == std::vector<ModuleType>{ModuleType::Amp, ModuleType::Cabinet});
+        using T = ModuleType;
+        CHECK(typesOf(b.rackOrder()) == std::vector<T>{T::Pitch, T::Gate, T::Phaser, T::Vibe, T::NamPedal, T::Compressor, T::Overdrive, T::Amp, T::Cabinet, T::Eq, T::Chorus, T::Delay, T::Reverb});
     }
 }
 
-TEST_CASE("a disabled-but-tuned delay is kept as a bypassed module", "[rack]") {
+TEST_CASE("a disabled-but-tuned delay keeps its values in the migrated rack", "[rack]") {
     JuceInit init;
     SasProcessor a, b;
     setParam(a, ids::dlyMix, 60.0f);  // tuned, but the switch is off
     roundTrip(a, b, stripRack);
-    CHECK(typesOf(b.rackOrder()) == std::vector<ModuleType>{ModuleType::Amp, ModuleType::Cabinet, ModuleType::Delay});
+    const auto types = typesOf(b.rackOrder());
+    CHECK(std::count(types.begin(), types.end(), ModuleType::Delay) == 1);
     CHECK(b.apvts.getRawParameterValue(ids::dlyOn)->load() < 0.5f);
     CHECK(b.apvts.getRawParameterValue(ids::dlyMix)->load() == Catch::Approx(60.0f));
 }
@@ -1945,4 +1949,37 @@ TEST_CASE("a mono-only unit that follows a stereo one says it sums to mono", "[r
     CHECK_FALSE(page.unitSumsToMono(1));  // the cabinet makes it stereo
     CHECK_FALSE(page.unitSumsToMono(2));  // the reverb is stereo
     CHECK(page.unitSumsToMono(3));        // the overdrive after it is not
+}
+
+// ---------------------------------------------------------------- the review's findings
+
+TEST_CASE("a legacy state with the overdrive on reports the latency it always did", "[rack]") {
+    JuceInit init;
+    auto latencyOf = [](bool tsOn) {
+        SasProcessor configured;
+        setParam(configured, ids::tsOn, tsOn ? 1.0f : 0.0f);
+        SasProcessor p;
+        roundTrip(configured, p, stripRack);
+        p.prepareToPlay(48000.0, 256);
+        juce::AudioBuffer<float> buf(2, 256);
+        juce::MidiBuffer midi;
+        buf.clear();
+        p.processBlock(buf, midi);
+        return p.getLatencySamples();
+    };
+    CHECK(latencyOf(true) == latencyOf(false));  // the overdrive runs inside the amp: no extra delay for the host to compensate
+}
+
+TEST_CASE("modules added in front of the amp go before the compressor and overdrive it runs itself", "[rack]") {
+    JuceInit init;
+    SasProcessor p;
+    p.setRackOrder([] {
+        sas::RackOrder o;
+        for (auto s : {sas::SlotRef{ModuleType::Compressor, 0}, {ModuleType::Overdrive, 0}, {ModuleType::Amp, 0}, {ModuleType::Cabinet, 0}}) o.slots[std::size_t(o.count++)] = s;
+        return o;
+    }());
+    REQUIRE(p.addModule(ModuleType::Gate));
+    REQUIRE(p.addModule(ModuleType::Pitch));
+    using T = ModuleType;
+    CHECK(typesOf(p.rackOrder()) == std::vector<T>{T::Gate, T::Pitch, T::Compressor, T::Overdrive, T::Amp, T::Cabinet});
 }

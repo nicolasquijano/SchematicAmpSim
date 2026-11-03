@@ -6,6 +6,7 @@
 #include <array>
 #include <atomic>
 #include <cstddef>
+#include <cstdint>
 #include <memory>
 #include <optional>
 #include <string_view>
@@ -61,6 +62,7 @@ struct RackOrder {
     static constexpr int kMax = 13;  // twelve modules and the amp
     std::array<SlotRef, kMax> slots{};
     int count = 0;
+    std::uint64_t gen = 0;  // set by Rack::publish: which order this is
 };
 
 // How a new order takes effect. Duck: the output fades out (8 ms), the order changes at silence and fades back in, so moving a module
@@ -75,10 +77,14 @@ public:
     ~Rack();
     void prepare(double fs, int maxBlock);
 
-    // Message thread. The module is prepared here; the previous one in the slot is kept until the next call (the audio thread may be inside it).
+    // Message thread. The module is prepared here. A module that is replaced or removed is not freed while the audio thread may still be inside it
+    // or still run it (an old order is faded out first): it waits until the audio thread has finished a block, and applied the order that no longer
+    // holds it, and a later call (collect) frees it. removeModule expects the order without the module to have been published first.
     void setModule(SlotRef slot, std::unique_ptr<Module> module);
     void removeModule(SlotRef slot);
-    Module* module(SlotRef slot) const;
+    void collect();
+    Module* module(SlotRef slot) const;  // message thread: the module the slot holds now
+    Module* audioModule(SlotRef slot) const { return valid(slot) ? cell(slot).load() : nullptr; }  // audio thread: what a running order sees
     // Message thread: the order the next block will run. Entries without a module are skipped.
     void publish(const RackOrder& order, Transition how = Transition::Immediate);
     RackOrder order() const;
@@ -101,8 +107,27 @@ private:
     const std::atomic<Module*>& cell(SlotRef s) const { return table_[std::size_t(s.type)][std::size_t(s.instance)]; }
     static bool valid(SlotRef s) { return int(s.type) >= 0 && int(s.type) < kModuleTypeCount && s.instance >= 0 && s.instance < kMaxInstances; }
 
+    struct Retired {
+        std::unique_ptr<Module> module;
+        SlotRef slot;
+        std::uint64_t needGen, needBlocks;
+    };
+    // Which pedals the amp runs itself (the compressor and the overdrive right in front of it, by position) and whether another pedal loads it.
+    struct Fusions {
+        int amp = -1;
+        Module *comp = nullptr, *overdrive = nullptr;
+        bool pedalBefore = false;
+        bool fused[RackOrder::kMax] = {};
+    };
+    Fusions scanFusion(const RackOrder& order) const;
+    Module* at(const RackOrder& order, int k) const;
+    void retire(SlotRef slot, std::unique_ptr<Module> module, std::uint64_t needGen);
+
     std::array<std::array<std::atomic<Module*>, kMaxInstances>, kModuleTypeCount> table_;
-    std::vector<std::unique_ptr<Module>> owned_, retired_;
+    std::array<std::array<std::unique_ptr<Module>, kMaxInstances>, kModuleTypeCount> owned_;
+    std::vector<Retired> retired_;
+    std::uint64_t gen_ = 0;
+    std::atomic<std::uint64_t> appliedGen_{0}, blocks_{0};  // audio thread: the order it has applied, and how many blocks it has finished
     std::array<RackOrder, 4> orders_{};  // a ring: the audio thread reads one pointer per block
     std::size_t nextOrder_ = 0;
     std::atomic<const RackOrder*> current_{nullptr};

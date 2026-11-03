@@ -2,7 +2,7 @@
 
 Estado: **implementado en la rama `feat/modular-rack`** (etapas 0 a 4; el lazo de la etapa 5 queda para la v2). Fecha: 2026-11-03. Base: 0.3.0-beta.
 
-Desvíos respecto de lo planeado, ya implementados: el gate es mono (no estéreo enlazado); el tipo de canal `Flexible` para phaser/chorus/vibe; `Rack::publish` toma un `Transition` (Immediate para cargar estados, Duck para ediciones); el cabinet es un módulo fino que llama a `SasProcessor::processCabinet` (las convoluciones siguen en el procesador); el amp y el cabinet se alojan en dos paneles del editor que las unidades del rack muestran; no hay racks de fábrica `.sasp`.
+Desvíos respecto de lo planeado, ya implementados: la migración conserva todos los módulos; la fusión del compresor y el overdrive con el amp se decide por posición (no por qué vecinos estén encendidos); un módulo quitado sigue corriendo durante el fundido y se libera recién cuando el audio aplicó el orden sin él; el gate es mono (no estéreo enlazado); el tipo de canal `Flexible` para phaser/chorus/vibe; `Rack::publish` toma un `Transition` (Immediate para cargar estados, Duck para ediciones); el cabinet es un módulo fino que llama a `SasProcessor::processCabinet` (las convoluciones siguen en el procesador); el amp y el cabinet se alojan en dos paneles del editor que las unidades del rack muestran; no hay racks de fábrica `.sasp`.
 
 ## 1. Idea y por qué
 
@@ -190,7 +190,7 @@ entero, igual que hoy reemplaza todos los parámetros.
 
 Regla: **si no hay `<RACK>`, es un estado viejo**; se construye el rack desde los parámetros y no se toca ningún valor.
 
-1. Rack = en este orden, solo los módulos que estaban activos **o tenían algún valor distinto del por defecto** (se instancian apagados para no perder el ajuste del jugador; el EQ plano y encendido no se instancia):
+1. Rack = en este orden, **todos** los módulos del plug-in viejo (los apagados no cuestan CPU; así la automatización de cualquier interruptor sigue teniendo a qué actuar; desvío posterior a la revisión final: el diseño original solo instanciaba los activos o con valores tocados):
    `Pitch, Gate, [Phaser, Chorus, Vibe si su *_post = 0, en ese orden], NAM pedal, Compresor, Overdrive, **Amp**, Cabinet, [Phaser, Chorus, Vibe si *_post = 1], EQ, Delay, Reverb`.
    (El orden real de hoy: EQ está *antes* de los moduladores "post"; se respeta: `Amp, Cabinet, EQ, [mod post], Delay, Reverb`.)
 2. Siempre están Amp y Cabinet. (Si `cab` = Off, el módulo Cabinet queda en modo Off.)
