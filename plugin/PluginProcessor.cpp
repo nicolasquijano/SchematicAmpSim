@@ -80,6 +80,7 @@ Layout SasProcessor::createLayout(const std::vector<sas::AmpDef>& defs) {
                                                        juce::AudioParameterChoiceAttributes().withAutomatable(false)));  // read once, to place a module of an old project
     RackState::addParams(l, sas::ModuleType::Tremolo, 0);
     RackState::addParams(l, sas::ModuleType::Flanger, 0);
+    RackState::addParams(l, sas::ModuleType::Wah, 0);
     RackState::addParams(l, sas::ModuleType::Compressor, 0);
     RackState::addParams(l, sas::ModuleType::NamPedal, 0);
     l.add(std::make_unique<juce::AudioParameterBool>(juce::ParameterID{ids::tunerOn, kVersion}, "Tuner", false));
@@ -484,6 +485,25 @@ void SasProcessor::applyModuleParams(const sas::RackOrder& order) {
                 static_cast<sas::FlangerModule*>(m)->setParams(q);
                 break;
             }
+            case T::Wah: {
+                sas::WahParams q;
+                q.on = p(ids::wahOn) > 0.5;
+                q.mode = int(p(ids::wahMode) + 0.5);
+                q.position = p(ids::wahPos) / 100.0;
+                q.heelHz = p(ids::wahHeel);
+                q.toeHz = p(ids::wahToe);
+                q.q = p(ids::wahQ);
+                q.mix = p(ids::wahMix) / 100.0;
+                q.levelDb = p(ids::wahLevel);
+                q.sensitivity = p(ids::wahSens) / 100.0;
+                q.attackMs = p(ids::wahAttack);
+                q.releaseMs = p(ids::wahRelease);
+                q.down = p(ids::wahDir) > 0.5;
+                q.rateHz = p(ids::wahRate);
+                q.stereo = p(ids::wahStereo) > 0.5;
+                static_cast<sas::WahModule*>(m)->setParams(q);
+                break;
+            }
             case T::Pitch:
                 static_cast<sas::PitchModule*>(m)->setSemitones(p(ids::pitch) + p(ids::pitchFine) / 100.0);
                 break;
@@ -739,6 +759,7 @@ std::unique_ptr<sas::Module> SasProcessor::makeModule(sas::ModuleType type, int 
         case T::Vibe: return std::make_unique<sas::VibeModule>();
         case T::Tremolo: return std::make_unique<sas::TremoloModule>();
         case T::Flanger: return std::make_unique<sas::FlangerModule>();
+        case T::Wah: return std::make_unique<sas::WahModule>();
         case T::Pitch: return std::make_unique<sas::PitchModule>();
         case T::Eq: return std::make_unique<sas::EqModule>();
         case T::Delay: return std::make_unique<sas::DelayModule>();
@@ -848,7 +869,7 @@ bool SasProcessor::addModule(sas::ModuleType type, int insertAt, int wantedLane)
                 insertAt = ampAt;
                 while (insertAt > 0 && rackOrder_.slots[std::size_t(insertAt - 1)].type == T::Overdrive) --insertAt;
                 break;
-            case T::Gate: case T::NamPedal: case T::Pitch: {
+            case T::Gate: case T::NamPedal: case T::Pitch: case T::Wah: {
                 // In front of the compressor and the overdrive that sit next to the amp, so the amp keeps running them as it always did.
                 insertAt = ampAt;
                 while (insertAt > 0 && (rackOrder_.slots[std::size_t(insertAt - 1)].type == T::Overdrive || rackOrder_.slots[std::size_t(insertAt - 1)].type == T::Compressor)) --insertAt;

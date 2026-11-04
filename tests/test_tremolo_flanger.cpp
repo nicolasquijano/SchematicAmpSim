@@ -215,3 +215,105 @@ TEST_CASE("delay and reverb: the channels option", "[stereo]") {
         CHECK(earGap<sas::PlateReverb>(p) > 5.0);
     }
 }
+
+#include "sas/wah.h"
+
+namespace {
+// RMS of what the wah leaves at one frequency, for a sine at that frequency.
+double wahGain(sas::WahParams p, double hz) {
+    sas::Wah w;
+    p.on = true;
+    w.prepare(kFs);
+    w.setParams(p);
+    std::vector<float> x(48000);
+    for (std::size_t i = 0; i < x.size(); ++i) x[i] = 0.3f * float(std::sin(6.283185307179586 * hz * double(i) / kFs));
+    auto in = x;
+    run(w, x, nullptr);
+    double a = 0.0, b = 0.0;
+    for (std::size_t i = 12000; i < x.size(); ++i) {
+        a += double(in[i]) * in[i];
+        b += double(x[i]) * x[i];
+    }
+    return std::sqrt(b / a);
+}
+}  // namespace
+
+TEST_CASE("wah: off is transparent; the pedal moves the peak between heel and toe", "[wah]") {
+    sas::Wah w;
+    sas::WahParams p;
+    w.prepare(kFs);
+    w.setParams(p);
+    auto a = tone(48000), b = a;
+    run(w, b, nullptr);
+    CHECK(a == b);
+    p.levelDb = 0.0;
+    p.q = 6.0;
+    p.position = 0.0;  // heel down: the peak is at 400 Hz
+    CHECK(wahGain(p, 400.0) > 3.0 * wahGain(p, 2000.0));
+    p.position = 1.0;  // toe down: at 2 kHz
+    CHECK(wahGain(p, 2000.0) > 3.0 * wahGain(p, 400.0));
+    p.heelHz = 700.0;
+    p.position = 0.0;
+    CHECK(wahGain(p, 700.0) > 3.0 * wahGain(p, 400.0));  // the range is the player's
+}
+
+TEST_CASE("wah: mix, level and Q do what they say", "[wah]") {
+    sas::WahParams p;
+    p.levelDb = 0.0;
+    p.position = 0.0;
+    p.q = 4.0;
+    p.mix = 0.0;
+    CHECK(std::fabs(wahGain(p, 3000.0) - 1.0) < 0.02);  // all dry
+    p.mix = 1.0;
+    const double flat = wahGain(p, 3000.0);
+    p.levelDb = 6.0;
+    CHECK(wahGain(p, 3000.0) > 1.9 * flat);
+    p.levelDb = 0.0;
+    p.q = 1.0;
+    const double wide = wahGain(p, 1200.0);
+    p.q = 10.0;
+    CHECK(wahGain(p, 1200.0) < wide);  // a narrow peak leaves more of the neighbours out
+}
+
+TEST_CASE("wah: in envelope mode the playing moves it, in LFO mode it moves by itself, and nothing blows up", "[wah]") {
+    for (int mode : {sas::WahParams::Envelope, sas::WahParams::Lfo}) {
+        sas::Wah w;
+        sas::WahParams p;
+        p.on = true;
+        p.mode = mode;
+        p.q = 12.0;
+        w.prepare(kFs);
+        w.setParams(p);
+        auto x = tone(96000);
+        auto y = x;
+        run(w, y, nullptr);
+        double diff = 0.0;
+        for (std::size_t i = 0; i < y.size(); ++i) {
+            REQUIRE(std::isfinite(y[i]));
+            REQUIRE(std::fabs(y[i]) < 8.0f);
+            diff += std::fabs(double(x[i]) - double(y[i]));
+        }
+        CHECK(diff > 100.0);
+    }
+    // Envelope: a loud note and a soft one open it differently.
+    auto level = [](double amp) {
+        sas::Wah w;
+        sas::WahParams p;
+        p.on = true;
+        p.mode = sas::WahParams::Envelope;
+        p.levelDb = 0.0;
+        w.prepare(kFs);
+        w.setParams(p);
+        std::vector<float> x(48000);
+        for (std::size_t i = 0; i < x.size(); ++i) x[i] = float(amp * std::sin(6.283185307179586 * 1500.0 * double(i) / kFs));
+        auto in = x;
+        run(w, x, nullptr);
+        double a = 0.0, b = 0.0;
+        for (std::size_t i = 24000; i < x.size(); ++i) {
+            a += double(in[i]) * in[i];
+            b += double(x[i]) * x[i];
+        }
+        return std::sqrt(b / a);
+    };
+    CHECK(std::fabs(level(0.02) - level(0.6)) > 0.05);
+}

@@ -15,7 +15,7 @@ namespace {
 
 // Caps (docs/MODULAR_RACK.md, 4.1; the CPU table in section 6 holds them).
 constexpr int kCaps[sas::kModuleTypeCount] = {2 /*Amp*/, 2 /*Cabinet*/, 2 /*Gate*/, 2 /*Compressor*/, 4 /*Overdrive*/, 2 /*NamPedal*/, 2 /*Phaser*/,
-                                              2 /*Chorus*/, 2 /*Vibe*/, 2 /*Pitch*/, 2 /*Eq*/, 2 /*Delay*/, 2 /*Reverb*/, 1 /*Splitter*/, 1 /*Mixer*/, 2 /*Tremolo*/, 2 /*Flanger*/};
+                                              2 /*Chorus*/, 2 /*Vibe*/, 2 /*Pitch*/, 2 /*Eq*/, 2 /*Delay*/, 2 /*Reverb*/, 1 /*Splitter*/, 1 /*Mixer*/, 2 /*Tremolo*/, 2 /*Flanger*/, 2 /*Wah*/};
 
 // Mono: both channels of a stereo pair get the same modulation. Stereo: the right channel's modulation is out of step with the left's.
 std::unique_ptr<juce::AudioParameterChoice> channelMode(const juce::ParameterID& id, const juce::String& name) {
@@ -85,6 +85,8 @@ const std::vector<const char*>& paramIds(ModuleType type) {
     static const std::vector<const char*> vibe{ids::vbOn, ids::vbSpeed, ids::vbIntensity, ids::vbVibrato, ids::vbStereo};
     static const std::vector<const char*> tremolo{ids::trOn, ids::trRate, ids::trDepth, ids::trShape, ids::trStereo};
     static const std::vector<const char*> flanger{ids::flOn, ids::flRate, ids::flDepth, ids::flManual, ids::flFeedback, ids::flStereo};
+    static const std::vector<const char*> wah{ids::wahOn, ids::wahMode, ids::wahPos, ids::wahHeel, ids::wahToe, ids::wahQ, ids::wahMix, ids::wahLevel, ids::wahSens,
+                                              ids::wahAttack, ids::wahRelease, ids::wahDir, ids::wahRate, ids::wahStereo};
     static const std::vector<const char*> pitch{ids::pitch, ids::pitchFine};
     static const std::vector<const char*> eq = [] {
         std::vector<const char*> v{ids::eqOn, ids::eqHpf, ids::eqLpf};
@@ -110,6 +112,7 @@ const std::vector<const char*>& paramIds(ModuleType type) {
         case ModuleType::Vibe: return vibe;
         case ModuleType::Tremolo: return tremolo;
         case ModuleType::Flanger: return flanger;
+        case ModuleType::Wah: return wah;
         case ModuleType::Pitch: return pitch;
         case ModuleType::Eq: return eq;
         case ModuleType::Delay: return delay;
@@ -130,6 +133,7 @@ const char* onId(ModuleType type) {
         case ModuleType::Vibe: return ids::vbOn;
         case ModuleType::Tremolo: return ids::trOn;
         case ModuleType::Flanger: return ids::flOn;
+        case ModuleType::Wah: return ids::wahOn;
         case ModuleType::Eq: return ids::eqOn;
         case ModuleType::Delay: return ids::dlyOn;
         case ModuleType::Reverb: return ids::plOn;
@@ -232,6 +236,29 @@ void addParams(Layout& l, ModuleType type, int k) {
             l.add(pct(I(ids::flFeedback), N("Flanger feedback"), -90.0f, 90.0f, 50.0f));
             l.add(channelMode(id(I(ids::flStereo)), N("Flanger channels")));
             break;
+        case ModuleType::Wah: {
+            auto ms = [&](const char* base, const char* name, float lo, float hi, float centre, float def) {
+                juce::NormalisableRange<float> r(lo, hi, 0.0f);
+                r.setSkewForCentre(centre);
+                return std::make_unique<juce::AudioParameterFloat>(id(I(base)), N(name), r, def,
+                                                                   juce::AudioParameterFloatAttributes().withLabel("ms").withStringFromValueFunction([](float v, int) { return juce::String(v, 0); }));
+            };
+            l.add(toggle(I(ids::wahOn), N("Wah"), false));
+            l.add(std::make_unique<juce::AudioParameterChoice>(id(I(ids::wahMode)), N("Wah mode"), juce::StringArray{"Pedal", "Envelope", "LFO"}, 0));
+            l.add(pct(I(ids::wahPos), N("Wah pedal"), 0.0f, 100.0f, 50.0f));
+            l.add(hz(I(ids::wahHeel), N("Wah heel"), 200.0f, 1000.0f, 400.0f));
+            l.add(hz(I(ids::wahToe), N("Wah toe"), 1000.0f, 4000.0f, 2000.0f));
+            l.add(rate(I(ids::wahQ), N("Wah Q"), 0.7f, 12.0f, 4.0f, 4.0f, ""));
+            l.add(pct(I(ids::wahMix), N("Wah mix"), 0.0f, 100.0f, 100.0f));
+            l.add(dbParam(I(ids::wahLevel), N("Wah level"), 3.0f));
+            l.add(pct(I(ids::wahSens), N("Wah sensitivity"), 0.0f, 100.0f, 50.0f));
+            l.add(ms(ids::wahAttack, "Wah attack", 1.0f, 100.0f, 10.0f, 8.0f));
+            l.add(ms(ids::wahRelease, "Wah release", 20.0f, 1000.0f, 150.0f, 120.0f));
+            l.add(std::make_unique<juce::AudioParameterChoice>(id(I(ids::wahDir)), N("Wah direction"), juce::StringArray{"Up", "Down"}, 0));
+            l.add(rate(I(ids::wahRate), N("Wah LFO rate"), 0.1f, 10.0f, 1.5f, 1.0f, "Hz"));
+            l.add(channelMode(id(I(ids::wahStereo)), N("Wah channels")));
+            break;
+        }
         case ModuleType::Pitch:
             l.add(std::make_unique<juce::AudioParameterInt>(id(I(ids::pitch)), N("Pitch"), -12, 12, 0, juce::AudioParameterIntAttributes().withLabel("st")));
             l.add(std::make_unique<juce::AudioParameterInt>(id(I(ids::pitchFine)), N("Pitch fine"), -50, 50, 0, juce::AudioParameterIntAttributes().withLabel("cents")));

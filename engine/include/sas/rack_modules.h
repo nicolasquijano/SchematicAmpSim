@@ -12,6 +12,7 @@
 #include "sas/chorus.h"
 #include "sas/flanger.h"
 #include "sas/tremolo.h"
+#include "sas/wah.h"
 #include "sas/compressor.h"
 #include "sas/delay.h"
 #include "sas/eq.h"
@@ -48,6 +49,7 @@ using ChorusModule = FxModule<Chorus, ChorusParams, Channels::Flexible>;
 using VibeModule = FxModule<Vibe, VibeParams, Channels::Flexible>;
 using TremoloModule = FxModule<Tremolo, TremoloParams, Channels::Flexible>;
 using FlangerModule = FxModule<Flanger, FlangerParams, Channels::Flexible>;
+using WahModule = FxModule<Wah, WahParams, Channels::Flexible>;
 using EqModule = FxModule<ParametricEq, EqParams, Channels::Stereo>;
 using DelayModule = FxModule<StereoDelay, DelayParams, Channels::Stereo>;
 using ReverbModule = FxModule<PlateReverb, PlateParams, Channels::Stereo>;

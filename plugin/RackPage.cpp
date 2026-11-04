@@ -15,7 +15,7 @@ struct Category {
 
 const std::vector<Category>& categories() {
     static const std::vector<Category> c{
-        {"Effects", {ModuleType::Gate, ModuleType::Compressor, ModuleType::Overdrive, ModuleType::NamPedal}},
+        {"Effects", {ModuleType::Gate, ModuleType::Compressor, ModuleType::Overdrive, ModuleType::NamPedal, ModuleType::Wah}},
         {"Modulation", {ModuleType::Phaser, ModuleType::Chorus, ModuleType::Vibe, ModuleType::Flanger, ModuleType::Tremolo}},
         {"Pitch", {ModuleType::Pitch}},
         {"EQ", {ModuleType::Eq}},
@@ -47,6 +47,7 @@ juce::Colour colourOf(ModuleType t) {
         case ModuleType::Vibe:
         case ModuleType::Tremolo:
         case ModuleType::Flanger: return juce::Colour(0xffa070d8);
+        case ModuleType::Wah: return juce::Colour(0xffe8c040);
         case ModuleType::Pitch: return juce::Colour(0xffd868a8);
         case ModuleType::Eq: return juce::Colour(0xff48b8c8);
         case ModuleType::Delay:

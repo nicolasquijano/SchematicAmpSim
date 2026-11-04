@@ -29,6 +29,11 @@ const std::vector<Item>& itemsFor(ModuleType t) {
                                            {Item::Combo, ids::trStereo, "CHANNELS"}};
     static const std::vector<Item> flanger{{Item::Knob, ids::flRate, "RATE Hz"}, {Item::Knob, ids::flDepth, "DEPTH %"}, {Item::Knob, ids::flManual, "MANUAL %"},
                                            {Item::Knob, ids::flFeedback, "FEEDBACK %"}, {Item::Combo, ids::flStereo, "CHANNELS"}};
+    static const std::vector<Item> wah{{Item::Combo, ids::wahMode, "MODE"}, {Item::Knob, ids::wahPos, "PEDAL %"}, {Item::Knob, ids::wahHeel, "HEEL Hz"},
+                                       {Item::Knob, ids::wahToe, "TOE Hz"}, {Item::Knob, ids::wahQ, "Q"}, {Item::Knob, ids::wahMix, "MIX %"},
+                                       {Item::Knob, ids::wahLevel, "LEVEL dB"}, {Item::Knob, ids::wahSens, "ENV SENS %"}, {Item::Knob, ids::wahAttack, "ENV ATTACK ms"},
+                                       {Item::Knob, ids::wahRelease, "ENV RELEASE ms"}, {Item::Combo, ids::wahDir, "ENV DIRECTION"}, {Item::Knob, ids::wahRate, "LFO RATE Hz"},
+                                       {Item::Combo, ids::wahStereo, "CHANNELS"}};
     static const std::vector<Item> pitch{{Item::Knob, ids::pitch, "SEMITONES"}, {Item::Knob, ids::pitchFine, "FINE cents"}};
     static const std::vector<Item> delay{{Item::Knob, ids::dlyTime, "TIME ms"}, {Item::Combo, ids::dlySync, "SYNC"}, {Item::Knob, ids::dlyFeedback, "FEEDBACK %"},
                                          {Item::Knob, ids::dlyMix, "MIX %"}, {Item::Knob, ids::dlyTone, "TONE Hz"}, {Item::Toggle, ids::dlyPing, "Ping-pong"},
@@ -49,6 +54,7 @@ const std::vector<Item>& itemsFor(ModuleType t) {
         case ModuleType::Vibe: return vibe;
         case ModuleType::Tremolo: return tremolo;
         case ModuleType::Flanger: return flanger;
+        case ModuleType::Wah: return wah;
         case ModuleType::Pitch: return pitch;
         case ModuleType::Delay: return delay;
         case ModuleType::Reverb: return reverb;
@@ -69,6 +75,7 @@ const char* nameOf(ModuleType t) {
         case ModuleType::Vibe: return "VIBE";
         case ModuleType::Tremolo: return "TREMOLO";
         case ModuleType::Flanger: return "FLANGER";
+        case ModuleType::Wah: return "WAH";
         case ModuleType::Pitch: return "PITCH";
         case ModuleType::Eq: return "EQ";
         case ModuleType::Delay: return "DELAY";
@@ -91,7 +98,7 @@ public:
                 case Item::Knob: {
                     auto k = std::make_unique<KnobWithLabel>(p.apvts, id.toRawUTF8(), item.caption);
                     addAndMakeVisible(*k);
-                    parts_.push_back({k.get(), 66});
+                    parts_.push_back({k.get(), 66, item.id});
                     knobs_.push_back(std::move(k));
                     break;
                 }
@@ -99,7 +106,7 @@ public:
                     auto t = std::make_unique<juce::ToggleButton>(item.caption);
                     addAndMakeVisible(*t);
                     toggleAtts_.push_back(std::make_unique<juce::AudioProcessorValueTreeState::ButtonAttachment>(p.apvts, id, *t));
-                    parts_.push_back({t.get(), 92});
+                    parts_.push_back({t.get(), 92, item.id});
                     toggles_.push_back(std::move(t));
                     break;
                 }
@@ -113,7 +120,11 @@ public:
                     holder->box.addItemList(param->choices, 1);
                     comboAtts_.push_back(std::make_unique<juce::AudioProcessorValueTreeState::ComboBoxAttachment>(p.apvts, id, holder->box));
                     addAndMakeVisible(*holder);
-                    parts_.push_back({holder.get(), 124});
+                    parts_.push_back({holder.get(), slot.type == sas::ModuleType::Wah ? 108 : 124, item.id});
+                    if (item.id == std::string_view(ids::wahMode)) {
+                        wahMode_ = &holder->box;
+                        holder->box.onChange = [this] { resized(); };  // the controls of the other modes go away
+                    }
                     choices_.push_back(std::move(holder));
                     break;
                 }
@@ -126,6 +137,8 @@ public:
     void resized() override {
         auto r = getLocalBounds().reduced(6, 2);
         for (auto& part : parts_) {
+            part.c->setVisible(shown(part.id));
+            if (!shown(part.id)) continue;
             auto cell = r.removeFromLeft(part.width);
             if (dynamic_cast<juce::ToggleButton*>(part.c)) part.c->setBounds(cell.withSizeKeepingCentre(cell.getWidth(), 24));
             else if (dynamic_cast<Choice*>(part.c)) part.c->setBounds(cell.withSizeKeepingCentre(cell.getWidth() - 6, 46).translated(0, -6));
@@ -134,6 +147,16 @@ public:
     }
 
 private:
+    // The wah shows what its mode uses: the pedal, the envelope follower or the LFO.
+    bool shown(std::string_view id) const {
+        if (wahMode_ == nullptr) return true;
+        const int mode = std::max(0, wahMode_->getSelectedItemIndex());
+        const bool env = id == ids::wahSens || id == ids::wahAttack || id == ids::wahRelease || id == ids::wahDir;
+        if (env) return mode == 1;
+        if (id == ids::wahPos) return mode == 0;
+        if (id == ids::wahRate) return mode == 2;
+        return true;
+    }
     struct Choice final : juce::Component {
         void resized() override {
             auto r = getLocalBounds();
@@ -146,7 +169,9 @@ private:
     struct Part {
         juce::Component* c;
         int width;
+        std::string_view id;
     };
+    juce::ComboBox* wahMode_ = nullptr;
     std::vector<Part> parts_;
     std::vector<std::unique_ptr<KnobWithLabel>> knobs_;
     std::vector<std::unique_ptr<juce::ToggleButton>> toggles_;

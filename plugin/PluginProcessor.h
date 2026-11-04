@@ -15,6 +15,7 @@
 #include "sas/chorus.h"
 #include "sas/flanger.h"
 #include "sas/tremolo.h"
+#include "sas/wah.h"
 #include "sas/condition.h"
 #include "sas/delay.h"
 #include "sas/eq.h"
@@ -130,6 +131,21 @@ inline constexpr const char* flRate = "fl_rate";          // Hz
 inline constexpr const char* flDepth = "fl_depth";        // percent
 inline constexpr const char* flManual = "fl_manual";      // percent, centre of the sweep
 inline constexpr const char* flFeedback = "fl_feedback";  // percent, -90 .. 90
+// The wah (sas/wah.h): a module of the rack only.
+inline constexpr const char* wahOn = "wah_on";
+inline constexpr const char* wahMode = "wah_mode";        // pedal / envelope / LFO
+inline constexpr const char* wahPos = "wah_pos";          // percent, the pedal (automate it or map it to a controller)
+inline constexpr const char* wahHeel = "wah_heel";        // Hz, the lowest centre frequency
+inline constexpr const char* wahToe = "wah_toe";          // Hz, the highest
+inline constexpr const char* wahQ = "wah_q";
+inline constexpr const char* wahMix = "wah_mix";          // percent
+inline constexpr const char* wahLevel = "wah_level";      // dB
+inline constexpr const char* wahSens = "wah_sens";        // percent, envelope
+inline constexpr const char* wahAttack = "wah_attack";    // ms, envelope
+inline constexpr const char* wahRelease = "wah_release";  // ms, envelope
+inline constexpr const char* wahDir = "wah_dir";          // envelope: up / down
+inline constexpr const char* wahRate = "wah_rate";        // Hz, LFO
+inline constexpr const char* wahStereo = "wah_stereo";    // 0 = mono, 1 = stereo
 inline constexpr const char* flStereo = "fl_stereo";      // 0 = mono, 1 = stereo (the right channel a quarter of a cycle behind)
 // Delay and reverb at the end of the chain (see sas/delay.h and sas/plate.h).
 inline constexpr const char* dlyOn = "dly_on";
