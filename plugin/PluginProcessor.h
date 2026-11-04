@@ -211,10 +211,10 @@ public:
 
     // Amps available in this build (sorted by id) and the one the "amp" parameter selects.
     const std::vector<sas::AmpDef>& amps() const { return defs_; }
-    int selectedAmpIndex() const;
+    int selectedAmpIndex(int instance = 0) const;
     // The amp whose circuits are processing audio right now (differs from the selection while a
     // new amp is being built).
-    int runningAmpIndex() const { return activeAmp_.load(); }
+    int runningAmpIndex(int instance = 0) const { return amps_[instance].activeAmp.load(); }
 
     // Peak level (linear, 0..1+) since the last call, for the editor's meters.
     float takeInputPeak() { return inputPeak_.exchange(0.0f); }
@@ -225,7 +225,7 @@ public:
     // Average plate current of one output tube in mA (0 in the Lite / Eco modes).
     float idleMilliamps() const { return idleMa_.load(); }
     // The physical condition (tube, wear, unit) the "tube", "wear" and "unit" parameters ask for.
-    sas::Condition wantedCondition() const;
+    sas::Condition wantedCondition(int instance = 0) const;
 
     // The rack: the order of the modules (docs/MODULAR_RACK.md). A new instance starts with the amp and the cabinet.
     const sas::RackOrder& rackOrder() const { return rackOrder_; }
@@ -251,17 +251,18 @@ private:
     bool loadNamPedalFromMemory(const void* data, std::size_t size, const juce::String& name, int instance);
     bool anyIrLoaded() const { return ir_[0].loaded.load() || ir_[1].loaded.load(); }
     sas::ChainSettings readSettings(bool irAvailable, int instance = 0);
-    void swapInBuiltChain();
+    void swapInBuiltChain(int instance);
+    double ampValue(int instance, const char* id) const;  // a parameter of the amp of that instance
     friend class CabinetModule;
     // The rack (docs/MODULAR_RACK.md).
-    std::unique_ptr<sas::Module> makeModule(sas::ModuleType type);
+    std::unique_ptr<sas::Module> makeModule(sas::ModuleType type, int instance);
     void syncRack(sas::Transition how);
-    sas::AmpModule* ampModule() const { return static_cast<sas::AmpModule*>(rack_.audioModule({sas::ModuleType::Amp, 0})); }
+    sas::AmpModule* ampModule(int instance = 0) const { return static_cast<sas::AmpModule*>(rack_.audioModule({sas::ModuleType::Amp, instance})); }
     double moduleParam(sas::SlotRef slot, const char* baseId) const;
     void applyModuleParams(const sas::RackOrder& order);
     // The cabinet's work: filter, NAM cabinet or impulse responses, double tracking (called by CabinetModule on the audio thread).
     void processCabinet(class CabinetModule& cab, float* l, float* r, std::size_t n);
-    int wantedKey() const;
+    int wantedKey(int instance) const;
     static int makeKey(int amp, const sas::Condition& c) { return amp + 32 * (c.tube + 8 * (c.wear + 16 * c.unit)); }
 
     std::vector<sas::AmpDef> defs_;
@@ -275,19 +276,19 @@ private:
     };
     std::array<std::vector<AmpParams>, 2> ampParams_;  // per instance of the amp, then per amp of the list
 
-    std::unique_ptr<sas::Chain> chain_;
-    std::atomic<int> activeAmpB_{0};  // the same for the second amp
-    std::atomic<int> activeAmp_{0};  // the amp chain_ was built for (written by the audio thread)
+    // One per amp of the rack (the second plays only while there is a parallel): the circuits being played, and the next ones, which are built off
+    // the audio thread and swapped in between blocks.
+    struct AmpRunner {
+        std::unique_ptr<sas::Chain> chain;
+        std::atomic<int> activeAmp{0};  // the amp the chain was built for (written by the audio thread)
+        std::atomic<int> activeKey{0};  // amp + condition the chain was built for; -1: nothing built yet
+        std::atomic<int> requestedKey{-1}, readyKey{-1};
+        std::atomic<sas::Chain*> ready{nullptr}, retired{nullptr};
+        std::unique_ptr<ChainBuilder> builder;
+    };
+    AmpRunner amps_[2];
     double sampleRate_ = 0.0;
     int latencyReported_ = -1;
-
-    // A chain for another amp is built off the audio thread and swapped in between blocks.
-    std::unique_ptr<ChainBuilder> builder_;
-    std::atomic<sas::Chain*> ready_{nullptr};
-    std::atomic<int> readyKey_{-1};
-    std::atomic<sas::Chain*> retired_{nullptr};
-    std::atomic<int> requestedKey_{-1};
-    std::atomic<int> activeKey_{0};  // amp + condition chain_ was built for
 
     struct IrSlot {
         juce::dsp::Convolution conv{juce::dsp::Convolution::NonUniform{512}};

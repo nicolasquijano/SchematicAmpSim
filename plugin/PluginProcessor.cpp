@@ -110,7 +110,7 @@ Layout SasProcessor::createLayout(const std::vector<sas::AmpDef>& defs) {
 // a newer request replaces an older one that has not started yet.
 class SasProcessor::ChainBuilder final : public juce::Thread {
 public:
-    explicit ChainBuilder(SasProcessor& p) : juce::Thread("SAS chain builder"), owner_(p) { startThread(juce::Thread::Priority::low); }
+    ChainBuilder(SasProcessor& p, int instance) : juce::Thread("SAS chain builder"), owner_(p), runner_(p.amps_[instance]) { startThread(juce::Thread::Priority::low); }
     ~ChainBuilder() override { stopThread(5000); }
 
     void wake() { notify(); }
@@ -119,15 +119,15 @@ public:
         while (!threadShouldExit()) {
             wait(-1);
             if (threadShouldExit()) break;
-            delete owner_.retired_.exchange(nullptr);  // chains the audio thread has swapped out
-            const int key = owner_.requestedKey_.exchange(-1);
+            delete runner_.retired.exchange(nullptr);  // chains the audio thread has swapped out
+            const int key = runner_.requestedKey.exchange(-1);
             const int amp = key & 31;
             if (key < 0 || amp >= int(owner_.defs_.size()) || owner_.sampleRate_ <= 0.0) continue;
             try {
                 const sas::Condition cond{(key >> 5) & 7, (key >> 8) & 15, key >> 12};
                 auto* built = new sas::Chain(sas::applyCondition(owner_.defs_[std::size_t(amp)], cond), owner_.sampleRate_);
-                owner_.readyKey_.store(key);
-                delete owner_.ready_.exchange(built);  // replaces a build nobody picked up
+                runner_.readyKey.store(key);
+                delete runner_.ready.exchange(built);  // replaces a build nobody picked up
             } catch (const std::exception&) {
                 // A broken amp definition leaves the current amp running.
             }
@@ -136,48 +136,54 @@ public:
 
 private:
     SasProcessor& owner_;
+    AmpRunner& runner_;
 };
 
-int SasProcessor::selectedAmpIndex() const {
-    return juce::jlimit(0, int(defs_.size()) - 1, int(apvts.getRawParameterValue(ids::amp)->load() + 0.5f));
+double SasProcessor::ampValue(int instance, const char* id) const {
+    return instance == 0 ? double(apvts.getRawParameterValue(id)->load()) : moduleParam({sas::ModuleType::Amp, instance}, id);
 }
 
-sas::Condition SasProcessor::wantedCondition() const {
-    const auto& def = defs_[std::size_t(selectedAmpIndex())];
+int SasProcessor::selectedAmpIndex(int instance) const {
+    return juce::jlimit(0, int(defs_.size()) - 1, int(ampValue(instance, ids::amp) + 0.5));
+}
+
+sas::Condition SasProcessor::wantedCondition(int instance) const {
+    const auto& def = defs_[std::size_t(selectedAmpIndex(instance))];
     sas::Condition c;
     const int tubes = int(def.power.tubes.size());
 // The parameter holds a tube TYPE, not a position: every amp lists its tubes in its own order (stock first), so a position picked on
     // one amp would mean another tube on the next. An amp that does not offer the type keeps its own tubes.
     c.tube = 0;
-    if (const int type = juce::jlimit(0, 3, int(apvts.getRawParameterValue(ids::tube)->load() + 0.5f)); type > 0 && tubes > 1)
+    if (const int type = juce::jlimit(0, 3, int(ampValue(instance, ids::tube) + 0.5)); type > 0 && tubes > 1)
         for (int k = 0; k < tubes; ++k)
             if (def.power.tubes[std::size_t(k)].name == ids::tubeTypes[type]) c.tube = k;
-    c.wear = juce::jlimit(0, 10, int(apvts.getRawParameterValue(ids::wear)->load() + 0.5f));
-    c.unit = juce::jlimit(0, 9, int(apvts.getRawParameterValue(ids::unit)->load() + 0.5f));
+    c.wear = juce::jlimit(0, 10, int(ampValue(instance, ids::wear) + 0.5));
+    c.unit = juce::jlimit(0, 9, int(ampValue(instance, ids::unit) + 0.5));
     return c;
 }
 
-int SasProcessor::wantedKey() const { return makeKey(selectedAmpIndex(), wantedCondition()); }
+int SasProcessor::wantedKey(int instance) const { return makeKey(selectedAmpIndex(instance), wantedCondition(instance)); }
 
-void SasProcessor::swapInBuiltChain() {
-    sas::Chain* built = ready_.exchange(nullptr);
+void SasProcessor::swapInBuiltChain(int instance) {
+    auto& runner = amps_[instance];
+    sas::Chain* built = runner.ready.exchange(nullptr);
     if (!built) return;
-    const int key = readyKey_.load();
+    const int key = runner.readyKey.load();
     const int amp = key & 31;
     // Start the new circuits at the current knob positions instead of ramping from their defaults.
-    activeAmp_ = amp;
-    activeKey_ = key;
-    if (auto* amp = ampModule()) {
-        amp->setSettings(readSettings(anyIrLoaded()));
-        amp->snapChain(*built);
-        amp->setChain(built);
+    runner.activeAmp = amp;
+    runner.activeKey = key;
+    if (auto* module = ampModule(instance)) {
+        module->setSettings(readSettings(anyIrLoaded(), instance));
+        module->snapChain(*built);
+        module->setChain(built);
     } else {
-        built->snap(readSettings(anyIrLoaded()));
+        built->snap(readSettings(anyIrLoaded(), instance));
     }
-    sas::Chain* old = chain_.release();
-    chain_.reset(built);
+    sas::Chain* old = runner.chain.release();
+    runner.chain.reset(built);
     // The builder frees it; if it has not yet freed the previous one, do it here (rare).
-    delete retired_.exchange(old);
+    delete runner.retired.exchange(old);
     latencyReported_ = -1;
 }
 
@@ -218,7 +224,8 @@ SasProcessor::SasProcessor()
     mono_.resize(kMaxChunk);
     mono2_.resize(kMaxChunk);
     monoR_.resize(kMaxChunk);
-    builder_ = std::make_unique<ChainBuilder>(*this);
+    amps_[1].activeKey = -1;  // the second amp is built when a parallel asks for it
+    for (int i = 0; i < 2; ++i) amps_[i].builder = std::make_unique<ChainBuilder>(*this, i);
     // A fresh instance has "4x12 OS Mix 1" ready in slot A (a restored project replaces it); the first of the list if that one is not there.
     int firstCab = 0;
     for (int i = 0; i < builtInImpulseResponseCount(); ++i)
@@ -234,9 +241,11 @@ SasProcessor::SasProcessor()
 }
 
 SasProcessor::~SasProcessor() {
-    builder_.reset();  // joins the thread before the chains it may own go away
-    delete ready_.exchange(nullptr);
-    delete retired_.exchange(nullptr);
+    for (auto& runner : amps_) runner.builder.reset();  // joins the thread before the chains it may own go away
+    for (auto& runner : amps_) {
+        delete runner.ready.exchange(nullptr);
+        delete runner.retired.exchange(nullptr);
+    }
 }
 
 bool SasProcessor::isBusesLayoutSupported(const BusesLayout& layouts) const {
@@ -249,17 +258,27 @@ bool SasProcessor::isBusesLayoutSupported(const BusesLayout& layouts) const {
 }
 
 void SasProcessor::prepareToPlay(double sampleRate, int samplesPerBlock) {
-    const int wanted = wantedKey();
-    if (!chain_ || sampleRate != sampleRate_ || wanted != activeKey_) {
+    const int wanted = wantedKey(0);
+    const bool rateChanged = sampleRate != sampleRate_;
+    if (!amps_[0].chain || rateChanged || wanted != amps_[0].activeKey) {
         sampleRate_ = sampleRate;
-        delete ready_.exchange(nullptr);
-        chain_ = std::make_unique<sas::Chain>(sas::applyCondition(defs_[std::size_t(wanted & 31)], wantedCondition()), sampleRate);  // heavy: solves the DC points
-        activeAmp_ = wanted & 31;
-        activeKey_ = wanted;
+        delete amps_[0].ready.exchange(nullptr);
+        amps_[0].chain = std::make_unique<sas::Chain>(sas::applyCondition(defs_[std::size_t(wanted & 31)], wantedCondition(0)), sampleRate);  // heavy: solves the DC points
+        amps_[0].activeAmp = wanted & 31;
+        amps_[0].activeKey = wanted;
     } else {
-        chain_->reset();
+        amps_[0].chain->reset();
     }
-    if (auto* amp = ampModule()) amp->setChain(chain_.get());
+    if (auto* amp = ampModule(0)) amp->setChain(amps_[0].chain.get());
+    // The second amp's circuits are for another rate when it changed: they are built again, off this thread, when a parallel needs them.
+    if (rateChanged || (amps_[1].chain && !ampModule(1))) {
+        delete amps_[1].ready.exchange(nullptr);
+        if (auto* amp = ampModule(1)) amp->setChain(nullptr);
+        amps_[1].chain.reset();
+        amps_[1].activeKey = -1;
+    } else if (amps_[1].chain) {
+        amps_[1].chain->reset();
+    }
     for (int i = 0; i < kNamPedalSlots; ++i) {
         // The NAM pedals too.
         const juce::ScopedLock lock(namLock_);
@@ -305,7 +324,7 @@ void SasProcessor::prepareToPlay(double sampleRate, int samplesPerBlock) {
 
 sas::ChainSettings SasProcessor::readSettings(bool irAvailable, int instance) {
     auto& s = instance == 0 ? settings_ : settingsB_;
-    const int ampIndex = instance == 0 ? activeAmp_.load() : activeAmpB_.load();
+    const int ampIndex = amps_[instance].activeAmp.load();
     const auto& def = defs_[std::size_t(ampIndex)];
     const auto& ap = ampParams_[std::size_t(instance)][std::size_t(ampIndex)];
     s.knobs.resize(def.preamp.knobs.size());
@@ -496,15 +515,19 @@ void SasProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::MidiBuff
     juce::ScopedNoDenormals noDenormals;
     const int numCh = buffer.getNumChannels();
     const int numSamples = buffer.getNumSamples();
-    if (!chain_ || numCh == 0) return;
+    if (!amps_[0].chain || numCh == 0) return;
 
     // Another amp was chosen: ask the builder, and swap in its circuits once they are ready. The
     // old amp keeps playing meanwhile.
-    swapInBuiltChain();
-    const int wanted = wantedKey();
-    if (wanted != activeKey_ && requestedKey_.load() != wanted && ready_.load() == nullptr) {
-        requestedKey_.store(wanted);
-        builder_->wake();
+    for (int instance = 0; instance < 2; ++instance) {
+        auto& runner = amps_[instance];
+        if (instance == 1 && !ampModule(1)) continue;  // no parallel: no second amp
+        swapInBuiltChain(instance);
+        const int wanted = wantedKey(instance);
+        if (wanted != runner.activeKey && runner.requestedKey.load() != wanted && runner.ready.load() == nullptr) {
+            runner.requestedKey.store(wanted);
+            runner.builder->wake();
+        }
     }
 
     const bool aLoaded = ir_[0].loaded.load(), bLoaded = ir_[1].loaded.load();
@@ -544,7 +567,7 @@ void SasProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::MidiBuff
 
     const bool tunerOn = apvts.getRawParameterValue(ids::tunerOn)->load() > 0.5f;
     const bool tunerMuted = tunerOn && apvts.getRawParameterValue(ids::tunerMute)->load() > 0.5f;
-    idleMa_.store(float(chain_->idleMilliamps()));
+    idleMa_.store(float(amps_[0].chain->idleMilliamps()));
     for (int start = 0; start < numSamples; start += int(kMaxChunk)) {
         const int n = std::min<int>(int(kMaxChunk), numSamples - start);
         float* m = mono_.data();
@@ -562,7 +585,7 @@ void SasProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::MidiBuff
         if (tunerOn) tuner_.push(m, std::size_t(n));  // the raw input, before anything in the rack
         float* mR = monoR_.data();  // the right channel; the left one is m
         if (!rack_.process(m, mR, std::size_t(n))) std::copy(m, m + n, mR);
-        chain_->applyOutputStereo(m, mR, std::size_t(n));
+        amps_[0].chain->applyOutputStereo(m, mR, std::size_t(n));
         if (tunerMuted) {  // tuning: nobody wants to hear the amp
             std::fill(m, m + n, 0.0f);
             std::fill(mR, mR + n, 0.0f);
@@ -640,12 +663,12 @@ void CabinetModule::process(float* l, float* r, std::size_t n) { owner_.processC
 
 // ------------------------------------------------------------------ the rack
 
-std::unique_ptr<sas::Module> SasProcessor::makeModule(sas::ModuleType type) {
+std::unique_ptr<sas::Module> SasProcessor::makeModule(sas::ModuleType type, int instance) {
     using T = sas::ModuleType;
     switch (type) {
         case T::Amp: {
             auto amp = std::make_unique<sas::AmpModule>();
-            amp->setChain(chain_.get());
+            amp->setChain(amps_[instance].chain.get());
             return amp;
         }
         case T::Cabinet: return std::make_unique<CabinetModule>(*this);
@@ -674,7 +697,7 @@ void SasProcessor::syncRack(sas::Transition how) {
     for (int t = 0; t < sas::kModuleTypeCount; ++t)
         for (int k = 0; k < RackState::maxInstances(static_cast<sas::ModuleType>(t)); ++k) {
             const sas::SlotRef s{static_cast<sas::ModuleType>(t), k};
-            if (inOrder(s) && !rack_.module(s)) rack_.setModule(s, makeModule(s.type));
+            if (inOrder(s) && !rack_.module(s)) rack_.setModule(s, makeModule(s.type, s.instance));
         }
     rack_.publish(rackOrder_, how);
     for (int t = 0; t < sas::kModuleTypeCount; ++t)
