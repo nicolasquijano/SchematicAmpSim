@@ -25,6 +25,7 @@ add_executable(sas_tests
   test_phaser.cpp
   test_chorus.cpp
   test_vibe.cpp
+  test_tremolo_flanger.cpp
   test_spectrum.cpp
   test_version.cpp
   test_nam.cpp

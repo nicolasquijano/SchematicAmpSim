@@ -2482,3 +2482,33 @@ TEST_CASE("an empty lane B plays the dry signal beside lane A", "[rack]") {
     CHECK(rmsOf(mixed, 200) > 0.9 * rmsOf(one, 200));  // the amp is still there
     CHECK(rmsOf(mixed, 200) < 1.5 * rmsOf(one, 200));  // and the dry guitar is far below it
 }
+
+TEST_CASE("the tremolo and the flanger are modules of the rack: added, heard, saved and removed", "[rack]") {
+    JuceInit init;
+    using T = sas::ModuleType;
+    const auto in = legacy::input();
+    for (const auto type : {T::Tremolo, T::Flanger}) {
+        const bool trem = type == T::Tremolo;
+        SasProcessor p;
+        p.prepareToPlay(48000.0, 256);
+        for (int i = 0; i < 40; ++i) playOn(p, std::vector<float>(256, 0.0f));
+        const auto before = playOn(p, in);
+        REQUIRE(p.addModule(type));
+        { const auto order = typesOf(p.rackOrder()); CHECK(std::find(order.begin(), order.end(), type) != order.end()); }
+        setParam(p, trem ? ids::trOn : ids::flOn, 1.0f);
+        if (trem) setParam(p, ids::trDepth, 100.0f);
+        for (int i = 0; i < 40; ++i) playOn(p, std::vector<float>(256, 0.0f));
+        const auto after = playOn(p, in);
+        double diff = 0.0;
+        for (std::size_t i = 0; i < after.size(); ++i) {
+            REQUIRE(std::isfinite(after[i]));
+            diff += std::fabs(double(after[i]) - double(before[i]));
+        }
+        CHECK(diff > 1.0);
+        SasProcessor q;
+        roundTrip(p, q, [](juce::XmlElement&) {});
+        CHECK(typesOf(q.rackOrder()) == typesOf(p.rackOrder()));
+        REQUIRE(p.removeModule({type, 0}));
+        { const auto order = typesOf(p.rackOrder()); CHECK(std::find(order.begin(), order.end(), type) == order.end()); }
+    }
+}

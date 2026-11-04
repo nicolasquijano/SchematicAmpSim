@@ -25,6 +25,10 @@ const std::vector<Item>& itemsFor(ModuleType t) {
     static const std::vector<Item> chorus{{Item::Combo, ids::chMode, "MODE"}, {Item::Knob, ids::chRate, "RATE Hz"}, {Item::Knob, ids::chDepth, "DEPTH %"},
                                           {Item::Combo, ids::chJuno, "JUNO BUTTON"}};
     static const std::vector<Item> vibe{{Item::Knob, ids::vbSpeed, "SPEED Hz"}, {Item::Knob, ids::vbIntensity, "INTENSITY %"}, {Item::Toggle, ids::vbVibrato, "Vibrato"}};
+    static const std::vector<Item> tremolo{{Item::Knob, ids::trRate, "RATE Hz"}, {Item::Knob, ids::trDepth, "DEPTH %"}, {Item::Combo, ids::trShape, "SHAPE"},
+                                           {Item::Toggle, ids::trStereo, "Stereo pan"}};
+    static const std::vector<Item> flanger{{Item::Knob, ids::flRate, "RATE Hz"}, {Item::Knob, ids::flDepth, "DEPTH %"}, {Item::Knob, ids::flManual, "MANUAL %"},
+                                           {Item::Knob, ids::flFeedback, "FEEDBACK %"}};
     static const std::vector<Item> pitch{{Item::Knob, ids::pitch, "SEMITONES"}, {Item::Knob, ids::pitchFine, "FINE cents"}};
     static const std::vector<Item> delay{{Item::Knob, ids::dlyTime, "TIME ms"}, {Item::Combo, ids::dlySync, "SYNC"}, {Item::Knob, ids::dlyFeedback, "FEEDBACK %"},
                                          {Item::Knob, ids::dlyMix, "MIX %"}, {Item::Knob, ids::dlyTone, "TONE Hz"}, {Item::Toggle, ids::dlyPing, "Ping-pong"},
@@ -43,6 +47,8 @@ const std::vector<Item>& itemsFor(ModuleType t) {
         case ModuleType::Phaser: return phaser;
         case ModuleType::Chorus: return chorus;
         case ModuleType::Vibe: return vibe;
+        case ModuleType::Tremolo: return tremolo;
+        case ModuleType::Flanger: return flanger;
         case ModuleType::Pitch: return pitch;
         case ModuleType::Delay: return delay;
         case ModuleType::Reverb: return reverb;
@@ -61,6 +67,8 @@ const char* nameOf(ModuleType t) {
         case ModuleType::Phaser: return "PHASER";
         case ModuleType::Chorus: return "CHORUS";
         case ModuleType::Vibe: return "VIBE";
+        case ModuleType::Tremolo: return "TREMOLO";
+        case ModuleType::Flanger: return "FLANGER";
         case ModuleType::Pitch: return "PITCH";
         case ModuleType::Eq: return "EQ";
         case ModuleType::Delay: return "DELAY";

@@ -15,7 +15,7 @@ namespace {
 
 // Caps (docs/MODULAR_RACK.md, 4.1; the CPU table in section 6 holds them).
 constexpr int kCaps[sas::kModuleTypeCount] = {2 /*Amp*/, 2 /*Cabinet*/, 2 /*Gate*/, 2 /*Compressor*/, 4 /*Overdrive*/, 2 /*NamPedal*/, 2 /*Phaser*/,
-                                              2 /*Chorus*/, 2 /*Vibe*/, 2 /*Pitch*/, 2 /*Eq*/, 2 /*Delay*/, 2 /*Reverb*/, 1 /*Splitter*/, 1 /*Mixer*/};
+                                              2 /*Chorus*/, 2 /*Vibe*/, 2 /*Pitch*/, 2 /*Eq*/, 2 /*Delay*/, 2 /*Reverb*/, 1 /*Splitter*/, 1 /*Mixer*/, 2 /*Tremolo*/, 2 /*Flanger*/};
 
 juce::NormalisableRange<float> logRange(float a, float b) {
     juce::NormalisableRange<float> r(a, b);
@@ -78,6 +78,8 @@ const std::vector<const char*>& paramIds(ModuleType type) {
     static const std::vector<const char*> phaser{ids::phOn, ids::phSpeed, ids::phIntense};
     static const std::vector<const char*> chorus{ids::chOn, ids::chMode, ids::chRate, ids::chDepth, ids::chJuno};
     static const std::vector<const char*> vibe{ids::vbOn, ids::vbSpeed, ids::vbIntensity, ids::vbVibrato};
+    static const std::vector<const char*> tremolo{ids::trOn, ids::trRate, ids::trDepth, ids::trShape, ids::trStereo};
+    static const std::vector<const char*> flanger{ids::flOn, ids::flRate, ids::flDepth, ids::flManual, ids::flFeedback};
     static const std::vector<const char*> pitch{ids::pitch, ids::pitchFine};
     static const std::vector<const char*> eq = [] {
         std::vector<const char*> v{ids::eqOn, ids::eqHpf, ids::eqLpf};
@@ -101,6 +103,8 @@ const std::vector<const char*>& paramIds(ModuleType type) {
         case ModuleType::Phaser: return phaser;
         case ModuleType::Chorus: return chorus;
         case ModuleType::Vibe: return vibe;
+        case ModuleType::Tremolo: return tremolo;
+        case ModuleType::Flanger: return flanger;
         case ModuleType::Pitch: return pitch;
         case ModuleType::Eq: return eq;
         case ModuleType::Delay: return delay;
@@ -119,6 +123,8 @@ const char* onId(ModuleType type) {
         case ModuleType::Phaser: return ids::phOn;
         case ModuleType::Chorus: return ids::chOn;
         case ModuleType::Vibe: return ids::vbOn;
+        case ModuleType::Tremolo: return ids::trOn;
+        case ModuleType::Flanger: return ids::flOn;
         case ModuleType::Eq: return ids::eqOn;
         case ModuleType::Delay: return ids::dlyOn;
         case ModuleType::Reverb: return ids::plOn;
@@ -202,6 +208,20 @@ void addParams(Layout& l, ModuleType type, int k) {
             l.add(rate(I(ids::vbSpeed), N("Vibe speed"), 0.3f, 10.0f, 3.0f, 3.0f, "Hz"));
             l.add(pct(I(ids::vbIntensity), N("Vibe intensity"), 0.0f, 100.0f, 70.0f));
             l.add(toggle(I(ids::vbVibrato), N("Vibe vibrato"), false));
+            break;
+        case ModuleType::Tremolo:
+            l.add(toggle(I(ids::trOn), N("Tremolo"), false));
+            l.add(rate(I(ids::trRate), N("Tremolo rate"), 0.5f, 15.0f, 4.0f, 4.0f, "Hz"));
+            l.add(pct(I(ids::trDepth), N("Tremolo depth"), 0.0f, 100.0f, 50.0f));
+            l.add(std::make_unique<juce::AudioParameterChoice>(id(I(ids::trShape)), N("Tremolo shape"), juce::StringArray{"Sine", "Triangle", "Square"}, 0));
+            l.add(toggle(I(ids::trStereo), N("Tremolo stereo"), false));
+            break;
+        case ModuleType::Flanger:
+            l.add(toggle(I(ids::flOn), N("Flanger"), false));
+            l.add(rate(I(ids::flRate), N("Flanger rate"), 0.05f, 5.0f, 0.5f, 0.4f, "Hz"));
+            l.add(pct(I(ids::flDepth), N("Flanger depth"), 0.0f, 100.0f, 70.0f));
+            l.add(pct(I(ids::flManual), N("Flanger manual"), 0.0f, 100.0f, 40.0f));
+            l.add(pct(I(ids::flFeedback), N("Flanger feedback"), -90.0f, 90.0f, 50.0f));
             break;
         case ModuleType::Pitch:
             l.add(std::make_unique<juce::AudioParameterInt>(id(I(ids::pitch)), N("Pitch"), -12, 12, 0, juce::AudioParameterIntAttributes().withLabel("st")));

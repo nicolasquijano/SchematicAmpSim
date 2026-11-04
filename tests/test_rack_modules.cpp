@@ -3,6 +3,8 @@
 #include <vector>
 
 #include "sas/chorus.h"
+#include "sas/flanger.h"
+#include "sas/tremolo.h"
 #include "sas/compressor.h"
 #include "sas/delay.h"
 #include "sas/eq.h"
@@ -113,6 +115,10 @@ TEST_CASE("modulation, eq, delay and reverb modules equal their effects", "[rack
         run(m, b, nullptr);
         CHECK(a == b);
         CHECK(m.channels() == Channels::Flexible);
+    }
+    SECTION("tremolo and flanger are flexible too") {
+        CHECK(TremoloModule().channels() == Channels::Flexible);
+        CHECK(FlangerModule().channels() == Channels::Flexible);
     }
     SECTION("chorus and vibe are flexible too") {
         ChorusModule c;

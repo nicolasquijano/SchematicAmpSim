@@ -78,6 +78,8 @@ Layout SasProcessor::createLayout(const std::vector<sas::AmpDef>& defs) {
     RackState::addParams(l, sas::ModuleType::Vibe, 0);
     l.add(std::make_unique<juce::AudioParameterChoice>(juce::ParameterID{ids::vbPost, kVersion}, "Vibe position", juce::StringArray{"Pre amp", "Post amp"}, 0,
                                                        juce::AudioParameterChoiceAttributes().withAutomatable(false)));  // read once, to place a module of an old project
+    RackState::addParams(l, sas::ModuleType::Tremolo, 0);
+    RackState::addParams(l, sas::ModuleType::Flanger, 0);
     RackState::addParams(l, sas::ModuleType::Compressor, 0);
     RackState::addParams(l, sas::ModuleType::NamPedal, 0);
     l.add(std::make_unique<juce::AudioParameterBool>(juce::ParameterID{ids::tunerOn, kVersion}, "Tuner", false));
@@ -458,6 +460,26 @@ void SasProcessor::applyModuleParams(const sas::RackOrder& order) {
                 static_cast<sas::VibeModule*>(m)->setParams(q);
                 break;
             }
+            case T::Tremolo: {
+                sas::TremoloParams q;
+                q.on = p(ids::trOn) > 0.5;
+                q.rateHz = p(ids::trRate);
+                q.depth = p(ids::trDepth) / 100.0;
+                q.shape = int(p(ids::trShape) + 0.5);
+                q.stereo = p(ids::trStereo) > 0.5;
+                static_cast<sas::TremoloModule*>(m)->setParams(q);
+                break;
+            }
+            case T::Flanger: {
+                sas::FlangerParams q;
+                q.on = p(ids::flOn) > 0.5;
+                q.rateHz = p(ids::flRate);
+                q.depth = p(ids::flDepth) / 100.0;
+                q.manual = p(ids::flManual) / 100.0;
+                q.feedback = p(ids::flFeedback) / 100.0;
+                static_cast<sas::FlangerModule*>(m)->setParams(q);
+                break;
+            }
             case T::Pitch:
                 static_cast<sas::PitchModule*>(m)->setSemitones(p(ids::pitch) + p(ids::pitchFine) / 100.0);
                 break;
@@ -709,6 +731,8 @@ std::unique_ptr<sas::Module> SasProcessor::makeModule(sas::ModuleType type, int 
         case T::Phaser: return std::make_unique<sas::PhaserModule>();
         case T::Chorus: return std::make_unique<sas::ChorusModule>();
         case T::Vibe: return std::make_unique<sas::VibeModule>();
+        case T::Tremolo: return std::make_unique<sas::TremoloModule>();
+        case T::Flanger: return std::make_unique<sas::FlangerModule>();
         case T::Pitch: return std::make_unique<sas::PitchModule>();
         case T::Eq: return std::make_unique<sas::EqModule>();
         case T::Delay: return std::make_unique<sas::DelayModule>();

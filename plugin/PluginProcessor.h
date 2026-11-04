@@ -13,6 +13,8 @@
 #include "sas/amp_def.h"
 #include "sas/chain.h"
 #include "sas/chorus.h"
+#include "sas/flanger.h"
+#include "sas/tremolo.h"
 #include "sas/condition.h"
 #include "sas/delay.h"
 #include "sas/eq.h"
@@ -114,6 +116,17 @@ inline constexpr const char* vbSpeed = "vb_speed";          // Hz
 inline constexpr const char* vbIntensity = "vb_intensity";  // percent
 inline constexpr const char* vbVibrato = "vb_vibrato";      // false: chorus mode, true: vibrato mode
 inline constexpr const char* vbPost = "vb_post";            // 0 = before the amp, 1 = after the amp (and the cabinet)
+// The tremolo and the flanger (sas/tremolo.h, sas/flanger.h): modules of the rack only, wherever the player puts them.
+inline constexpr const char* trOn = "tr_on";
+inline constexpr const char* trRate = "tr_rate";      // Hz
+inline constexpr const char* trDepth = "tr_depth";    // percent
+inline constexpr const char* trShape = "tr_shape";    // sine / triangle / square
+inline constexpr const char* trStereo = "tr_stereo";  // auto-pan on a stereo pair
+inline constexpr const char* flOn = "fl_on";
+inline constexpr const char* flRate = "fl_rate";          // Hz
+inline constexpr const char* flDepth = "fl_depth";        // percent
+inline constexpr const char* flManual = "fl_manual";      // percent, centre of the sweep
+inline constexpr const char* flFeedback = "fl_feedback";  // percent, -90 .. 90
 // Delay and reverb at the end of the chain (see sas/delay.h and sas/plate.h).
 inline constexpr const char* dlyOn = "dly_on";
 inline constexpr const char* dlyTime = "dly_time";      // ms, used when dlySync is Free
