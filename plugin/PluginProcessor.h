@@ -102,6 +102,7 @@ inline constexpr const char* speakerIntense = "speaker_intense";  // stronger sp
 inline constexpr const char* phOn = "ph_on";
 inline constexpr const char* phSpeed = "ph_speed";      // Hz
 inline constexpr const char* phIntense = "ph_intense";  // with feedback
+inline constexpr const char* phStereo = "ph_stereo";    // 0 = mono (both channels sweep together), 1 = stereo (the right one half a cycle apart)
 inline constexpr const char* phPost = "ph_post";        // 0 = before the amp, 1 = after the amp (and the cabinet)
 // The chorus (sas/chorus.h): two modes, before the amp or after it.
 inline constexpr const char* chOn = "ch_on";
@@ -109,12 +110,14 @@ inline constexpr const char* chMode = "ch_mode";    // 0 = CE-2 (one voice), 1 =
 inline constexpr const char* chRate = "ch_rate";    // Hz, CE-2
 inline constexpr const char* chDepth = "ch_depth";  // percent, CE-2
 inline constexpr const char* chJuno = "ch_juno";    // Juno button: I, II, I+II
+inline constexpr const char* chStereo = "ch_stereo";  // 0 = mono, 1 = stereo (CE-2: the right channel sweeps the other way)
 inline constexpr const char* chPost = "ch_post";    // 0 = before the amp, 1 = after the amp (and the cabinet)
 // The vibe (sas/vibe.h): before the amp or after it.
 inline constexpr const char* vbOn = "vb_on";
 inline constexpr const char* vbSpeed = "vb_speed";          // Hz
 inline constexpr const char* vbIntensity = "vb_intensity";  // percent
 inline constexpr const char* vbVibrato = "vb_vibrato";      // false: chorus mode, true: vibrato mode
+inline constexpr const char* vbStereo = "vb_stereo";          // 0 = mono, 1 = stereo (the right lamp half a cycle apart)
 inline constexpr const char* vbPost = "vb_post";            // 0 = before the amp, 1 = after the amp (and the cabinet)
 // The tremolo and the flanger (sas/tremolo.h, sas/flanger.h): modules of the rack only, wherever the player puts them.
 inline constexpr const char* trOn = "tr_on";
@@ -127,6 +130,7 @@ inline constexpr const char* flRate = "fl_rate";          // Hz
 inline constexpr const char* flDepth = "fl_depth";        // percent
 inline constexpr const char* flManual = "fl_manual";      // percent, centre of the sweep
 inline constexpr const char* flFeedback = "fl_feedback";  // percent, -90 .. 90
+inline constexpr const char* flStereo = "fl_stereo";      // 0 = mono, 1 = stereo (the right channel a quarter of a cycle behind)
 // Delay and reverb at the end of the chain (see sas/delay.h and sas/plate.h).
 inline constexpr const char* dlyOn = "dly_on";
 inline constexpr const char* dlyTime = "dly_time";      // ms, used when dlySync is Free

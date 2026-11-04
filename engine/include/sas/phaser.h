@@ -17,6 +17,7 @@ struct PhaserParams {
     bool on = false;
     double speedHz = 0.8;  // 0.1 .. 8
     bool intense = false;  // feedback
+    bool stereo = false;   // on a stereo pair, the right channel sweeps half a cycle apart from the left (false: both together)
 };
 
 class Phaser {
@@ -51,18 +52,22 @@ public:
             phase_ += inc;
             if (phase_ >= 1.0) phase_ -= 1.0;
             // Triangle, rounded a little at the turns, in 0..1; the frequency follows it exponentially between 120 Hz and 3 kHz.
-            const double tri = 1.0 - std::fabs(2.0 * phase_ - 1.0);  // 0 .. 1 .. 0 over one cycle
-            const double shaped = tri * tri * (3.0 - 2.0 * tri);
-            const double f = 120.0 * std::pow(25.0, shaped);
-            const double t = std::tan(3.14159265358979323846 * std::min(f, 0.45 * fs_) / fs_);
-            const float a = float((t - 1.0) / (t + 1.0));
+            const float a = coefficient(phase_);
             const float wet = float(amount_);
             l[i] = stage(0, l[i], a, fb, wet);
-            if (r) r[i] = stage(1, r[i], a, fb, wet);
+            if (r) r[i] = stage(1, r[i], target_.stereo ? coefficient(phase_ < 0.5 ? phase_ + 0.5 : phase_ - 0.5) : a, fb, wet);
         }
     }
 
 private:
+    // The all-pass coefficient at a point of the sweep: a triangle, rounded a little at the turns; the frequency follows it exponentially.
+    float coefficient(double ph) const {
+        const double tri = 1.0 - std::fabs(2.0 * ph - 1.0);  // 0 .. 1 .. 0 over one cycle
+        const double shaped = tri * tri * (3.0 - 2.0 * tri);
+        const double f = 120.0 * std::pow(25.0, shaped);
+        const double t = std::tan(3.14159265358979323846 * std::min(f, 0.45 * fs_) / fs_);
+        return float((t - 1.0) / (t + 1.0));
+    }
     // The chain of four all-passes for one channel; y[n] = a x[n] + x[n-1] - a y[n-1] for each stage.
     float stage(int ch, float x, float a, float fb, float wet) {
         float s = x + fb * fbState_[std::size_t(ch)];

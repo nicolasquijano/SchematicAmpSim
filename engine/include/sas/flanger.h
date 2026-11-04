@@ -2,8 +2,8 @@
 // A flanger: the signal is mixed with a copy of itself delayed by a very short time (under 5 ms) that a sine oscillator sweeps up and down, which
 // moves a comb of notches through the spectrum (the "jet" sound). The delayed copy goes back to the input by Feedback, which sharpens the notches
 // (positive: metallic, ringing; negative: hollow, the odd notches become peaks). Manual sets the centre of the sweep (a low value sweeps the highs,
-// a high one the mids), Depth how far it goes either side, Rate how fast. On a stereo pair each channel has its own delay line and the right
-// one is a quarter of a cycle behind, for width. Works on one channel (before the amp) or on a stereo pair (after it). Switching it on or off
+// a high one the mids), Depth how far it goes either side, Rate how fast. On a stereo pair each channel has its own delay line and, in stereo mode,
+// the right one is a quarter of a cycle behind, for width. Works on one channel (before the amp) or on a stereo pair (after it). Switching it on or off
 // fades over 20 ms.
 
 #include <algorithm>
@@ -20,6 +20,7 @@ struct FlangerParams {
     double depth = 0.7;      // 0 .. 1
     double manual = 0.4;     // 0 .. 1, centre of the sweep
     double feedback = 0.5;   // -0.9 .. 0.9
+    bool stereo = false;     // on a stereo pair, the right channel is a quarter of a cycle behind (false: both together)
 };
 
 class Flanger {
@@ -64,7 +65,7 @@ public:
             const float wet = float(amount_);
             for (int c = 0; c < channels; ++c) {
                 float* x = c == 0 ? l : r;
-                double ph = phase_ + (c == 0 ? 0.0 : 0.25);
+                double ph = phase_ + (c == 0 || !target_.stereo ? 0.0 : 0.25);
                 if (ph >= 1.0) ph -= 1.0;
                 const double lfo = std::sin(6.283185307179586 * ph);
                 const double d = std::max(1.0, centreMs * (1.0 + swing * lfo) * 0.001 * fs_);

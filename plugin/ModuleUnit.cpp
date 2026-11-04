@@ -21,14 +21,14 @@ const std::vector<Item>& itemsFor(ModuleType t) {
                                         {Item::Knob, ids::compLevel, "LEVEL"}, {Item::Toggle, ids::compFast, "Fast"}};
     static const std::vector<Item> drive{{Item::Knob, ids::tsDrive, "DRIVE"}, {Item::Knob, ids::tsTone, "TONE"}, {Item::Knob, ids::tsLevel, "LEVEL"}};
     static const std::vector<Item> nam{{Item::Knob, ids::nmpDrive, "DRIVE dB"}, {Item::Knob, ids::nmpLevel, "LEVEL dB"}};
-    static const std::vector<Item> phaser{{Item::Knob, ids::phSpeed, "SPEED Hz"}, {Item::Toggle, ids::phIntense, "Intense"}};
+    static const std::vector<Item> phaser{{Item::Knob, ids::phSpeed, "SPEED Hz"}, {Item::Toggle, ids::phIntense, "Intense"}, {Item::Combo, ids::phStereo, "CHANNELS"}};
     static const std::vector<Item> chorus{{Item::Combo, ids::chMode, "MODE"}, {Item::Knob, ids::chRate, "RATE Hz"}, {Item::Knob, ids::chDepth, "DEPTH %"},
-                                          {Item::Combo, ids::chJuno, "JUNO BUTTON"}};
-    static const std::vector<Item> vibe{{Item::Knob, ids::vbSpeed, "SPEED Hz"}, {Item::Knob, ids::vbIntensity, "INTENSITY %"}, {Item::Toggle, ids::vbVibrato, "Vibrato"}};
+                                          {Item::Combo, ids::chJuno, "JUNO BUTTON"}, {Item::Combo, ids::chStereo, "CHANNELS"}};
+    static const std::vector<Item> vibe{{Item::Knob, ids::vbSpeed, "SPEED Hz"}, {Item::Knob, ids::vbIntensity, "INTENSITY %"}, {Item::Toggle, ids::vbVibrato, "Vibrato"}, {Item::Combo, ids::vbStereo, "CHANNELS"}};
     static const std::vector<Item> tremolo{{Item::Knob, ids::trRate, "RATE Hz"}, {Item::Knob, ids::trDepth, "DEPTH %"}, {Item::Combo, ids::trShape, "SHAPE"},
-                                           {Item::Toggle, ids::trStereo, "Stereo pan"}};
+                                           {Item::Combo, ids::trStereo, "CHANNELS"}};
     static const std::vector<Item> flanger{{Item::Knob, ids::flRate, "RATE Hz"}, {Item::Knob, ids::flDepth, "DEPTH %"}, {Item::Knob, ids::flManual, "MANUAL %"},
-                                           {Item::Knob, ids::flFeedback, "FEEDBACK %"}};
+                                           {Item::Knob, ids::flFeedback, "FEEDBACK %"}, {Item::Combo, ids::flStereo, "CHANNELS"}};
     static const std::vector<Item> pitch{{Item::Knob, ids::pitch, "SEMITONES"}, {Item::Knob, ids::pitchFine, "FINE cents"}};
     static const std::vector<Item> delay{{Item::Knob, ids::dlyTime, "TIME ms"}, {Item::Combo, ids::dlySync, "SYNC"}, {Item::Knob, ids::dlyFeedback, "FEEDBACK %"},
                                          {Item::Knob, ids::dlyMix, "MIX %"}, {Item::Knob, ids::dlyTone, "TONE Hz"}, {Item::Toggle, ids::dlyPing, "Ping-pong"},

@@ -21,6 +21,7 @@ struct VibeParams {
     double speedHz = 3.0;      // 0.3 .. 10
     double intensity = 0.7;    // 0 .. 1
     bool vibrato = false;      // false: chorus
+    bool stereo = false;       // on a stereo pair, the right channel's lamp is half a cycle apart from the left's (false: both together)
 };
 
 class Vibe {
@@ -33,6 +34,7 @@ public:
         for (auto& ch : z_) ch.fill(0.0f);
         phase_ = 0.0;
         lamp_ = 0.5;
+        lampR_ = 0.5;
         amount_ = target_.on ? 1.0 : 0.0;
     }
     void setParams(const VibeParams& p) {
@@ -59,20 +61,31 @@ public:
             const double lampNow = 0.5 + 0.5 * std::sin(6.283185307179586 * phase_);  // 0 .. 1
             lamp_ += (lampNow - lamp_) * (lampNow > lamp_ ? kUp : kDown);
             // Resistance of a photocell falls as the lamp brightens: the centre frequency rises exponentially with it.
-            const double x = 0.5 + (lamp_ - 0.5) * swing * 2.0;  // 0..1, wider with intensity
-            std::array<float, 4> a;
-            for (int k = 0; k < 4; ++k) {
-                const double f = std::min(kBase[k] * std::pow(kSpan[k], std::clamp(x, 0.0, 1.0)), 0.45 * fs_);
-                const double t = std::tan(3.14159265358979323846 * f / fs_);
-                a[std::size_t(k)] = float((t - 1.0) / (t + 1.0));
-            }
+            const auto a = coefficients(0.5 + (lamp_ - 0.5) * swing * 2.0);  // 0..1, wider with intensity
             const float wet = float(amount_);
             l[i] = run(0, l[i], a, wet);
-            if (r) r[i] = run(1, r[i], a, wet);
+            if (r) {
+                if (target_.stereo) {
+                    const double lampNowR = 1.0 - lampNow;  // half a cycle apart
+                    lampR_ += (lampNowR - lampR_) * (lampNowR > lampR_ ? kUp : kDown);
+                    r[i] = run(1, r[i], coefficients(0.5 + (lampR_ - 0.5) * swing * 2.0), wet);
+                } else {
+                    r[i] = run(1, r[i], a, wet);
+                }
+            }
         }
     }
 
 private:
+    std::array<float, 4> coefficients(double x) const {
+        std::array<float, 4> a;
+        for (int k = 0; k < 4; ++k) {
+            const double f = std::min(kBase[k] * std::pow(kSpan[k], std::clamp(x, 0.0, 1.0)), 0.45 * fs_);
+            const double t = std::tan(3.14159265358979323846 * f / fs_);
+            a[std::size_t(k)] = float((t - 1.0) / (t + 1.0));
+        }
+        return a;
+    }
     float run(int ch, float x, const std::array<float, 4>& a, float wet) {
         float s = x;
         for (int k = 0; k < 4; ++k) {
@@ -90,7 +103,7 @@ private:
 
     double fs_ = 48000.0;
     std::array<std::array<float, 4>, 2> z_{};
-    double phase_ = 0.0, lamp_ = 0.5, amount_ = 0.0;
+    double phase_ = 0.0, lamp_ = 0.5, lampR_ = 0.5, amount_ = 0.0;
     VibeParams target_;
     bool ready_ = false;
 };

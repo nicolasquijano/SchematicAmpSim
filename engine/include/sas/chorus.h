@@ -21,6 +21,7 @@ struct ChorusParams {
     double rateHz = 1.2;   // CE-2: 0.1 .. 8
     double depth = 0.5;    // CE-2: 0 .. 1
     int junoButton = 0;    // Juno: 0 = I, 1 = II, 2 = I+II
+    bool stereo = false;   // CE-2 on a stereo pair: the right channel sweeps the other way (Juno is always two voices, one to each ear)
 };
 
 class Chorus {
@@ -89,7 +90,7 @@ public:
                 buf_[0][std::size_t(w_ & mask_)] = inL;
                 buf_[1][std::size_t(w_ & mask_)] = inR;
                 vA = read(buf_[0], double(w_) - dA);
-                if (r) vB = read(buf_[1], double(w_) - dA);
+                if (r) vB = read(buf_[1], double(w_) - (target_.stereo ? dB : dA));
             }
             ++w_;
             // The "chip": a low-pass and a little soft clipping on what was delayed.

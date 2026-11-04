@@ -438,6 +438,7 @@ void SasProcessor::applyModuleParams(const sas::RackOrder& order) {
                 q.on = p(ids::phOn) > 0.5;
                 q.speedHz = p(ids::phSpeed);
                 q.intense = p(ids::phIntense) > 0.5;
+                q.stereo = p(ids::phStereo) > 0.5;
                 static_cast<sas::PhaserModule*>(m)->setParams(q);
                 break;
             }
@@ -448,6 +449,7 @@ void SasProcessor::applyModuleParams(const sas::RackOrder& order) {
                 q.rateHz = p(ids::chRate);
                 q.depth = p(ids::chDepth) / 100.0;
                 q.junoButton = int(p(ids::chJuno) + 0.5);
+                q.stereo = p(ids::chStereo) > 0.5;
                 static_cast<sas::ChorusModule*>(m)->setParams(q);
                 break;
             }
@@ -457,6 +459,7 @@ void SasProcessor::applyModuleParams(const sas::RackOrder& order) {
                 q.speedHz = p(ids::vbSpeed);
                 q.intensity = p(ids::vbIntensity) / 100.0;
                 q.vibrato = p(ids::vbVibrato) > 0.5;
+                q.stereo = p(ids::vbStereo) > 0.5;
                 static_cast<sas::VibeModule*>(m)->setParams(q);
                 break;
             }
@@ -477,6 +480,7 @@ void SasProcessor::applyModuleParams(const sas::RackOrder& order) {
                 q.depth = p(ids::flDepth) / 100.0;
                 q.manual = p(ids::flManual) / 100.0;
                 q.feedback = p(ids::flFeedback) / 100.0;
+                q.stereo = p(ids::flStereo) > 0.5;
                 static_cast<sas::FlangerModule*>(m)->setParams(q);
                 break;
             }

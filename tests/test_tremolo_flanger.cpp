@@ -121,6 +121,15 @@ TEST_CASE("flanger: on a stereo pair the two ears differ; the settings change wh
     run(f, l, &r);
     double d = 0.0;
     for (std::size_t i = 6000; i < l.size(); ++i) d += std::fabs(double(l[i]) - double(r[i]));
+    CHECK(d < 1e-3);  // mono: both ears alike
+    p.stereo = true;
+    f.prepare(kFs);
+    f.setParams(p);
+    l = tone(48000);
+    r = l;
+    run(f, l, &r);
+    d = 0.0;
+    for (std::size_t i = 6000; i < l.size(); ++i) d += std::fabs(double(l[i]) - double(r[i]));
     CHECK(d > 50.0);
     auto render = [&](double manual) {
         sas::Flanger g;
@@ -137,4 +146,51 @@ TEST_CASE("flanger: on a stereo pair the two ears differ; the settings change wh
     double dd = 0.0;
     for (std::size_t i = 6000; i < lowM.size(); ++i) dd += std::fabs(double(lowM[i]) - double(highM[i]));
     CHECK(dd > 50.0);
+}
+
+#include "sas/chorus.h"
+#include "sas/phaser.h"
+#include "sas/vibe.h"
+
+namespace {
+// How different the two ears are after the effect, for a mono input put on both channels.
+template <class Fx, class P>
+double earGap(P p) {
+    Fx fx;
+    p.on = true;
+    fx.prepare(kFs);
+    fx.setParams(p);
+    auto l = tone(48000), r = l;
+    run(fx, l, &r);
+    double d = 0.0;
+    for (std::size_t i = 6000; i < l.size(); ++i) d += std::fabs(double(l[i]) - double(r[i]));
+    return d;
+}
+}  // namespace
+
+TEST_CASE("modulation effects: mono keeps both ears alike, stereo makes them differ", "[tremolo][flanger][stereo]") {
+    {
+        sas::PhaserParams p;
+        CHECK(earGap<sas::Phaser>(p) < 1e-3);
+        p.stereo = true;
+        CHECK(earGap<sas::Phaser>(p) > 50.0);
+    }
+    {
+        sas::VibeParams p;
+        CHECK(earGap<sas::Vibe>(p) < 1e-3);
+        p.stereo = true;
+        CHECK(earGap<sas::Vibe>(p) > 50.0);
+    }
+    {
+        sas::ChorusParams p;
+        CHECK(earGap<sas::Chorus>(p) < 1e-3);
+        p.stereo = true;
+        CHECK(earGap<sas::Chorus>(p) > 50.0);
+    }
+    {
+        sas::TremoloParams p;
+        CHECK(earGap<sas::Tremolo>(p) < 1e-3);
+        p.stereo = true;
+        CHECK(earGap<sas::Tremolo>(p) > 50.0);
+    }
 }

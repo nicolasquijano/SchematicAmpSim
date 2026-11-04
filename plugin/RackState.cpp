@@ -17,6 +17,11 @@ namespace {
 constexpr int kCaps[sas::kModuleTypeCount] = {2 /*Amp*/, 2 /*Cabinet*/, 2 /*Gate*/, 2 /*Compressor*/, 4 /*Overdrive*/, 2 /*NamPedal*/, 2 /*Phaser*/,
                                               2 /*Chorus*/, 2 /*Vibe*/, 2 /*Pitch*/, 2 /*Eq*/, 2 /*Delay*/, 2 /*Reverb*/, 1 /*Splitter*/, 1 /*Mixer*/, 2 /*Tremolo*/, 2 /*Flanger*/};
 
+// Mono: both channels of a stereo pair get the same modulation. Stereo: the right channel's modulation is out of step with the left's.
+std::unique_ptr<juce::AudioParameterChoice> channelMode(const juce::ParameterID& id, const juce::String& name) {
+    return std::make_unique<juce::AudioParameterChoice>(id, name, juce::StringArray{"Mono", "Stereo"}, 0);
+}
+
 juce::NormalisableRange<float> logRange(float a, float b) {
     juce::NormalisableRange<float> r(a, b);
     r.setSkewForCentre(std::sqrt(a * b));
@@ -75,11 +80,11 @@ const std::vector<const char*>& paramIds(ModuleType type) {
     static const std::vector<const char*> comp{ids::compOn, ids::compSustain, ids::compBlend, ids::compTone, ids::compLevel, ids::compFast};
     static const std::vector<const char*> drive{ids::tsOn, ids::tsDrive, ids::tsTone, ids::tsLevel};
     static const std::vector<const char*> nam{ids::nmpOn, ids::nmpDrive, ids::nmpLevel};
-    static const std::vector<const char*> phaser{ids::phOn, ids::phSpeed, ids::phIntense};
-    static const std::vector<const char*> chorus{ids::chOn, ids::chMode, ids::chRate, ids::chDepth, ids::chJuno};
-    static const std::vector<const char*> vibe{ids::vbOn, ids::vbSpeed, ids::vbIntensity, ids::vbVibrato};
+    static const std::vector<const char*> phaser{ids::phOn, ids::phSpeed, ids::phIntense, ids::phStereo};
+    static const std::vector<const char*> chorus{ids::chOn, ids::chMode, ids::chRate, ids::chDepth, ids::chJuno, ids::chStereo};
+    static const std::vector<const char*> vibe{ids::vbOn, ids::vbSpeed, ids::vbIntensity, ids::vbVibrato, ids::vbStereo};
     static const std::vector<const char*> tremolo{ids::trOn, ids::trRate, ids::trDepth, ids::trShape, ids::trStereo};
-    static const std::vector<const char*> flanger{ids::flOn, ids::flRate, ids::flDepth, ids::flManual, ids::flFeedback};
+    static const std::vector<const char*> flanger{ids::flOn, ids::flRate, ids::flDepth, ids::flManual, ids::flFeedback, ids::flStereo};
     static const std::vector<const char*> pitch{ids::pitch, ids::pitchFine};
     static const std::vector<const char*> eq = [] {
         std::vector<const char*> v{ids::eqOn, ids::eqHpf, ids::eqLpf};
@@ -195,6 +200,7 @@ void addParams(Layout& l, ModuleType type, int k) {
             l.add(toggle(I(ids::phOn), N("Phaser"), false));
             l.add(rate(I(ids::phSpeed), N("Phaser speed"), 0.1f, 8.0f, 1.0f, 0.8f, "Hz"));
             l.add(toggle(I(ids::phIntense), N("Phaser intense"), false));
+            l.add(channelMode(id(I(ids::phStereo)), N("Phaser channels")));
             break;
         case ModuleType::Chorus:
             l.add(toggle(I(ids::chOn), N("Chorus"), false));
@@ -202,19 +208,21 @@ void addParams(Layout& l, ModuleType type, int k) {
             l.add(rate(I(ids::chRate), N("Chorus rate"), 0.1f, 8.0f, 1.4f, 1.2f, "Hz"));
             l.add(pct(I(ids::chDepth), N("Chorus depth"), 0.0f, 100.0f, 50.0f));
             l.add(std::make_unique<juce::AudioParameterChoice>(id(I(ids::chJuno)), N("Chorus Juno button"), juce::StringArray{"I", "II", "I+II"}, 0));
+            l.add(channelMode(id(I(ids::chStereo)), N("Chorus channels")));
             break;
         case ModuleType::Vibe:
             l.add(toggle(I(ids::vbOn), N("Vibe"), false));
             l.add(rate(I(ids::vbSpeed), N("Vibe speed"), 0.3f, 10.0f, 3.0f, 3.0f, "Hz"));
             l.add(pct(I(ids::vbIntensity), N("Vibe intensity"), 0.0f, 100.0f, 70.0f));
             l.add(toggle(I(ids::vbVibrato), N("Vibe vibrato"), false));
+            l.add(channelMode(id(I(ids::vbStereo)), N("Vibe channels")));
             break;
         case ModuleType::Tremolo:
             l.add(toggle(I(ids::trOn), N("Tremolo"), false));
             l.add(rate(I(ids::trRate), N("Tremolo rate"), 0.5f, 15.0f, 4.0f, 4.0f, "Hz"));
             l.add(pct(I(ids::trDepth), N("Tremolo depth"), 0.0f, 100.0f, 50.0f));
             l.add(std::make_unique<juce::AudioParameterChoice>(id(I(ids::trShape)), N("Tremolo shape"), juce::StringArray{"Sine", "Triangle", "Square"}, 0));
-            l.add(toggle(I(ids::trStereo), N("Tremolo stereo"), false));
+            l.add(channelMode(id(I(ids::trStereo)), N("Tremolo channels")));
             break;
         case ModuleType::Flanger:
             l.add(toggle(I(ids::flOn), N("Flanger"), false));
@@ -222,6 +230,7 @@ void addParams(Layout& l, ModuleType type, int k) {
             l.add(pct(I(ids::flDepth), N("Flanger depth"), 0.0f, 100.0f, 70.0f));
             l.add(pct(I(ids::flManual), N("Flanger manual"), 0.0f, 100.0f, 40.0f));
             l.add(pct(I(ids::flFeedback), N("Flanger feedback"), -90.0f, 90.0f, 50.0f));
+            l.add(channelMode(id(I(ids::flStereo)), N("Flanger channels")));
             break;
         case ModuleType::Pitch:
             l.add(std::make_unique<juce::AudioParameterInt>(id(I(ids::pitch)), N("Pitch"), -12, 12, 0, juce::AudioParameterIntAttributes().withLabel("st")));
