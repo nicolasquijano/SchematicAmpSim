@@ -10,6 +10,7 @@ version numbers follow [Semantic Versioning](https://semver.org/) (see [docs/REL
 - The extra instances have their own host parameters (`ts_drive__2`, `pl_decay__2`...); the first instance of each kind keeps the ids it always had, so automation keeps working.
 
 ### Changed
+- A new instance opens in the **Efficient** quality (projects keep the quality they were saved with).
 - The standalone window can be maximised, and the editor shows the product icon.
 - The editor has two pages, **Rack** and **Tuner**; the Amp, Cabinet, Effects, Pitch, EQ, Mod and Space pages are units of the rack. The **amp condition** (tubes, bias, noise, wear, unit) and the speaker dynamics are part of the amp unit.
 - A compressor and an overdrive right in front of the amp (in that order) still run inside the amp's own front end, so the sound of existing projects does not change.

@@ -1735,6 +1735,7 @@ TEST_CASE("legacy states migrate to a rack that sounds the same", "[rack]") {
 TEST_CASE("a fresh instance renders the legacy default too", "[rack]") {
     JuceInit init;
     SasProcessor p;
+    setParam(p, ids::quality, 0.0f);  // the reference is Normal; a new instance opens in Efficient
     const auto out = legacy::render(p, legacy::input());
     const auto ref = legacy::readGolden("default");
     REQUIRE(ref.size() == out.size());

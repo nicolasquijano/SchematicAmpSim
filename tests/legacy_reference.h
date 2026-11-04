@@ -41,7 +41,7 @@ struct Case {
     std::function<void(SasProcessor&)> setup;
 };
 
-inline std::vector<Case> cases() {
+inline std::vector<Case> rawCases() {
     using ids::amp;
     return {
         {"default", [](SasProcessor&) {}},
@@ -69,6 +69,19 @@ inline std::vector<Case> cases() {
              set(p, ids::nmpOn, 1);
          }},
     };
+}
+
+// The references were rendered when a new instance opened in Normal quality: every case sets it first (a case may then choose another).
+inline std::vector<Case> cases() {
+    auto list = rawCases();
+    for (auto& c : list) {
+        auto inner = c.setup;
+        c.setup = [inner](SasProcessor& p) {
+            set(p, ids::quality, 0);
+            inner(p);
+        };
+    }
+    return list;
 }
 
 // A fixed, guitar-like test signal: two decaying plucks of a 110 Hz chord, 0.5 s at 48 kHz.

@@ -50,7 +50,7 @@ Layout SasProcessor::createLayout(const std::vector<sas::AmpDef>& defs) {
     l.add(dbParam(ids::output, "Output", -10.0f));
     // New qualities are only appended so saved projects keep theirs (same rule as the Rust build).
     l.add(std::make_unique<juce::AudioParameterChoice>(
-        juce::ParameterID{ids::quality, kVersion}, "Quality", juce::StringArray{"Normal (2x)", "High (4x)", "Lite (2x)", "Eco (2x)", "Efficient (2x/1x)"}, 0));
+        juce::ParameterID{ids::quality, kVersion}, "Quality", juce::StringArray{"Normal (2x)", "High (4x)", "Lite (2x)", "Eco (2x)", "Efficient (2x/1x)"}, 4));  // a new instance opens in Efficient
     l.add(std::make_unique<juce::AudioParameterChoice>(
         juce::ParameterID{ids::cab, kVersion}, "Cabinet", juce::StringArray{"Off", "Filter", "IR", "NAM"}, 1));
     l.add(std::make_unique<juce::AudioParameterChoice>(
