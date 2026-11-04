@@ -28,6 +28,7 @@ struct PlateParams {
     double mod = 0.3;         // 0 .. 1, drift of the delay lines
     double shimmer = 0.0;     // 0 .. 1, how much of the shifted tail is fed back (0 = off, and the shifter costs nothing)
     bool shimmerFifth = false;  // false: +12 semitones, true: +19 (an octave and a fifth)
+    bool stereo = true;       // false: the same tail on both sides (the two outputs summed)
 };
 
 class PlateReverb {
@@ -150,6 +151,7 @@ public:
             hpState_[1] += aLow * (wr - hpState_[1]);
             wl -= hpState_[0];
             wr -= hpState_[1];
+            if (!target_.stereo) wl = wr = 0.5f * (wl + wr);
             const float mix = float(mixCur_);
             l[s] += wl * mix;
             r[s] += wr * mix;

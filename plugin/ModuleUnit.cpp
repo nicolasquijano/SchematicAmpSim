@@ -32,10 +32,10 @@ const std::vector<Item>& itemsFor(ModuleType t) {
     static const std::vector<Item> pitch{{Item::Knob, ids::pitch, "SEMITONES"}, {Item::Knob, ids::pitchFine, "FINE cents"}};
     static const std::vector<Item> delay{{Item::Knob, ids::dlyTime, "TIME ms"}, {Item::Combo, ids::dlySync, "SYNC"}, {Item::Knob, ids::dlyFeedback, "FEEDBACK %"},
                                          {Item::Knob, ids::dlyMix, "MIX %"}, {Item::Knob, ids::dlyTone, "TONE Hz"}, {Item::Toggle, ids::dlyPing, "Ping-pong"},
-                                         {Item::Toggle, ids::dlyAnalog, "Analog"}};
+                                         {Item::Toggle, ids::dlyAnalog, "Analog"}, {Item::Combo, ids::dlyStereo, "CHANNELS"}};
     static const std::vector<Item> reverb{{Item::Toggle, ids::plHall, "Hall"}, {Item::Knob, ids::plDecay, "DECAY s"}, {Item::Knob, ids::plPre, "PRE-DELAY ms"},
                                           {Item::Knob, ids::plTone, "TONE Hz"}, {Item::Knob, ids::plLow, "LOW CUT Hz"}, {Item::Knob, ids::plMix, "MIX %"},
-                                          {Item::Knob, ids::plMod, "MOD %"}, {Item::Knob, ids::plShimmer, "SHIMMER %"}, {Item::Combo, ids::plShimmerInt, "SHIMMER INTERVAL"}};
+                                          {Item::Knob, ids::plMod, "MOD %"}, {Item::Knob, ids::plShimmer, "SHIMMER %"}, {Item::Combo, ids::plShimmerInt, "SHIMMER INTERVAL"}, {Item::Combo, ids::plStereo, "CHANNELS"}};
     static const std::vector<Item> mixer{{Item::Knob, ids::mixLevelA, "LEVEL A dB"}, {Item::Knob, ids::mixLevelB, "LEVEL B dB"}, {Item::Knob, ids::mixPanA, "PAN A"},
                                          {Item::Knob, ids::mixPanB, "PAN B"}, {Item::Toggle, ids::mixInvertB, "Invert B"}};
     switch (t) {

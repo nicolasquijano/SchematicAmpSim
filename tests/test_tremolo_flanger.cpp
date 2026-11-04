@@ -194,3 +194,24 @@ TEST_CASE("modulation effects: mono keeps both ears alike, stereo makes them dif
         CHECK(earGap<sas::Tremolo>(p) > 50.0);
     }
 }
+
+#include "sas/delay.h"
+#include "sas/plate.h"
+
+TEST_CASE("delay and reverb: the channels option", "[stereo]") {
+    {
+        sas::DelayParams p;
+        p.timeMs = 200.0;
+        p.mix = 0.5;
+        CHECK(earGap<sas::StereoDelay>(p) < 1e-3);  // mono: both ears alike, as it always was
+        p.stereo = true;
+        CHECK(earGap<sas::StereoDelay>(p) > 50.0);
+    }
+    {
+        sas::PlateParams p;
+        p.stereo = false;
+        CHECK(earGap<sas::PlateReverb>(p) < 1e-3);  // the same tail on both sides
+        p.stereo = true;
+        CHECK(earGap<sas::PlateReverb>(p) > 5.0);
+    }
+}

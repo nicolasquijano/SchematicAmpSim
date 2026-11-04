@@ -95,8 +95,8 @@ const std::vector<const char*>& paramIds(ModuleType type) {
         }
         return v;
     }();
-    static const std::vector<const char*> delay{ids::dlyOn, ids::dlyTime, ids::dlySync, ids::dlyFeedback, ids::dlyMix, ids::dlyTone, ids::dlyPing, ids::dlyAnalog};
-    static const std::vector<const char*> reverb{ids::plOn, ids::plHall, ids::plDecay, ids::plPre, ids::plTone, ids::plLow, ids::plMix, ids::plMod, ids::plShimmer, ids::plShimmerInt};
+    static const std::vector<const char*> delay{ids::dlyOn, ids::dlyTime, ids::dlySync, ids::dlyFeedback, ids::dlyMix, ids::dlyTone, ids::dlyPing, ids::dlyAnalog, ids::dlyStereo};
+    static const std::vector<const char*> reverb{ids::plOn, ids::plHall, ids::plDecay, ids::plPre, ids::plTone, ids::plLow, ids::plMix, ids::plMod, ids::plShimmer, ids::plShimmerInt, ids::plStereo};
     switch (type) {
         case ModuleType::Cabinet: return cabinet;
         case ModuleType::Amp: return amp;
@@ -268,6 +268,7 @@ void addParams(Layout& l, ModuleType type, int k) {
             l.add(hz(I(ids::dlyTone), N("Delay tone"), 1000.0f, 12000.0f, 6500.0f));
             l.add(toggle(I(ids::dlyPing), N("Delay ping-pong"), false));
             l.add(toggle(I(ids::dlyAnalog), N("Delay analog"), false));
+            l.add(channelMode(id(I(ids::dlyStereo)), N("Delay channels")));
             break;
         }
         case ModuleType::Reverb: {
@@ -285,6 +286,7 @@ void addParams(Layout& l, ModuleType type, int k) {
             l.add(pct(I(ids::plMod), N("Reverb modulation"), 0.0f, 100.0f, 30.0f));
             l.add(pct(I(ids::plShimmer), N("Reverb shimmer"), 0.0f, 100.0f, 0.0f));
             l.add(std::make_unique<juce::AudioParameterChoice>(id(I(ids::plShimmerInt)), N("Reverb shimmer interval"), juce::StringArray{"Octave", "Octave + 5th"}, 0));
+            l.add(std::make_unique<juce::AudioParameterChoice>(id(I(ids::plStereo)), N("Reverb channels"), juce::StringArray{"Mono", "Stereo"}, 1));  // stereo, as it always was
             break;
         }
         default: break;

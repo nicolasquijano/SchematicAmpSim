@@ -520,6 +520,7 @@ void SasProcessor::applyModuleParams(const sas::RackOrder& order) {
                 d.toneHz = p(ids::dlyTone);
                 d.pingPong = p(ids::dlyPing) > 0.5;
                 d.analog = p(ids::dlyAnalog) > 0.5;
+                d.stereo = p(ids::dlyStereo) > 0.5;
                 static_cast<sas::DelayModule*>(m)->setParams(d);
                 break;
             }
@@ -535,6 +536,7 @@ void SasProcessor::applyModuleParams(const sas::RackOrder& order) {
                 pl.mod = std::clamp(p(ids::plMod) / 100.0, 0.0, 1.0);
                 pl.shimmer = std::clamp(p(ids::plShimmer) / 100.0, 0.0, 1.0);
                 pl.shimmerFifth = p(ids::plShimmerInt) > 0.5;
+                pl.stereo = p(ids::plStereo) > 0.5;
                 static_cast<sas::ReverbModule*>(m)->setParams(pl);
                 break;
             }

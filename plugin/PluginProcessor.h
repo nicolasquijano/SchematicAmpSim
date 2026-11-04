@@ -140,6 +140,7 @@ inline constexpr const char* dlyMix = "dly_mix";        // percent
 inline constexpr const char* dlyTone = "dly_tone";      // Hz, low-pass in the repeats
 inline constexpr const char* dlyPing = "dly_ping";
 inline constexpr const char* dlyAnalog = "dly_analog";
+inline constexpr const char* dlyStereo = "dly_stereo";  // 0 = mono (as it always was), 1 = stereo (the two ears hear different echoes)
 inline constexpr const char* plOn = "pl_on";
 inline constexpr const char* plHall = "pl_hall";        // plate (off) or hall (on)
 inline constexpr const char* plDecay = "pl_decay";      // seconds
@@ -149,6 +150,7 @@ inline constexpr const char* plLow = "pl_low";          // Hz, high-pass on the 
 inline constexpr const char* plMix = "pl_mix";          // percent
 inline constexpr const char* plMod = "pl_mod";          // percent
 inline constexpr const char* plShimmer = "pl_shim";    // percent: the shifted tail fed back (0 = off)
+inline constexpr const char* plStereo = "pl_stereo";  // 0 = mono (the same tail on both sides), 1 = stereo (as it always was)
 inline constexpr const char* plShimmerInt = "pl_shimint";  // 0 = octave, 1 = octave and a fifth
 }  // namespace ids
 

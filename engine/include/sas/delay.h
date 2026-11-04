@@ -19,6 +19,7 @@ struct DelayParams {
     double toneHz = 6500.0;   // low-pass in the feedback loop
     bool pingPong = false;
     bool analog = false;
+    bool stereo = false;      // the left repeats come at three quarters of the time of the right ones, so the two ears hear different echoes (not with ping-pong, which is stereo already)
 };
 
 class StereoDelay {
@@ -84,7 +85,8 @@ public:
 
             const double wobble = target_.analog ? 0.0007 * fs_ * std::sin(phase_) : 0.0;
             const double d = std::clamp(timeCur_ * 0.001 * fs_ + wobble, 2.0, double(size_) - 4.0);
-            const float dl = read(bufL_, double(w_) - d), dr = read(bufR_, double(w_) - d);
+            const double dLeft = target_.stereo && !target_.pingPong ? std::max(2.0, 0.75 * d) : d;
+            const float dl = read(bufL_, double(w_) - dLeft), dr = read(bufR_, double(w_) - d);
 
             // The loop filter: one low-pass at the tone setting; in analog mode two of them a little lower plus a high-pass.
             const double cut = target_.analog ? std::min(toneCur_, 4200.0) : toneCur_;
