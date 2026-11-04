@@ -2069,3 +2069,36 @@ TEST_CASE("the input and output meters are in the header, on every page", "[rack
     // the meters belong to the editor, not to a page: the amp unit is not what shows them
     CHECK(ed->headerMetersVisible());
 }
+
+// ---------------------------------------------------------------- parallel paths: parameters of the second amp, cabinet and the mixer
+
+TEST_CASE("the second amp and cabinet have parameters of their own, like the first", "[rack]") {
+    JuceInit init;
+    SasProcessor p;
+    for (const char* id : {"amp", "volume", "volume2", "bass", "middle", "treble", "presence", "master", "power", "resonance", "vib_speed", "vib_intensity", "vib_on", "input", "quality",
+                           "jack", "sel1", "sel4", "pickup", "cable", "tube", "wear", "unit", "noise", "bias", "speaker", "speaker_intense", "cab", "cab_on", "ir_blend", "ir_width",
+                           "double_amount", "double_time"}) {
+        INFO(id);
+        auto* a = p.apvts.getParameter(id);
+        auto* b = p.apvts.getParameter(juce::String(id) + "__2");
+        REQUIRE(a != nullptr);
+        REQUIRE(b != nullptr);
+        CHECK(b->getDefaultValue() == a->getDefaultValue());
+        CHECK(b->getNumSteps() == a->getNumSteps());
+        CHECK(b->getName(64).endsWith(" 2"));
+    }
+    for (const char* id : {"mix_level_a", "mix_level_b", "mix_pan_a", "mix_pan_b", "mix_invert_b"}) CHECK(p.apvts.getParameter(id) != nullptr);
+    CHECK(p.apvts.getParameter("volume__3") == nullptr);  // two amps, no more
+}
+
+TEST_CASE("moving a knob of amp A does not move amp B", "[rack]") {
+    JuceInit init;
+    SasProcessor p;
+    const float bDefault = p.apvts.getRawParameterValue("volume__2")->load();
+    setParam(p, "volume", 9.0f);
+    CHECK(p.apvts.getRawParameterValue("volume__2")->load() == bDefault);
+    setParam(p, "bass__2", 1.0f);
+    CHECK(p.apvts.getRawParameterValue("bass")->load() == Catch::Approx(5.0f));
+    setParam(p, "quality__2", 0.0f);
+    CHECK(p.apvts.getRawParameterValue("quality")->load() == Catch::Approx(4.0f));  // amp A stays in Efficient
+}

@@ -46,6 +46,11 @@ inline constexpr const char* input = "input";
 inline constexpr const char* output = "output";
 inline constexpr const char* quality = "quality";
 inline constexpr const char* cab = "cab";
+inline constexpr const char* mixLevelA = "mix_level_a";  // the mixer of a parallel: level, pan and phase of each lane
+inline constexpr const char* mixLevelB = "mix_level_b";
+inline constexpr const char* mixPanA = "mix_pan_a";
+inline constexpr const char* mixPanB = "mix_pan_b";
+inline constexpr const char* mixInvertB = "mix_invert_b";
 inline constexpr const char* cabOn = "cab_on";  // the cabinet module is on (off: the raw amp)
 inline constexpr const char* jack = "jack";
 inline constexpr const char* levelMatch = "level_match";
@@ -245,7 +250,7 @@ private:
     bool loadNamCabFromMemory(const void* data, std::size_t size, const juce::String& name);
     bool loadNamPedalFromMemory(const void* data, std::size_t size, const juce::String& name, int instance);
     bool anyIrLoaded() const { return ir_[0].loaded.load() || ir_[1].loaded.load(); }
-    sas::ChainSettings readSettings(bool irAvailable);
+    sas::ChainSettings readSettings(bool irAvailable, int instance = 0);
     void swapInBuiltChain();
     friend class CabinetModule;
     // The rack (docs/MODULAR_RACK.md).
@@ -268,9 +273,10 @@ private:
         std::atomic<float>* presence = nullptr;
         std::atomic<float>* vibSpeed = nullptr;
     };
-    std::vector<AmpParams> ampParams_;
+    std::array<std::vector<AmpParams>, 2> ampParams_;  // per instance of the amp, then per amp of the list
 
     std::unique_ptr<sas::Chain> chain_;
+    std::atomic<int> activeAmpB_{0};  // the same for the second amp
     std::atomic<int> activeAmp_{0};  // the amp chain_ was built for (written by the audio thread)
     double sampleRate_ = 0.0;
     int latencyReported_ = -1;
@@ -334,7 +340,7 @@ private:
     sas::TunerFeed tuner_;
     std::atomic<float> inputPeak_{0.0f}, outputPeak_{0.0f}, gateGain_{1.0f}, idleMa_{0.0f};
     std::vector<float> mono_;
-    sas::ChainSettings settings_;
+    sas::ChainSettings settings_, settingsB_;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(SasProcessor)
 };

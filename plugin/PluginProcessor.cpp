@@ -99,7 +99,8 @@ Layout SasProcessor::createLayout(const std::vector<sas::AmpDef>& defs) {
         juce::ParameterID{ids::unit, kVersion}, "Unit",
         juce::StringArray{"Ideal", "Unit 1", "Unit 2", "Unit 3", "Unit 4", "Unit 5", "Unit 6", "Unit 7", "Unit 8", "Unit 9"}, 0));
     RackState::addParams(l, sas::ModuleType::Cabinet, 0);
-    RackState::addExtraInstances(l);
+    RackState::addParams(l, sas::ModuleType::Mixer, 0);
+    RackState::addExtraInstances(l, ampNames);
     return l;
 }
 
@@ -193,23 +194,27 @@ SasProcessor::SasProcessor()
             }())) {
     for (const auto& id : sas::embeddedAmpIds(true)) defs_.push_back(sas::loadEmbeddedAmp(id));
 
-    // Resolve, per amp, which parameter drives each of its knobs (via its "ui" block).
-    for (const auto& def : defs_) {
-        AmpParams ap;
-        ap.knobs.assign(def.preamp.knobs.size(), nullptr);
-        ap.powerKnobs.assign(def.power.knobs.size(), nullptr);
-        for (const auto& u : def.ui) {
-            if (u.param == ids::presence) ap.presence = apvts.getRawParameterValue(u.param);
-            if (u.param == ids::vibSpeed) ap.vibSpeed = apvts.getRawParameterValue(u.param);
-            if (!u.knob.empty()) ap.knobs[def.knobIndex(u.knob)] = apvts.getRawParameterValue(u.param);
-            if (!u.powerKnob.empty()) ap.powerKnobs[def.powerKnobIndex(u.powerKnob)] = apvts.getRawParameterValue(u.param);
+    // Resolve, per instance of the amp and per amp, which parameter drives each of its knobs (via its "ui" block).
+    for (int inst = 0; inst < 2; ++inst)
+        for (const auto& def : defs_) {
+            AmpParams ap;
+            ap.knobs.assign(def.preamp.knobs.size(), nullptr);
+            ap.powerKnobs.assign(def.power.knobs.size(), nullptr);
+            auto find = [&](const std::string& base) { return apvts.getRawParameterValue(RackState::paramId(base.c_str(), inst)); };
+            for (const auto& u : def.ui) {
+                if (u.param == ids::presence) ap.presence = find(u.param);
+                if (u.param == ids::vibSpeed) ap.vibSpeed = find(u.param);
+                if (!u.knob.empty()) ap.knobs[def.knobIndex(u.knob)] = find(u.param);
+                if (!u.powerKnob.empty()) ap.powerKnobs[def.powerKnobIndex(u.powerKnob)] = find(u.param);
+            }
+            if (!ap.presence) ap.presence = find(ids::presence);
+            if (!ap.vibSpeed) ap.vibSpeed = find(ids::vibSpeed);
+            ampParams_[std::size_t(inst)].push_back(std::move(ap));
         }
-        if (!ap.presence) ap.presence = apvts.getRawParameterValue(ids::presence);
-        if (!ap.vibSpeed) ap.vibSpeed = apvts.getRawParameterValue(ids::vibSpeed);
-        ampParams_.push_back(std::move(ap));
+    for (auto* st : {&settings_, &settingsB_}) {
+        st->knobs.reserve(16);  // never reallocate on the audio thread
+        st->powerKnobs.reserve(16);
     }
-    settings_.knobs.reserve(16);  // never reallocate on the audio thread
-    settings_.powerKnobs.reserve(16);
     mono_.resize(kMaxChunk);
     mono2_.resize(kMaxChunk);
     monoR_.resize(kMaxChunk);
@@ -298,14 +303,23 @@ void SasProcessor::prepareToPlay(double sampleRate, int samplesPerBlock) {
     double_.prepare(sampleRate);
 }
 
-sas::ChainSettings SasProcessor::readSettings(bool irAvailable) {
-    auto& s = settings_;
-    const auto& def = defs_[std::size_t(activeAmp_)];
-    const auto& ap = ampParams_[std::size_t(activeAmp_)];
+sas::ChainSettings SasProcessor::readSettings(bool irAvailable, int instance) {
+    auto& s = instance == 0 ? settings_ : settingsB_;
+    const int ampIndex = instance == 0 ? activeAmp_.load() : activeAmpB_.load();
+    const auto& def = defs_[std::size_t(ampIndex)];
+    const auto& ap = ampParams_[std::size_t(instance)][std::size_t(ampIndex)];
     s.knobs.resize(def.preamp.knobs.size());
     for (std::size_t i = 0; i < s.knobs.size(); ++i)
         s.knobs[i] = ap.knobs[i] ? double(ap.knobs[i]->load()) / 10.0 : def.preamp.knobs[i].def;
-    auto raw = [this](const char* id) { return double(apvts.getRawParameterValue(id)->load()); };
+    // The second amp reads its own copy of every parameter of the amp; what is not the amp's (the output level, the cabinet) is shared.
+    auto raw = [this, instance](const char* id) {
+        if (instance > 0) {
+            const auto& names = RackState::paramIds(sas::ModuleType::Amp);
+            for (std::size_t i = 0; i < names.size(); ++i)
+                if (names[i] == id) return moduleParam({sas::ModuleType::Amp, instance}, id);
+        }
+        return double(apvts.getRawParameterValue(id)->load());
+    };
     s.powerKnobs.resize(def.power.knobs.size());
     for (std::size_t i = 0; i < s.powerKnobs.size(); ++i)
         s.powerKnobs[i] = ap.powerKnobs[i] ? double(ap.powerKnobs[i]->load()) / 10.0 : def.power.knobs[i].def;
@@ -682,7 +696,9 @@ bool SasProcessor::canAdd(sas::ModuleType type) const {
         if (rackOrder_.slots[std::size_t(i)].type != sas::ModuleType::Amp) ++modules;
         if (rackOrder_.slots[std::size_t(i)].type == type) ++instances;
     }
-    return type != sas::ModuleType::Amp && modules < RackState::kMaxModules && instances < RackState::maxInstances(type);
+    // The amps, the cabinets and the two ends of a parallel come in with the parallel itself, not one by one.
+    const bool single = type == sas::ModuleType::Amp || type == sas::ModuleType::Cabinet || type == sas::ModuleType::Splitter || type == sas::ModuleType::Mixer;
+    return !single && modules < RackState::kMaxModules && instances < RackState::maxInstances(type);
 }
 
 bool SasProcessor::addModule(sas::ModuleType type, int insertAt) {

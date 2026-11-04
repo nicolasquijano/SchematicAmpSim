@@ -14,8 +14,8 @@ using sas::ModuleType;
 namespace {
 
 // Caps (docs/MODULAR_RACK.md, 4.1; the CPU table in section 6 holds them).
-constexpr int kCaps[sas::kModuleTypeCount] = {1 /*Amp*/, 1 /*Cabinet*/, 2 /*Gate*/, 2 /*Compressor*/, 4 /*Overdrive*/, 2 /*NamPedal*/, 2 /*Phaser*/,
-                                              2 /*Chorus*/, 2 /*Vibe*/, 2 /*Pitch*/, 2 /*Eq*/, 2 /*Delay*/, 2 /*Reverb*/};
+constexpr int kCaps[sas::kModuleTypeCount] = {2 /*Amp*/, 2 /*Cabinet*/, 2 /*Gate*/, 2 /*Compressor*/, 4 /*Overdrive*/, 2 /*NamPedal*/, 2 /*Phaser*/,
+                                              2 /*Chorus*/, 2 /*Vibe*/, 2 /*Pitch*/, 2 /*Eq*/, 2 /*Delay*/, 2 /*Reverb*/, 1 /*Splitter*/, 1 /*Mixer*/};
 
 juce::NormalisableRange<float> logRange(float a, float b) {
     juce::NormalisableRange<float> r(a, b);
@@ -66,7 +66,11 @@ std::unique_ptr<juce::AudioParameterFloat> dbParam(const juce::String& id, const
 
 const std::vector<const char*>& paramIds(ModuleType type) {
     static const std::vector<const char*> none;
-    static const std::vector<const char*> cabinet{ids::cabOn};
+    static const std::vector<const char*> cabinet{ids::cabOn, ids::cab, ids::irBlend, ids::irWidth, ids::doubleAmount, ids::doubleTime};
+    static const std::vector<const char*> amp{ids::amp, ids::volume, ids::volume2, ids::bass, ids::middle, ids::treble, ids::presence, ids::master, ids::power, ids::resonance,
+                                              ids::vibSpeed, ids::vibIntensity, ids::vibOn, ids::input, ids::quality, ids::jack, ids::sel[0], ids::sel[1], ids::sel[2], ids::sel[3],
+                                              ids::pickup, ids::cable, ids::tube, ids::wear, ids::unit, ids::noise, ids::bias, ids::speaker, ids::speakerIntense};
+    static const std::vector<const char*> mixer{ids::mixLevelA, ids::mixLevelB, ids::mixPanA, ids::mixPanB, ids::mixInvertB};
     static const std::vector<const char*> gate{ids::gateOn, ids::gateThreshold, ids::gateRelease};
     static const std::vector<const char*> comp{ids::compOn, ids::compSustain, ids::compBlend, ids::compTone, ids::compLevel, ids::compFast};
     static const std::vector<const char*> drive{ids::tsOn, ids::tsDrive, ids::tsTone, ids::tsLevel};
@@ -88,6 +92,8 @@ const std::vector<const char*>& paramIds(ModuleType type) {
     static const std::vector<const char*> reverb{ids::plOn, ids::plHall, ids::plDecay, ids::plPre, ids::plTone, ids::plLow, ids::plMix, ids::plMod, ids::plShimmer, ids::plShimmerInt};
     switch (type) {
         case ModuleType::Cabinet: return cabinet;
+        case ModuleType::Amp: return amp;
+        case ModuleType::Mixer: return mixer;
         case ModuleType::Gate: return gate;
         case ModuleType::Compressor: return comp;
         case ModuleType::Overdrive: return drive;
@@ -127,7 +133,32 @@ void addParams(Layout& l, ModuleType type, int k) {
     switch (type) {
         case ModuleType::Cabinet:
             l.add(toggle(I(ids::cabOn), N("Cabinet on"), true));
+            if (k > 0) {  // the first cabinet's other parameters are declared with the amp's (they were there first)
+                l.add(std::make_unique<juce::AudioParameterChoice>(id(I(ids::cab)), N("Cabinet"), juce::StringArray{"Off", "Filter", "IR", "NAM"}, 1));
+                l.add(knob(I(ids::irWidth), N("IR stereo width"), 0.0f));
+                l.add(knob(I(ids::doubleAmount), N("Double tracking"), 0.0f));
+                l.add(knob(I(ids::doubleTime), N("Double tracking time"), 5.0f));
+                l.add(knob(I(ids::irBlend), N("IR blend"), 5.0f));
+            }
             break;
+        case ModuleType::Mixer: {
+            auto db = [&](const char* base, const char* name) {
+                return std::make_unique<juce::AudioParameterFloat>(id(I(base)), N(name), juce::NormalisableRange<float>(-24.0f, 12.0f, 0.0f), 0.0f,
+                                                                    juce::AudioParameterFloatAttributes().withLabel("dB").withStringFromValueFunction([](float v, int) { return juce::String(v, 1); }));
+            };
+            auto pan = [&](const char* base, const char* name) {
+                return std::make_unique<juce::AudioParameterFloat>(id(I(base)), N(name), juce::NormalisableRange<float>(-100.0f, 100.0f, 0.0f), 0.0f,
+                                                                    juce::AudioParameterFloatAttributes().withStringFromValueFunction([](float v, int) {
+                                                                        return v < -0.5f ? "L" + juce::String(int(-v + 0.5f)) : v > 0.5f ? "R" + juce::String(int(v + 0.5f)) : juce::String("C");
+                                                                    }));
+            };
+            l.add(db(ids::mixLevelA, "Mixer level A"));
+            l.add(db(ids::mixLevelB, "Mixer level B"));
+            l.add(pan(ids::mixPanA, "Mixer pan A"));
+            l.add(pan(ids::mixPanB, "Mixer pan B"));
+            l.add(toggle(I(ids::mixInvertB), N("Mixer phase B inverted"), false));
+            break;
+        }
         case ModuleType::Gate:
             l.add(toggle(I(ids::gateOn), N("Noise gate"), false));
             l.add(std::make_unique<juce::AudioParameterFloat>(id(I(ids::gateThreshold)), N("Gate threshold"), juce::NormalisableRange<float>(-80.0f, -20.0f, 0.0f), -60.0f,
@@ -231,9 +262,53 @@ void addParams(Layout& l, ModuleType type, int k) {
     }
 }
 
-void addExtraInstances(Layout& l) {
-    for (int t = 0; t < sas::kModuleTypeCount; ++t)
+// The parameters of the second amp: the same as the first one's, with the same ranges and defaults (the first ones are declared in
+// SasProcessor::createLayout, in the order the plug-in always had).
+static void addAmpInstance(Layout& l, int k, const juce::StringArray& ampNames) {
+    auto I = [k](const char* base) { return paramId(base, k); };
+    auto N = [k](const juce::String& base) { return paramName(base.toRawUTF8(), k); };
+    auto id = [&](const juce::String& s) { return juce::ParameterID{s, kParamVersion}; };
+    l.add(std::make_unique<juce::AudioParameterChoice>(id(I(ids::amp)), N("Amp"), ampNames, 0));
+    l.add(knob(I(ids::volume), N("Preamp Volume"), 6.0f));
+    l.add(knob(I(ids::volume2), N("Preamp Volume II"), 5.0f));
+    l.add(knob(I(ids::bass), N("Bass"), 5.0f));
+    l.add(knob(I(ids::middle), N("Middle"), 5.0f));
+    l.add(knob(I(ids::treble), N("Treble"), 6.0f));
+    l.add(knob(I(ids::presence), N("Presence"), 5.0f));
+    l.add(knob(I(ids::master), N("Master"), 5.0f));
+    l.add(knob(I(ids::power), N("Power"), 5.0f));
+    l.add(knob(I(ids::vibSpeed), N("Vibrato Speed"), 5.0f));
+    l.add(knob(I(ids::vibIntensity), N("Vibrato Intensity"), 5.0f));
+    l.add(knob(I(ids::reverb), N("Reverb"), 3.0f));
+    l.add(knob(I(ids::resonance), N("Resonance"), 5.0f));
+    l.add(toggle(I(ids::vibOn), N("Vibrato"), false));
+    l.add(dbParam(I(ids::input), N("Input")));
+    l.add(std::make_unique<juce::AudioParameterChoice>(id(I(ids::quality)), N("Quality"), juce::StringArray{"Normal (2x)", "High (4x)", "Lite (2x)", "Eco (2x)", "Efficient (2x/1x)"}, 4));
+    l.add(std::make_unique<juce::AudioParameterChoice>(id(I(ids::jack)), N("Input jack"),
+                                                       juce::StringArray{"Jack 1", "Jack 2", "Jack 3", "Jack 4", "Jack 5", "Jack 6", "Jack 7", "Jack 8"}, 0));
+    for (int i = 0; i < 4; ++i)
+        l.add(std::make_unique<juce::AudioParameterChoice>(id(I(ids::sel[i])), N("Amp switch " + juce::String(i + 1)),
+                                                           juce::StringArray{"Position 1", "Position 2", "Position 3", "Position 4", "Position 5"}, 0));
+    l.add(std::make_unique<juce::AudioParameterChoice>(id(I(ids::pickup)), N("Guitar pickup"), juce::StringArray{"Off", "Single coil", "Humbucker", "P-90"}, 0));
+    l.add(std::make_unique<juce::AudioParameterFloat>(id(I(ids::cable)), N("Guitar cable"), juce::NormalisableRange<float>(0.0f, 14.0f, 2.0f), 4.0f,
+                                                       juce::AudioParameterFloatAttributes().withLabel("m").withStringFromValueFunction([](float v, int) { return juce::String(v, 0); })));
+    l.add(knob(I(ids::speaker), N("Speaker dynamics"), 0.0f));
+    l.add(toggle(I(ids::speakerIntense), N("Speaker dynamics intense"), false));
+    l.add(knob(I(ids::bias), N("Bias"), 5.0f));
+    l.add(std::make_unique<juce::AudioParameterChoice>(id(I(ids::tube)), N("Power tubes"), juce::StringArray{ids::tubeTypes[0], ids::tubeTypes[1], ids::tubeTypes[2], ids::tubeTypes[3]}, 0));
+    l.add(std::make_unique<juce::AudioParameterChoice>(id(I(ids::noise)), N("Noise and hum"), juce::StringArray{"Off", "Low", "Real"}, 0));
+    l.add(std::make_unique<juce::AudioParameterInt>(id(I(ids::wear)), N("Wear"), 0, 10, 0,
+                                                     juce::AudioParameterIntAttributes().withStringFromValueFunction([](int v, int) { return juce::String(v * 10) + " %"; })));
+    l.add(std::make_unique<juce::AudioParameterChoice>(id(I(ids::unit)), N("Unit"),
+                                                       juce::StringArray{"Ideal", "Unit 1", "Unit 2", "Unit 3", "Unit 4", "Unit 5", "Unit 6", "Unit 7", "Unit 8", "Unit 9"}, 0));
+}
+
+void addExtraInstances(Layout& l, const juce::StringArray& ampNames) {
+    for (int k = 1; k < maxInstances(ModuleType::Amp); ++k) addAmpInstance(l, k, ampNames);
+    for (int t = 0; t < sas::kModuleTypeCount; ++t) {
+        if (static_cast<ModuleType>(t) == ModuleType::Amp) continue;
         for (int k = 1; k < maxInstances(static_cast<ModuleType>(t)); ++k) addParams(l, static_cast<ModuleType>(t), k);
+    }
 }
 
 bool isFixed(sas::SlotRef slot) {

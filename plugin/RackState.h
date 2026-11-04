@@ -27,8 +27,8 @@ const char* onId(sas::ModuleType type);
 
 // Adds the parameters of one instance to the layout.
 void addParams(juce::AudioProcessorValueTreeState::ParameterLayout& layout, sas::ModuleType type, int instance);
-// Adds every instance beyond the first (appended at the end of the layout).
-void addExtraInstances(juce::AudioProcessorValueTreeState::ParameterLayout& layout);
+// Adds every instance beyond the first (appended at the end of the layout); the second amp's selector lists the same amps as the first.
+void addExtraInstances(juce::AudioProcessorValueTreeState::ParameterLayout& layout, const juce::StringArray& ampNames);
 
 // 0..10 knob shown with one decimal, like the amp's dial; a +-24 dB gain.
 std::unique_ptr<juce::AudioParameterFloat> knob(const juce::String& id, const juce::String& name, float def);
