@@ -6,6 +6,8 @@ using sas::ModuleType;
 
 namespace {
 
+constexpr int kLaneBOffset = 50;  // the items of the lane B menu come this far after the module types
+
 struct Category {
     const char* name;
     std::vector<ModuleType> types;
@@ -470,7 +472,16 @@ void RackPage::timerCallback() {
 
 juce::PopupMenu RackPage::addMenu(const SasProcessor& processor, int idBase) {
     juce::PopupMenu menu;
-    menu.addItem(idBase - 1, processor.hasParallel() ? juce::String("Parallel (already there)") : juce::String("Parallel: a second amp and cabinet"), processor.canAddParallel());
+    menu.addItem(idBase - 1, processor.hasParallel() ? juce::String("Parallel (already there)") : juce::String("Parallel: two lanes, A and B"), processor.canAddParallel());
+    // What a parallel can hold besides the pedals: a second amp and a second cabinet, or neither (a reverb or a dry path of its own, say).
+    juce::PopupMenu lane;
+    lane.addItem(idBase + int(ModuleType::Amp), "Second amp", processor.canAdd(ModuleType::Amp));
+    lane.addItem(idBase + int(ModuleType::Cabinet), "Second cabinet", processor.canAdd(ModuleType::Cabinet));
+    lane.addSeparator();
+    for (const auto& cat : categories())
+        for (auto t : cat.types)
+            lane.addItem(idBase + kLaneBOffset + int(t), ModuleUnit::title({t, 0}), processor.hasParallel() && processor.canAdd(t));
+    menu.addSubMenu("Lane B", lane);
     menu.addSeparator();
     for (const auto& cat : categories()) {
         juce::PopupMenu sub;
@@ -487,14 +498,12 @@ void RackPage::showAddMenu(int insertAt, juce::Component& anchor) {
     constexpr int kBase = 100;
     addMenu(processor_, kBase).showMenuAsync(juce::PopupMenu::Options().withTargetComponent(&anchor), [this, insertAt](int choice) {
         if (choice == kBase - 1) {
-            if (processor_.addParallel()) {
-                rebuild();
-                select({ModuleType::Amp, 1});
-            }
+            if (processor_.addParallel()) rebuild();
             return;
         }
         if (choice < kBase) return;
-        processor_.addModule(static_cast<ModuleType>(choice - kBase), insertAt);
+        if (choice >= kBase + kLaneBOffset) processor_.addModule(static_cast<ModuleType>(choice - kBase - kLaneBOffset), -1, 1);  // into lane B
+        else processor_.addModule(static_cast<ModuleType>(choice - kBase), insertAt);
         rebuild();
     });
 }

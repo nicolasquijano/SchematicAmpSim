@@ -235,7 +235,8 @@ public:
     // Message thread. They build or retire the module, move it and publish the new order (the output ducks for a moment so nothing clicks).
     // addModule puts a new module at `insertAt` (-1: where it usually goes: pedals in front of the amp, the cabinet behind it, the time effects last)
     // and returns false when the type is at its limit or the rack is full.
-    bool addModule(sas::ModuleType type, int insertAt = -1);
+    // `lane` 1 puts it in lane B (needs a parallel); -1 lets it join the lane of the module before it.
+    bool addModule(sas::ModuleType type, int insertAt = -1, int lane = -1);
     bool canAdd(sas::ModuleType type) const;
     bool removeModule(sas::SlotRef slot);
     bool moveModule(sas::SlotRef slot, int newIndex);

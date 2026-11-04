@@ -47,6 +47,10 @@ void setParam(SasProcessor& p, const char* id, float plainValue) {
 
 // The rack with every module of the fixed-order plug-in in it, so a test can switch any of them on through its parameters.
 void allModules(SasProcessor& p) { p.setRackOrder(RackState::fromLegacy(p.apvts, false, true)); }
+// A parallel with a second amp and cabinet in lane B (what the parallel was before lane B became the player's to fill).
+bool addSecondAmp(SasProcessor& p) {
+    return p.addParallel() && p.addModule(sas::ModuleType::Amp) && p.addModule(sas::ModuleType::Cabinet);
+}
 
 juce::File writeImpulse(const juce::String& name) {
     auto file = juce::File::getSpecialLocation(juce::File::tempDirectory).getChildFile(name);
@@ -2153,7 +2157,7 @@ TEST_CASE("parallel paths: two identical amps sum to twice one, and removing the
 
     SasProcessor par;
     par.prepareToPlay(48000.0, 256);
-    REQUIRE(par.addParallel());
+    REQUIRE(addSecondAmp(par));
     CHECK(par.hasParallel());
     REQUIRE(waitForAmp(par, 1));
     const auto two = playOn(par, in);
@@ -2179,7 +2183,7 @@ TEST_CASE("parallel paths: two identical amps sum to twice one, and removing the
 TEST_CASE("the parallel round trips through a preset and a damaged one is repaired", "[rack]") {
     JuceInit init;
     SasProcessor a, b;
-    REQUIRE(a.addParallel());
+    REQUIRE(addSecondAmp(a));
     setParam(a, "volume__2", 8.0f);
     setParam(a, ids::mixPanB, 50.0f);
     roundTrip(a, b, [](juce::XmlElement&) {});
@@ -2211,7 +2215,7 @@ TEST_CASE("amp B plays nothing until its circuits are built, and the latency is 
 
     SasProcessor par;
     par.prepareToPlay(48000.0, 256);
-    REQUIRE(par.addParallel());
+    REQUIRE(addSecondAmp(par));
     CHECK_FALSE(par.ampBuilt(1));  // asked for, not there yet
     const auto early = playOn(par, in);
     for (float v : early) REQUIRE(std::isfinite(v));
@@ -2252,7 +2256,7 @@ TEST_CASE("the rack page draws the parallel as two lanes and offers it once", "[
         return false;
     };
     CHECK(parallelItem());
-    REQUIRE(p.addParallel());
+    REQUIRE(addSecondAmp(p));
     page.rebuild();
     using T = ModuleType;
     REQUIRE(page.tileCount() == 7);  // gate, splitter, amp, cabinet, amp B, cabinet B, mixer
@@ -2282,7 +2286,7 @@ TEST_CASE("amp B has its own panel in the rack, with its own controls", "[rack]"
     p.prepareToPlay(48000.0, 512);
     std::unique_ptr<juce::AudioProcessorEditor> ed(p.createEditor());
     ed->setSize(1100, 900);
-    REQUIRE(p.addParallel());
+    REQUIRE(addSecondAmp(p));
     auto* page = findRackPage(*ed);
     REQUIRE(page != nullptr);
     page->rebuild();
@@ -2300,7 +2304,7 @@ TEST_CASE("the mixer's level of lane B changes the sum", "[rack]") {
     auto level = [&](float dbB) {
         SasProcessor p;
         p.prepareToPlay(48000.0, 256);
-        REQUIRE(p.addParallel());
+        REQUIRE(addSecondAmp(p));
         setParam(p, ids::mixLevelB, dbB);
         REQUIRE(waitForAmp(p, 1));
         return rmsOf(playOn(p, in), 200);
@@ -2317,7 +2321,7 @@ TEST_CASE("the parallel page can be rendered to a picture", "[.screenshots]") {
     juce::File(dir).createDirectory();
     SasProcessor p;
     p.prepareToPlay(48000.0, 512);
-    REQUIRE(p.addParallel());
+    REQUIRE(addSecondAmp(p));
     REQUIRE(p.addModule(ModuleType::Overdrive));
     REQUIRE(p.addModule(ModuleType::Reverb));
     std::unique_ptr<juce::AudioProcessorEditor> ed(p.createEditor());
@@ -2338,7 +2342,7 @@ TEST_CASE("the parallel page can be rendered to a picture", "[.screenshots]") {
 TEST_CASE("an overdrive dropped on lane B moves to lane B", "[rack]") {
     JuceInit init;
     SasProcessor p;
-    REQUIRE(p.addParallel());
+    REQUIRE(addSecondAmp(p));
     REQUIRE(p.addModule(ModuleType::Overdrive));  // it goes in front of the first amp, in lane A
     RackPage page(p);
     page.setSize(1000, 700);
@@ -2369,7 +2373,7 @@ TEST_CASE("an overdrive dropped on an empty cell of lane B, or between its tiles
     using T = ModuleType;
     for (int variant = 0; variant < 4; ++variant) {
         SasProcessor p;
-        REQUIRE(p.addParallel());
+        REQUIRE(addSecondAmp(p));
         REQUIRE(p.addModule(T::Overdrive));
         RackPage page(p);
         page.setSize(900, 700);
@@ -2403,7 +2407,7 @@ TEST_CASE("the speaker's dynamics are in the cabinet unit, of each amp", "[rack]
     p.prepareToPlay(48000.0, 512);
     std::unique_ptr<juce::AudioProcessorEditor> ed(p.createEditor());
     ed->setSize(1100, 900);
-    REQUIRE(p.addParallel());
+    REQUIRE(addSecondAmp(p));
     auto* page = findRackPage(*ed);
     REQUIRE(page != nullptr);
     page->rebuild();
@@ -2432,4 +2436,49 @@ TEST_CASE("the input and output knobs are in the header with the meters", "[rack
     ed->headerOutputKnob().setValue(-3.0, juce::sendNotificationSync);
     CHECK(p.apvts.getRawParameterValue(ids::input)->load() == Catch::Approx(6.0f));
     CHECK(p.apvts.getRawParameterValue(ids::output)->load() == Catch::Approx(-3.0f));
+}
+
+// ---------------------------------------------------------------- parallel paths: lane B is the player's to fill
+
+TEST_CASE("a parallel starts with an empty lane B, and the second amp and cabinet are added by choice", "[rack]") {
+    JuceInit init;
+    using T = ModuleType;
+    SasProcessor p;
+    CHECK_FALSE(p.canAdd(T::Amp));  // there is no lane B yet
+    CHECK_FALSE(p.addModule(T::Amp));
+    REQUIRE(p.addParallel());
+    CHECK(typesOf(p.rackOrder()) == std::vector<T>{T::Gate, T::Splitter, T::Amp, T::Cabinet, T::Mixer});
+    for (int i = 0; i < p.rackOrder().count; ++i) CHECK(p.rackOrder().lane[std::size_t(i)] == 0);  // nothing in lane B
+    CHECK(p.canAdd(T::Amp));
+    REQUIRE(p.addModule(T::Reverb, -1, 1));  // a reverb of its own in lane B
+    REQUIRE(p.rackOrder().count == 6);
+    CHECK(p.rackOrder().lane[4] == 1);
+    CHECK_FALSE(SasProcessor().addModule(T::Reverb, -1, 1));  // without a parallel there is no lane B
+    REQUIRE(p.addModule(T::Amp));         // and a second amp, when the player wants one
+    REQUIRE(p.addModule(T::Cabinet));
+    CHECK_FALSE(p.canAdd(T::Amp));        // only one second amp
+    CHECK(p.removeModule({T::Amp, 1}));   // it can go again, leaving the rest of lane B
+    CHECK(p.canAdd(T::Amp));
+    CHECK(p.hasParallel());
+    // Taking the parallel away takes everything of lane B.
+    REQUIRE(p.removeParallel());
+    CHECK(typesOf(p.rackOrder()) == std::vector<T>{T::Gate, T::Amp, T::Cabinet});
+}
+
+TEST_CASE("an empty lane B plays the dry signal beside lane A", "[rack]") {
+    JuceInit init;
+    const auto in = legacy::input();
+    SasProcessor single;
+    single.prepareToPlay(48000.0, 256);
+    for (int i = 0; i < 40; ++i) playOn(single, std::vector<float>(256, 0.0f));
+    const auto one = playOn(single, in);
+    SasProcessor par;
+    par.prepareToPlay(48000.0, 256);
+    REQUIRE(par.addParallel());
+    setParam(par, ids::mixLevelB, -24.0f);  // a little of the dry guitar next to the amp
+    for (int i = 0; i < 60; ++i) playOn(par, std::vector<float>(256, 0.0f));
+    const auto mixed = playOn(par, in);
+    for (float v : mixed) REQUIRE(std::isfinite(v));
+    CHECK(rmsOf(mixed, 200) > 0.9 * rmsOf(one, 200));  // the amp is still there
+    CHECK(rmsOf(mixed, 200) < 1.5 * rmsOf(one, 200));  // and the dry guitar is far below it
 }

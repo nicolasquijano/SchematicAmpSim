@@ -751,9 +751,11 @@ bool SasProcessor::canAdd(sas::ModuleType type) const {
         if (rackOrder_.slots[std::size_t(i)].type != sas::ModuleType::Amp) ++modules;
         if (rackOrder_.slots[std::size_t(i)].type == type) ++instances;
     }
-    // The amps, the cabinets and the two ends of a parallel come in with the parallel itself, not one by one.
-    const bool single = type == sas::ModuleType::Amp || type == sas::ModuleType::Cabinet || type == sas::ModuleType::Splitter || type == sas::ModuleType::Mixer;
-    return !single && modules < RackState::kMaxModules && instances < RackState::maxInstances(type);
+    // The two ends of a parallel come in with the parallel itself. A second amp or cabinet is a module of lane B: only while there is a parallel.
+    const bool ends = type == sas::ModuleType::Splitter || type == sas::ModuleType::Mixer;
+    const bool second = type == sas::ModuleType::Amp || type == sas::ModuleType::Cabinet;
+    if (ends || (second && !hasParallel())) return false;
+    return modules < RackState::kMaxModules && instances < RackState::maxInstances(type);
 }
 
 // The entries of the order move together with their lane.
@@ -792,8 +794,8 @@ bool SasProcessor::layoutOk() const {
     if (!rackOrder_.valid()) return false;
     const int a1 = indexInOrder({T::Amp, 1}), c1 = indexInOrder({T::Cabinet, 1});
     if (!hasParallel()) return a1 < 0 && c1 < 0;
-    // The second amp and cabinet are in lane B (and only they, of the fixed ones); the first ones are in the shared part or in lane A.
-    if (a1 < 0 || c1 < 0 || rackOrder_.lane[std::size_t(a1)] != 1 || rackOrder_.lane[std::size_t(c1)] != 1) return false;
+    // The second amp and cabinet, if they are there, are in lane B; the first ones are in the shared part or in lane A.
+    if ((a1 >= 0 && rackOrder_.lane[std::size_t(a1)] != 1) || (c1 >= 0 && rackOrder_.lane[std::size_t(c1)] != 1)) return false;
     for (const auto fixed : {sas::SlotRef{T::Amp, 0}, sas::SlotRef{T::Cabinet, 0}}) {
         const int i = indexInOrder(fixed);
         if (i < 0 || rackOrder_.lane[std::size_t(i)] != 0) return false;
@@ -801,7 +803,7 @@ bool SasProcessor::layoutOk() const {
     return true;
 }
 
-bool SasProcessor::addModule(sas::ModuleType type, int insertAt) {
+bool SasProcessor::addModule(sas::ModuleType type, int insertAt, int wantedLane) {
     if (!canAdd(type)) return false;
     int instance = 0;
     for (; instance < RackState::maxInstances(type); ++instance)
@@ -822,14 +824,28 @@ bool SasProcessor::addModule(sas::ModuleType type, int insertAt) {
                 while (insertAt > 0 && (rackOrder_.slots[std::size_t(insertAt - 1)].type == T::Overdrive || rackOrder_.slots[std::size_t(insertAt - 1)].type == T::Compressor)) --insertAt;
                 break;
             }
-            case T::Cabinet: insertAt = ampAt + 1; break;
+            case T::Amp: {  // the second amp: at the end of lane B, in front of its cabinet if it has one
+                const int cabB = indexInOrder({T::Cabinet, 1});
+                insertAt = cabB >= 0 ? cabB : rackOrder_.mixerIndex();
+                break;
+            }
+            case T::Cabinet: {  // the second cabinet: behind the second amp, or at the end of lane B
+                const int ampB = indexInOrder({T::Amp, 1});
+                insertAt = ampB >= 0 ? ampB + 1 : rackOrder_.mixerIndex();
+                break;
+            }
             default: insertAt = rackOrder_.count; break;
         }
     }
     insertAt = juce::jlimit(0, rackOrder_.count, insertAt);
     // Inside the parallel a new module joins the lane of the one before it.
     const int s = rackOrder_.splitterIndex(), m = rackOrder_.mixerIndex();
-    const int lane = (s >= 0 && insertAt > s + 1 && insertAt <= m) ? rackOrder_.lane[std::size_t(insertAt - 1)] : 0;
+    int lane = (s >= 0 && insertAt > s + 1 && insertAt <= m) ? rackOrder_.lane[std::size_t(insertAt - 1)] : 0;
+    if (wantedLane == 1 && !hasParallel()) return false;
+    if (type == sas::ModuleType::Amp || type == sas::ModuleType::Cabinet || wantedLane == 1) {  // the second amp and cabinet are always in lane B, inside the parallel
+        lane = 1;
+        insertAt = juce::jlimit(s + 1, m, insertAt);
+    }
     const auto saved = rackOrder_;
     insertEntry(insertAt, slot, lane);
     normalizeLanes();
@@ -838,6 +854,19 @@ bool SasProcessor::addModule(sas::ModuleType type, int insertAt) {
         return false;
     }
     RackState::resetParams(apvts, slot);
+    if (slot == sas::SlotRef{sas::ModuleType::Amp, 1}) {
+        // The second amp starts as a copy of the first one's choice, so the sum is at once a doubled amp.
+        if (auto* p = apvts.getParameter(RackState::paramId(ids::amp, 1))) {
+            p->beginChangeGesture();
+            p->setValueNotifyingHost(apvts.getParameter(ids::amp)->getValue());
+            p->endChangeGesture();
+        }
+    }
+    if (slot == sas::SlotRef{sas::ModuleType::Cabinet, 1}) {  // and its cabinet with the default impulse
+        clearImpulseResponse(0, 1);
+        clearImpulseResponse(1, 1);
+        loadBuiltInImpulseResponse(firstCab_, 0, 1);
+    }
     syncRack(sas::Transition::Duck);
     return true;
 }
@@ -850,6 +879,10 @@ bool SasProcessor::removeModule(sas::SlotRef slot) {
     eraseEntry(at);
     syncRack(sas::Transition::Duck);
     if (slot.type == sas::ModuleType::NamPedal) clearNamPedal(slot.instance);  // its model goes with it, so it is not kept in the project
+    if (slot == sas::SlotRef{sas::ModuleType::Cabinet, 1}) {                     // and so do the second cabinet's impulses
+        clearImpulseResponse(0, 1);
+        clearImpulseResponse(1, 1);
+    }
     return true;
 }
 
@@ -898,7 +931,7 @@ bool SasProcessor::canAddParallel() const {
     int modules = 0;
     for (int i = 0; i < rackOrder_.count; ++i)
         if (rackOrder_.slots[std::size_t(i)].type != sas::ModuleType::Amp) ++modules;
-    return !hasParallel() && modules + 3 <= RackState::kMaxModules;  // the splitter, the mixer and the second cabinet
+    return !hasParallel() && modules + 2 <= RackState::kMaxModules;  // the splitter and the mixer
 }
 
 bool SasProcessor::addParallel() {
@@ -907,26 +940,13 @@ bool SasProcessor::addParallel() {
     const int ampAt = indexInOrder({T::Amp, 0}), cabAt = indexInOrder({T::Cabinet, 0});
     if (ampAt < 0 || cabAt < 0) return false;
     // The splitter goes in front of the amp and of the compressor and overdrive that sit next to it (they keep working inside the amp, in lane A);
-    // lane B goes after the cabinet, then the mixer.
+    // the mixer goes behind the cabinet. Lane B starts empty: what goes in it is the player's choice (a second amp and cabinet, a reverb on its own...).
     int start = ampAt;
     while (start > 0 && (rackOrder_.slots[std::size_t(start - 1)].type == T::Overdrive || rackOrder_.slots[std::size_t(start - 1)].type == T::Compressor)) --start;
     const int end = std::max(ampAt, cabAt);
-    RackState::resetParams(apvts, {T::Amp, 1});
-    RackState::resetParams(apvts, {T::Cabinet, 1});
     RackState::resetParams(apvts, {T::Mixer, 0});
-    // The second amp starts as a copy of the first one's choice and condition, and with the default impulse, so the sum is at once a doubled amp.
-    if (auto* p = apvts.getParameter(RackState::paramId(ids::amp, 1))) {
-        p->beginChangeGesture();
-        p->setValueNotifyingHost(apvts.getParameter(ids::amp)->getValue());
-        p->endChangeGesture();
-    }
-    clearImpulseResponse(0, 1);
-    clearImpulseResponse(1, 1);
-    loadBuiltInImpulseResponse(firstCab_, 0, 1);
     const auto saved = rackOrder_;
     insertEntry(end + 1, {T::Mixer, 0}, 0);
-    insertEntry(end + 1, {T::Cabinet, 1}, 1);
-    insertEntry(end + 1, {T::Amp, 1}, 1);
     insertEntry(start, {T::Splitter, 0}, 0);
     if (!layoutOk()) {
         rackOrder_ = saved;

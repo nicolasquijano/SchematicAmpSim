@@ -312,9 +312,9 @@ void addExtraInstances(Layout& l, const juce::StringArray& ampNames) {
 }
 
 bool isFixed(sas::SlotRef slot) {
-    // The amps and the cabinets (of the second path too: they stay while there is a parallel) and the first gate. The splitter and the mixer
-    // are not removed one by one: they go with the parallel.
-    return slot.type == ModuleType::Amp || slot.type == ModuleType::Cabinet || (slot.instance == 0 && slot.type == ModuleType::Gate);
+    // The first amp, the first cabinet and the first gate. (The second amp and cabinet of a parallel are ordinary modules of lane B, added if the player
+    // wants them; the splitter and the mixer are not removed one by one: they go with the parallel.)
+    return slot.instance == 0 && (slot.type == ModuleType::Amp || slot.type == ModuleType::Cabinet || slot.type == ModuleType::Gate);
 }
 
 sas::RackOrder defaultOrder() {
@@ -414,13 +414,12 @@ sas::RackOrder fromTree(const juce::ValueTree& rack) {
         }
         --o.count;
     };
-    // A parallel is valid when it has a splitter and a mixer in order, and the second amp and cabinet in lane B; anything else is not a parallel at all
-    // and loses what belongs to one (the splitter, the mixer, lane B and the second amp and cabinet).
+    // A parallel is valid when it has a splitter and a mixer in order, and the second amp and cabinet (if there are any) are in lane B; anything else is
+    // not a parallel at all and loses what belongs to one (the splitter, the mixer, lane B and the second amp and cabinet).
     bool parallel = o.valid() && o.splitterIndex() >= 0;
-    if (parallel) {
-        const int a1 = indexOf({ModuleType::Amp, 1}), c1 = indexOf({ModuleType::Cabinet, 1});
-        parallel = a1 >= 0 && c1 >= 0 && o.lane[std::size_t(a1)] == 1 && o.lane[std::size_t(c1)] == 1;
-    }
+    if (parallel)
+        for (const auto second : {sas::SlotRef{ModuleType::Amp, 1}, sas::SlotRef{ModuleType::Cabinet, 1}})
+            if (const int i = indexOf(second); i >= 0 && o.lane[std::size_t(i)] != 1) parallel = false;
     if (!parallel)
         for (int i = o.count - 1; i >= 0; --i) {
             const auto slot = o.slots[std::size_t(i)];
