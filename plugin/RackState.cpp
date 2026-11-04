@@ -274,7 +274,7 @@ sas::RackOrder fromLegacy(const juce::AudioProcessorValueTreeState& apvts, bool 
     // The order the fixed-order plug-in ran in: pitch, gate, the modulation set "pre amp", the NAM pedal, the chain's compressor and overdrive,
     // the amp and the cabinet, the equaliser, the modulation set "post amp", delay and reverb.
     addIf(ModuleType::Pitch);
-    addIf(ModuleType::Gate);
+    add(ModuleType::Gate);  // the gate, the amp and the cabinet are always there
     const std::pair<ModuleType, const char*> mods[] = {{ModuleType::Phaser, ids::phPost}, {ModuleType::Chorus, ids::chPost}, {ModuleType::Vibe, ids::vbPost}};
     for (const auto& [t, post] : mods)
         if (!flag(apvts, post)) addIf(t);

@@ -16,7 +16,7 @@ version numbers follow [Semantic Versioning](https://semver.org/) (see [docs/REL
 - The Pre / Post switches of the phaser, chorus and vibe are gone: they are positions in the rack (the old values are read once to place the modules of an old project).
 
 ### Migrated
-- Projects and presets saved before the rack (without a `<RACK>` node) open as they were: the rack is built from the old parameters, with the same order, and renders the same sound (checked against reference renders). It holds every module of the old plug-in (the ones that are off cost nothing), so the automation of any switch keeps working; remove the ones you do not use with the x.
+- Projects and presets saved before the rack (without a `<RACK>` node) open as they were: the rack is built from the old parameters, with the same order, and renders the same sound (checked against reference renders). It holds the modules that were on or had their knobs touched, as bypassed modules if they were off, plus the gate, the amp and the cabinet; a switch that an old project automated but that was untouched in the saved state has no module to act on until you add one.
 
 ## [0.3.0-beta] - 2026-11-03
 

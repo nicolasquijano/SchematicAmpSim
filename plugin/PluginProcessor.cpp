@@ -1115,7 +1115,7 @@ void SasProcessor::setStateInformation(const void* data, int size) {
     apvts.replaceState(tree);
     // A state from before the rack has no order: it comes from the old parameters.
     if (const auto rack = tree.getChildWithName("RACK"); rack.isValid()) rackOrder_ = RackState::fromTree(rack);
-    else rackOrder_ = RackState::fromLegacy(apvts, tree.hasProperty("namPedalData"), true);  // every module: their switches may be automated
+    else rackOrder_ = RackState::fromLegacy(apvts, tree.hasProperty("namPedalData"));
     syncRack(sas::Transition::Immediate);
     for (int s = 0; s < kIrSlots; ++s) {
         if (tree.hasProperty(kIrDataKey[s])) {

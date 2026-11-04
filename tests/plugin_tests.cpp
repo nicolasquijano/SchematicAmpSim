@@ -1601,7 +1601,7 @@ TEST_CASE("a state without RACK gets one from the old parameters", "[rack]") {
         setParam(a, ids::tsOn, 1); setParam(a, ids::compOn, 1); setParam(a, ids::dlyOn, 1);
         roundTrip(a, b, stripRack);
         using T = ModuleType;
-        CHECK(typesOf(b.rackOrder()) == std::vector<T>{T::Pitch, T::Gate, T::Vibe, T::NamPedal, T::Compressor, T::Overdrive, T::Amp, T::Cabinet, T::Eq, T::Phaser, T::Chorus, T::Delay, T::Reverb});
+        CHECK(typesOf(b.rackOrder()) == std::vector<T>{T::Gate, T::Compressor, T::Overdrive, T::Amp, T::Cabinet, T::Phaser, T::Delay});
     }
     SECTION("every modulation in front of the amp keeps its old order") {
         SasProcessor a, b;
@@ -1609,17 +1609,17 @@ TEST_CASE("a state without RACK gets one from the old parameters", "[rack]") {
         setParam(a, ids::chPost, 0);
         roundTrip(a, b, stripRack);
         using T = ModuleType;
-        CHECK(typesOf(b.rackOrder()) == std::vector<T>{T::Pitch, T::Gate, T::Phaser, T::Chorus, T::Vibe, T::NamPedal, T::Compressor, T::Overdrive, T::Amp, T::Cabinet, T::Eq, T::Delay, T::Reverb});
+        CHECK(typesOf(b.rackOrder()) == std::vector<T>{T::Gate, T::Phaser, T::Chorus, T::Vibe, T::Amp, T::Cabinet});
     }
-    SECTION("a plain old state keeps every module, so the automation of any switch still has something to drive") {
+    SECTION("a plain old state is just the three fixed modules") {
         SasProcessor a, b;
         roundTrip(a, b, stripRack);
         using T = ModuleType;
-        CHECK(typesOf(b.rackOrder()) == std::vector<T>{T::Pitch, T::Gate, T::Phaser, T::Vibe, T::NamPedal, T::Compressor, T::Overdrive, T::Amp, T::Cabinet, T::Eq, T::Chorus, T::Delay, T::Reverb});
+        CHECK(typesOf(b.rackOrder()) == std::vector<T>{T::Gate, T::Amp, T::Cabinet});
     }
 }
 
-TEST_CASE("a disabled-but-tuned delay keeps its values in the migrated rack", "[rack]") {
+TEST_CASE("a disabled-but-tuned delay is kept as a bypassed module", "[rack]") {
     JuceInit init;
     SasProcessor a, b;
     setParam(a, ids::dlyMix, 60.0f);  // tuned, but the switch is off
