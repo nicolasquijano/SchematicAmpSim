@@ -1983,3 +1983,30 @@ TEST_CASE("modules added in front of the amp go before the compressor and overdr
     using T = ModuleType;
     CHECK(typesOf(p.rackOrder()) == std::vector<T>{T::Gate, T::Pitch, T::Compressor, T::Overdrive, T::Amp, T::Cabinet});
 }
+
+TEST_CASE("the rack page shows the path as tiles and opens one module at a time", "[rack]") {
+    JuceInit init;
+    SasProcessor p;
+    p.setRackOrder([] {
+        sas::RackOrder o;
+        for (auto s : {sas::SlotRef{ModuleType::Gate, 0}, {ModuleType::Overdrive, 0}, {ModuleType::Amp, 0}, {ModuleType::Cabinet, 0}, {ModuleType::Reverb, 0}}) o.slots[std::size_t(o.count++)] = s;
+        return o;
+    }());
+    RackPage page(p);
+    page.setSize(1000, 700);
+    auto shown = [&] {
+        std::vector<ModuleType> v;
+        for (int i = 0; i < page.unitCount(); ++i)
+            if (page.unitShown(i)) v.push_back(page.unitSlot(i).type);
+        return v;
+    };
+    CHECK(page.tileCount() == 5);
+    CHECK(page.selectedSlot() == sas::SlotRef{ModuleType::Amp, 0});  // the amp is open at the start
+    CHECK(shown() == std::vector<ModuleType>{ModuleType::Amp});
+    page.select({ModuleType::Reverb, 0});
+    CHECK(shown() == std::vector<ModuleType>{ModuleType::Reverb});
+    REQUIRE(p.addModule(ModuleType::Delay));
+    page.rebuild();
+    CHECK(page.selectedSlot().type == ModuleType::Delay);  // a module that was just added opens
+    CHECK(shown() == std::vector<ModuleType>{ModuleType::Delay});
+}
