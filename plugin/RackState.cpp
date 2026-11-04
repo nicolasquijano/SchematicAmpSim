@@ -15,7 +15,7 @@ namespace {
 
 // Caps (docs/MODULAR_RACK.md, 4.1; the CPU table in section 6 holds them).
 constexpr int kCaps[sas::kModuleTypeCount] = {2 /*Amp*/, 2 /*Cabinet*/, 2 /*Gate*/, 2 /*Compressor*/, 4 /*Overdrive*/, 2 /*NamPedal*/, 2 /*Phaser*/,
-                                              2 /*Chorus*/, 2 /*Vibe*/, 2 /*Pitch*/, 2 /*Eq*/, 2 /*Delay*/, 2 /*Reverb*/, 1 /*Splitter*/, 1 /*Mixer*/, 2 /*Tremolo*/, 2 /*Flanger*/, 2 /*Wah*/};
+                                              2 /*Chorus*/, 2 /*Vibe*/, 2 /*Pitch*/, 2 /*Eq*/, 2 /*Delay*/, 2 /*Reverb*/, 1 /*Splitter*/, 1 /*Mixer*/, 2 /*Tremolo*/, 2 /*Flanger*/, 2 /*Wah*/, 2 /*Fuzz*/};
 
 // Mono: both channels of a stereo pair get the same modulation. Stereo: the right channel's modulation is out of step with the left's.
 std::unique_ptr<juce::AudioParameterChoice> channelMode(const juce::ParameterID& id, const juce::String& name) {
@@ -87,6 +87,7 @@ const std::vector<const char*>& paramIds(ModuleType type) {
     static const std::vector<const char*> flanger{ids::flOn, ids::flRate, ids::flDepth, ids::flManual, ids::flFeedback, ids::flStereo};
     static const std::vector<const char*> wah{ids::wahOn, ids::wahMode, ids::wahPos, ids::wahHeel, ids::wahToe, ids::wahQ, ids::wahMix, ids::wahLevel, ids::wahSens,
                                               ids::wahAttack, ids::wahRelease, ids::wahDir, ids::wahRate, ids::wahStereo};
+    static const std::vector<const char*> fuzz{ids::fzOn, ids::fzType, ids::fzFuzz, ids::fzTone, ids::fzBias, ids::fzMix, ids::fzLevel};
     static const std::vector<const char*> pitch{ids::pitch, ids::pitchFine};
     static const std::vector<const char*> eq = [] {
         std::vector<const char*> v{ids::eqOn, ids::eqHpf, ids::eqLpf};
@@ -113,6 +114,7 @@ const std::vector<const char*>& paramIds(ModuleType type) {
         case ModuleType::Tremolo: return tremolo;
         case ModuleType::Flanger: return flanger;
         case ModuleType::Wah: return wah;
+        case ModuleType::Fuzz: return fuzz;
         case ModuleType::Pitch: return pitch;
         case ModuleType::Eq: return eq;
         case ModuleType::Delay: return delay;
@@ -134,6 +136,7 @@ const char* onId(ModuleType type) {
         case ModuleType::Tremolo: return ids::trOn;
         case ModuleType::Flanger: return ids::flOn;
         case ModuleType::Wah: return ids::wahOn;
+        case ModuleType::Fuzz: return ids::fzOn;
         case ModuleType::Eq: return ids::eqOn;
         case ModuleType::Delay: return ids::dlyOn;
         case ModuleType::Reverb: return ids::plOn;
@@ -235,6 +238,15 @@ void addParams(Layout& l, ModuleType type, int k) {
             l.add(pct(I(ids::flManual), N("Flanger manual"), 0.0f, 100.0f, 40.0f));
             l.add(pct(I(ids::flFeedback), N("Flanger feedback"), -90.0f, 90.0f, 50.0f));
             l.add(channelMode(id(I(ids::flStereo)), N("Flanger channels")));
+            break;
+        case ModuleType::Fuzz:
+            l.add(toggle(I(ids::fzOn), N("Fuzz"), false));
+            l.add(std::make_unique<juce::AudioParameterChoice>(id(I(ids::fzType)), N("Fuzz type"), juce::StringArray{"Face", "Muff", "Octave"}, 0));
+            l.add(knob(I(ids::fzFuzz), N("Fuzz amount"), 6.0f));
+            l.add(knob(I(ids::fzTone), N("Fuzz tone"), 5.0f));
+            l.add(knob(I(ids::fzBias), N("Fuzz bias"), 7.0f));
+            l.add(pct(I(ids::fzMix), N("Fuzz mix"), 0.0f, 100.0f, 100.0f));
+            l.add(dbParam(I(ids::fzLevel), N("Fuzz level"), -6.0f));
             break;
         case ModuleType::Wah: {
             auto ms = [&](const char* base, const char* name, float lo, float hi, float centre, float def) {

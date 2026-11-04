@@ -15,8 +15,8 @@
 namespace sas {
 
 // Append-only: a saved project stores the names, not the numbers, but keep the order anyway.
-enum class ModuleType { Amp = 0, Cabinet, Gate, Compressor, Overdrive, NamPedal, Phaser, Chorus, Vibe, Pitch, Eq, Delay, Reverb, Splitter, Mixer, Tremolo, Flanger, Wah };
-constexpr int kModuleTypeCount = int(ModuleType::Wah) + 1;
+enum class ModuleType { Amp = 0, Cabinet, Gate, Compressor, Overdrive, NamPedal, Phaser, Chorus, Vibe, Pitch, Eq, Delay, Reverb, Splitter, Mixer, Tremolo, Flanger, Wah, Fuzz };
+constexpr int kModuleTypeCount = int(ModuleType::Fuzz) + 1;
 
 const char* moduleTypeName(ModuleType t);
 std::optional<ModuleType> moduleTypeFromName(std::string_view name);

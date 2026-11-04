@@ -60,6 +60,36 @@ inline constexpr ReverbPreset kReverbPresets[] = {
 };
 inline constexpr int kReverbPresetCount = int(sizeof(kReverbPresets) / sizeof(kReverbPresets[0]));
 
+// The fuzz: the type (0 = Face, 1 = Muff, 2 = Octave) and its knobs (fuzz, tone and bias on the 0..10 scale of the panel, mix in percent).
+// Choosing one switches the fuzz on ("Off" switches it off).
+struct FuzzPreset {
+    const char* name;
+    bool on;
+    int type;
+    double fuzz, tone, bias, mix, levelDb;
+};
+
+inline constexpr FuzzPreset kFuzzPresets[] = {
+    {"Off", false, 0, 6, 5, 7, 100, -6},
+    // A light fuzz that still lets the guitar's volume knob clean it up: edge without the wall.
+    {"Light fuzz", true, 0, 3.5, 6, 8, 100, -4},
+    // The ragged, furry sound of the late 1960s: loud, a little unruly.
+    {"Vintage face", true, 0, 7, 5, 7, 100, -6},
+    // Starved of bias: it sputters and gates as the note dies away.
+    {"Gated sputter", true, 0, 8, 4.5, 2, 100, -5},
+    // The singing, endless sustain of the big fuzz: smooth and thick for leads.
+    {"Sustain lead", true, 1, 7, 4, 5, 100, -8},
+    // Dark and heavy: the tone almost all the way to the lows, for slow riffs.
+    {"Doom wall", true, 1, 9, 1.5, 5, 100, -7},
+    // The tone toward the highs: thin and cutting, so it stays out of the way of a bass.
+    {"Bright cut", true, 1, 6, 8, 5, 100, -8},
+    // A fuzz with an octave above it: for leads high on the neck.
+    {"Octave lead", true, 2, 6.5, 6, 7, 100, -6},
+    // Half dry, half fuzz: it keeps the body of the chords and of a bass.
+    {"Blended fuzz", true, 0, 8, 5, 7, 55, -4},
+};
+inline constexpr int kFuzzPresetCount = int(sizeof(kFuzzPresets) / sizeof(kFuzzPresets[0]));
+
 // The wah: its range, its peak, and what moves it. Position is only used by the pedal modes; the pedal presets leave it where a player would park it
 // (the knob is the pedal, so it can be rocked from the host), the envelope and LFO ones ignore it. Choosing one switches the wah on ("Off" switches it off).
 struct WahPreset {

@@ -81,6 +81,7 @@ Layout SasProcessor::createLayout(const std::vector<sas::AmpDef>& defs) {
     RackState::addParams(l, sas::ModuleType::Tremolo, 0);
     RackState::addParams(l, sas::ModuleType::Flanger, 0);
     RackState::addParams(l, sas::ModuleType::Wah, 0);
+    RackState::addParams(l, sas::ModuleType::Fuzz, 0);
     RackState::addParams(l, sas::ModuleType::Compressor, 0);
     RackState::addParams(l, sas::ModuleType::NamPedal, 0);
     l.add(std::make_unique<juce::AudioParameterBool>(juce::ParameterID{ids::tunerOn, kVersion}, "Tuner", false));
@@ -485,6 +486,18 @@ void SasProcessor::applyModuleParams(const sas::RackOrder& order) {
                 static_cast<sas::FlangerModule*>(m)->setParams(q);
                 break;
             }
+            case T::Fuzz: {
+                sas::FuzzParams q;
+                q.on = p(ids::fzOn) > 0.5;
+                q.type = int(p(ids::fzType) + 0.5);
+                q.fuzz = p(ids::fzFuzz) / 10.0;
+                q.tone = p(ids::fzTone) / 10.0;
+                q.bias = p(ids::fzBias) / 10.0;
+                q.mix = p(ids::fzMix) / 100.0;
+                q.levelDb = p(ids::fzLevel);
+                static_cast<sas::FuzzModule*>(m)->setParams(q);
+                break;
+            }
             case T::Wah: {
                 sas::WahParams q;
                 q.on = p(ids::wahOn) > 0.5;
@@ -760,6 +773,7 @@ std::unique_ptr<sas::Module> SasProcessor::makeModule(sas::ModuleType type, int 
         case T::Tremolo: return std::make_unique<sas::TremoloModule>();
         case T::Flanger: return std::make_unique<sas::FlangerModule>();
         case T::Wah: return std::make_unique<sas::WahModule>();
+        case T::Fuzz: return std::make_unique<sas::FuzzModule>();
         case T::Pitch: return std::make_unique<sas::PitchModule>();
         case T::Eq: return std::make_unique<sas::EqModule>();
         case T::Delay: return std::make_unique<sas::DelayModule>();
@@ -869,7 +883,7 @@ bool SasProcessor::addModule(sas::ModuleType type, int insertAt, int wantedLane)
                 insertAt = ampAt;
                 while (insertAt > 0 && rackOrder_.slots[std::size_t(insertAt - 1)].type == T::Overdrive) --insertAt;
                 break;
-            case T::Gate: case T::NamPedal: case T::Pitch: case T::Wah: {
+            case T::Gate: case T::NamPedal: case T::Pitch: case T::Wah: case T::Fuzz: {
                 // In front of the compressor and the overdrive that sit next to the amp, so the amp keeps running them as it always did.
                 insertAt = ampAt;
                 while (insertAt > 0 && (rackOrder_.slots[std::size_t(insertAt - 1)].type == T::Overdrive || rackOrder_.slots[std::size_t(insertAt - 1)].type == T::Compressor)) --insertAt;
@@ -1457,6 +1471,26 @@ void SasProcessor::applyEqPreset(int index, int instance) {
         set(ids::eqGain[b], p.band[std::size_t(b)].gainDb);
         set(ids::eqQ[b], p.band[std::size_t(b)].q);
     }
+}
+
+void SasProcessor::applyFuzzPreset(int index, int instance) {
+    if (index < 0 || index >= kFuzzPresetCount) return;
+    const FuzzPreset& p = kFuzzPresets[index];
+    auto set = [this, instance](const char* id, double value) {
+        if (auto* q = apvts.getParameter(RackState::paramId(id, instance))) {
+            q->beginChangeGesture();
+            q->setValueNotifyingHost(q->convertTo0to1(float(value)));
+            q->endChangeGesture();
+        }
+    };
+    set(ids::fzOn, p.on ? 1.0 : 0.0);
+    if (!p.on) return;  // "Off" only switches it off, so the knobs keep what the player had set
+    set(ids::fzType, p.type);
+    set(ids::fzFuzz, p.fuzz);
+    set(ids::fzTone, p.tone);
+    set(ids::fzBias, p.bias);
+    set(ids::fzMix, p.mix);
+    set(ids::fzLevel, p.levelDb);
 }
 
 void SasProcessor::applyWahPreset(int index, int instance) {

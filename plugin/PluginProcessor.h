@@ -13,6 +13,7 @@
 #include "sas/amp_def.h"
 #include "sas/chain.h"
 #include "sas/chorus.h"
+#include "sas/fuzz.h"
 #include "sas/flanger.h"
 #include "sas/tremolo.h"
 #include "sas/wah.h"
@@ -131,6 +132,14 @@ inline constexpr const char* flRate = "fl_rate";          // Hz
 inline constexpr const char* flDepth = "fl_depth";        // percent
 inline constexpr const char* flManual = "fl_manual";      // percent, centre of the sweep
 inline constexpr const char* flFeedback = "fl_feedback";  // percent, -90 .. 90
+// The fuzz (sas/fuzz.h): a module of the rack only.
+inline constexpr const char* fzOn = "fz_on";
+inline constexpr const char* fzType = "fz_type";    // Face / Muff / Octave
+inline constexpr const char* fzFuzz = "fz_fuzz";    // 0 .. 10
+inline constexpr const char* fzTone = "fz_tone";    // 0 .. 10
+inline constexpr const char* fzBias = "fz_bias";    // 0 .. 10
+inline constexpr const char* fzMix = "fz_mix";      // percent
+inline constexpr const char* fzLevel = "fz_level";  // dB
 // The wah (sas/wah.h): a module of the rack only.
 inline constexpr const char* wahOn = "wah_on";
 inline constexpr const char* wahMode = "wah_mode";        // pedal / envelope / LFO
@@ -241,6 +250,7 @@ public:
     void applyDelayPreset(int index, int instance = 0);   // each effect has its own presets (plugin/FxPresets.h)
     void applyReverbPreset(int index, int instance = 0);
     void applyWahPreset(int index, int instance = 0);
+    void applyFuzzPreset(int index, int instance = 0);
     void clearImpulseResponse(int slot = 0, int cabinet = 0);
     juce::String impulseResponseName(int slot = 0, int cabinet = 0) const;
     // Magnitude response of the loaded IR in dB (mean 0), log-spaced from 50 Hz to 10 kHz; empty when nothing is loaded.

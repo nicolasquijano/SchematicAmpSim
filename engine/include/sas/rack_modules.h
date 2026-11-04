@@ -10,6 +10,7 @@
 
 #include "sas/chain.h"
 #include "sas/chorus.h"
+#include "sas/fuzz.h"
 #include "sas/flanger.h"
 #include "sas/tremolo.h"
 #include "sas/wah.h"
@@ -96,6 +97,22 @@ private:
     std::unique_ptr<Compressor> comp_;
     CompControls controls_;
     bool on_ = false;
+};
+
+// A fuzz pedal (sas/fuzz.h): mono, in front of the amp. Like the Tube Screamer it loads the guitar, and it has the latency of its oversampling.
+class FuzzModule final : public Module {
+public:
+    void prepare(double fs, int) override { dsp_.prepare(fs); }
+    void process(float* l, float*, std::size_t n) override { dsp_.process(l, n); }
+    bool active() const override { return dsp_.active(); }
+    bool buffered() const override { return true; }
+    Channels channels() const override { return Channels::MonoOnly; }
+    double latencySamples() const override { return dsp_.latencySamples(); }
+    void reset() override { dsp_.reset(); }
+    void setParams(const FuzzParams& p) { dsp_.setParams(p); }
+
+private:
+    Fuzz dsp_;
 };
 
 // A Tube Screamer of its own, at twice the host rate (the one the amp runs inside its oversampled loop is not this one).

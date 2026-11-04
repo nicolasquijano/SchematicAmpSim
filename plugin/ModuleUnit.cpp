@@ -29,6 +29,8 @@ const std::vector<Item>& itemsFor(ModuleType t) {
                                            {Item::Combo, ids::trStereo, "CHANNELS"}};
     static const std::vector<Item> flanger{{Item::Knob, ids::flRate, "RATE Hz"}, {Item::Knob, ids::flDepth, "DEPTH %"}, {Item::Knob, ids::flManual, "MANUAL %"},
                                            {Item::Knob, ids::flFeedback, "FEEDBACK %"}, {Item::Combo, ids::flStereo, "CHANNELS"}};
+    static const std::vector<Item> fuzz{{Item::Combo, ids::fzType, "TYPE"}, {Item::Knob, ids::fzFuzz, "FUZZ"}, {Item::Knob, ids::fzTone, "TONE"},
+                                        {Item::Knob, ids::fzBias, "BIAS"}, {Item::Knob, ids::fzMix, "MIX %"}, {Item::Knob, ids::fzLevel, "LEVEL dB"}};
     static const std::vector<Item> wah{{Item::Combo, ids::wahMode, "MODE"}, {Item::Knob, ids::wahPos, "PEDAL %"}, {Item::Knob, ids::wahHeel, "HEEL Hz"},
                                        {Item::Knob, ids::wahToe, "TOE Hz"}, {Item::Knob, ids::wahQ, "Q"}, {Item::Knob, ids::wahMix, "MIX %"},
                                        {Item::Knob, ids::wahLevel, "LEVEL dB"}, {Item::Knob, ids::wahSens, "ENV SENS %"}, {Item::Knob, ids::wahAttack, "ENV ATTACK ms"},
@@ -55,6 +57,7 @@ const std::vector<Item>& itemsFor(ModuleType t) {
         case ModuleType::Tremolo: return tremolo;
         case ModuleType::Flanger: return flanger;
         case ModuleType::Wah: return wah;
+        case ModuleType::Fuzz: return fuzz;
         case ModuleType::Pitch: return pitch;
         case ModuleType::Delay: return delay;
         case ModuleType::Reverb: return reverb;
@@ -76,6 +79,7 @@ const char* nameOf(ModuleType t) {
         case ModuleType::Tremolo: return "TREMOLO";
         case ModuleType::Flanger: return "FLANGER";
         case ModuleType::Wah: return "WAH";
+        case ModuleType::Fuzz: return "FUZZ";
         case ModuleType::Pitch: return "PITCH";
         case ModuleType::Eq: return "EQ";
         case ModuleType::Delay: return "DELAY";
@@ -346,6 +350,16 @@ ModuleUnit::ModuleUnit(SasProcessor& processor, sas::SlotRef slot, const HostedB
                 for (int i = 0; i < kReverbPresetCount; ++i) menu.addItem(i + 1, juce::String(kReverbPresets[i].name));
                 menu.showMenuAsync(juce::PopupMenu::Options().withTargetComponent(&extraB_), [this](int choice) {
                     if (choice > 0) processor_.applyReverbPreset(choice - 1, slot_.instance);
+                });
+            };
+            break;
+        case ModuleType::Fuzz:
+            extraB_.setButtonText("Presets");
+            extraB_.onClick = [this] {
+                juce::PopupMenu menu;
+                for (int i = 0; i < kFuzzPresetCount; ++i) menu.addItem(i + 1, juce::String(kFuzzPresets[i].name));
+                menu.showMenuAsync(juce::PopupMenu::Options().withTargetComponent(&extraB_), [this](int choice) {
+                    if (choice > 0) processor_.applyFuzzPreset(choice - 1, slot_.instance);
                 });
             };
             break;

@@ -2488,7 +2488,7 @@ TEST_CASE("the tremolo and the flanger are modules of the rack: added, heard, sa
     JuceInit init;
     using T = sas::ModuleType;
     const auto in = legacy::input();
-    for (const auto type : {T::Tremolo, T::Flanger, T::Wah}) {
+    for (const auto type : {T::Tremolo, T::Flanger, T::Wah, T::Fuzz}) {
         const bool trem = type == T::Tremolo;
         SasProcessor p;
         p.prepareToPlay(48000.0, 256);
@@ -2496,7 +2496,7 @@ TEST_CASE("the tremolo and the flanger are modules of the rack: added, heard, sa
         const auto before = playOn(p, in);
         REQUIRE(p.addModule(type));
         { const auto order = typesOf(p.rackOrder()); CHECK(std::find(order.begin(), order.end(), type) != order.end()); }
-        setParam(p, trem ? ids::trOn : type == T::Wah ? ids::wahOn : ids::flOn, 1.0f);
+        setParam(p, trem ? ids::trOn : type == T::Wah ? ids::wahOn : type == T::Fuzz ? ids::fzOn : ids::flOn, 1.0f);
         if (trem) setParam(p, ids::trDepth, 100.0f);
         for (int i = 0; i < 40; ++i) playOn(p, std::vector<float>(256, 0.0f));
         const auto after = playOn(p, in);
@@ -2537,4 +2537,25 @@ TEST_CASE("wah presets set the whole wah, switch it on, and Off leaves the knobs
     p.applyWahPreset(0);   // "Off"
     CHECK(val(ids::wahOn) < 0.5f);
     CHECK(val(ids::wahRate) == rate);
+}
+
+TEST_CASE("fuzz presets set the whole fuzz, switch it on, and Off leaves the knobs alone", "[rack]") {
+    JuceInit init;
+    SasProcessor p;
+    p.prepareToPlay(48000.0, 256);
+    REQUIRE(p.addModule(sas::ModuleType::Fuzz));
+    auto val = [&](const char* id) { return p.apvts.getRawParameterValue(id)->load(); };
+    for (int i = 1; i < kFuzzPresetCount; ++i) {
+        p.applyFuzzPreset(i);
+        const FuzzPreset& f = kFuzzPresets[i];
+        CHECK(val(ids::fzOn) > 0.5f);
+        CHECK(int(val(ids::fzType) + 0.5f) == f.type);
+        CHECK(val(ids::fzFuzz) == Catch::Approx(f.fuzz).margin(0.05));
+        CHECK(val(ids::fzMix) == Catch::Approx(f.mix).margin(0.5));
+    }
+    p.applyFuzzPreset(8);  // "Blended fuzz"
+    const float mix = val(ids::fzMix);
+    p.applyFuzzPreset(0);
+    CHECK(val(ids::fzOn) < 0.5f);
+    CHECK(val(ids::fzMix) == mix);
 }
