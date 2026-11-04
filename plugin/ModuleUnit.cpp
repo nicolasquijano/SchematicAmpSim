@@ -268,7 +268,7 @@ ModuleUnit::ModuleUnit(SasProcessor& processor, sas::SlotRef slot, const HostedB
     down_.onClick = [this] { if (onMove) onMove(slot_, +1); };
     remove_.onClick = [this] { if (onRemove) onRemove(slot_); };
     add_.onClick = [this] { if (onAddAfter) onAddAfter(slot_); };
-    remove_.setEnabled(slot.type != ModuleType::Amp);
+    remove_.setEnabled(!RackState::isFixed(slot));
     add_.setTooltip("Add a module after this one");
 
     switch (slot.type) {

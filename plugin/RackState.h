@@ -34,7 +34,9 @@ void addExtraInstances(juce::AudioProcessorValueTreeState::ParameterLayout& layo
 std::unique_ptr<juce::AudioParameterFloat> knob(const juce::String& id, const juce::String& name, float def);
 std::unique_ptr<juce::AudioParameterFloat> dbParam(const juce::String& id, const juce::String& name, float defaultDb = 0.0f);
 
-// Amp and cabinet: what a new instance of the plug-in starts with.
+// The modules that are always in the rack and cannot be removed: the amp, the first noise gate and the cabinet.
+bool isFixed(sas::SlotRef slot);
+// What a new instance of the plug-in starts with: the fixed modules, gate, amp, cabinet.
 sas::RackOrder defaultOrder();
 // The rack the fixed-order plug-in's parameters describe (used for states saved before the rack existed). `namPedalLoaded`: the state carries a model
 // for the NAM pedal, which keeps the module even when it is off.

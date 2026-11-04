@@ -718,7 +718,7 @@ bool SasProcessor::addModule(sas::ModuleType type, int insertAt) {
 }
 
 bool SasProcessor::removeModule(sas::SlotRef slot) {
-    if (slot.type == sas::ModuleType::Amp) return false;
+    if (RackState::isFixed(slot)) return false;  // the amp, the first gate and the cabinet are always there
     int at = -1;
     for (int i = 0; i < rackOrder_.count; ++i)
         if (rackOrder_.slots[std::size_t(i)] == slot) at = i;

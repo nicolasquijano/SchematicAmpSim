@@ -1,4 +1,5 @@
 #include "PluginEditor.h"
+#include "IconData.h"
 #include "RackPage.h"
 #include "RackState.h"
 #include "EqPresets.h"
@@ -593,7 +594,7 @@ SasEditor::SasEditor(SasProcessor& p)
 
     showAmp(processor_.selectedAmpIndex());
     setResizable(true, true);
-    setResizeLimits(920, 480, 1700, 1000);
+    setResizeLimits(920, 480, 3840, 2400);
     setSize(1000, 560);
     startTimerHz(30);
     timerCallback();
@@ -1087,28 +1088,17 @@ void SasEditor::chooseImpulseResponse(int slot) {
 void SasEditor::drawLogo(juce::Graphics& g, juce::Rectangle<float> r) const {
     const float size = std::min(r.getHeight(), 38.0f);
     const auto c = juce::Point<float>(r.getX() + size * 0.5f + 2.0f, r.getCentreY());
-    const float u = size / 38.0f;  // the drawing below is laid out for a 38 px box
+    const float u = size / 38.0f;  // the layout below is made for a 38 px box
     const auto accent = look_.accent();
 
-    g.setColour(accent.withAlpha(0.16f));  // soft glow behind the mark
-    g.fillEllipse(c.x - 17.0f * u, c.y - 17.0f * u, 34.0f * u, 34.0f * u);
-    g.setColour(accent);
-    g.drawEllipse(c.x - 14.0f * u, c.y - 14.0f * u, 28.0f * u, 28.0f * u, 1.8f);
-    // Plate with its lead, dashed grid with its lead, cathode with its lead.
-    g.drawLine(c.x - 6.0f * u, c.y - 7.0f * u, c.x + 6.0f * u, c.y - 7.0f * u, 2.4f);
-    g.drawLine(c.x, c.y - 7.0f * u, c.x, c.y - 17.0f * u, 1.6f);
-    for (int i = 0; i < 4; ++i) {
-        const float x0 = c.x - 7.0f * u + float(i) * 4.0f * u;
-        g.drawLine(x0, c.y, x0 + 2.4f * u, c.y, 1.6f);
+    // The product icon (a glowing tube on a dark rounded square), from the same artwork as the application icon.
+    static const juce::Image icon = juce::ImageCache::getFromMemory(IconData::icon256_png, IconData::icon256_pngSize);
+    if (icon.isValid()) {
+        g.setImageResamplingQuality(juce::Graphics::highResamplingQuality);
+        g.drawImage(icon, juce::Rectangle<float>(c.x - size * 0.5f, c.y - size * 0.5f, size, size), juce::RectanglePlacement::centred);
     }
-    g.drawLine(c.x - 7.0f * u, c.y, c.x - 17.0f * u, c.y, 1.6f);
-    juce::Path cathode;
-    cathode.startNewSubPath(c.x - 5.0f * u, c.y + 8.0f * u);
-    cathode.quadraticTo(c.x, c.y + 3.5f * u, c.x + 5.0f * u, c.y + 8.0f * u);
-    g.strokePath(cathode, juce::PathStrokeType(1.8f));
-    g.drawLine(c.x, c.y + 6.0f * u, c.x, c.y + 17.0f * u, 1.6f);
 
-    const float tx = c.x + 20.0f * u;
+    const float tx = c.x + 23.0f * u;
     g.setColour(look_.text());
     g.setFont(AmpLookAndFeel::font(14.0f, true, 0.14f));
     g.drawText("SCHEMATIC", juce::Rectangle<float>(tx, r.getY() + 3.0f, r.getRight() - tx, 16.0f), juce::Justification::centredLeft);
@@ -1140,6 +1130,14 @@ void SasEditor::paint(juce::Graphics& g) {
     g.drawText(title_, left, 12, getWidth() - left - 12 - 160, 34, juce::Justification::centredLeft);
     g.setGradientFill(juce::ColourGradient(look_.accent().withAlpha(0.7f), float(left), 0.0f, look_.accent().withAlpha(0.0f), float(getWidth() - 12), 0.0f, false));
     g.fillRect(float(left), 49.0f, float(getWidth() - 12 - left), 1.0f);
+}
+
+void SasEditor::parentHierarchyChanged() {
+    // The standalone application's window only has minimise and close; a rack with many modules wants the whole screen.
+    if (auto* window = dynamic_cast<juce::DocumentWindow*>(getTopLevelComponent())) {
+        window->setTitleBarButtonsRequired(juce::DocumentWindow::allButtons, false);
+        window->setResizable(true, false);
+    }
 }
 
 void SasEditor::resized() {

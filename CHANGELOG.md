@@ -6,10 +6,11 @@ version numbers follow [Semantic Versioning](https://semver.org/) (see [docs/REL
 ## [Unreleased]
 
 ### Added
-- A **modular rack**. Everything but the tuner is now a module of an ordered rack: the amp (with its condition and speaker dynamics), the cabinet, noise gate, compressor, overdrive, NAM pedal, phaser, chorus, vibe, pitch, EQ, delay and reverb. A **+** button adds modules (up to twelve besides the amp; several of most kinds, so two overdrives or two reverbs), they are reordered by dragging or with the arrows (a reverb before the amp, a delay in front of the cabinet), and removed with the x. Reordering fades the output for a few milliseconds so nothing clicks, and a module keeps its state (a reverb its tail) when it moves. Each unit shows its CPU use; a mono module after a stereo one says it sums to mono.
+- A **modular rack**. Everything but the tuner is now a module of an ordered rack: the amp (with its condition and speaker dynamics), the cabinet, noise gate, compressor, overdrive, NAM pedal, phaser, chorus, vibe, pitch, EQ, delay and reverb. The noise gate, the amp and the cabinet are always there (they cannot be removed); a **+** button adds the rest (up to twelve besides the amp; several of most kinds, so two overdrives or two reverbs), they are reordered by dragging or with the arrows (a reverb before the amp, a delay in front of the cabinet), and removed with the x. Reordering fades the output for a few milliseconds so nothing clicks, and a module keeps its state (a reverb its tail) when it moves. Each unit shows its CPU use; a mono module after a stereo one says it sums to mono.
 - The extra instances have their own host parameters (`ts_drive__2`, `pl_decay__2`...); the first instance of each kind keeps the ids it always had, so automation keeps working.
 
 ### Changed
+- The standalone window can be maximised, and the editor shows the product icon.
 - The editor has two pages, **Rack** and **Tuner**; the Amp, Cabinet, Effects, Pitch, EQ, Mod and Space pages are units of the rack. The **amp condition** (tubes, bias, noise, wear, unit) and the speaker dynamics are part of the amp unit.
 - A compressor and an overdrive right in front of the amp (in that order) still run inside the amp's own front end, so the sound of existing projects does not change.
 - The Pre / Post switches of the phaser, chorus and vibe are gone: they are positions in the rack (the old values are read once to place the modules of an old project).

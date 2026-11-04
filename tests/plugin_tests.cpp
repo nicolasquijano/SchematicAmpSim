@@ -1678,7 +1678,7 @@ TEST_CASE("the order and every extra instance's parameters survive a round trip"
     JuceInit init;
     SasProcessor a, b;
     sas::RackOrder order;
-    for (auto s : {sas::SlotRef{ModuleType::Overdrive, 1}, {ModuleType::Overdrive, 0}, {ModuleType::Amp, 0}, {ModuleType::Cabinet, 0}, {ModuleType::Reverb, 1}, {ModuleType::Reverb, 0}})
+    for (auto s : {sas::SlotRef{ModuleType::Gate, 0}, {ModuleType::Overdrive, 1}, {ModuleType::Overdrive, 0}, {ModuleType::Amp, 0}, {ModuleType::Cabinet, 0}, {ModuleType::Reverb, 1}, {ModuleType::Reverb, 0}})
         order.slots[std::size_t(order.count++)] = s;
     a.setRackOrder(order);
     setParam(a, "ts_drive__2", 8.0f);
@@ -1897,10 +1897,10 @@ TEST_CASE("the editor has the Rack and Tuner pages, and the amp's condition live
     }
 }
 
-TEST_CASE("a new instance starts with just the amp and the cabinet", "[rack]") {
+TEST_CASE("a new instance starts with the three fixed modules: gate, amp and cabinet", "[rack]") {
     JuceInit init;
     SasProcessor p;
-    CHECK(typesOf(p.rackOrder()) == std::vector<ModuleType>{ModuleType::Amp, ModuleType::Cabinet});
+    CHECK(typesOf(p.rackOrder()) == std::vector<ModuleType>{ModuleType::Gate, ModuleType::Amp, ModuleType::Cabinet});
 }
 
 TEST_CASE("the rack page can be rendered to a picture", "[.screenshots]") {
@@ -1939,16 +1939,16 @@ TEST_CASE("a mono-only unit that follows a stereo one says it sums to mono", "[r
     SasProcessor p;
     p.setRackOrder([] {
         sas::RackOrder o;
-        for (auto s : {sas::SlotRef{ModuleType::Amp, 0}, {ModuleType::Cabinet, 0}, {ModuleType::Reverb, 0}, {ModuleType::Overdrive, 0}}) o.slots[std::size_t(o.count++)] = s;
+        for (auto s : {sas::SlotRef{ModuleType::Gate, 0}, {ModuleType::Amp, 0}, {ModuleType::Cabinet, 0}, {ModuleType::Reverb, 0}, {ModuleType::Overdrive, 0}}) o.slots[std::size_t(o.count++)] = s;
         return o;
     }());
     RackPage page(p);
     page.setSize(900, 600);
-    REQUIRE(page.unitCount() == 4);
-    CHECK_FALSE(page.unitSumsToMono(0));  // the amp has a mono signal
-    CHECK_FALSE(page.unitSumsToMono(1));  // the cabinet makes it stereo
-    CHECK_FALSE(page.unitSumsToMono(2));  // the reverb is stereo
-    CHECK(page.unitSumsToMono(3));        // the overdrive after it is not
+    REQUIRE(page.unitCount() == 5);
+    CHECK_FALSE(page.unitSumsToMono(1));  // the amp has a mono signal
+    CHECK_FALSE(page.unitSumsToMono(2));  // the cabinet makes it stereo
+    CHECK_FALSE(page.unitSumsToMono(3));  // the reverb is stereo
+    CHECK(page.unitSumsToMono(4));        // the overdrive after it is not
 }
 
 // ---------------------------------------------------------------- the review's findings
@@ -1981,7 +1981,7 @@ TEST_CASE("modules added in front of the amp go before the compressor and overdr
     REQUIRE(p.addModule(ModuleType::Gate));
     REQUIRE(p.addModule(ModuleType::Pitch));
     using T = ModuleType;
-    CHECK(typesOf(p.rackOrder()) == std::vector<T>{T::Gate, T::Pitch, T::Compressor, T::Overdrive, T::Amp, T::Cabinet});
+    CHECK(typesOf(p.rackOrder()) == std::vector<T>{T::Gate, T::Gate, T::Pitch, T::Compressor, T::Overdrive, T::Amp, T::Cabinet});
 }
 
 TEST_CASE("the rack page shows the path as tiles and opens one module at a time", "[rack]") {
@@ -2009,4 +2009,22 @@ TEST_CASE("the rack page shows the path as tiles and opens one module at a time"
     page.rebuild();
     CHECK(page.selectedSlot().type == ModuleType::Delay);  // a module that was just added opens
     CHECK(shown() == std::vector<ModuleType>{ModuleType::Delay});
+}
+
+TEST_CASE("the gate, the amp and the cabinet cannot be removed and a rack that lacks them gets them back", "[rack]") {
+    JuceInit init;
+    SasProcessor p;
+    CHECK_FALSE(p.removeModule({ModuleType::Gate, 0}));
+    CHECK_FALSE(p.removeModule({ModuleType::Amp, 0}));
+    CHECK_FALSE(p.removeModule({ModuleType::Cabinet, 0}));
+    CHECK_FALSE(p.canAdd(ModuleType::Cabinet));  // only one
+    p.setRackOrder([] {
+        sas::RackOrder o;
+        o.slots[std::size_t(o.count++)] = {ModuleType::Reverb, 0};
+        return o;
+    }());
+    using T = ModuleType;
+    CHECK(typesOf(p.rackOrder()) == std::vector<T>{T::Gate, T::Amp, T::Cabinet, T::Reverb});
+    REQUIRE(p.addModule(T::Gate));  // a second gate is an ordinary module
+    CHECK(p.removeModule({T::Gate, 1}));
 }

@@ -177,6 +177,7 @@ public:
 
     void paint(juce::Graphics&) override;
     void resized() override;
+    void parentHierarchyChanged() override;  // in the standalone window: the maximise button
     void pollMeters();  // reads the processor's peaks into the level bars (the timer calls it)
     void updateTuner();  // runs the pitch detection on the latest input (the timer calls it)
     void updateImpulseStatus();  // the impulse names and response curves of the cabinet unit (the timer calls it)

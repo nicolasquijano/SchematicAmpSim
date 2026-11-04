@@ -132,7 +132,7 @@ Amp, Volume, Volume 2, Bass, Middle, Treble, Presence, Master, Power, Input, Out
 Cab (Off / Filter / IR / NAM), Jack (1-4), Vibrato (On, Speed, Intensity) and Reverb and Resonance (amps that have them), the pedal controls (On, Drive, Tone, Level), the noise gate, the guitar input (pickup, cable) and the amp condition (Power tubes, Bias, Noise and hum, Wear, Unit).
 Which knobs apply depends on the selected amp. The editor has two pages: the **Rack** and the **Tuner**. Everything else is a module of the rack: the amp (with its
 condition and speaker), the cabinet, a noise gate, a compressor, overdrives, a NAM pedal, a phaser, a chorus, a vibe, a pitch shifter, an equaliser, a delay and a
-reverb. The **+** button adds modules (up to twelve besides the amp, with more than one of most kinds), and you drag them (or use the arrows) to put them in
+reverb. The noise gate, the amp and the cabinet are always there; the **+** tile adds the rest (up to twelve besides the amp, with more than one of most kinds), and you drag the tiles (or use the arrows) to put them in
 any order: a reverb before the amp, two overdrives, a delay in front of the cabinet. Moving a module does not click, each unit shows what it costs in CPU, and
 a mono module that follows a stereo one says that it sums it to mono. Projects and presets from before the rack open as they were: the order comes from the old
 parameters and the sound does not change.

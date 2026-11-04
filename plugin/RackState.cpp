@@ -230,11 +230,16 @@ void addExtraInstances(Layout& l) {
         for (int k = 1; k < maxInstances(static_cast<ModuleType>(t)); ++k) addParams(l, static_cast<ModuleType>(t), k);
 }
 
+bool isFixed(sas::SlotRef slot) {
+    return slot.type == ModuleType::Amp || (slot.instance == 0 && (slot.type == ModuleType::Gate || slot.type == ModuleType::Cabinet));
+}
+
 sas::RackOrder defaultOrder() {
     sas::RackOrder o;
-    o.slots[0] = {ModuleType::Amp, 0};
-    o.slots[1] = {ModuleType::Cabinet, 0};
-    o.count = 2;
+    o.slots[0] = {ModuleType::Gate, 0};
+    o.slots[1] = {ModuleType::Amp, 0};
+    o.slots[2] = {ModuleType::Cabinet, 0};
+    o.count = 3;
     return o;
 }
 
@@ -313,18 +318,32 @@ sas::RackOrder fromTree(const juce::ValueTree& rack) {
         seen[int(*type)][inst] = true;
         o.slots[std::size_t(o.count++)] = {*type, inst};
     }
-    if (!amp) {  // the amp is always there: in front of the cabinet, or first
-        int at = 0;
+    // The fixed modules are always there: the amp (in front of the cabinet, or first), the gate first, the cabinet behind the amp.
+    auto indexOf = [&](sas::SlotRef want) {
         for (int i = 0; i < o.count; ++i)
-            if (o.slots[std::size_t(i)].type == ModuleType::Cabinet) {
-                at = i;
-                break;
-            }
-        if (o.count >= sas::RackOrder::kMax) --o.count;
+            if (o.slots[std::size_t(i)] == want) return i;
+        return -1;
+    };
+    auto insertSlot = [&](int at, sas::SlotRef slot) {
+        if (o.count >= sas::RackOrder::kMax) {  // full: the last module that is not fixed makes room
+            for (int i = o.count - 1; i >= 0; --i)
+                if (!isFixed(o.slots[std::size_t(i)])) {
+                    for (int k = i; k + 1 < o.count; ++k) o.slots[std::size_t(k)] = o.slots[std::size_t(k + 1)];
+                    --o.count;
+                    if (at > i) --at;
+                    break;
+                }
+        }
         for (int i = o.count; i > at; --i) o.slots[std::size_t(i)] = o.slots[std::size_t(i - 1)];
-        o.slots[std::size_t(at)] = {ModuleType::Amp, 0};
+        o.slots[std::size_t(at)] = slot;
         ++o.count;
+    };
+    if (!amp) {
+        const int cab = indexOf({ModuleType::Cabinet, 0});
+        insertSlot(cab >= 0 ? cab : 0, {ModuleType::Amp, 0});
     }
+    if (indexOf({ModuleType::Gate, 0}) < 0) insertSlot(0, {ModuleType::Gate, 0});
+    if (indexOf({ModuleType::Cabinet, 0}) < 0) insertSlot(indexOf({ModuleType::Amp, 0}) + 1, {ModuleType::Cabinet, 0});
     return o;
 }
 

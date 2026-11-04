@@ -134,7 +134,7 @@ Amp, Volume, Volume 2, Bass, Middle, Treble, Presence, Master, Power, Input, Out
 (en los amplis que los tienen), los controles de pedales (On, Drive, Tone, Level), el noise gate, la entrada de guitarra (pickup, cable) y la condición del ampli (tubos de potencia, Bias, ruido
 y zumbido, Wear, Unit). Qué perillas aplican depende del ampli elegido. El editor tiene dos páginas: el **Rack** y el **Tuner**. Todo lo demás es un módulo del rack: el ampli (con su
 condición y el parlante), el gabinete, un noise gate, un compresor, overdrives, un pedal NAM, un phaser, un chorus, un vibe, un pitch shifter, un ecualizador, un delay y
-un reverb. El botón **+** agrega módulos (hasta doce además del ampli, y más de uno de la mayoría de los tipos) y se arrastran (o con las flechas) para ponerlos en
+un reverb. El noise gate, el ampli y el gabinete siempre están; la ficha **+** agrega el resto (hasta doce además del ampli, y más de uno de la mayoría de los tipos) y las fichas se arrastran (o con las flechas) para ponerlas en
 el orden que quieras: un reverb antes del ampli, dos overdrives, un delay delante del gabinete. Mover un módulo no hace clic, cada unidad muestra cuánta CPU usa y un
 módulo mono que sigue a uno estéreo avisa que lo suma a mono. Los proyectos y presets de antes del rack se abren como estaban: el orden sale de los parámetros
 viejos y el sonido no cambia.

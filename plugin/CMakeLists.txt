@@ -96,8 +96,13 @@ inline const char* getNamedResource(const char*, int& size) { size = 0; return n
   target_include_directories(SchematicAmpSim PRIVATE "${CMAKE_BINARY_DIR}/cab_stub")
 endif()
 
+# The product icon, drawn at the top of the editor (the same artwork as the application icon).
+juce_add_binary_data(SasIcon HEADER_NAME IconData.h NAMESPACE IconData SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/icon/icon-256.png")
+set_target_properties(SasIcon PROPERTIES POSITION_INDEPENDENT_CODE ON)
+
 target_link_libraries(SchematicAmpSim
   PRIVATE
+    SasIcon
     $<$<BOOL:${_cab_wavs}>:SasCabs>
     sas_engine
     sas_amps
