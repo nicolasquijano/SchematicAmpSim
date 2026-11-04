@@ -240,6 +240,7 @@ public:
     const sas::SpectrumFeed& spectrumFeed() const { return spectrumFeed_; }
     void applyDelayPreset(int index, int instance = 0);   // each effect has its own presets (plugin/FxPresets.h)
     void applyReverbPreset(int index, int instance = 0);
+    void applyWahPreset(int index, int instance = 0);
     void clearImpulseResponse(int slot = 0, int cabinet = 0);
     juce::String impulseResponseName(int slot = 0, int cabinet = 0) const;
     // Magnitude response of the loaded IR in dB (mean 0), log-spaced from 50 Hz to 10 kHz; empty when nothing is loaded.

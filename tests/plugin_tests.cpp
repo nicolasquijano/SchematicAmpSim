@@ -10,6 +10,7 @@
 #include "PluginEditor.h"
 #include "RackState.h"
 #include "EqPresets.h"
+#include "FxPresets.h"
 
 namespace {
 
@@ -2511,4 +2512,29 @@ TEST_CASE("the tremolo and the flanger are modules of the rack: added, heard, sa
         REQUIRE(p.removeModule({type, 0}));
         { const auto order = typesOf(p.rackOrder()); CHECK(std::find(order.begin(), order.end(), type) == order.end()); }
     }
+}
+
+TEST_CASE("wah presets set the whole wah, switch it on, and Off leaves the knobs alone", "[rack]") {
+    JuceInit init;
+    SasProcessor p;
+    p.prepareToPlay(48000.0, 256);
+    REQUIRE(p.addModule(sas::ModuleType::Wah));
+    auto val = [&](const char* id) { return p.apvts.getRawParameterValue(id)->load(); };
+    for (int i = 1; i < kWahPresetCount; ++i) {
+        p.applyWahPreset(i);
+        const WahPreset& w = kWahPresets[i];
+        CHECK(val(ids::wahOn) > 0.5f);
+        CHECK(int(val(ids::wahMode) + 0.5f) == w.mode);
+        CHECK(val(ids::wahHeel) == Catch::Approx(w.heelHz).margin(1.0));
+        CHECK(val(ids::wahToe) == Catch::Approx(w.toeHz).margin(2.0));
+        CHECK(val(ids::wahQ) == Catch::Approx(w.q).margin(0.05));
+        CHECK((val(ids::wahDir) > 0.5f) == w.down);
+        CHECK((val(ids::wahStereo) > 0.5f) == w.stereo);
+        CHECK(w.heelHz < w.toeHz);
+    }
+    p.applyWahPreset(10);  // "Stereo swirl"
+    const float rate = val(ids::wahRate);
+    p.applyWahPreset(0);   // "Off"
+    CHECK(val(ids::wahOn) < 0.5f);
+    CHECK(val(ids::wahRate) == rate);
 }

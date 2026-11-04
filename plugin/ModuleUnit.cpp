@@ -349,6 +349,16 @@ ModuleUnit::ModuleUnit(SasProcessor& processor, sas::SlotRef slot, const HostedB
                 });
             };
             break;
+        case ModuleType::Wah:
+            extraB_.setButtonText("Presets");
+            extraB_.onClick = [this] {
+                juce::PopupMenu menu;
+                for (int i = 0; i < kWahPresetCount; ++i) menu.addItem(i + 1, juce::String(kWahPresets[i].name));
+                menu.showMenuAsync(juce::PopupMenu::Options().withTargetComponent(&extraB_), [this](int choice) {
+                    if (choice > 0) processor_.applyWahPreset(choice - 1, slot_.instance);
+                });
+            };
+            break;
         case ModuleType::Eq:
             extraB_.setButtonText("Presets");
             extraB_.onClick = [this] {

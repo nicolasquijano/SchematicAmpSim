@@ -1459,6 +1459,33 @@ void SasProcessor::applyEqPreset(int index, int instance) {
     }
 }
 
+void SasProcessor::applyWahPreset(int index, int instance) {
+    if (index < 0 || index >= kWahPresetCount) return;
+    const WahPreset& p = kWahPresets[index];
+    auto set = [this, instance](const char* id, double value) {
+        if (auto* q = apvts.getParameter(RackState::paramId(id, instance))) {
+            q->beginChangeGesture();
+            q->setValueNotifyingHost(q->convertTo0to1(float(value)));
+            q->endChangeGesture();
+        }
+    };
+    set(ids::wahOn, p.on ? 1.0 : 0.0);
+    if (!p.on) return;  // "Off" only switches it off, so the knobs keep what the player had set
+    set(ids::wahMode, p.mode);
+    set(ids::wahPos, p.position);
+    set(ids::wahHeel, p.heelHz);
+    set(ids::wahToe, p.toeHz);
+    set(ids::wahQ, p.q);
+    set(ids::wahMix, p.mix);
+    set(ids::wahLevel, p.levelDb);
+    set(ids::wahSens, p.sensitivity);
+    set(ids::wahAttack, p.attackMs);
+    set(ids::wahRelease, p.releaseMs);
+    set(ids::wahDir, p.down ? 1.0 : 0.0);
+    set(ids::wahRate, p.rateHz);
+    set(ids::wahStereo, p.stereo ? 1.0 : 0.0);
+}
+
 void SasProcessor::applyDelayPreset(int index, int instance) {
     if (index < 0 || index >= kDelayPresetCount) return;
     const DelayPreset& p = kDelayPresets[index];
