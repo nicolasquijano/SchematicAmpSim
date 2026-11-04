@@ -189,6 +189,8 @@ public:
     float headerInputDb() const { return headIn_.levelDb(); }
     float headerOutputDb() const { return headOut_.levelDb(); }
     bool headerMetersVisible() const { return headIn_.isVisible() && headOut_.isVisible(); }
+    juce::Slider& headerInputKnob() { return headInKnob_; }  // the input and output levels, in the header with the meters
+    juce::Slider& headerOutputKnob() { return headOutKnob_; }
     float totalCpu() const;  // the cost of the modules of the rack, in percent of a block
 
 private:
@@ -240,6 +242,8 @@ private:
     double tunerHz_ = 0.0;
     LevelBar inBar_, outBar_;
     LevelBar headIn_, headOut_;  // the same levels, in the header
+    juce::Slider headInKnob_{juce::Slider::RotaryVerticalDrag, juce::Slider::NoTextBox}, headOutKnob_{juce::Slider::RotaryVerticalDrag, juce::Slider::NoTextBox};
+    std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> headInAtt_, headOutAtt_;
     juce::Rectangle<int> headInLabel_, headOutLabel_;
     TubeGlow tubes_;
     int tick_ = 0;

@@ -2396,3 +2396,40 @@ TEST_CASE("an overdrive dropped on an empty cell of lane B, or between its tiles
         CHECK(page.tileLane(od) == 1);
     }
 }
+
+TEST_CASE("the speaker's dynamics are in the cabinet unit, of each amp", "[rack]") {
+    JuceInit init;
+    SasProcessor p;
+    p.prepareToPlay(48000.0, 512);
+    std::unique_ptr<juce::AudioProcessorEditor> ed(p.createEditor());
+    ed->setSize(1100, 900);
+    REQUIRE(p.addParallel());
+    auto* page = findRackPage(*ed);
+    REQUIRE(page != nullptr);
+    page->rebuild();
+    for (const auto& [id, instance] : {std::pair<const char*, int>{"speaker_dynamics", 0}, {"cabinet_b_speaker", 1}}) {
+        auto* knob = findById(*ed, id);
+        INFO(id);
+        REQUIRE(knob != nullptr);
+        auto* unit = knob->findParentComponentOfClass<ModuleUnit>();
+        REQUIRE(unit != nullptr);
+        CHECK(unit->slot() == sas::SlotRef{ModuleType::Cabinet, instance});
+    }
+}
+
+TEST_CASE("the input and output knobs are in the header with the meters", "[rack]") {
+    JuceInit init;
+    SasProcessor p;
+    p.prepareToPlay(48000.0, 512);
+    std::unique_ptr<juce::AudioProcessorEditor> base(p.createEditor());
+    auto* ed = dynamic_cast<SasEditor*>(base.get());
+    REQUIRE(ed != nullptr);
+    base->setSize(1100, 700);
+    CHECK(ed->headerInputKnob().isVisible());
+    CHECK(ed->headerOutputKnob().isVisible());
+    CHECK(ed->headerInputKnob().getY() < 40);  // in the header row, not in a unit
+    ed->headerInputKnob().setValue(6.0, juce::sendNotificationSync);
+    ed->headerOutputKnob().setValue(-3.0, juce::sendNotificationSync);
+    CHECK(p.apvts.getRawParameterValue(ids::input)->load() == Catch::Approx(6.0f));
+    CHECK(p.apvts.getRawParameterValue(ids::output)->load() == Catch::Approx(-3.0f));
+}

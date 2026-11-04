@@ -30,10 +30,8 @@ private:
     juce::ComboBox ampBox_, quality_, jack_, pickup_, tube_, noise_, unit_, selBox_[4];
     juce::Label ampCaption_, qualityCaption_, jackCaption_, pickupCaption_, tubeCaption_, noiseCaption_, unitCaption_, selCaption_[4], note_;
     std::vector<std::unique_ptr<KnobWithLabel>> knobs_;
-    KnobWithLabel input_, cable_, bias_, wear_, speaker_;
-    juce::ToggleButton intense_{"Intense"};
+    KnobWithLabel input_, cable_, bias_, wear_;
     std::unique_ptr<juce::AudioProcessorValueTreeState::ComboBoxAttachment> ampAtt_, qualityAtt_, pickupAtt_, noiseAtt_, unitAtt_;
-    std::unique_ptr<juce::AudioProcessorValueTreeState::ButtonAttachment> intenseAtt_;
 };
 
 class CabinetPanelB final : public juce::Component, private juce::Timer {
@@ -59,7 +57,9 @@ private:
     juce::Label cabCaption_, nameA_, nameB_, note_;
     juce::TextButton loadA_{"Load..."}, clearA_{"Clear"}, loadB_{"Load..."}, clearB_{"Clear"};
     IrCurve curveA_, curveB_;
-    KnobWithLabel blend_, width_, doubleAmount_, doubleTime_;
+    KnobWithLabel blend_, width_, doubleAmount_, doubleTime_, speaker_;  // the speaker's dynamics belong to the second amp, and are with its cabinet
+    juce::ToggleButton intense_{"Intense"};
     std::unique_ptr<juce::AudioProcessorValueTreeState::ComboBoxAttachment> cabAtt_;
+    std::unique_ptr<juce::AudioProcessorValueTreeState::ButtonAttachment> intenseAtt_;
     std::unique_ptr<juce::FileChooser> chooser_;
 };

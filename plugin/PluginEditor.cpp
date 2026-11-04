@@ -580,19 +580,33 @@ SasEditor::SasEditor(SasProcessor& p)
     presets_.onClick = [this] { showPresetMenu(); };
     addAndMakeVisible(headIn_);
     addAndMakeVisible(headOut_);
+    for (auto* knob : {&headInKnob_, &headOutKnob_}) {
+        addAndMakeVisible(*knob);
+        knob->setRotaryParameters(juce::degreesToRadians(225.0f), juce::degreesToRadians(495.0f), true);
+        knob->setMouseDragSensitivity(160);
+        knob->setPopupDisplayEnabled(true, true, this);  // the value, while it is dragged
+    }
+    headInAtt_ = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment>(p.apvts, ids::input, headInKnob_);
+    headOutAtt_ = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment>(p.apvts, ids::output, headOutKnob_);
+    headInKnob_.setDoubleClickReturnValue(true, p.apvts.getParameter(ids::input)->convertFrom0to1(p.apvts.getParameter(ids::input)->getDefaultValue()));
+    headOutKnob_.setDoubleClickReturnValue(true, p.apvts.getParameter(ids::output)->convertFrom0to1(p.apvts.getParameter(ids::output)->getDefaultValue()));
+    headInKnob_.setTooltip("Input level (dB), in front of the first amp");
+    headOutKnob_.setTooltip("Output level (dB)");
 
     // Who lives where: the left column and the tuner stay with the editor; the amp's controls and the cabinet's go to their panels, which the
     // amp unit and the cabinet unit of the rack page host.
-    for (auto* c : std::initializer_list<juce::Component*>{&input_, &output_, &cable_, &bias_, &wear_, &speaker_, &speakerIntense_, &inBar_, &outBar_, &tubes_, &pickup_, &pickupCaption_,
+    for (auto* c : std::initializer_list<juce::Component*>{&input_, &output_, &cable_, &bias_, &wear_, &inBar_, &outBar_, &tubes_, &pickup_, &pickupCaption_,
                                                            &tube_, &tubeCaption_, &noise_, &noiseCaption_, &unit_, &unitCaption_, &idleLabel_, &conditionNote_, &namLoad_, &namClear_,
                                                            &namName_, &namNote_, &selBox_[0], &selBox_[1], &selBox_[2], &selBox_[3], &selCaption_[0], &selCaption_[1], &selCaption_[2], &selCaption_[3]})
         ampPanel_.addChildComponent(*c);
     for (auto* c : std::initializer_list<juce::Component*>{&cab_, &cabCaption_, &blend_, &blendNote_, &loadA_, &clearA_, &loadB_, &clearB_, &nameA_, &nameB_, &curveA_, &curveB_, &cabNote_,
-                                                           &stereoWidth_, &doubleAmount_, &doubleTime_, &namCabLoad_, &namCabClear_, &namCabName_})
+                                                           &stereoWidth_, &doubleAmount_, &doubleTime_, &namCabLoad_, &namCabClear_, &namCabName_, &speaker_, &speakerIntense_})
         cabPanel_.addAndMakeVisible(*c);
-    for (auto* c : std::initializer_list<juce::Component*>{&input_, &output_, &cable_, &bias_, &wear_, &speaker_, &speakerIntense_, &inBar_, &outBar_, &tubes_, &pickup_, &pickupCaption_,
+    for (auto* c : std::initializer_list<juce::Component*>{&cable_, &bias_, &wear_, &tubes_, &pickup_, &pickupCaption_,
                                                            &tube_, &tubeCaption_, &noise_, &noiseCaption_, &unit_, &unitCaption_, &idleLabel_, &conditionNote_})
         c->setVisible(true);
+    for (auto* c : std::initializer_list<juce::Component*>{&input_, &output_, &inBar_, &outBar_}) c->setVisible(false);  // their place is the header now
+    speaker_.setComponentID("speaker_dynamics");
     tube_.setComponentID("cond_tube");
     bias_.setComponentID("cond_bias");
     wear_.setComponentID("cond_wear");
@@ -1223,7 +1237,7 @@ void SasEditor::resized() {
         head.removeFromRight(4);
         rackTab_.setBounds(head.removeFromRight(54).withTrimmedTop(6).withTrimmedBottom(2));
         head.removeFromRight(14);
-        // The meters: always there, whatever the page.
+        // The meters and the level knobs: always there, whatever the page. From the right: the cost, then out (bar, knob, label), then in.
         const int row = head.getCentreY();
         int x = head.getRight();
         x -= 74;
@@ -1231,11 +1245,15 @@ void SasEditor::resized() {
         x -= 84;
         headOut_.setBounds(x, row - 5, 84, 10);
         x -= 32;
+        headOutKnob_.setBounds(x, row - 15, 30, 30);
+        x -= 30;
         headOutLabel_ = {x, row - 8, 28, 16};
         x -= 12;
         x -= 84;
         headIn_.setBounds(x, row - 5, 84, 10);
-        x -= 24;
+        x -= 32;
+        headInKnob_.setBounds(x, row - 15, 30, 30);
+        x -= 22;
         headInLabel_ = {x, row - 8, 20, 16};
         area.removeFromTop(4);
     }
@@ -1329,10 +1347,7 @@ void SasEditor::layoutAmpPanel() {
         for (auto& k : ampKnobs_) k->setBounds(row.removeFromLeft(w));
     }
 
-    // Middle row: the guitar, the power tubes and the levels.
-    const int knobW = 76;
-    auto ioPanel = mid.removeFromRight(knobW * 2 + 12 + 2 * 16);
-    mid.removeFromRight(gap);
+    // Middle row: the guitar and the power tubes (the input and output levels are in the header).
     auto guitarPanel = mid.removeFromLeft(190);
     mid.removeFromLeft(gap);
     panels.push_back({guitarPanel, "GUITAR INPUT"});
@@ -1347,21 +1362,8 @@ void SasEditor::layoutAmpPanel() {
     if (!namAmp) panels.push_back({mid, "POWER TUBES"});
     tubes_.setBounds(mid.reduced(8, 4).withTrimmedTop(18));
     tubes_.setVisible(!namAmp);
-    panels.push_back({ioPanel, "LEVELS"});
-    {
-        auto in = ioPanel.reduced(6, 4);
-        in.removeFromTop(16);
-        auto col = [&](KnobWithLabel& k, LevelBar& bar, juce::Rectangle<int> r) {
-            bar.setBounds(r.removeFromRight(12).withTrimmedTop(20).withTrimmedBottom(20));
-            k.setBounds(r);
-        };
-        col(input_, inBar_, in.removeFromLeft(in.getWidth() / 2));
-        col(output_, outBar_, in);
-    }
 
-    // Bottom row: the amp's condition and the speaker.
-    auto speakerPanel = condRow.removeFromRight(118);
-    condRow.removeFromRight(gap);
+    // Bottom row: the amp's condition (the speaker's dynamics are with the cabinet).
     auto condPanel = condRow;
     panels.push_back({condPanel, "AMP CONDITION"});
     {
@@ -1382,13 +1384,6 @@ void SasEditor::layoutAmpPanel() {
         auto col3 = cin.removeFromLeft(110);
         unitCaption_.setBounds(col3.removeFromTop(16));
         unit_.setBounds(col3.removeFromTop(24));
-    }
-    panels.push_back({speakerPanel, "SPEAKER"});
-    {
-        auto in = speakerPanel.reduced(6, 4);
-        in.removeFromTop(16);
-        speakerIntense_.setBounds(in.removeFromBottom(20).withSizeKeepingCentre(80, 20));
-        speaker_.setBounds(in);
     }
 }
 
@@ -1419,9 +1414,11 @@ void SasEditor::layoutCabPanel() {
     slot(slotA, "IMPULSE A", loadA_, clearA_, nameA_, curveA_);
     slot(slotB, "IMPULSE B", loadB_, clearB_, nameB_, curveB_);
 
-    auto cabPanel = area.removeFromLeft(220);
+    auto cabPanel = area.removeFromLeft(200);
     area.removeFromLeft(gap);
     auto blendPanel = area.removeFromLeft(96);
+    area.removeFromLeft(gap);
+    auto speakerPanel = area.removeFromLeft(118);
     area.removeFromLeft(gap);
     auto stereoPanel = area;
     panels.push_back({cabPanel, "CABINET"});
@@ -1445,6 +1442,13 @@ void SasEditor::layoutCabPanel() {
         in.removeFromTop(16);
         blendNote_.setBounds(in.removeFromBottom(14));
         blend_.setBounds(in);
+    }
+    panels.push_back({speakerPanel, "SPEAKER"});
+    {
+        auto in = speakerPanel.reduced(6, 4);
+        in.removeFromTop(16);
+        speakerIntense_.setBounds(in.removeFromBottom(20).withSizeKeepingCentre(80, 20));
+        speaker_.setBounds(in);
     }
     panels.push_back({stereoPanel, "STEREO"});
     {

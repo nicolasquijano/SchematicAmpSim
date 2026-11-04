@@ -40,8 +40,7 @@ void wireIndex(juce::ComboBox& box, SasProcessor& p, const juce::String& id) {
 
 AmpPanelB::AmpPanelB(SasProcessor& p)
     : processor_(p), input_(p.apvts, pid(ids::input, kInstance).toRawUTF8(), "INPUT dB"), cable_(p.apvts, pid(ids::cable, kInstance).toRawUTF8(), "CABLE m"),
-      bias_(p.apvts, pid(ids::bias, kInstance).toRawUTF8(), "BIAS"), wear_(p.apvts, pid(ids::wear, kInstance).toRawUTF8(), "WEAR"),
-      speaker_(p.apvts, pid(ids::speaker, kInstance).toRawUTF8(), "DYNAMICS") {
+      bias_(p.apvts, pid(ids::bias, kInstance).toRawUTF8(), "BIAS"), wear_(p.apvts, pid(ids::wear, kInstance).toRawUTF8(), "WEAR") {
     caption(*this, ampCaption_, "AMP B");
     fillCombo(*this, ampBox_, p, ids::amp, kInstance, ampAtt_);
     ampBox_.setComponentID("amp_b_select");
@@ -80,10 +79,8 @@ AmpPanelB::AmpPanelB(SasProcessor& p)
         selCaption_[i].setVisible(false);
         wireIndex(selBox_[i], p, pid(ids::sel[i], kInstance));
     }
-    for (auto* k : {&input_, &cable_, &bias_, &wear_, &speaker_}) addAndMakeVisible(*k);
+    for (auto* k : {&input_, &cable_, &bias_, &wear_}) addAndMakeVisible(*k);
     input_.setComponentID("amp_b_input");
-    addAndMakeVisible(intense_);
-    intenseAtt_ = std::make_unique<juce::AudioProcessorValueTreeState::ButtonAttachment>(p.apvts, pid(ids::speakerIntense, kInstance), intense_);
     note_.setText("The second amp has its own controls, circuits and condition. A NAM Loader amp here plays the model loaded in the first one.", juce::dontSendNotification);
     note_.setFont(AmpLookAndFeel::font(10.5f));
     addAndMakeVisible(note_);
@@ -177,8 +174,6 @@ void AmpPanelB::resized() {
     // Bottom: the guitar, the state of the amp and the speaker.
     auto guitar = bottom.removeFromLeft(210);
     bottom.removeFromLeft(gap);
-    auto speaker = bottom.removeFromRight(118);
-    bottom.removeFromRight(gap);
     panels_.push_back({guitar, "GUITAR INPUT"});
     {
         auto in = guitar.reduced(8, 4);
@@ -207,13 +202,6 @@ void AmpPanelB::resized() {
         unitCaption_.setBounds(col3.removeFromTop(16));
         unit_.setBounds(col3.removeFromTop(24));
     }
-    panels_.push_back({speaker, "SPEAKER"});
-    {
-        auto in = speaker.reduced(6, 4);
-        in.removeFromTop(16);
-        intense_.setBounds(in.removeFromBottom(20).withSizeKeepingCentre(80, 20));
-        speaker_.setBounds(in);
-    }
     repaint();
 }
 
@@ -221,7 +209,8 @@ void AmpPanelB::resized() {
 
 CabinetPanelB::CabinetPanelB(SasProcessor& p)
     : processor_(p), blend_(p.apvts, pid(ids::irBlend, kInstance).toRawUTF8(), "BLEND"), width_(p.apvts, pid(ids::irWidth, kInstance).toRawUTF8(), "WIDTH"),
-      doubleAmount_(p.apvts, pid(ids::doubleAmount, kInstance).toRawUTF8(), "DOUBLE"), doubleTime_(p.apvts, pid(ids::doubleTime, kInstance).toRawUTF8(), "TIME") {
+      doubleAmount_(p.apvts, pid(ids::doubleAmount, kInstance).toRawUTF8(), "DOUBLE"), doubleTime_(p.apvts, pid(ids::doubleTime, kInstance).toRawUTF8(), "TIME"),
+      speaker_(p.apvts, pid(ids::speaker, kInstance).toRawUTF8(), "DYNAMICS") {
     caption(*this, cabCaption_, "SOURCE");
     fillCombo(*this, cab_, p, ids::cab, kInstance, cabAtt_);
     cab_.setComponentID("cabinet_b_source");
@@ -232,7 +221,11 @@ CabinetPanelB::CabinetPanelB(SasProcessor& p)
     for (auto* b : {&loadA_, &clearA_, &loadB_, &clearB_}) addAndMakeVisible(*b);
     addAndMakeVisible(curveA_);
     addAndMakeVisible(curveB_);
-    for (auto* k : {&blend_, &width_, &doubleAmount_, &doubleTime_}) addAndMakeVisible(*k);
+    for (auto* k : {&blend_, &width_, &doubleAmount_, &doubleTime_, &speaker_}) addAndMakeVisible(*k);
+    speaker_.setComponentID("cabinet_b_speaker");
+    addAndMakeVisible(intense_);
+    intense_.setTooltip("Stronger cone, heating and break-up effects");
+    intenseAtt_ = std::make_unique<juce::AudioProcessorValueTreeState::ButtonAttachment>(p.apvts, pid(ids::speakerIntense, kInstance), intense_);
     loadA_.onClick = [this] { showImpulseMenu(0, loadA_); };
     loadB_.onClick = [this] { showImpulseMenu(1, loadB_); };
     clearA_.onClick = [this] { processor_.clearImpulseResponse(0, kInstance); };
@@ -299,9 +292,11 @@ void CabinetPanelB::resized() {
     };
     slot(slotA, "IMPULSE A (B)", loadA_, clearA_, nameA_, curveA_);
     slot(slotB, "IMPULSE B (B)", loadB_, clearB_, nameB_, curveB_);
-    auto cabPanel = area.removeFromLeft(220);
+    auto cabPanel = area.removeFromLeft(200);
     area.removeFromLeft(gap);
     auto blendPanel = area.removeFromLeft(96);
+    area.removeFromLeft(gap);
+    auto speakerPanel = area.removeFromLeft(118);
     area.removeFromLeft(gap);
     auto stereoPanel = area;
     panels_.push_back({cabPanel, "CABINET B"});
@@ -315,6 +310,13 @@ void CabinetPanelB::resized() {
     }
     panels_.push_back({blendPanel, "A / B BLEND"});
     blend_.setBounds(blendPanel.reduced(6, 4).withTrimmedTop(16));
+    panels_.push_back({speakerPanel, "SPEAKER"});
+    {
+        auto in = speakerPanel.reduced(6, 4);
+        in.removeFromTop(16);
+        intense_.setBounds(in.removeFromBottom(20).withSizeKeepingCentre(80, 20));
+        speaker_.setBounds(in);
+    }
     panels_.push_back({stereoPanel, "STEREO"});
     {
         auto in = stereoPanel.reduced(6, 4);
