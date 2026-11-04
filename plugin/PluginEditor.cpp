@@ -1232,28 +1232,29 @@ void SasEditor::resized() {
 
     // Right: title and page tabs, then the page.
     {
-        auto head = area.removeFromTop(36);
-        tunerTab_.setBounds(head.removeFromRight(58).withTrimmedTop(6).withTrimmedBottom(2));
+        auto head = area.removeFromTop(70);  // tall enough for the level knobs
+        tunerTab_.setBounds(head.removeFromRight(58).withTrimmedTop(6).withHeight(28));
         head.removeFromRight(4);
-        rackTab_.setBounds(head.removeFromRight(54).withTrimmedTop(6).withTrimmedBottom(2));
+        rackTab_.setBounds(head.removeFromRight(54).withTrimmedTop(6).withHeight(28));
         head.removeFromRight(14);
         // The meters and the level knobs: always there, whatever the page. From the right: the cost, then out (bar, knob, label), then in.
         const int row = head.getCentreY();
+        constexpr int kKnob = 66, kBar = 104;
         int x = head.getRight();
         x -= 74;
         cpuBounds_ = {x, row - 8, 70, 16};
-        x -= 84;
-        headOut_.setBounds(x, row - 5, 84, 10);
+        x -= kBar + 4;
+        headOut_.setBounds(x, row - 7, kBar, 14);
+        x -= kKnob + 4;
+        headOutKnob_.setBounds(x, row - kKnob / 2, kKnob, kKnob);
         x -= 32;
-        headOutKnob_.setBounds(x, row - 15, 30, 30);
-        x -= 30;
         headOutLabel_ = {x, row - 8, 28, 16};
-        x -= 12;
-        x -= 84;
-        headIn_.setBounds(x, row - 5, 84, 10);
-        x -= 32;
-        headInKnob_.setBounds(x, row - 15, 30, 30);
-        x -= 22;
+        x -= 14;
+        x -= kBar + 4;
+        headIn_.setBounds(x, row - 7, kBar, 14);
+        x -= kKnob + 4;
+        headInKnob_.setBounds(x, row - kKnob / 2, kKnob, kKnob);
+        x -= 24;
         headInLabel_ = {x, row - 8, 20, 16};
         area.removeFromTop(4);
     }
