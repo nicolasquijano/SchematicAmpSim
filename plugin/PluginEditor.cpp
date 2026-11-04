@@ -1279,7 +1279,7 @@ void SasEditor::resized() {
     repaint();
 }
 
-int SasEditor::ampPanelHeight() const { return (face_ ? 300 : 170) + 8 + 120 + 8 + 130; }
+int SasEditor::ampPanelHeight() const { return (face_ ? 300 : 170) + 8 + 136; }
 
 int SasEditor::cabPanelHeight() const { return 190 + 8 + 130; }
 
@@ -1293,9 +1293,7 @@ void SasEditor::layoutAmpPanel() {
     const bool namAmp = shownAmp_ >= 0 && processor_.amps()[std::size_t(shownAmp_)].nam;
     auto top = area.removeFromTop(face_ ? 300 : 170);
     area.removeFromTop(gap);
-    auto mid = area.removeFromTop(120);
-    area.removeFromTop(gap);
-    auto condRow = area;
+    auto mid = area;  // the guitar, the power tubes and the amp's condition share one row
 
     const int selectors = shownAmp_ >= 0 ? int(processor_.amps()[std::size_t(shownAmp_)].preamp.selectors.size()) : 0;
     for (int i = 0; i < 4; ++i) {
@@ -1360,12 +1358,16 @@ void SasEditor::layoutAmpPanel() {
         pickupCaption_.setBounds(gin.removeFromTop(16));
         pickup_.setBounds(gin.removeFromTop(24));
     }
-    if (!namAmp) panels.push_back({mid, "POWER TUBES"});
-    tubes_.setBounds(mid.reduced(8, 4).withTrimmedTop(18));
+    if (!namAmp) {
+        auto tubesPanel = mid.removeFromLeft(std::clamp(mid.getWidth() * 28 / 100, 200, 290));
+        mid.removeFromLeft(gap);
+        panels.push_back({tubesPanel, "POWER TUBES"});
+        tubes_.setBounds(tubesPanel.reduced(8, 4).withTrimmedTop(18));
+    }
     tubes_.setVisible(!namAmp);
 
-    // Bottom row: the amp's condition (the speaker's dynamics are with the cabinet).
-    auto condPanel = condRow;
+    // The amp's condition fills the rest of the row (the speaker's dynamics are with the cabinet).
+    auto condPanel = mid;
     panels.push_back({condPanel, "AMP CONDITION"});
     {
         const int condKnobW = 75;
