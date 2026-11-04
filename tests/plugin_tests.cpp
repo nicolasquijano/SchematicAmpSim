@@ -2102,3 +2102,127 @@ TEST_CASE("moving a knob of amp A does not move amp B", "[rack]") {
     setParam(p, "quality__2", 0.0f);
     CHECK(p.apvts.getRawParameterValue("quality")->load() == Catch::Approx(4.0f));  // amp A stays in Efficient
 }
+
+// ---------------------------------------------------------------- parallel paths: the processor
+
+namespace {
+
+// Plays `in` through a processor that is already prepared (no prepareToPlay) and returns the left channel.
+std::vector<float> playOn(SasProcessor& p, const std::vector<float>& in) {
+    juce::MidiBuffer midi;
+    std::vector<float> out;
+    juce::AudioBuffer<float> buf(2, 256);
+    for (std::size_t at = 0; at < in.size(); at += 256) {
+        const int n = int(std::min<std::size_t>(256, in.size() - at));
+        buf.setSize(2, n, false, false, true);
+        for (int ch = 0; ch < 2; ++ch)
+            for (int i = 0; i < n; ++i) buf.setSample(ch, i, in[at + std::size_t(i)]);
+        p.processBlock(buf, midi);
+        for (int i = 0; i < n; ++i) out.push_back(buf.getSample(0, i));
+    }
+    return out;
+}
+
+// Runs silence until the circuits of the amp of that instance are built (they come from another thread), and a little longer.
+bool waitForAmp(SasProcessor& p, int instance) {
+    const std::vector<float> silence(256, 0.0f);
+    for (int i = 0; i < 4000 && !p.ampBuilt(instance); ++i) {
+        playOn(p, silence);
+        juce::Thread::sleep(2);
+    }
+    for (int i = 0; i < 40; ++i) playOn(p, silence);  // the fades settle
+    return p.ampBuilt(instance);
+}
+
+double rmsOf(const std::vector<float>& v, std::size_t from = 0) {
+    double s = 0.0;
+    for (std::size_t i = from; i < v.size(); ++i) s += double(v[i]) * v[i];
+    return std::sqrt(s / double(v.size() - from));
+}
+
+}  // namespace
+
+TEST_CASE("parallel paths: two identical amps sum to twice one, and removing the parallel leaves the chain as it was", "[rack]") {
+    JuceInit init;
+    const auto in = legacy::input();
+    SasProcessor single;
+    single.prepareToPlay(48000.0, 256);
+    for (int i = 0; i < 40; ++i) playOn(single, std::vector<float>(256, 0.0f));
+    const auto one = playOn(single, in);
+
+    SasProcessor par;
+    par.prepareToPlay(48000.0, 256);
+    REQUIRE(par.addParallel());
+    CHECK(par.hasParallel());
+    REQUIRE(waitForAmp(par, 1));
+    const auto two = playOn(par, in);
+    REQUIRE(two.size() == one.size());
+    // The gain of the sum over one amp, away from the start (the lane fades have settled): twice, and in step with it.
+    double num = 0.0, den = 0.0;
+    for (std::size_t i = 200; i < one.size(); ++i) {
+        num += double(two[i]) * double(one[i]);
+        den += double(one[i]) * double(one[i]);
+    }
+    CHECK(num / den == Catch::Approx(2.0).margin(0.02));
+    CHECK(rmsOf(two, 200) == Catch::Approx(2.0 * rmsOf(one, 200)).epsilon(0.02));
+
+    // Taking the parallel away leaves the series chain; the second amp's controls go back to their defaults.
+    setParam(par, "volume__2", 9.0f);
+    REQUIRE(par.removeParallel());
+    CHECK_FALSE(par.hasParallel());
+    using T = ModuleType;
+    CHECK(typesOf(par.rackOrder()) == std::vector<T>{T::Gate, T::Amp, T::Cabinet});
+    CHECK(par.apvts.getRawParameterValue("volume__2")->load() == Catch::Approx(6.0f));
+}
+
+TEST_CASE("the parallel round trips through a preset and a damaged one is repaired", "[rack]") {
+    JuceInit init;
+    SasProcessor a, b;
+    REQUIRE(a.addParallel());
+    setParam(a, "volume__2", 8.0f);
+    setParam(a, ids::mixPanB, 50.0f);
+    roundTrip(a, b, [](juce::XmlElement&) {});
+    CHECK(b.hasParallel());
+    REQUIRE(b.rackOrder().count == a.rackOrder().count);
+    for (int i = 0; i < a.rackOrder().count; ++i) {
+        CHECK(b.rackOrder().slots[std::size_t(i)] == a.rackOrder().slots[std::size_t(i)]);
+        CHECK(b.rackOrder().lane[std::size_t(i)] == a.rackOrder().lane[std::size_t(i)]);
+    }
+    CHECK(b.apvts.getRawParameterValue("volume__2")->load() == Catch::Approx(8.0f));
+    CHECK(b.apvts.getRawParameterValue(ids::mixPanB)->load() == Catch::Approx(50.0f));
+
+    // A lane B without a mixer is not a parallel: the state loads as a plain chain.
+    SasProcessor c, d;
+    roundTrip(c, d, [](juce::XmlElement& xml) {
+        if (auto* rack = xml.getChildByName("RACK"))
+            if (auto* m = rack->getFirstChildElement()) m->setAttribute("lane", 1);
+    });
+    CHECK_FALSE(d.hasParallel());
+    CHECK(d.rackOrder().valid());
+}
+
+TEST_CASE("amp B plays nothing until its circuits are built, and the latency is that of the later lane", "[rack]") {
+    JuceInit init;
+    const auto in = legacy::input();
+    SasProcessor single;
+    single.prepareToPlay(48000.0, 256);
+    const auto one = playOn(single, in);
+
+    SasProcessor par;
+    par.prepareToPlay(48000.0, 256);
+    REQUIRE(par.addParallel());
+    CHECK_FALSE(par.ampBuilt(1));  // asked for, not there yet
+    const auto early = playOn(par, in);
+    for (float v : early) REQUIRE(std::isfinite(v));
+    CHECK(rmsOf(early) < 1.5 * rmsOf(one));  // not doubled: only lane A has been playing
+
+    // Amp B in the 4x quality is later than amp A: the host is told about the later one.
+    setParam(par, "quality__2", 1.0f);
+    REQUIRE(waitForAmp(par, 1));
+    SasProcessor high;
+    setParam(high, ids::quality, 1.0f);
+    high.prepareToPlay(48000.0, 256);
+    playOn(high, std::vector<float>(256, 0.0f));
+    playOn(high, std::vector<float>(256, 0.0f));  // the quality reaches the chain in the block after the one that read it
+    CHECK(par.getLatencySamples() == high.getLatencySamples());
+}

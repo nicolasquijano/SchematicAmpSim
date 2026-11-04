@@ -312,7 +312,9 @@ void addExtraInstances(Layout& l, const juce::StringArray& ampNames) {
 }
 
 bool isFixed(sas::SlotRef slot) {
-    return slot.type == ModuleType::Amp || (slot.instance == 0 && (slot.type == ModuleType::Gate || slot.type == ModuleType::Cabinet));
+    // The amps and the cabinets (of the second path too: they stay while there is a parallel) and the first gate. The splitter and the mixer
+    // are not removed one by one: they go with the parallel.
+    return slot.type == ModuleType::Amp || slot.type == ModuleType::Cabinet || (slot.instance == 0 && slot.type == ModuleType::Gate);
 }
 
 sas::RackOrder defaultOrder() {
@@ -372,6 +374,7 @@ juce::ValueTree toTree(const sas::RackOrder& order) {
         juce::ValueTree m("M");
         m.setProperty("type", sas::moduleTypeName(order.slots[std::size_t(i)].type), nullptr);
         m.setProperty("inst", order.slots[std::size_t(i)].instance, nullptr);
+        if (order.lane[std::size_t(i)] != 0) m.setProperty("lane", int(order.lane[std::size_t(i)]), nullptr);
         rack.appendChild(m, nullptr);
     }
     return rack;
@@ -388,35 +391,59 @@ sas::RackOrder fromTree(const juce::ValueTree& rack) {
         if (!type) continue;  // a module this version does not know
         const int inst = int(m["inst"]);
         if (inst < 0 || inst >= maxInstances(*type) || seen[int(*type)][inst]) continue;
-        if (*type == ModuleType::Amp) {
+        if (*type == ModuleType::Amp && inst == 0) {
             if (amp) continue;
             amp = true;
-        } else if (modules >= kMaxModules) {
-            continue;
-        } else {
+        } else if (*type != ModuleType::Amp) {
+            if (modules >= kMaxModules) continue;
             ++modules;
         }
         seen[int(*type)][inst] = true;
+        o.lane[std::size_t(o.count)] = std::uint8_t(int(m["lane"]) == 1 ? 1 : 0);
         o.slots[std::size_t(o.count++)] = {*type, inst};
     }
-    // The fixed modules are always there: the amp (in front of the cabinet, or first), the gate first, the cabinet behind the amp.
     auto indexOf = [&](sas::SlotRef want) {
         for (int i = 0; i < o.count; ++i)
             if (o.slots[std::size_t(i)] == want) return i;
         return -1;
     };
+    auto eraseAt = [&](int at) {
+        for (int k = at; k + 1 < o.count; ++k) {
+            o.slots[std::size_t(k)] = o.slots[std::size_t(k + 1)];
+            o.lane[std::size_t(k)] = o.lane[std::size_t(k + 1)];
+        }
+        --o.count;
+    };
+    // A parallel is valid when it has a splitter and a mixer in order, and the second amp and cabinet in lane B; anything else is not a parallel at all
+    // and loses what belongs to one (the splitter, the mixer, lane B and the second amp and cabinet).
+    bool parallel = o.valid() && o.splitterIndex() >= 0;
+    if (parallel) {
+        const int a1 = indexOf({ModuleType::Amp, 1}), c1 = indexOf({ModuleType::Cabinet, 1});
+        parallel = a1 >= 0 && c1 >= 0 && o.lane[std::size_t(a1)] == 1 && o.lane[std::size_t(c1)] == 1;
+    }
+    if (!parallel)
+        for (int i = o.count - 1; i >= 0; --i) {
+            const auto slot = o.slots[std::size_t(i)];
+            if (slot.type == ModuleType::Splitter || slot.type == ModuleType::Mixer || o.lane[std::size_t(i)] != 0 || (slot.type == ModuleType::Amp && slot.instance > 0) ||
+                (slot.type == ModuleType::Cabinet && slot.instance > 0))
+                eraseAt(i);
+        }
+    // The fixed modules are always there: the amp (in front of the cabinet, or first), the gate first, the cabinet behind the amp.
     auto insertSlot = [&](int at, sas::SlotRef slot) {
         if (o.count >= sas::RackOrder::kMax) {  // full: the last module that is not fixed makes room
             for (int i = o.count - 1; i >= 0; --i)
-                if (!isFixed(o.slots[std::size_t(i)])) {
-                    for (int k = i; k + 1 < o.count; ++k) o.slots[std::size_t(k)] = o.slots[std::size_t(k + 1)];
-                    --o.count;
+                if (!isFixed(o.slots[std::size_t(i)]) && o.slots[std::size_t(i)].type != ModuleType::Splitter && o.slots[std::size_t(i)].type != ModuleType::Mixer) {
+                    eraseAt(i);
                     if (at > i) --at;
                     break;
                 }
         }
-        for (int i = o.count; i > at; --i) o.slots[std::size_t(i)] = o.slots[std::size_t(i - 1)];
+        for (int i = o.count; i > at; --i) {
+            o.slots[std::size_t(i)] = o.slots[std::size_t(i - 1)];
+            o.lane[std::size_t(i)] = o.lane[std::size_t(i - 1)];
+        }
         o.slots[std::size_t(at)] = slot;
+        o.lane[std::size_t(at)] = 0;
         ++o.count;
     };
     if (!amp) {

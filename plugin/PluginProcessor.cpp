@@ -512,6 +512,16 @@ void SasProcessor::applyModuleParams(const sas::RackOrder& order) {
                 static_cast<sas::ReverbModule*>(m)->setParams(pl);
                 break;
             }
+            case T::Mixer: {
+                sas::MixerParams mp;
+                mp.levelA = float(std::pow(10.0, p(ids::mixLevelA) / 20.0));
+                mp.levelB = float(std::pow(10.0, p(ids::mixLevelB) / 20.0));
+                mp.panA = float(p(ids::mixPanA) / 100.0);
+                mp.panB = float(p(ids::mixPanB) / 100.0);
+                mp.invertB = p(ids::mixInvertB) > 0.5;
+                static_cast<sas::MixerModule*>(m)->setParams(mp);
+                break;
+            }
             default: break;
         }
     }
@@ -703,6 +713,8 @@ std::unique_ptr<sas::Module> SasProcessor::makeModule(sas::ModuleType type, int 
         case T::Eq: return std::make_unique<sas::EqModule>();
         case T::Delay: return std::make_unique<sas::DelayModule>();
         case T::Reverb: return std::make_unique<sas::ReverbModule>();
+        case T::Splitter: return std::make_unique<sas::SplitterModule>();
+        case T::Mixer: return std::make_unique<sas::MixerModule>();
     }
     return nullptr;
 }
@@ -744,18 +756,58 @@ bool SasProcessor::canAdd(sas::ModuleType type) const {
     return !single && modules < RackState::kMaxModules && instances < RackState::maxInstances(type);
 }
 
+// The entries of the order move together with their lane.
+void SasProcessor::insertEntry(int at, sas::SlotRef slot, int lane) {
+    for (int i = rackOrder_.count; i > at; --i) {
+        rackOrder_.slots[std::size_t(i)] = rackOrder_.slots[std::size_t(i - 1)];
+        rackOrder_.lane[std::size_t(i)] = rackOrder_.lane[std::size_t(i - 1)];
+    }
+    rackOrder_.slots[std::size_t(at)] = slot;
+    rackOrder_.lane[std::size_t(at)] = std::uint8_t(lane);
+    ++rackOrder_.count;
+}
+
+void SasProcessor::eraseEntry(int at) {
+    for (int i = at; i + 1 < rackOrder_.count; ++i) {
+        rackOrder_.slots[std::size_t(i)] = rackOrder_.slots[std::size_t(i + 1)];
+        rackOrder_.lane[std::size_t(i)] = rackOrder_.lane[std::size_t(i + 1)];
+    }
+    --rackOrder_.count;
+}
+
+int SasProcessor::indexInOrder(sas::SlotRef slot) const {
+    for (int i = 0; i < rackOrder_.count; ++i)
+        if (rackOrder_.slots[std::size_t(i)] == slot) return i;
+    return -1;
+}
+
+void SasProcessor::normalizeLanes() {
+    const int s = rackOrder_.splitterIndex(), m = rackOrder_.mixerIndex();
+    for (int i = 0; i < rackOrder_.count; ++i)
+        if (s < 0 || m < 0 || i <= s || i >= m) rackOrder_.lane[std::size_t(i)] = 0;
+}
+
+bool SasProcessor::layoutOk() const {
+    using T = sas::ModuleType;
+    if (!rackOrder_.valid()) return false;
+    const int a1 = indexInOrder({T::Amp, 1}), c1 = indexInOrder({T::Cabinet, 1});
+    if (!hasParallel()) return a1 < 0 && c1 < 0;
+    // The second amp and cabinet are in lane B (and only they, of the fixed ones); the first ones are in the shared part or in lane A.
+    if (a1 < 0 || c1 < 0 || rackOrder_.lane[std::size_t(a1)] != 1 || rackOrder_.lane[std::size_t(c1)] != 1) return false;
+    for (const auto fixed : {sas::SlotRef{T::Amp, 0}, sas::SlotRef{T::Cabinet, 0}}) {
+        const int i = indexInOrder(fixed);
+        if (i < 0 || rackOrder_.lane[std::size_t(i)] != 0) return false;
+    }
+    return true;
+}
+
 bool SasProcessor::addModule(sas::ModuleType type, int insertAt) {
     if (!canAdd(type)) return false;
     int instance = 0;
-    for (; instance < RackState::maxInstances(type); ++instance) {
-        bool used = false;
-        for (int i = 0; i < rackOrder_.count; ++i) used = used || rackOrder_.slots[std::size_t(i)] == sas::SlotRef{type, instance};
-        if (!used) break;
-    }
+    for (; instance < RackState::maxInstances(type); ++instance)
+        if (indexInOrder({type, instance}) < 0) break;
     const sas::SlotRef slot{type, instance};
-    int ampAt = 0;
-    for (int i = 0; i < rackOrder_.count; ++i)
-        if (rackOrder_.slots[std::size_t(i)].type == sas::ModuleType::Amp) ampAt = i;
+    const int ampAt = std::max(0, indexInOrder({sas::ModuleType::Amp, 0}));
     if (insertAt < 0) {
         using T = sas::ModuleType;
         switch (type) {
@@ -775,37 +827,133 @@ bool SasProcessor::addModule(sas::ModuleType type, int insertAt) {
         }
     }
     insertAt = juce::jlimit(0, rackOrder_.count, insertAt);
+    // Inside the parallel a new module joins the lane of the one before it.
+    const int s = rackOrder_.splitterIndex(), m = rackOrder_.mixerIndex();
+    const int lane = (s >= 0 && insertAt > s + 1 && insertAt <= m) ? rackOrder_.lane[std::size_t(insertAt - 1)] : 0;
+    const auto saved = rackOrder_;
+    insertEntry(insertAt, slot, lane);
+    normalizeLanes();
+    if (!layoutOk()) {
+        rackOrder_ = saved;
+        return false;
+    }
     RackState::resetParams(apvts, slot);
-    for (int i = rackOrder_.count; i > insertAt; --i) rackOrder_.slots[std::size_t(i)] = rackOrder_.slots[std::size_t(i - 1)];
-    rackOrder_.slots[std::size_t(insertAt)] = slot;
-    ++rackOrder_.count;
     syncRack(sas::Transition::Duck);
     return true;
 }
 
 bool SasProcessor::removeModule(sas::SlotRef slot) {
-    if (RackState::isFixed(slot)) return false;  // the amp, the first gate and the cabinet are always there
-    int at = -1;
-    for (int i = 0; i < rackOrder_.count; ++i)
-        if (rackOrder_.slots[std::size_t(i)] == slot) at = i;
+    if (slot.type == sas::ModuleType::Splitter || slot.type == sas::ModuleType::Mixer) return removeParallel();  // the two ends go together
+    if (RackState::isFixed(slot)) return false;  // the amps, the cabinets and the first gate are always there
+    const int at = indexInOrder(slot);
     if (at < 0) return false;
-    for (int i = at; i + 1 < rackOrder_.count; ++i) rackOrder_.slots[std::size_t(i)] = rackOrder_.slots[std::size_t(i + 1)];
-    --rackOrder_.count;
+    eraseEntry(at);
     syncRack(sas::Transition::Duck);
     if (slot.type == sas::ModuleType::NamPedal) clearNamPedal(slot.instance);  // its model goes with it, so it is not kept in the project
     return true;
 }
 
 bool SasProcessor::moveModule(sas::SlotRef slot, int newIndex) {
-    int at = -1;
-    for (int i = 0; i < rackOrder_.count; ++i)
-        if (rackOrder_.slots[std::size_t(i)] == slot) at = i;
+    if (slot.type == sas::ModuleType::Splitter || slot.type == sas::ModuleType::Mixer) return false;  // the ends of the parallel stay where they are
+    const int at = indexInOrder(slot);
     if (at < 0) return false;
-    for (int i = at; i + 1 < rackOrder_.count; ++i) rackOrder_.slots[std::size_t(i)] = rackOrder_.slots[std::size_t(i + 1)];
-    newIndex = juce::jlimit(0, rackOrder_.count - 1, newIndex);
-    for (int i = rackOrder_.count - 1; i > newIndex; --i) rackOrder_.slots[std::size_t(i)] = rackOrder_.slots[std::size_t(i - 1)];
-    rackOrder_.slots[std::size_t(newIndex)] = slot;
+    const auto saved = rackOrder_;
+    const int lane = rackOrder_.lane[std::size_t(at)];
+    eraseEntry(at);
+    newIndex = juce::jlimit(0, rackOrder_.count, newIndex);
+    insertEntry(newIndex, slot, lane);
+    normalizeLanes();
+    if (!layoutOk()) {
+        rackOrder_ = saved;
+        return false;
+    }
     syncRack(sas::Transition::Duck);
+    return true;
+}
+
+bool SasProcessor::moveModuleToLane(sas::SlotRef slot, int lane, int newIndex) {
+    if (!hasParallel() || (lane != 0 && lane != 1)) return false;
+    if (slot.type == sas::ModuleType::Splitter || slot.type == sas::ModuleType::Mixer || slot.type == sas::ModuleType::Amp || slot.type == sas::ModuleType::Cabinet) return false;
+    const int at = indexInOrder(slot);
+    if (at < 0) return false;
+    const auto saved = rackOrder_;
+    eraseEntry(at);
+    newIndex = juce::jlimit(0, rackOrder_.count, newIndex);
+    insertEntry(newIndex, slot, lane);
+    const int s = rackOrder_.splitterIndex(), m = rackOrder_.mixerIndex();
+    if (newIndex <= s || newIndex > m) {  // outside the parallel there are no lanes
+        rackOrder_ = saved;
+        return false;
+    }
+    normalizeLanes();
+    if (!layoutOk()) {
+        rackOrder_ = saved;
+        return false;
+    }
+    syncRack(sas::Transition::Duck);
+    return true;
+}
+
+bool SasProcessor::canAddParallel() const {
+    int modules = 0;
+    for (int i = 0; i < rackOrder_.count; ++i)
+        if (rackOrder_.slots[std::size_t(i)].type != sas::ModuleType::Amp) ++modules;
+    return !hasParallel() && modules + 3 <= RackState::kMaxModules;  // the splitter, the mixer and the second cabinet
+}
+
+bool SasProcessor::addParallel() {
+    using T = sas::ModuleType;
+    if (!canAddParallel()) return false;
+    const int ampAt = indexInOrder({T::Amp, 0}), cabAt = indexInOrder({T::Cabinet, 0});
+    if (ampAt < 0 || cabAt < 0) return false;
+    // The splitter goes in front of the amp and of the compressor and overdrive that sit next to it (they keep working inside the amp, in lane A);
+    // lane B goes after the cabinet, then the mixer.
+    int start = ampAt;
+    while (start > 0 && (rackOrder_.slots[std::size_t(start - 1)].type == T::Overdrive || rackOrder_.slots[std::size_t(start - 1)].type == T::Compressor)) --start;
+    const int end = std::max(ampAt, cabAt);
+    RackState::resetParams(apvts, {T::Amp, 1});
+    RackState::resetParams(apvts, {T::Cabinet, 1});
+    RackState::resetParams(apvts, {T::Mixer, 0});
+    // The second amp starts as a copy of the first one's choice and condition, and with the default impulse, so the sum is at once a doubled amp.
+    if (auto* p = apvts.getParameter(RackState::paramId(ids::amp, 1))) {
+        p->beginChangeGesture();
+        p->setValueNotifyingHost(apvts.getParameter(ids::amp)->getValue());
+        p->endChangeGesture();
+    }
+    clearImpulseResponse(0, 1);
+    clearImpulseResponse(1, 1);
+    loadBuiltInImpulseResponse(firstCab_, 0, 1);
+    const auto saved = rackOrder_;
+    insertEntry(end + 1, {T::Mixer, 0}, 0);
+    insertEntry(end + 1, {T::Cabinet, 1}, 1);
+    insertEntry(end + 1, {T::Amp, 1}, 1);
+    insertEntry(start, {T::Splitter, 0}, 0);
+    if (!layoutOk()) {
+        rackOrder_ = saved;
+        return false;
+    }
+    syncRack(sas::Transition::Duck);
+    return true;
+}
+
+bool SasProcessor::removeParallel() {
+    using T = sas::ModuleType;
+    if (!hasParallel()) return false;
+    std::vector<sas::SlotRef> gone;
+    for (int i = rackOrder_.count - 1; i >= 0; --i) {
+        const auto slot = rackOrder_.slots[std::size_t(i)];
+        if (slot.type == T::Splitter || slot.type == T::Mixer || rackOrder_.lane[std::size_t(i)] != 0) {
+            gone.push_back(slot);
+            eraseEntry(i);
+        }
+    }
+    syncRack(sas::Transition::Duck);
+    for (const auto& slot : gone) {
+        if (slot.type == T::NamPedal) clearNamPedal(slot.instance);
+        RackState::resetParams(apvts, slot);
+    }
+    clearImpulseResponse(0, 1);
+    clearImpulseResponse(1, 1);
     return true;
 }
 

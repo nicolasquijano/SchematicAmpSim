@@ -239,6 +239,17 @@ public:
     bool canAdd(sas::ModuleType type) const;
     bool removeModule(sas::SlotRef slot);
     bool moveModule(sas::SlotRef slot, int newIndex);
+    // The parallel (docs/superpowers/specs/2026-11-03-parallel-paths-design.md): a splitter and a mixer with a second amp and cabinet in lane B.
+    // addParallel puts the splitter in front of the amp (and the compressor and overdrive that sit next to it), lane B behind the cabinet, and the
+    // mixer after that; removeParallel takes the two ends, lane B and everything in it away (lane A stays where it was, in series).
+    bool hasParallel() const { return rackOrder_.splitterIndex() >= 0; }
+    bool canAddParallel() const;
+    bool addParallel();
+    bool removeParallel();
+    // Moves a module to a lane (0: A, 1: B) at a position of the order; only between the splitter and the mixer.
+    bool moveModuleToLane(sas::SlotRef slot, int lane, int newIndex);
+    // The amp of this instance has its circuits built and playing (the second one takes a moment after addParallel).
+    bool ampBuilt(int instance) const { return amps_[instance].chain != nullptr; }
 
     juce::AudioProcessorValueTreeState apvts;
 
@@ -259,6 +270,11 @@ private:
     // The rack (docs/MODULAR_RACK.md).
     std::unique_ptr<sas::Module> makeModule(sas::ModuleType type, int instance);
     void syncRack(sas::Transition how);
+    void insertEntry(int at, sas::SlotRef slot, int lane);
+    void eraseEntry(int at);
+    int indexInOrder(sas::SlotRef slot) const;
+    void normalizeLanes();  // lane 1 only between the splitter and the mixer
+    bool layoutOk() const;  // the rules of the parallel hold
     sas::AmpModule* ampModule(int instance = 0) const { return static_cast<sas::AmpModule*>(rack_.audioModule({sas::ModuleType::Amp, instance})); }
     double moduleParam(sas::SlotRef slot, const char* baseId) const;
     void applyModuleParams(const sas::RackOrder& order);
