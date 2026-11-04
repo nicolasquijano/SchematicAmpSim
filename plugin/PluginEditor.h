@@ -62,7 +62,8 @@ private:
 class LevelBar final : public juce::Component {
 public:
     void setLevel(float linearPeak);
-    void paint(juce::Graphics&) override;
+    float levelDb() const { return db_; }
+    void paint(juce::Graphics&) override;  // vertical, or horizontal when it is wider than tall
 
 private:
     float db_ = -90.0f;
@@ -182,6 +183,10 @@ public:
     void updateTuner();  // runs the pitch detection on the latest input (the timer calls it)
     void updateImpulseStatus();  // the impulse names and response curves of the cabinet unit (the timer calls it)
     juce::StringArray pageNames() const { return {rackTab_.getButtonText(), tunerTab_.getButtonText()}; }
+    // The input and output meters in the header (always there, whatever the page).
+    float headerInputDb() const { return headIn_.levelDb(); }
+    float headerOutputDb() const { return headOut_.levelDb(); }
+    bool headerMetersVisible() const { return headIn_.isVisible() && headOut_.isVisible(); }
 
 private:
     // The amp list (a ListBox over the amp parameter's choices).
@@ -231,6 +236,8 @@ private:
     int tunerTicks_ = 0, tunerHold_ = 0;
     double tunerHz_ = 0.0;
     LevelBar inBar_, outBar_;
+    LevelBar headIn_, headOut_;  // the same levels, in the header
+    juce::Rectangle<int> headInLabel_, headOutLabel_;
     TubeGlow tubes_;
     int tick_ = 0;
 

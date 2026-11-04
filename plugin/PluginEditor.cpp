@@ -188,6 +188,25 @@ void LevelBar::paint(juce::Graphics& g) {
     g.setColour(juce::Colour::fromRGB(14, 12, 10));
     g.fillRoundedRectangle(b, 2.0f);
     const float f = juce::jlimit(0.0f, 1.0f, (db_ + 60.0f) / 60.0f);
+    if (getWidth() > getHeight()) {  // horizontal: -60 dBFS on the left, 0 on the right
+        const float x0 = b.getX() + 1.0f, w = b.getWidth() - 2.0f, fx = x0 + w * f;
+        auto xAt = [&](float db) { return x0 + w * (db + 60.0f) / 60.0f; };
+        auto band = [&](float xl, float xr, juce::Colour col) {
+            const float r = std::min(xr, fx);
+            if (r > xl) { g.setColour(col); g.fillRect(xl, b.getY() + 1.0f, r - xl, b.getHeight() - 2.0f); }
+        };
+        band(x0, xAt(-18.0f), juce::Colour::fromRGB(80, 200, 100));
+        band(xAt(-18.0f), xAt(-6.0f), juce::Colour::fromRGB(240, 160, 40));
+        band(xAt(-6.0f), x0 + w, juce::Colour::fromRGB(230, 70, 50));
+        g.setColour(juce::Colours::black.withAlpha(0.6f));
+        g.drawVerticalLine(int(xAt(-18.0f)), b.getY(), b.getBottom());
+        g.drawVerticalLine(int(xAt(-6.0f)), b.getY(), b.getBottom());
+        if (clip_ > 0) {
+            g.setColour(juce::Colour::fromRGB(230, 70, 50));
+            g.fillRect(b.getRight() - 4.0f, b.getY() + 1.0f, 3.0f, b.getHeight() - 2.0f);
+        }
+        return;
+    }
     const float h = (b.getHeight() - 2.0f) * f;
     const float top = b.getBottom() - 1.0f - h;
     auto colourAt = [](float db) {
@@ -558,6 +577,8 @@ SasEditor::SasEditor(SasProcessor& p)
     };
     addAndMakeVisible(presets_);
     presets_.onClick = [this] { showPresetMenu(); };
+    addAndMakeVisible(headIn_);
+    addAndMakeVisible(headOut_);
 
     // Who lives where: the left column and the tuner stay with the editor; the amp's controls and the cabinet's go to their panels, which the
     // amp unit and the cabinet unit of the rack page host.
@@ -893,8 +914,11 @@ void SasEditor::showAmp(int index) {
 }
 
 void SasEditor::pollMeters() {
-    inBar_.setLevel(processor_.takeInputPeak());
-    outBar_.setLevel(processor_.takeOutputPeak());
+    const float in = processor_.takeInputPeak(), out = processor_.takeOutputPeak();
+    inBar_.setLevel(in);
+    outBar_.setLevel(out);
+    headIn_.setLevel(in);
+    headOut_.setLevel(out);
     if (shownAmp_ >= 0 && shownAmp_ < int(processor_.amps().size())) {
         const auto& def = processor_.amps()[std::size_t(shownAmp_)];
         const int idx = def.power.tubes.empty() ? 0 : std::min(processor_.wantedCondition().tube, int(def.power.tubes.size()) - 1);
@@ -1118,6 +1142,10 @@ void SasEditor::paint(juce::Graphics& g) {
 
     paintPanelBoxes(g, look_, panels_);
 
+    g.setColour(look_.label());
+    g.setFont(AmpLookAndFeel::font(10.0f, true, 0.1f));
+    g.drawText("IN", headInLabel_, juce::Justification::centredRight);
+    g.drawText("OUT", headOutLabel_, juce::Justification::centredRight);
     drawLogo(g, logoBounds_.toFloat());
     g.setColour(look_.label().withAlpha(0.65f));
     g.setFont(AmpLookAndFeel::font(10.0f));
@@ -1176,6 +1204,19 @@ void SasEditor::resized() {
         tunerTab_.setBounds(head.removeFromRight(58).withTrimmedTop(6).withTrimmedBottom(2));
         head.removeFromRight(4);
         rackTab_.setBounds(head.removeFromRight(54).withTrimmedTop(6).withTrimmedBottom(2));
+        head.removeFromRight(14);
+        // The meters: always there, whatever the page.
+        const int row = head.getCentreY();
+        int x = head.getRight();
+        x -= 84;
+        headOut_.setBounds(x, row - 5, 84, 10);
+        x -= 32;
+        headOutLabel_ = {x, row - 8, 28, 16};
+        x -= 12;
+        x -= 84;
+        headIn_.setBounds(x, row - 5, 84, 10);
+        x -= 24;
+        headInLabel_ = {x, row - 8, 20, 16};
         area.removeFromTop(4);
     }
     rackPage_->setVisible(page_ == 0);

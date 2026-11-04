@@ -2051,3 +2051,20 @@ TEST_CASE("the cabinet can be switched off: the amp's raw signal, and the switch
     SasProcessor p;
     CHECK(p.apvts.getRawParameterValue(ids::cabOn)->load() > 0.5f);
 }
+
+TEST_CASE("the input and output meters are in the header, on every page", "[rack]") {
+    JuceInit init;
+    SasProcessor p;
+    p.prepareToPlay(48000.0, 512);
+    std::unique_ptr<juce::AudioProcessorEditor> base(p.createEditor());
+    auto* ed = dynamic_cast<SasEditor*>(base.get());
+    REQUIRE(ed != nullptr);
+    base->setSize(1100, 700);
+    CHECK(ed->headerInputDb() < -60.0f);  // nothing played yet
+    run(p, 40, 220.0, 0.2);
+    for (int i = 0; i < 4; ++i) ed->pollMeters();
+    CHECK(ed->headerInputDb() > -30.0f);
+    CHECK(ed->headerOutputDb() > -60.0f);
+    // the meters belong to the editor, not to a page: the amp unit is not what shows them
+    CHECK(ed->headerMetersVisible());
+}
