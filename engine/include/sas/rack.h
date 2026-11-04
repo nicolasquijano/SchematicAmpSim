@@ -15,8 +15,8 @@
 namespace sas {
 
 // Append-only: a saved project stores the names, not the numbers, but keep the order anyway.
-enum class ModuleType { Amp = 0, Cabinet, Gate, Compressor, Overdrive, NamPedal, Phaser, Chorus, Vibe, Pitch, Eq, Delay, Reverb };
-constexpr int kModuleTypeCount = int(ModuleType::Reverb) + 1;
+enum class ModuleType { Amp = 0, Cabinet, Gate, Compressor, Overdrive, NamPedal, Phaser, Chorus, Vibe, Pitch, Eq, Delay, Reverb, Splitter, Mixer };
+constexpr int kModuleTypeCount = int(ModuleType::Mixer) + 1;
 
 const char* moduleTypeName(ModuleType t);
 std::optional<ModuleType> moduleTypeFromName(std::string_view name);
@@ -34,6 +34,13 @@ Channels moduleChannels(ModuleType type);
 // A compressor or overdrive right in front of the amp is run by the amp's own front end (as it always was), not by the rack.
 enum class Fusion { None, Compressor, Overdrive };
 
+// What the mixer does with its two lanes. Levels are linear gains; a pan of -1 is all left, +1 all right, 0 leaves the lane as it is (the same in both ears).
+struct MixerParams {
+    float levelA = 1.0f, levelB = 1.0f;
+    float panA = 0.0f, panB = 0.0f;
+    bool invertB = false;
+};
+
 class Module {
 public:
     virtual ~Module() = default;
@@ -48,6 +55,8 @@ public:
     virtual void reset() = 0;
     virtual Fusion fusion() const { return Fusion::None; }
     virtual bool isAmp() const { return false; }
+    // Only for the mixer: the rack reads its settings to sum the two lanes.
+    virtual const MixerParams* mixerParams() const { return nullptr; }
     // Only for the amp: the rack tells it, each block, which pedals it must run itself and whether another pedal loads its input.
     virtual void setFrontEnd(Module* /*compressor*/, Module* /*overdrive*/, bool /*pedalBefore*/) {}
 };
@@ -58,11 +67,36 @@ struct SlotRef {
     bool operator==(const SlotRef&) const = default;
 };
 
+// Between a Splitter and a Mixer the signal runs in two lanes: an entry with lane 0 is in lane A, with lane 1 in lane B. Everything before the
+// splitter and after the mixer is shared (lane 0). Without a splitter the rack is one chain, as it always was.
 struct RackOrder {
-    static constexpr int kMax = 13;  // twelve modules and the amp
+    static constexpr int kMax = 16;  // twelve modules, the two amps and the splitter and mixer pair
     std::array<SlotRef, kMax> slots{};
+    std::array<std::uint8_t, kMax> lane{};
     int count = 0;
     std::uint64_t gen = 0;  // set by Rack::publish: which order this is
+
+    int splitterIndex() const { return indexOf(ModuleType::Splitter); }
+    int mixerIndex() const { return indexOf(ModuleType::Mixer); }
+    // Either no splitter and no mixer (and no lane B), or one of each with the splitter first, and lane B only between them.
+    bool valid() const {
+        int splitters = 0, mixers = 0, s = -1, m = -1;
+        for (int i = 0; i < count; ++i) {
+            if (slots[std::size_t(i)].type == ModuleType::Splitter) ++splitters, s = i;
+            if (slots[std::size_t(i)].type == ModuleType::Mixer) ++mixers, m = i;
+        }
+        if (splitters != mixers || splitters > 1) return false;
+        for (int i = 0; i < count; ++i)
+            if (lane[std::size_t(i)] != 0 && (splitters == 0 || i < s || i > m)) return false;
+        return splitters == 0 || s < m;
+    }
+
+private:
+    int indexOf(ModuleType t) const {
+        for (int i = 0; i < count; ++i)
+            if (slots[std::size_t(i)].type == t) return i;
+        return -1;
+    }
 };
 
 // How a new order takes effect. Duck: the output fades out (8 ms), the order changes at silence and fades back in, so moving a module
@@ -92,9 +126,6 @@ public:
     // Audio thread. `r` is a buffer of at least n floats the rack may use for the right channel. Returns true when the result is a stereo pair
     // (l, r); false when it is mono (r is meaningless: copy l).
     bool process(float* l, float* r, std::size_t n);
-private:
-    bool run(const RackOrder* order, float* l, float* r, std::size_t n);
-public:
     // Sum of the latency of the active modules in the current order.
     double latencySamples() const;
     // What the module used of the time of its blocks, in percent (a running average): 0 when it does not run. The audio thread writes, any thread reads.
@@ -119,7 +150,18 @@ private:
         bool pedalBefore = false;
         bool fused[RackOrder::kMax] = {};
     };
-    Fusions scanFusion(const RackOrder& order) const;
+    // A run of entries of the order (a segment: before the splitter, a lane, after the mixer), by index.
+    struct Segment {
+        int idx[RackOrder::kMax];
+        int n = 0;
+    };
+    Segment segmentOf(const RackOrder& order, int from, int to, int lane) const;  // lane -1: every entry of the range
+    Fusions scanFusion(const RackOrder& order, const Segment& seg) const;
+    double segmentLatency(const RackOrder& order, const Segment& seg) const;
+    bool run(const RackOrder* order, float* l, float* r, std::size_t n, const Segment& seg, bool stereoIn);
+    bool runOrder(const RackOrder* order, float* l, float* r, std::size_t n);
+    bool runLanes(const RackOrder& order, float* l, float* r, std::size_t n, bool stereo);
+    void mixLanes(const MixerParams& mp, float* l, float* r, float* bl, float* br, std::size_t n, bool stereoA, bool stereoB, int diffWanted);
     Module* at(const RackOrder& order, int k) const;
     void retire(SlotRef slot, std::unique_ptr<Module> module, std::uint64_t needGen);
 
@@ -140,6 +182,16 @@ private:
     int fadeLeft_ = 0, fadeLen_ = 384;
     double fs_ = 48000.0;
     int maxBlock_ = 512;
+    // The two lanes (audio thread): lane B's working buffers, the delay lines that align the lanes and the fade when the alignment changes.
+    static constexpr std::size_t kDelay = 16384;  // a power of two, more than any difference of latency
+    std::vector<float> laneBl_, laneBr_;
+    std::array<std::vector<float>, 4> ring_;  // lane A left and right, lane B left and right
+    std::size_t ringPos_ = 0;
+    bool lanesInit_ = false;
+    int diffApplied_ = 0;  // > 0: lane B is later, lane A is delayed by that much; < 0: the other way round
+    enum class MixFade { Idle, Out, In };
+    MixFade mixFade_ = MixFade::Idle;
+    int mixFadeLeft_ = 0;
 };
 
 }  // namespace sas

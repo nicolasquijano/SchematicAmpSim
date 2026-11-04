@@ -190,6 +190,31 @@ private:
     bool active_ = false;
 };
 
+// The two ends of a parallel: the rack itself runs the lanes between them. The splitter has nothing to say; the mixer keeps the levels, the pans and
+// the phase of the two lanes.
+class SplitterModule final : public Module {
+public:
+    void prepare(double, int) override {}
+    void process(float*, float*, std::size_t) override {}
+    bool active() const override { return false; }
+    Channels channels() const override { return Channels::Flexible; }
+    void reset() override {}
+};
+
+class MixerModule final : public Module {
+public:
+    void prepare(double, int) override {}
+    void process(float*, float*, std::size_t) override {}
+    bool active() const override { return false; }
+    Channels channels() const override { return Channels::Flexible; }
+    void reset() override {}
+    void setParams(const MixerParams& p) { params_ = p; }
+    const MixerParams* mixerParams() const override { return &params_; }
+
+private:
+    MixerParams params_;
+};
+
 // The amp: runs the Chain (the circuits, the speaker and, unless the cabinet module takes it, the cabinet filter). The chain is owned by the
 // plugin, which builds a new one off the audio thread when the amp or its condition changes and swaps it in with setChain().
 class AmpModule final : public Module {

@@ -268,3 +268,146 @@ TEST_CASE("a module being removed keeps playing through the fade out", "[rack]")
     rack.process(l.data(), r.data(), 64);
     CHECK(l[0] > 0.9f);  // still the module's +1, faded only slightly: the tail is not cut
 }
+
+// ---------------------------------------------------------------- parallel paths: a splitter, two lanes and a mixer
+
+namespace {
+constexpr SlotRef kS{ModuleType::Splitter, 0}, kM{ModuleType::Mixer, 0};
+
+// Delays by n samples and says so.
+struct Lag final : Module {
+    explicit Lag(int n) : n_(n), buf_(std::size_t(n) + 1, 0.0f), declared_(double(n)) {}
+    void prepare(double, int) override {}
+    void process(float* l, float*, std::size_t count) override {
+        for (std::size_t i = 0; i < count; ++i) {
+            buf_[pos_] = l[i];
+            const std::size_t at = (pos_ + buf_.size() - std::size_t(n_)) % buf_.size();
+            l[i] = buf_[at];
+            pos_ = (pos_ + 1) % buf_.size();
+        }
+    }
+    bool active() const override { return true; }
+    Channels channels() const override { return Channels::MonoOnly; }
+    double latencySamples() const override { return declared_; }
+    void reset() override {}
+    int n_;
+    std::vector<float> buf_;
+    std::size_t pos_ = 0;
+    double declared_;
+};
+
+// The order of the entries, each with its lane (0: shared or lane A, 1: lane B).
+RackOrder lanesOf(std::initializer_list<std::pair<SlotRef, int>> entries) {
+    RackOrder o;
+    for (const auto& e : entries) {
+        o.lane[std::size_t(o.count)] = std::uint8_t(e.second);
+        o.slots[std::size_t(o.count++)] = e.first;
+    }
+    return o;
+}
+
+void setMixer(Rack& rack, const MixerParams& p) { static_cast<MixerModule*>(rack.module(kM))->setParams(p); }
+}  // namespace
+
+TEST_CASE("an order with a splitter and a mixer runs two lanes and sums them", "[rack]") {
+    Rack rack;
+    rack.prepare(48000.0, 128);
+    rack.setModule(kS, std::make_unique<SplitterModule>());
+    rack.setModule(kM, std::make_unique<MixerModule>());
+    rack.setModule(kA, std::make_unique<Gain>(2.0f));
+    rack.setModule(kB, std::make_unique<Add>(1.0f));
+    rack.publish(lanesOf({{kS, 0}, {kA, 0}, {kB, 1}, {kM, 0}}));
+    std::vector<float> l(128, 3.0f), r(128, 0.0f);
+    const bool stereo = rack.process(l.data(), r.data(), l.size());
+    CHECK(stereo);
+    CHECK(l[5] == 10.0f);  // 2x from lane A plus x + 1 from lane B
+    CHECK(r[5] == 10.0f);  // both at the centre: the same in both ears
+}
+
+TEST_CASE("modules before the splitter and after the mixer are shared", "[rack]") {
+    Rack rack;
+    rack.prepare(48000.0, 128);
+    rack.setModule(kS, std::make_unique<SplitterModule>());
+    rack.setModule(kM, std::make_unique<MixerModule>());
+    rack.setModule(kA, std::make_unique<Gain>(2.0f));   // before the splitter
+    rack.setModule(kB, std::make_unique<Add>(1.0f));    // lane A
+    rack.setModule(kC, std::make_unique<Gain>(10.0f));  // after the mixer
+    rack.publish(lanesOf({{kA, 0}, {kS, 0}, {kB, 0}, {kM, 0}, {kC, 0}}));
+    std::vector<float> l(128, 1.0f), r(128, 0.0f);
+    rack.process(l.data(), r.data(), l.size());
+    // before the splitter: x2 = 2; lane A adds 1 = 3, lane B is empty = 2; the mixer sums them = 5; after it: x10
+    CHECK(l[5] == 50.0f);
+}
+
+TEST_CASE("the lanes are aligned in time", "[rack]") {
+    Rack rack;
+    rack.prepare(48000.0, 128);
+    rack.setModule(kS, std::make_unique<SplitterModule>());
+    rack.setModule(kM, std::make_unique<MixerModule>());
+    rack.setModule(kA, std::make_unique<Gain>(1.0f));
+    rack.setModule(kB, std::make_unique<Lag>(37));
+    rack.publish(lanesOf({{kS, 0}, {kA, 0}, {kB, 1}, {kM, 0}}));
+    std::vector<float> l(128, 0.0f), r(128, 0.0f);
+    l[0] = 1.0f;
+    rack.process(l.data(), r.data(), l.size());
+    CHECK(l[37] == 2.0f);  // both impulses land together
+    CHECK(l[0] == 0.0f);
+    CHECK(rack.latencySamples() == 37.0);
+}
+
+TEST_CASE("pan and phase of the mixer", "[rack]") {
+    Rack rack;
+    rack.prepare(48000.0, 128);
+    rack.setModule(kS, std::make_unique<SplitterModule>());
+    rack.setModule(kM, std::make_unique<MixerModule>());
+    rack.setModule(kA, std::make_unique<Gain>(2.0f));
+    rack.setModule(kB, std::make_unique<Gain>(3.0f));
+    rack.publish(lanesOf({{kS, 0}, {kA, 0}, {kB, 1}, {kM, 0}}));
+    MixerParams p;
+    p.panA = -1.0f;
+    p.panB = 1.0f;
+    setMixer(rack, p);
+    std::vector<float> l(128, 1.0f), r(128, 0.0f);
+    REQUIRE(rack.process(l.data(), r.data(), l.size()));
+    CHECK(l[5] == 2.0f);  // lane A only in the left ear
+    CHECK(r[5] == 3.0f);  // lane B only in the right ear
+    // The same gain in both lanes, one of them upside down: nothing is left.
+    rack.setModule(kB, std::make_unique<Gain>(2.0f));
+    p = MixerParams{};
+    p.invertB = true;
+    setMixer(rack, p);
+    std::fill(l.begin(), l.end(), 1.0f);
+    rack.process(l.data(), r.data(), l.size());
+    CHECK(std::abs(l[5]) < 1e-6f);
+}
+
+TEST_CASE("an invalid lane layout is told apart", "[rack]") {
+    CHECK(lanesOf({{kA, 0}, {kB, 0}}).valid());
+    CHECK(lanesOf({{kS, 0}, {kA, 0}, {kB, 1}, {kM, 0}}).valid());
+    CHECK_FALSE(lanesOf({{kA, 0}, {kB, 1}}).valid());                                   // lane B outside a parallel
+    CHECK_FALSE(lanesOf({{kM, 0}, {kA, 0}, {kS, 0}}).valid());                          // the mixer before the splitter
+    CHECK_FALSE(lanesOf({{kS, 0}, {kA, 0}}).valid());                                   // a splitter without a mixer
+    CHECK_FALSE(lanesOf({{kS, 0}, {kM, 0}, {{ModuleType::Splitter, 1}, 0}, {kM, 0}}).valid());  // two of them
+}
+
+TEST_CASE("a change of the lane latency fades instead of clicking", "[rack]") {
+    Rack rack;
+    rack.prepare(48000.0, 64);
+    rack.setModule(kS, std::make_unique<SplitterModule>());
+    rack.setModule(kM, std::make_unique<MixerModule>());
+    rack.setModule(kA, std::make_unique<Gain>(1.0f));
+    auto lag = std::make_unique<Lag>(0);
+    auto* lagPtr = lag.get();
+    rack.setModule(kB, std::move(lag));
+    rack.publish(lanesOf({{kS, 0}, {kA, 0}, {kB, 1}, {kM, 0}}));
+    std::vector<float> out, l(64), r(64);
+    for (int b = 0; b < 60; ++b) {
+        if (b == 20) lagPtr->declared_ = 100.0;  // the lane now says it is 100 samples late
+        for (std::size_t i = 0; i < 64; ++i) l[i] = 0.5f * float(std::sin(2.0 * 3.14159265358979 * 1000.0 * double(out.size() + i) / 48000.0));
+        rack.process(l.data(), r.data(), 64);
+        out.insert(out.end(), l.begin(), l.end());
+    }
+    float biggest = 0.0f;
+    for (std::size_t i = 1; i < out.size(); ++i) biggest = std::max(biggest, std::abs(out[i] - out[i - 1]));
+    CHECK(biggest < 0.35f);
+}
