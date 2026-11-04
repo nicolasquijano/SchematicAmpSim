@@ -1805,6 +1805,7 @@ TEST_CASE("latency follows the active modules and not their order", "[rack]") {
 
 // ---------------------------------------------------------------- modular rack: the page
 
+#include "ModuleUnit.h"
 #include "RackPage.h"
 
 TEST_CASE("the rack page lists the modules in order and follows add, move and remove", "[rack]") {
@@ -2225,4 +2226,111 @@ TEST_CASE("amp B plays nothing until its circuits are built, and the latency is 
     playOn(high, std::vector<float>(256, 0.0f));
     playOn(high, std::vector<float>(256, 0.0f));  // the quality reaches the chain in the block after the one that read it
     CHECK(par.getLatencySamples() == high.getLatencySamples());
+}
+
+// ---------------------------------------------------------------- parallel paths: the page
+
+namespace {
+RackPage* findRackPage(juce::Component& root) {
+    if (auto* page = dynamic_cast<RackPage*>(&root)) return page;
+    for (auto* child : root.getChildren())
+        if (auto* hit = findRackPage(*child)) return hit;
+    return nullptr;
+}
+}  // namespace
+
+TEST_CASE("the rack page draws the parallel as two lanes and offers it once", "[rack]") {
+    JuceInit init;
+    SasProcessor p;
+    RackPage page(p);
+    page.setSize(1000, 700);
+    auto parallelItem = [&] {
+        const auto menu = RackPage::addMenu(p, 100);
+        juce::PopupMenu::MenuItemIterator it(menu, true);
+        while (it.next())
+            if (it.getItem().itemID == 99) return it.getItem().isEnabled;
+        return false;
+    };
+    CHECK(parallelItem());
+    REQUIRE(p.addParallel());
+    page.rebuild();
+    using T = ModuleType;
+    REQUIRE(page.tileCount() == 7);  // gate, splitter, amp, cabinet, amp B, cabinet B, mixer
+    int lanesB = 0;
+    for (int i = 0; i < page.tileCount(); ++i) {
+        const auto slot = page.unitSlot(i);
+        if (page.tileLane(i) == 1) {
+            ++lanesB;
+            CHECK((slot == sas::SlotRef{T::Amp, 1} || slot == sas::SlotRef{T::Cabinet, 1}));
+        }
+    }
+    CHECK(lanesB == 2);
+    CHECK(page.selectedSlot() == sas::SlotRef{T::Amp, 1});  // the second amp opens
+    CHECK_FALSE(p.canAddParallel());
+    CHECK_FALSE(parallelItem());
+    // A pedal added in lane B stays in lane B.
+    REQUIRE(p.moveModuleToLane(sas::SlotRef{T::Amp, 1}, 0, 2) == false);  // the second amp cannot leave its lane
+    REQUIRE(p.addModule(T::Overdrive, 5));
+    page.rebuild();
+    for (int i = 0; i < page.tileCount(); ++i)
+        if (page.unitSlot(i).type == T::Overdrive) CHECK(page.tileLane(i) == 1);
+}
+
+TEST_CASE("amp B has its own panel in the rack, with its own controls", "[rack]") {
+    JuceInit init;
+    SasProcessor p;
+    p.prepareToPlay(48000.0, 512);
+    std::unique_ptr<juce::AudioProcessorEditor> ed(p.createEditor());
+    ed->setSize(1100, 900);
+    REQUIRE(p.addParallel());
+    auto* page = findRackPage(*ed);
+    REQUIRE(page != nullptr);
+    page->rebuild();
+    auto* input = findById(*ed, "amp_b_input");
+    REQUIRE(input != nullptr);
+    auto* unit = input->findParentComponentOfClass<ModuleUnit>();
+    REQUIRE(unit != nullptr);
+    CHECK(unit->slot() == sas::SlotRef{ModuleType::Amp, 1});
+    CHECK(findById(*ed, "amp_b_select") != nullptr);
+}
+
+TEST_CASE("the mixer's level of lane B changes the sum", "[rack]") {
+    JuceInit init;
+    const auto in = legacy::input();
+    auto level = [&](float dbB) {
+        SasProcessor p;
+        p.prepareToPlay(48000.0, 256);
+        REQUIRE(p.addParallel());
+        setParam(p, ids::mixLevelB, dbB);
+        REQUIRE(waitForAmp(p, 1));
+        return rmsOf(playOn(p, in), 200);
+    };
+    const double full = level(0.0f), quiet = level(-24.0f);
+    CHECK(quiet < 0.7 * full);  // lane B at -24 dB leaves little more than lane A
+    CHECK(quiet > 0.4 * full);
+}
+
+TEST_CASE("the parallel page can be rendered to a picture", "[.screenshots]") {
+    JuceInit init;
+    const char* dir = std::getenv("SAS_SCREENSHOT_DIR");
+    if (!dir) { SKIP("SAS_SCREENSHOT_DIR is not set"); }
+    juce::File(dir).createDirectory();
+    SasProcessor p;
+    p.prepareToPlay(48000.0, 512);
+    REQUIRE(p.addParallel());
+    REQUIRE(p.addModule(ModuleType::Overdrive));
+    REQUIRE(p.addModule(ModuleType::Reverb));
+    std::unique_ptr<juce::AudioProcessorEditor> ed(p.createEditor());
+    ed->setSize(1280, 1000);
+    auto* page = findRackPage(*ed);
+    REQUIRE(page != nullptr);
+    page->rebuild();
+    run(p, 40, 196.0, 0.2);
+    const auto img = ed->createComponentSnapshot(ed->getLocalBounds(), true, 1.0f);
+    juce::PNGImageFormat png;
+    juce::FileOutputStream out(juce::File(dir).getChildFile("parallel.png"));
+    REQUIRE(out.openedOk());
+    out.setPosition(0);
+    out.truncate();
+    png.writeImageToStream(img, out);
 }

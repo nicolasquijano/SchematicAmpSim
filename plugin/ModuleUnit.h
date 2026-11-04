@@ -20,7 +20,7 @@ public:
     };
 
     // Gives the amp and the cabinet their body: the editor hosts its own panels there. Null = no body for that type.
-    using HostedBodyFactory = std::function<std::unique_ptr<Body>(sas::ModuleType)>;
+    using HostedBodyFactory = std::function<std::unique_ptr<Body>(sas::ModuleType, int instance)>;
 
     ModuleUnit(SasProcessor& processor, sas::SlotRef slot, const HostedBodyFactory& hosted = {});
     ~ModuleUnit() override;
@@ -66,12 +66,12 @@ private:
 // A body that shows a HostPanel of the editor (and lets go of it when the unit goes away).
 class PanelBody final : public ModuleUnit::Body {
 public:
-    PanelBody(HostPanel& panel, std::function<int()> height) : panel_(panel), height_(std::move(height)) { addAndMakeVisible(panel_); }
+    PanelBody(juce::Component& panel, std::function<int()> height) : panel_(panel), height_(std::move(height)) { addAndMakeVisible(panel_); }
     ~PanelBody() override { removeChildComponent(&panel_); }
     int height() const override { return height_(); }
     void resized() override { panel_.setBounds(getLocalBounds()); }
 
 private:
-    HostPanel& panel_;
+    juce::Component& panel_;
     std::function<int()> height_;
 };

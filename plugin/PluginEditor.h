@@ -148,6 +148,8 @@ private:
 };
 
 class RackPage;
+class AmpPanelB;
+class CabinetPanelB;
 
 // One box drawn behind the controls of a panel: a rounded rectangle with a small accent mark and a caption.
 struct PanelBox {
@@ -187,6 +189,7 @@ public:
     float headerInputDb() const { return headIn_.levelDb(); }
     float headerOutputDb() const { return headOut_.levelDb(); }
     bool headerMetersVisible() const { return headIn_.isVisible() && headOut_.isVisible(); }
+    float totalCpu() const;  // the cost of the modules of the rack, in percent of a block
 
 private:
     // The amp list (a ListBox over the amp parameter's choices).
@@ -262,7 +265,10 @@ private:
     juce::TextButton namCabLoad_{"Load NAM..."}, namCabClear_{"Clear"};  // the NAM cabinet of the cabinet unit
     juce::Label namCabName_;
     std::unique_ptr<juce::FileChooser> chooser_;
-    std::unique_ptr<RackPage> rackPage_;  // declared last: it goes first, and lets go of the two panels
+    std::unique_ptr<AmpPanelB> ampPanelB_;          // the second amp and cabinet of a parallel (their units host them)
+    std::unique_ptr<CabinetPanelB> cabPanelB_;
+    juce::Rectangle<int> cpuBounds_;
+    std::unique_ptr<RackPage> rackPage_;  // declared last: it goes first, and lets go of the panels
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(SasEditor)
 };

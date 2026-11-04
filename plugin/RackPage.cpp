@@ -18,7 +18,6 @@ const std::vector<Category>& categories() {
         {"Pitch", {ModuleType::Pitch}},
         {"EQ", {ModuleType::Eq}},
         {"Space", {ModuleType::Delay, ModuleType::Reverb}},
-        {"Cabinet", {ModuleType::Cabinet}},
     };
     return c;
 }
@@ -26,7 +25,7 @@ const std::vector<Category>& categories() {
 bool sameOrder(const sas::RackOrder& a, const sas::RackOrder& b) {
     if (a.count != b.count) return false;
     for (int i = 0; i < a.count; ++i)
-        if (!(a.slots[std::size_t(i)] == b.slots[std::size_t(i)])) return false;
+        if (!(a.slots[std::size_t(i)] == b.slots[std::size_t(i)]) || a.lane[std::size_t(i)] != b.lane[std::size_t(i)]) return false;
     return true;
 }
 
@@ -48,6 +47,8 @@ juce::Colour colourOf(ModuleType t) {
         case ModuleType::Eq: return juce::Colour(0xff48b8c8);
         case ModuleType::Delay:
         case ModuleType::Reverb: return juce::Colour(0xff5890e0);
+        case ModuleType::Splitter:
+        case ModuleType::Mixer: return juce::Colour(0xffc8c8c8);
     }
     return juce::Colours::grey;
 }
@@ -56,48 +57,95 @@ juce::Colour colourOf(ModuleType t) {
 
 // ------------------------------------------------------------------ the grid of tiles
 
-int RackPage::Map::heightFor(int width) const {
-    const int cols = std::max(1, (width + kGap) / (kTileW + kGap));
-    const int rows = (int(tiles.size()) + 1 + cols - 1) / cols;  // the "+" tile too
-    return rows * (kTileH + kGap);
+RackPage::Map::Layout RackPage::Map::layout(int width) const {
+    Layout out;
+    const int n = int(tiles.size());
+    int s = -1, m = -1;
+    for (int i = 0; i < n; ++i) {
+        if (tiles[std::size_t(i)].slot.type == ModuleType::Splitter) s = i;
+        if (tiles[std::size_t(i)].slot.type == ModuleType::Mixer) m = i;
+    }
+    out.boxes.resize(std::size_t(n));
+    if (s < 0 || m < 0) {  // one chain: a grid that wraps
+        const int cols = std::max(1, (width + kGap) / (kTileW + kGap));
+        auto box = [&](int index) { return juce::Rectangle<int>((index % cols) * (kTileW + kGap), (index / cols) * (kTileH + kGap), kTileW, kTileH); };
+        for (int i = 0; i < n; ++i) out.boxes[std::size_t(i)] = box(i);
+        out.plus = box(n);
+        out.height = ((n + 1 + cols - 1) / cols) * (kTileH + kGap);
+        return out;
+    }
+    // A parallel: two rows. Before the splitter and after the mixer the path is in the upper row; between them lane A is above lane B.
+    int nA = 0, nB = 0;
+    for (int i = s + 1; i < m; ++i) (tiles[std::size_t(i)].lane == 1 ? nB : nA)++;
+    const int cols = (s + 1) + std::max(nA, nB) + (n - m) + 1;
+    const int tileW = std::clamp((width + kGap) / std::max(1, cols) - kGap, 72, kTileW);
+    auto box = [&](int row, int col) { return juce::Rectangle<int>(col * (tileW + kGap), row * (kTileH + kGap), tileW, kTileH); };
+    int col = 0;
+    for (int i = 0; i <= s; ++i) out.boxes[std::size_t(i)] = box(0, col++);
+    int colA = col, colB = col;
+    for (int i = s + 1; i < m; ++i) out.boxes[std::size_t(i)] = tiles[std::size_t(i)].lane == 1 ? box(1, colB++) : box(0, colA++);
+    col = (s + 1) + std::max(nA, nB);
+    const int mixerCol = col;
+    for (int i = m; i < n; ++i) out.boxes[std::size_t(i)] = box(0, col++);
+    out.plus = box(1, mixerCol + 1);  // not under the mixer, where its wire comes down
+    out.height = 2 * (kTileH + kGap);
+    return out;
 }
 
 juce::Rectangle<int> RackPage::Map::boxOf(int index) const {
-    const int cols = columns();
-    return {(index % cols) * (kTileW + kGap), (index / cols) * (kTileH + kGap), kTileW, kTileH};
+    const auto l = layout(getWidth());
+    return index >= int(l.boxes.size()) ? l.plus : l.boxes[std::size_t(index)];
 }
 
 int RackPage::Map::tileAt(juce::Point<int> p) const {
-    for (int i = 0; i <= int(tiles.size()); ++i)
-        if (boxOf(i).contains(p)) return i;
-    return -1;
+    const auto l = layout(getWidth());
+    for (int i = 0; i < int(l.boxes.size()); ++i)
+        if (l.boxes[std::size_t(i)].contains(p)) return i;
+    return l.plus.contains(p) ? int(tiles.size()) : -1;
 }
 
-int RackPage::Map::dropIndex(juce::Point<int> p, sas::SlotRef dragged) const {
-    // The nearest tile centre, reading order: dropping on a tile puts the dragged one in its place.
-    int best = 0;
+RackPage::Map::Drop RackPage::Map::dropAt(juce::Point<int> p, sas::SlotRef dragged) const {
+    const auto l = layout(getWidth());
+    const int n = int(tiles.size());
+    int s = -1, m = -1;
+    for (int i = 0; i < n; ++i) {
+        if (tiles[std::size_t(i)].slot.type == ModuleType::Splitter) s = i;
+        if (tiles[std::size_t(i)].slot.type == ModuleType::Mixer) m = i;
+    }
+    // Index among the other tiles of an index among all of them.
+    auto among = [&](int at) {
+        int k = 0;
+        for (int i = 0; i < at && i < n; ++i)
+            if (!(tiles[std::size_t(i)].slot == dragged)) ++k;
+        return k;
+    };
+    Drop d;
+    if (s >= 0 && m >= 0 && p.x > l.boxes[std::size_t(s)].getRight() && p.x < l.boxes[std::size_t(m)].getX()) {
+        // Between the splitter and the mixer: the row says the lane, and it goes in front of the first tile of that lane that is further along.
+        d.lane = p.y >= kTileH + kGap / 2 ? 1 : 0;
+        int before = m;
+        for (int i = s + 1; i < m; ++i)
+            if (tiles[std::size_t(i)].lane == d.lane && !(tiles[std::size_t(i)].slot == dragged) && l.boxes[std::size_t(i)].getCentreX() > p.x) {
+                before = i;
+                break;
+            }
+        d.index = among(before);
+        return d;
+    }
+    // Elsewhere: in front of the nearest tile, or behind it when the point is past its middle.
+    int best = -1;
     float bestD = 1e9f;
-    int index = 0;
-    for (const auto& t : tiles) {
-        if (t.slot == dragged) continue;
-        const float d = boxOf(int(&t - tiles.data())).getCentre().toFloat().getDistanceFrom(p.toFloat());
-        if (d < bestD) {
-            bestD = d;
-            best = index;
+    for (int i = 0; i < n; ++i) {
+        if (tiles[std::size_t(i)].slot == dragged) continue;
+        const float dist = l.boxes[std::size_t(i)].getCentre().toFloat().getDistanceFrom(p.toFloat());
+        if (dist < bestD) {
+            bestD = dist;
+            best = i;
         }
-        ++index;
     }
-    // Past the middle of that tile (along the row), it goes after it.
-    int k = 0;
-    for (const auto& t : tiles) {
-        if (t.slot == dragged) continue;
-        if (k == best) {
-            const auto box = boxOf(int(&t - tiles.data()));
-            return p.x > box.getCentreX() ? best + 1 : best;
-        }
-        ++k;
-    }
-    return best;
+    if (best < 0) return d;
+    d.index = among(best) + (p.x > l.boxes[std::size_t(best)].getCentreX() ? 1 : 0);
+    return d;
 }
 
 void RackPage::Map::paint(juce::Graphics& g) {
@@ -105,18 +153,42 @@ void RackPage::Map::paint(juce::Graphics& g) {
     const auto accent = look ? look->accent() : juce::Colour(0xffd9a441);
     const auto text = look ? look->text() : juce::Colours::white;
     const auto panel = look ? look->panel() : juce::Colour(0xff2a2723);
-    const int cols = columns();
-    for (int i = 0; i < int(tiles.size()); ++i) {
+    const auto l = layout(getWidth());
+    const int n = int(tiles.size());
+    int s = -1, m = -1;
+    for (int i = 0; i < n; ++i) {
+        if (tiles[std::size_t(i)].slot.type == ModuleType::Splitter) s = i;
+        if (tiles[std::size_t(i)].slot.type == ModuleType::Mixer) m = i;
+    }
+    const bool parallel = s >= 0 && m >= 0;
+    g.setColour(text.withAlpha(0.35f));
+    // The wires: between neighbours of a row, and from the splitter to the lanes and from the lanes to the mixer.
+    for (int i = 0; i + 1 < n; ++i) {
+        const auto a = l.boxes[std::size_t(i)], b = l.boxes[std::size_t(i + 1)];
+        if (a.getY() == b.getY() && b.getX() > a.getX() && (!parallel || (tiles[std::size_t(i)].lane == tiles[std::size_t(i + 1)].lane) || i == s || i + 1 == m))
+            g.fillRect(a.getRight(), a.getCentreY() - 1, b.getX() - a.getRight(), 2);
+    }
+    if (parallel) {
+        int lastB = -1, firstB = -1;
+        for (int i = s + 1; i < m; ++i)
+            if (tiles[std::size_t(i)].lane == 1) {
+                if (firstB < 0) firstB = i;
+                lastB = i;
+            }
+        if (firstB >= 0) {
+            const auto sp = l.boxes[std::size_t(s)], fb = l.boxes[std::size_t(firstB)], lb = l.boxes[std::size_t(lastB)], mx = l.boxes[std::size_t(m)];
+            g.fillRect(sp.getCentreX() - 1, sp.getBottom(), 2, fb.getCentreY() - sp.getBottom());
+            g.fillRect(sp.getCentreX(), fb.getCentreY() - 1, fb.getX() - sp.getCentreX(), 2);
+            g.fillRect(mx.getCentreX() - 1, mx.getBottom(), 2, lb.getCentreY() - mx.getBottom());
+            g.fillRect(lb.getRight(), lb.getCentreY() - 1, mx.getCentreX() - lb.getRight(), 2);
+        }
+    }
+    for (int i = 0; i < n; ++i) {
         const auto& t = tiles[std::size_t(i)];
-        const auto box = boxOf(i);
+        const auto box = l.boxes[std::size_t(i)];
         const auto family = colourOf(t.slot.type);
         const bool lit = !t.hasSwitch || t.on;
         const bool sel = i == selected;
-        // The wire to the next tile of the row.
-        if (i + 1 < int(tiles.size()) && (i % cols) + 1 < cols) {
-            g.setColour(text.withAlpha(0.35f));
-            g.fillRect(box.getRight(), box.getCentreY() - 1, kGap, 2);
-        }
         const auto f = box.toFloat();
         g.setGradientFill(juce::ColourGradient(panel.brighter(lit ? 0.22f : 0.08f), 0.0f, f.getY(), panel.darker(0.2f), 0.0f, f.getBottom(), false));
         g.fillRoundedRectangle(f, 9.0f);
@@ -127,6 +199,11 @@ void RackPage::Map::paint(juce::Graphics& g) {
         g.setColour(text.withAlpha(lit ? 0.95f : 0.45f));
         g.setFont(AmpLookAndFeel::font(12.5f, true, 0.04f));
         g.drawFittedText(t.name, box.withTrimmedTop(14).withTrimmedBottom(22).reduced(6, 0), juce::Justification::centred, 2, 0.8f);
+        if (parallel && i > s && i < m) {  // the lane
+            g.setColour(text.withAlpha(0.55f));
+            g.setFont(AmpLookAndFeel::font(10.0f, true));
+            g.drawText(t.lane == 1 ? "B" : "A", box.withTrimmedTop(2).withTrimmedRight(8), juce::Justification::topRight);
+        }
         if (t.hasSwitch) {  // the bypass light: click it
             const auto dot = juce::Rectangle<float>(f.getX() + 10.0f, f.getBottom() - 19.0f, 11.0f, 11.0f);
             g.setColour(juce::Colours::black.withAlpha(0.55f));
@@ -142,15 +219,14 @@ void RackPage::Map::paint(juce::Graphics& g) {
     }
     // The "+" tile.
     {
-        const auto box = boxOf(int(tiles.size()));
         g.setColour(text.withAlpha(0.35f));
-        g.drawRoundedRectangle(box.toFloat().reduced(0.5f), 9.0f, 1.0f);
+        g.drawRoundedRectangle(l.plus.toFloat().reduced(0.5f), 9.0f, 1.0f);
         g.setColour(text.withAlpha(0.7f));
         g.setFont(AmpLookAndFeel::font(26.0f, true));
-        g.drawText("+", box, juce::Justification::centred);
+        g.drawText("+", l.plus, juce::Justification::centred);
     }
-    if (dropAt >= 0) {  // where a dragged tile would land
-        const auto box = boxOf(dropAt);
+    if (marker >= 0 && marker <= n) {  // where a dragged tile would land
+        const auto box = marker == n ? l.plus : l.boxes[std::size_t(marker)];
         g.setColour(accent);
         g.fillRect(box.getX() - kGap / 2 - 1, box.getY() + 4, 3, box.getHeight() - 8);
     }
@@ -167,6 +243,8 @@ void RackPage::Map::mouseDown(const juce::MouseEvent& e) {
 
 void RackPage::Map::mouseDrag(const juce::MouseEvent& e) {
     if (pressed_ < 0 || pressed_ >= int(tiles.size()) || pressedLight_ || e.getDistanceFromDragStart() < 8) return;
+    const auto type = tiles[std::size_t(pressed_)].slot.type;
+    if (type == ModuleType::Splitter || type == ModuleType::Mixer) return;  // the two ends of a parallel stay where they are
     if (auto* container = juce::DragAndDropContainer::findParentDragContainerFor(this))
         if (!container->isDragAndDropActive()) container->startDragging(ModuleUnit::dragDescription(tiles[std::size_t(pressed_)].slot), this);
 }
@@ -229,6 +307,26 @@ void RackPage::select(sas::SlotRef slot) {
     map_.repaint();
 }
 
+void RackPage::removeParallelAsked() {
+    // Lane B holds the second amp and cabinet; anything else in it goes too, so a rack with more in it asks first.
+    int extra = 0;
+    for (int i = 0; i < shown_.count; ++i)
+        if (shown_.lane[std::size_t(i)] == 1 && shown_.slots[std::size_t(i)].type != ModuleType::Amp && shown_.slots[std::size_t(i)].type != ModuleType::Cabinet) ++extra;
+    auto doIt = [this] {
+        processor_.removeParallel();
+        rebuild();
+    };
+    if (extra == 0) {
+        doIt();
+        return;
+    }
+    juce::AlertWindow::showOkCancelBox(juce::MessageBoxIconType::QuestionIcon, "Remove the parallel",
+                                       "Lane B has " + juce::String(extra) + " more module(s) besides the second amp and cabinet: they are removed with it. Lane A stays as it is.", "Remove", "Keep",
+                                       this, juce::ModalCallbackFunction::create([this, doIt](int result) {
+                                           if (result == 1) doIt();
+                                       }));
+}
+
 void RackPage::rebuild() {
     const auto before = shown_;
     shown_ = processor_.rackOrder();
@@ -239,6 +337,10 @@ void RackPage::rebuild() {
         const sas::SlotRef slot = shown_.slots[std::size_t(i)];
         auto unit = std::make_unique<ModuleUnit>(processor_, slot, hosted_);
         unit->onRemove = [this](sas::SlotRef s) {
+            if (s.type == ModuleType::Splitter || s.type == ModuleType::Mixer) {
+                removeParallelAsked();
+                return;
+            }
             int at = 0;
             for (int k = 0; k < shown_.count; ++k)
                 if (shown_.slots[std::size_t(k)] == s) at = k;
@@ -260,6 +362,7 @@ void RackPage::rebuild() {
         Map::Tile tile;
         tile.slot = slot;
         tile.name = ModuleUnit::title(slot);
+        tile.lane = shown_.lane[std::size_t(i)];
         tile.hasSwitch = RackState::onId(slot.type) != nullptr;
         map_.tiles.push_back(tile);
         units_.push_back(std::move(unit));
@@ -274,12 +377,15 @@ void RackPage::rebuild() {
     }
     // A module that is new takes the selection; otherwise the one that was selected keeps it (the amp, at the start).
     sas::SlotRef pick = unitFor(selected_) ? selected_ : sas::SlotRef{ModuleType::Amp, 0};
-    if (before.count > 0 && shown_.count == before.count + 1)
+    if (before.count > 0 && shown_.count > before.count) {
+        // After a parallel is added, the second amp opens; after any other add, the new module.
         for (int i = 0; i < shown_.count; ++i) {
             bool had = false;
             for (int k = 0; k < before.count; ++k) had = had || before.slots[std::size_t(k)] == shown_.slots[std::size_t(i)];
-            if (!had) pick = shown_.slots[std::size_t(i)];
+            if (!had && (shown_.slots[std::size_t(i)].type != ModuleType::Splitter && shown_.slots[std::size_t(i)].type != ModuleType::Mixer && shown_.slots[std::size_t(i)].type != ModuleType::Cabinet))
+                pick = shown_.slots[std::size_t(i)];
         }
+    }
     refreshTiles();
     selected_ = pick;
     select(unitFor(pick) ? pick : unitSlot(0));
@@ -293,6 +399,12 @@ void RackPage::refreshTiles() {
         t.cpu = processor_.rack().moduleCpu(t.slot);
     }
     map_.repaint();
+}
+
+float RackPage::totalCpu() const {
+    float total = 0.0f;
+    for (int i = 0; i < shown_.count; ++i) total += processor_.rack().moduleCpu(shown_.slots[std::size_t(i)]);
+    return total;
 }
 
 void RackPage::layoutUnits() {
@@ -330,6 +442,8 @@ void RackPage::timerCallback() {
 
 juce::PopupMenu RackPage::addMenu(const SasProcessor& processor, int idBase) {
     juce::PopupMenu menu;
+    menu.addItem(idBase - 1, processor.hasParallel() ? juce::String("Parallel (already there)") : juce::String("Parallel: a second amp and cabinet"), processor.canAddParallel());
+    menu.addSeparator();
     for (const auto& cat : categories()) {
         juce::PopupMenu sub;
         for (auto t : cat.types) {
@@ -344,6 +458,13 @@ juce::PopupMenu RackPage::addMenu(const SasProcessor& processor, int idBase) {
 void RackPage::showAddMenu(int insertAt, juce::Component& anchor) {
     constexpr int kBase = 100;
     addMenu(processor_, kBase).showMenuAsync(juce::PopupMenu::Options().withTargetComponent(&anchor), [this, insertAt](int choice) {
+        if (choice == kBase - 1) {
+            if (processor_.addParallel()) {
+                rebuild();
+                select({ModuleType::Amp, 1});
+            }
+            return;
+        }
         if (choice < kBase) return;
         processor_.addModule(static_cast<ModuleType>(choice - kBase), insertAt);
         rebuild();
@@ -359,32 +480,36 @@ void RackPage::itemDragMove(const SourceDetails& d) {
     sas::SlotRef slot;
     if (!ModuleUnit::parseDragDescription(d.description.toString(), slot)) return;
     // The marker sits in front of the tile that would follow the dragged one.
-    const int index = map_.dropIndex(map_.getLocalPoint(this, d.localPosition), slot);
+    const auto drop = map_.dropAt(map_.getLocalPoint(this, d.localPosition), slot);
     int seen = 0, marker = int(map_.tiles.size());
     for (int i = 0; i < int(map_.tiles.size()); ++i) {
         if (map_.tiles[std::size_t(i)].slot == slot) continue;
-        if (seen == index) {
+        if (seen == drop.index) {
             marker = i;
             break;
         }
         ++seen;
     }
-    if (marker != map_.dropAt) {
-        map_.dropAt = marker;
+    if (marker != map_.marker) {
+        map_.marker = marker;
         map_.repaint();
     }
 }
 
 void RackPage::itemDragExit(const SourceDetails&) {
-    map_.dropAt = -1;
+    map_.marker = -1;
     map_.repaint();
 }
 
 void RackPage::itemDropped(const SourceDetails& d) {
-    map_.dropAt = -1;
+    map_.marker = -1;
     sas::SlotRef slot;
     if (ModuleUnit::parseDragDescription(d.description.toString(), slot)) {
-        processor_.moveModule(slot, map_.dropIndex(map_.getLocalPoint(this, d.localPosition), slot));
+        const auto drop = map_.dropAt(map_.getLocalPoint(this, d.localPosition), slot);
+        const bool fixedLane = slot.type == ModuleType::Amp || slot.type == ModuleType::Cabinet;
+        // Between the splitter and the mixer the row says the lane; the amps and cabinets keep their own.
+        if (drop.lane >= 0 && !fixedLane) processor_.moveModuleToLane(slot, drop.lane, drop.index);
+        else processor_.moveModule(slot, drop.index);
         rebuild();
         select(slot);
     }

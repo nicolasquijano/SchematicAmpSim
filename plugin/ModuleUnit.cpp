@@ -32,7 +32,10 @@ const std::vector<Item>& itemsFor(ModuleType t) {
     static const std::vector<Item> reverb{{Item::Toggle, ids::plHall, "Hall"}, {Item::Knob, ids::plDecay, "DECAY s"}, {Item::Knob, ids::plPre, "PRE-DELAY ms"},
                                           {Item::Knob, ids::plTone, "TONE Hz"}, {Item::Knob, ids::plLow, "LOW CUT Hz"}, {Item::Knob, ids::plMix, "MIX %"},
                                           {Item::Knob, ids::plMod, "MOD %"}, {Item::Knob, ids::plShimmer, "SHIMMER %"}, {Item::Combo, ids::plShimmerInt, "SHIMMER INTERVAL"}};
+    static const std::vector<Item> mixer{{Item::Knob, ids::mixLevelA, "LEVEL A dB"}, {Item::Knob, ids::mixLevelB, "LEVEL B dB"}, {Item::Knob, ids::mixPanA, "PAN A"},
+                                         {Item::Knob, ids::mixPanB, "PAN B"}, {Item::Toggle, ids::mixInvertB, "Invert B"}};
     switch (t) {
+        case ModuleType::Mixer: return mixer;
         case ModuleType::Gate: return gate;
         case ModuleType::Compressor: return comp;
         case ModuleType::Overdrive: return drive;
@@ -62,6 +65,8 @@ const char* nameOf(ModuleType t) {
         case ModuleType::Eq: return "EQ";
         case ModuleType::Delay: return "DELAY";
         case ModuleType::Reverb: return "REVERB";
+        case ModuleType::Splitter: return "SPLITTER";
+        case ModuleType::Mixer: return "MIXER";
     }
     return "";
 }
@@ -225,7 +230,11 @@ private:
 
 }  // namespace
 
-juce::String ModuleUnit::title(sas::SlotRef slot) { return juce::String(nameOf(slot.type)) + (slot.instance > 0 ? " " + juce::String(slot.instance + 1) : juce::String()); }
+juce::String ModuleUnit::title(sas::SlotRef slot) {
+    // The second amp and cabinet are the ones of lane B.
+    if (slot.instance > 0 && (slot.type == ModuleType::Amp || slot.type == ModuleType::Cabinet)) return juce::String(nameOf(slot.type)) + " B";
+    return juce::String(nameOf(slot.type)) + (slot.instance > 0 ? " " + juce::String(slot.instance + 1) : juce::String());
+}
 
 juce::String ModuleUnit::dragDescription(sas::SlotRef slot) { return "rack:" + juce::String(int(slot.type)) + ":" + juce::String(slot.instance); }
 
@@ -241,8 +250,10 @@ bool ModuleUnit::parseDragDescription(const juce::String& text, sas::SlotRef& sl
 
 ModuleUnit::ModuleUnit(SasProcessor& processor, sas::SlotRef slot, const HostedBodyFactory& hosted) : processor_(processor), slot_(slot) {
     if (slot.type == ModuleType::Amp || slot.type == ModuleType::Cabinet) {
-        if (hosted) body_ = hosted(slot.type);
+        if (hosted) body_ = hosted(slot.type, slot.instance);
         if (!body_) body_ = std::make_unique<NoteBody>("The controls of this module are not available here.");
+    } else if (slot.type == ModuleType::Splitter) {
+        body_ = std::make_unique<NoteBody>("The signal splits here into lane A (above) and lane B (below), and joins again at the mixer.");
     } else if (slot.type == ModuleType::Eq) {
         body_ = std::make_unique<EqBody>(processor, slot);
     } else {

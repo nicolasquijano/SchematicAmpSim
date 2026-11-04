@@ -1,5 +1,6 @@
 #include "PluginEditor.h"
 #include "IconData.h"
+#include "ParallelPanels.h"
 #include "RackPage.h"
 #include "RackState.h"
 #include "EqPresets.h"
@@ -598,9 +599,13 @@ SasEditor::SasEditor(SasProcessor& p)
     unit_.setComponentID("cond_unit");
     noise_.setComponentID("cond_noise");
 
-    rackPage_ = std::make_unique<RackPage>(p, [this](sas::ModuleType type) -> std::unique_ptr<ModuleUnit::Body> {
-        if (type == sas::ModuleType::Amp) return std::make_unique<PanelBody>(ampPanel_, [this] { return ampPanelHeight(); });
-        if (type == sas::ModuleType::Cabinet) return std::make_unique<PanelBody>(cabPanel_, [this] { return cabPanelHeight(); });
+    ampPanelB_ = std::make_unique<AmpPanelB>(p);
+    cabPanelB_ = std::make_unique<CabinetPanelB>(p);
+    rackPage_ = std::make_unique<RackPage>(p, [this](sas::ModuleType type, int instance) -> std::unique_ptr<ModuleUnit::Body> {
+        if (type == sas::ModuleType::Amp && instance == 0) return std::make_unique<PanelBody>(ampPanel_, [this] { return ampPanelHeight(); });
+        if (type == sas::ModuleType::Cabinet && instance == 0) return std::make_unique<PanelBody>(cabPanel_, [this] { return cabPanelHeight(); });
+        if (type == sas::ModuleType::Amp) return std::make_unique<PanelBody>(*ampPanelB_, [this] { return ampPanelB_->preferredHeight(); });
+        if (type == sas::ModuleType::Cabinet) return std::make_unique<PanelBody>(*cabPanelB_, [this] { return cabPanelB_->preferredHeight(); });
         return nullptr;
     });
     addAndMakeVisible(*rackPage_);
@@ -919,6 +924,7 @@ void SasEditor::pollMeters() {
     outBar_.setLevel(out);
     headIn_.setLevel(in);
     headOut_.setLevel(out);
+    repaint(cpuBounds_);
     if (shownAmp_ >= 0 && shownAmp_ < int(processor_.amps().size())) {
         const auto& def = processor_.amps()[std::size_t(shownAmp_)];
         const int idx = def.power.tubes.empty() ? 0 : std::min(processor_.wantedCondition().tube, int(def.power.tubes.size()) - 1);
@@ -1146,6 +1152,11 @@ void SasEditor::paint(juce::Graphics& g) {
     g.setFont(AmpLookAndFeel::font(10.0f, true, 0.1f));
     g.drawText("IN", headInLabel_, juce::Justification::centredRight);
     g.drawText("OUT", headOutLabel_, juce::Justification::centredRight);
+    {  // what the modules cost: amber from 70 % of a block, red past it
+        const float cpu = totalCpu();
+        g.setColour(cpu > 90.0f ? juce::Colour(0xffe64632) : cpu > 70.0f ? look_.accent() : look_.label());
+        g.drawText("CPU " + juce::String(int(cpu + 0.5f)) + "%", cpuBounds_, juce::Justification::centredRight);
+    }
     drawLogo(g, logoBounds_.toFloat());
     g.setColour(look_.label().withAlpha(0.65f));
     g.setFont(AmpLookAndFeel::font(10.0f));
@@ -1158,6 +1169,13 @@ void SasEditor::paint(juce::Graphics& g) {
     g.drawText(title_, left, 12, getWidth() - left - 12 - 160, 34, juce::Justification::centredLeft);
     g.setGradientFill(juce::ColourGradient(look_.accent().withAlpha(0.7f), float(left), 0.0f, look_.accent().withAlpha(0.0f), float(getWidth() - 12), 0.0f, false));
     g.fillRect(float(left), 49.0f, float(getWidth() - 12 - left), 1.0f);
+}
+
+float SasEditor::totalCpu() const {
+    float total = 0.0f;
+    const auto& order = processor_.rackOrder();
+    for (int i = 0; i < order.count; ++i) total += processor_.rack().moduleCpu(order.slots[std::size_t(i)]);
+    return total;
 }
 
 void SasEditor::parentHierarchyChanged() {
@@ -1208,6 +1226,8 @@ void SasEditor::resized() {
         // The meters: always there, whatever the page.
         const int row = head.getCentreY();
         int x = head.getRight();
+        x -= 74;
+        cpuBounds_ = {x, row - 8, 70, 16};
         x -= 84;
         headOut_.setBounds(x, row - 5, 84, 10);
         x -= 32;

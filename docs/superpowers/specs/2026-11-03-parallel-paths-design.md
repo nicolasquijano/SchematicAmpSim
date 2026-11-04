@@ -1,6 +1,6 @@
 # Diseño: caminos paralelos A/B (dos amplis a la vez)
 
-Estado: **borrador para aprobación** (ya pasó la revisión de un lector independiente), sin código. Base: la rama `feat/modular-rack` (el rack modular ya implementado; ver `docs/MODULAR_RACK.md`).
+Estado: **implementado** en la rama `feat/modular-rack`. Desvíos: los controles del amp B y el cabinet B son dos clases nuevas (`AmpPanelB`, `CabinetPanelB`, en `plugin/ParallelPanels.*`) y los del amp A y el cabinet A siguen en `SasEditor`, en vez de extraer una clase por instancia; el cabinet B no tiene modo NAM (toca el filtro) y un amp NAM Loader en el camino B usa el modelo del A; el panorama es de tipo balance (0 dB al centro), no de potencia constante. Base: la rama `feat/modular-rack` (el rack modular ya implementado; ver `docs/MODULAR_RACK.md`).
 
 ## 1. Qué se quiere y por qué
 

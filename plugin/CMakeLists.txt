@@ -35,6 +35,8 @@ target_sources(SchematicAmpSim PRIVATE
   CabinetModule.h
   ModuleUnit.cpp
   ModuleUnit.h
+  ParallelPanels.cpp
+  ParallelPanels.h
   RackPage.cpp
   RackPage.h
   RackState.cpp
