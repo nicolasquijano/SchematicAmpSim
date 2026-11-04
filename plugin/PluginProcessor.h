@@ -68,12 +68,12 @@ inline constexpr const char* tsTone = "ts_tone";
 inline constexpr const char* tsLevel = "ts_level";
 inline constexpr const char* pickup = "pickup";  // guitar impedance: Off / single coil / humbucker / P-90
 inline constexpr const char* cable = "cable";    // cable length in metres
-inline constexpr const char* eqOn = "eq_on";  // the post equaliser: five bands, a high-pass and a low-pass
+inline constexpr const char* eqOn = "eq_on";  // the post equaliser: eight bands, a high-pass and a low-pass
 inline constexpr const char* eqHpf = "eq_hpf";
 inline constexpr const char* eqLpf = "eq_lpf";
-inline constexpr const char* eqFreq[5] = {"eq1_freq", "eq2_freq", "eq3_freq", "eq4_freq", "eq5_freq"};
-inline constexpr const char* eqGain[5] = {"eq1_gain", "eq2_gain", "eq3_gain", "eq4_gain", "eq5_gain"};
-inline constexpr const char* eqQ[5] = {"eq1_q", "eq2_q", "eq3_q", "eq4_q", "eq5_q"};
+inline constexpr const char* eqFreq[8] = {"eq1_freq", "eq2_freq", "eq3_freq", "eq4_freq", "eq5_freq", "eq6_freq", "eq7_freq", "eq8_freq"};
+inline constexpr const char* eqGain[8] = {"eq1_gain", "eq2_gain", "eq3_gain", "eq4_gain", "eq5_gain", "eq6_gain", "eq7_gain", "eq8_gain"};
+inline constexpr const char* eqQ[8] = {"eq1_q", "eq2_q", "eq3_q", "eq4_q", "eq5_q", "eq6_q", "eq7_q", "eq8_q"};
 inline constexpr const char* pitch = "pitch";            // pitch shift in semitones (0 = off)
 inline constexpr const char* pitchFine = "pitch_fine";   // and in cents
 inline constexpr const char* gateOn = "gate_on";

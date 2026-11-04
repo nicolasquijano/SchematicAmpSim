@@ -94,7 +94,7 @@ const std::vector<const char*>& paramIds(ModuleType type) {
     static const std::vector<const char*> pitch{ids::pitch, ids::pitchFine};
     static const std::vector<const char*> eq = [] {
         std::vector<const char*> v{ids::eqOn, ids::eqHpf, ids::eqLpf};
-        for (int b = 0; b < 5; ++b) {
+        for (int b = 0; b < sas::EqParams::kBands; ++b) {
             v.push_back(ids::eqFreq[b]);
             v.push_back(ids::eqGain[b]);
             v.push_back(ids::eqQ[b]);
@@ -318,13 +318,13 @@ void addParams(Layout& l, ModuleType type, int k) {
         case ModuleType::Eq: {
             // Frequencies and Q are on log scales; every gain starts at 0, so a new instance is flat.
             const sas::EqParams def;
-            const float lo[5] = {20.0f, 60.0f, 200.0f, 1000.0f, 1000.0f}, hi[5] = {500.0f, 1500.0f, 6000.0f, 12000.0f, 16000.0f};
+            const float lo[8] = {20.0f, 60.0f, 200.0f, 1000.0f, 1000.0f, 100.0f, 800.0f, 3000.0f}, hi[8] = {500.0f, 1500.0f, 6000.0f, 12000.0f, 16000.0f, 2000.0f, 6000.0f, 16000.0f};
             l.add(toggle(I(ids::eqOn), N("EQ"), true));
             l.add(std::make_unique<juce::AudioParameterFloat>(id(I(ids::eqHpf)), N("EQ high-pass"), logRange(20.0f, 500.0f), 20.0f,
                                                               juce::AudioParameterFloatAttributes().withLabel("Hz").withStringFromValueFunction([](float v, int) { return v <= 20.5f ? juce::String("off") : juce::String(v, 0); })));
             l.add(std::make_unique<juce::AudioParameterFloat>(id(I(ids::eqLpf)), N("EQ low-pass"), logRange(2000.0f, 20000.0f), 20000.0f,
                                                               juce::AudioParameterFloatAttributes().withLabel("Hz").withStringFromValueFunction([](float v, int) { return v >= 19500.0f ? juce::String("off") : juce::String(v, 0); })));
-            for (int b = 0; b < 5; ++b) {
+            for (int b = 0; b < sas::EqParams::kBands; ++b) {
                 const juce::String n(b + 1);
                 l.add(std::make_unique<juce::AudioParameterFloat>(id(I(ids::eqFreq[b])), N("EQ " + n + " frequency"), logRange(lo[b], hi[b]), float(def.band[std::size_t(b)].freq),
                                                                   juce::AudioParameterFloatAttributes().withLabel("Hz").withStringFromValueFunction([](float v, int) { return juce::String(v, 0); })));

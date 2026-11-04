@@ -84,7 +84,7 @@ private:
     std::vector<float> curve_;
 };
 
-// The equaliser's curve: the response of the five bands, the high-pass and the low-pass on a log frequency axis, with a draggable node per
+// The equaliser's curve: the response of the eight bands, the high-pass and the low-pass on a log frequency axis, with a draggable node per
 // band (left / right = frequency, up / down = gain, wheel = Q, double click = gain back to 0).
 class EqCurve final : public juce::Component {
 public:

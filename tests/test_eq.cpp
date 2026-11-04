@@ -112,3 +112,25 @@ TEST_CASE("eq: moving a parameter glides and stays finite and bounded") {
     }
     CHECK(worst < 3.0f);
 }
+
+TEST_CASE("eq: the three added bands are bells at their own places, and the first five are unchanged") {
+    static_assert(sas::EqParams::kBands == 8);
+    sas::EqParams p;
+    p.on = true;
+    p.band[5].gainDb = 8.0;   // 500 Hz
+    p.band[6].gainDb = -6.0;  // 2 kHz
+    p.band[7].gainDb = 5.0;   // 10 kHz
+    auto eq = make(p);
+    CHECK(std::fabs(measuredDb(eq, 500.0) - 8.0) < 1.0);  // the neighbouring bell leaks a little
+    CHECK(std::fabs(measuredDb(eq, 2000.0) + 6.0) < 1.0);
+    CHECK(std::fabs(measuredDb(eq, 10000.0) - 5.0) < 0.7);
+    CHECK(std::fabs(measuredDb(eq, 60.0)) < 0.7);  // a bell, not a shelf: far away it is flat
+    // The first five bands do what they always did: band 0 a low shelf, band 4 a high shelf.
+    sas::EqParams q;
+    q.on = true;
+    q.band[0] = {200.0, 6.0, 0.7};
+    q.band[4] = {4000.0, -8.0, 0.7};
+    auto eq2 = make(q);
+    CHECK(std::fabs(measuredDb(eq2, 30.0) - 6.0) < 0.5);
+    CHECK(std::fabs(measuredDb(eq2, 16000.0) + 8.0) < 0.7);
+}

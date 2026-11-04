@@ -1135,7 +1135,7 @@ TEST_CASE("eq presets: each factory preset sets the EQ parameters, stays within 
         eq.on = p.apvts.getRawParameterValue(ids::eqOn)->load() > 0.5f;
         eq.hpfHz = double(p.apvts.getRawParameterValue(ids::eqHpf)->load());
         eq.lpfHz = double(p.apvts.getRawParameterValue(ids::eqLpf)->load());
-        for (int b = 0; b < 5; ++b) {
+        for (int b = 0; b < sas::EqParams::kBands; ++b) {
             eq.band[std::size_t(b)].freq = double(p.apvts.getRawParameterValue(ids::eqFreq[b])->load());
             eq.band[std::size_t(b)].gainDb = double(p.apvts.getRawParameterValue(ids::eqGain[b])->load());
             eq.band[std::size_t(b)].q = double(p.apvts.getRawParameterValue(ids::eqQ[b])->load());
@@ -2580,4 +2580,19 @@ TEST_CASE("tape echo presets set the whole echo, switch it on, and Off leaves th
     p.applyTapePreset(0);
     CHECK(val(ids::tpOn) < 0.5f);
     CHECK(val(ids::tpIntensity) == fb);
+}
+
+TEST_CASE("the equaliser has eight bands: the three added ones are bells, flat until moved, and a preset leaves them flat", "[rack]") {
+    JuceInit init;
+    SasProcessor p;
+    REQUIRE(sas::EqParams::kBands == 8);
+    REQUIRE(p.addModule(sas::ModuleType::Eq));
+    for (int b = 5; b < 8; ++b) {
+        CHECK(p.apvts.getParameter(ids::eqFreq[b]) != nullptr);
+        CHECK(p.apvts.getRawParameterValue(ids::eqGain[b])->load() == 0.0f);
+    }
+    setParam(p, ids::eqGain[6], 6.0f);
+    p.applyEqPreset(2);  // "Warm blues"
+    CHECK(p.apvts.getRawParameterValue(ids::eqGain[6])->load() == 0.0f);  // the preset leaves the added bands flat
+    CHECK(p.apvts.getRawParameterValue(ids::eqGain[0])->load() > 1.0f);   // and sets its own five
 }

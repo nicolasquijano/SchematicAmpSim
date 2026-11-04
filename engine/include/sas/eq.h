@@ -1,5 +1,5 @@
 #pragma once
-// Post equaliser: a high-pass, a low-pass and five bands (low shelf, three bells, high shelf), RBJ biquads on the stereo pair after the
+// Post equaliser: a high-pass, a low-pass and eight bands (a low shelf, a high shelf and six bells), RBJ biquads on the stereo pair after the
 // cabinet. Everything that is not moved is bypassed, so a flat EQ costs nothing and changes nothing. The parameters glide (15 ms)
 // so dragging a node does not zip. `responseDb` is the same maths for drawing the curve.
 
@@ -15,10 +15,13 @@ struct EqBand {
 };
 
 struct EqParams {
-    static constexpr int kBands = 5;
+    static constexpr int kBands = 8;
+    // Band 0 is the low shelf and band 4 the high shelf; the other six are bells (the first five bands are as they always were, the last three are new).
+    static constexpr int kHighShelf = 4;
     bool on = false;
     double hpfHz = 20.0, lpfHz = 20000.0;  // at their ends the filters are off
-    std::array<EqBand, kBands> band{{{100.0, 0.0, 0.7}, {250.0, 0.0, 1.0}, {1000.0, 0.0, 1.0}, {3500.0, 0.0, 1.0}, {6000.0, 0.0, 0.7}}};
+    std::array<EqBand, kBands> band{{{100.0, 0.0, 0.7}, {250.0, 0.0, 1.0}, {1000.0, 0.0, 1.0}, {3500.0, 0.0, 1.0}, {6000.0, 0.0, 0.7},
+                                           {500.0, 0.0, 1.0}, {2000.0, 0.0, 1.0}, {10000.0, 0.0, 1.0}}};
 
     static constexpr double kHpfOff = 20.0, kLpfOff = 20000.0;
     bool flat() const {
@@ -128,7 +131,7 @@ private:
             used[i] = p.on && std::fabs(b.gainDb) > 1e-3;
             c[i] = Coef{};
             if (!used[i]) continue;
-            c[i] = i == 0 ? lowShelf(fs_, b.freq, b.gainDb, b.q) : i == EqParams::kBands - 1 ? highShelf(fs_, b.freq, b.gainDb, b.q) : peak(fs_, b.freq, b.gainDb, b.q);
+            c[i] = i == 0 ? lowShelf(fs_, b.freq, b.gainDb, b.q) : i == EqParams::kHighShelf ? highShelf(fs_, b.freq, b.gainDb, b.q) : peak(fs_, b.freq, b.gainDb, b.q);
         }
         used[EqParams::kBands] = p.on && p.hpfHz > EqParams::kHpfOff + 1e-6;
         c[EqParams::kBands] = used[EqParams::kBands] ? highPass(fs_, p.hpfHz) : Coef{};

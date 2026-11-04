@@ -204,7 +204,7 @@ public:
         lpf_ = std::make_unique<KnobWithLabel>(p.apvts, RackState::paramId(ids::eqLpf, slot.instance).toRawUTF8(), "LOW-PASS");
         addAndMakeVisible(*hpf_);
         addAndMakeVisible(*lpf_);
-        for (int b = 0; b < 5; ++b) {
+        for (int b = 0; b < sas::EqParams::kBands; ++b) {
             const char* caption[3] = {"FREQ Hz", "GAIN dB", "Q"};
             const char* base[3] = {ids::eqFreq[b], ids::eqGain[b], ids::eqQ[b]};
             for (int k = 0; k < 3; ++k) {
@@ -239,7 +239,7 @@ public:
         auto row = side.removeFromTop(100);
         for (int k = 0; k < 3; ++k) {
             auto cell = row.removeFromLeft(78);
-            for (int b = 0; b < 5; ++b) knobs_[b][k]->setBounds(cell);
+            for (int b = 0; b < sas::EqParams::kBands; ++b) knobs_[b][k]->setBounds(cell);
         }
         auto filters = side.removeFromTop(100);
         hpf_->setBounds(filters.removeFromLeft(78));
@@ -248,7 +248,7 @@ public:
 
 private:
     void select(int band) {
-        for (int b = 0; b < 5; ++b)
+        for (int b = 0; b < sas::EqParams::kBands; ++b)
             for (auto& k : knobs_[b]) k->setVisible(b == band);
         band_.setText("BAND " + juce::String(band + 1), juce::dontSendNotification);
         resized();
@@ -257,7 +257,7 @@ private:
     sas::SpectrumAnalyzer spectrum_;
     std::vector<float> buffer_ = std::vector<float>(sas::SpectrumAnalyzer::kFft);
     EqCurve curve_;
-    std::unique_ptr<KnobWithLabel> hpf_, lpf_, knobs_[5][3];
+    std::unique_ptr<KnobWithLabel> hpf_, lpf_, knobs_[sas::EqParams::kBands][3];
     juce::Label band_;
 };
 

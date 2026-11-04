@@ -728,7 +728,7 @@ sas::EqParams EqCurve::params() const {
     p.on = apvts_.getRawParameterValue(pid(ids::eqOn))->load() > 0.5f;
     p.hpfHz = double(apvts_.getRawParameterValue(pid(ids::eqHpf))->load());
     p.lpfHz = double(apvts_.getRawParameterValue(pid(ids::eqLpf))->load());
-    for (int b = 0; b < 5; ++b) {
+    for (int b = 0; b < sas::EqParams::kBands; ++b) {
         p.band[std::size_t(b)].freq = double(apvts_.getRawParameterValue(pid(ids::eqFreq[b]))->load());
         p.band[std::size_t(b)].gainDb = double(apvts_.getRawParameterValue(pid(ids::eqGain[b]))->load());
         p.band[std::size_t(b)].q = double(apvts_.getRawParameterValue(pid(ids::eqQ[b]))->load());
@@ -751,7 +751,7 @@ int EqCurve::nodeAt(juce::Point<float> p) const {
     const auto prm = params();
     int best = -1;
     float bestD = 16.0f;
-    for (int b = 0; b < 5; ++b) {
+    for (int b = 0; b < sas::EqParams::kBands; ++b) {
         const float d = p.getDistanceFrom({xOf(prm.band[std::size_t(b)].freq), yOf(prm.band[std::size_t(b)].gainDb)});
         if (d < bestD) { bestD = d; best = b; }
     }
@@ -861,7 +861,7 @@ void EqCurve::paint(juce::Graphics& g) {
     g.setColour(accent.withAlpha(prm.on ? 1.0f : 0.4f));
     g.strokePath(curve, juce::PathStrokeType(2.0f));
     // The nodes.
-    for (int i = 0; i < 5; ++i) {
+    for (int i = 0; i < sas::EqParams::kBands; ++i) {
         const juce::Point<float> p(xOf(prm.band[std::size_t(i)].freq), yOf(prm.band[std::size_t(i)].gainDb));
         const bool sel = i == selected_;
         const float r = sel ? 9.0f : 7.0f;

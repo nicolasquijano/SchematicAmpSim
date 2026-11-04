@@ -561,7 +561,7 @@ void SasProcessor::applyModuleParams(const sas::RackOrder& order) {
                 q.on = p(ids::eqOn) > 0.5;
                 q.hpfHz = p(ids::eqHpf);
                 q.lpfHz = p(ids::eqLpf);
-                for (int b = 0; b < 5; ++b) {
+                for (int b = 0; b < sas::EqParams::kBands; ++b) {
                     q.band[std::size_t(b)].freq = p(ids::eqFreq[b]);
                     q.band[std::size_t(b)].gainDb = p(ids::eqGain[b]);
                     q.band[std::size_t(b)].q = p(ids::eqQ[b]);
@@ -1509,6 +1509,13 @@ void SasProcessor::applyEqPreset(int index, int instance) {
         set(ids::eqFreq[b], p.band[std::size_t(b)].freq);
         set(ids::eqGain[b], p.band[std::size_t(b)].gainDb);
         set(ids::eqQ[b], p.band[std::size_t(b)].q);
+    }
+    // The presets are made of five bands; the three added ones are left flat at their own places.
+    const sas::EqParams flat;
+    for (int b = 5; b < sas::EqParams::kBands; ++b) {
+        set(ids::eqFreq[b], flat.band[std::size_t(b)].freq);
+        set(ids::eqGain[b], 0.0);
+        set(ids::eqQ[b], flat.band[std::size_t(b)].q);
     }
 }
 
