@@ -120,16 +120,29 @@ RackPage::Map::Drop RackPage::Map::dropAt(juce::Point<int> p, sas::SlotRef dragg
         return k;
     };
     Drop d;
-    if (s >= 0 && m >= 0 && p.x > l.boxes[std::size_t(s)].getRight() && p.x < l.boxes[std::size_t(m)].getX()) {
-        // Between the splitter and the mixer: the row says the lane, and it goes in front of the first tile of that lane that is further along.
-        d.lane = p.y >= kTileH + kGap / 2 ? 1 : 0;
-        int before = m;
-        for (int i = s + 1; i < m; ++i)
-            if (tiles[std::size_t(i)].lane == d.lane && !(tiles[std::size_t(i)].slot == dragged) && l.boxes[std::size_t(i)].getCentreX() > p.x) {
-                before = i;
-                break;
-            }
+    // Between the splitter and the mixer the row says the lane: the upper row is lane A, the lower row lane B. The lower row also counts under the splitter
+    // (where the wire to lane B comes down) and under the mixer.
+    const bool row1 = p.y >= kTileH + kGap / 2;
+    bool inRegion = false;
+    if (s >= 0 && m >= 0) {
+        const auto sb = l.boxes[std::size_t(s)], mb = l.boxes[std::size_t(m)];
+        inRegion = row1 ? (p.x >= sb.getX() && p.x < mb.getRight()) : (p.x > sb.getRight() && p.x < mb.getX());
+    }
+    if (inRegion) {
+        d.lane = row1 ? 1 : 0;
+        int before = m, last = -1;
+        for (int i = s + 1; i < m; ++i) {
+            if (tiles[std::size_t(i)].lane != d.lane || tiles[std::size_t(i)].slot == dragged) continue;
+            last = i;
+            if (before == m && l.boxes[std::size_t(i)].getCentreX() > p.x) before = i;
+        }
         d.index = among(before);
+        const int rowY = d.lane * (kTileH + kGap);
+        int x;
+        if (before != m) x = l.boxes[std::size_t(before)].getX() - kGap / 2;
+        else if (last >= 0) x = l.boxes[std::size_t(last)].getRight() + kGap / 2;
+        else x = l.boxes[std::size_t(s)].getRight() + kGap / 2;
+        d.rect = {x - 1, rowY, 3, kTileH};
         return d;
     }
     // Elsewhere: in front of the nearest tile, or behind it when the point is past its middle.
@@ -144,7 +157,10 @@ RackPage::Map::Drop RackPage::Map::dropAt(juce::Point<int> p, sas::SlotRef dragg
         }
     }
     if (best < 0) return d;
-    d.index = among(best) + (p.x > l.boxes[std::size_t(best)].getCentreX() ? 1 : 0);
+    const bool after = p.x > l.boxes[std::size_t(best)].getCentreX();
+    d.index = among(best) + (after ? 1 : 0);
+    const auto box = l.boxes[std::size_t(best)];
+    d.rect = {(after ? box.getRight() + kGap / 2 : box.getX() - kGap / 2) - 1, box.getY(), 3, kTileH};
     return d;
 }
 
@@ -225,10 +241,9 @@ void RackPage::Map::paint(juce::Graphics& g) {
         g.setFont(AmpLookAndFeel::font(26.0f, true));
         g.drawText("+", l.plus, juce::Justification::centred);
     }
-    if (marker >= 0 && marker <= n) {  // where a dragged tile would land
-        const auto box = marker == n ? l.plus : l.boxes[std::size_t(marker)];
+    if (!markerRect.isEmpty()) {  // where a dragged tile would land
         g.setColour(accent);
-        g.fillRect(box.getX() - kGap / 2 - 1, box.getY() + 4, 3, box.getHeight() - 8);
+        g.fillRoundedRectangle(markerRect.toFloat().reduced(0.0f, 4.0f), 1.5f);
     }
 }
 
@@ -246,7 +261,14 @@ void RackPage::Map::mouseDrag(const juce::MouseEvent& e) {
     const auto type = tiles[std::size_t(pressed_)].slot.type;
     if (type == ModuleType::Splitter || type == ModuleType::Mixer) return;  // the two ends of a parallel stay where they are
     if (auto* container = juce::DragAndDropContainer::findParentDragContainerFor(this))
-        if (!container->isDragAndDropActive()) container->startDragging(ModuleUnit::dragDescription(tiles[std::size_t(pressed_)].slot), this);
+        if (!container->isDragAndDropActive()) {
+            // What follows the cursor is the tile alone, not the whole chain.
+            const auto box = boxOf(pressed_);
+            juce::Image image = createComponentSnapshot(box, true, 1.0f);
+            image.multiplyAllAlphas(0.85f);
+            const juce::Point<int> offset = box.getPosition() - e.getMouseDownPosition();
+            container->startDragging(ModuleUnit::dragDescription(tiles[std::size_t(pressed_)].slot), this, juce::ScaledImage(image), false, &offset);
+        }
 }
 
 void RackPage::Map::mouseUp(const juce::MouseEvent& e) {
@@ -479,30 +501,20 @@ bool RackPage::isInterestedInDragSource(const SourceDetails& d) {
 void RackPage::itemDragMove(const SourceDetails& d) {
     sas::SlotRef slot;
     if (!ModuleUnit::parseDragDescription(d.description.toString(), slot)) return;
-    // The marker sits in front of the tile that would follow the dragged one.
     const auto drop = map_.dropAt(map_.getLocalPoint(this, d.localPosition), slot);
-    int seen = 0, marker = int(map_.tiles.size());
-    for (int i = 0; i < int(map_.tiles.size()); ++i) {
-        if (map_.tiles[std::size_t(i)].slot == slot) continue;
-        if (seen == drop.index) {
-            marker = i;
-            break;
-        }
-        ++seen;
-    }
-    if (marker != map_.marker) {
-        map_.marker = marker;
+    if (drop.rect != map_.markerRect) {
+        map_.markerRect = drop.rect;
         map_.repaint();
     }
 }
 
 void RackPage::itemDragExit(const SourceDetails&) {
-    map_.marker = -1;
+    map_.markerRect = {};
     map_.repaint();
 }
 
 void RackPage::itemDropped(const SourceDetails& d) {
-    map_.marker = -1;
+    map_.markerRect = {};
     sas::SlotRef slot;
     if (ModuleUnit::parseDragDescription(d.description.toString(), slot)) {
         const auto drop = map_.dropAt(map_.getLocalPoint(this, d.localPosition), slot);

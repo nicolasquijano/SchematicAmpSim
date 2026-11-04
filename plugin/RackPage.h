@@ -22,6 +22,9 @@ public:
     int tileCount() const { return int(map_.tiles.size()); }
     int tileLane(int index) const { return map_.tiles[std::size_t(index)].lane; }
     sas::SlotRef selectedSlot() const { return selected_; }
+    // For tests: where a tile is in the map, and where the map is in the page.
+    juce::Rectangle<int> tileBox(int index) const { return map_.boxOf(index); }
+    juce::Point<int> mapOrigin() const { return map_.getPosition(); }
     void select(sas::SlotRef slot);
     bool unitSumsToMono(int index) const { return units_[std::size_t(index)]->sumsToMono(); }
     // Builds the units again from the processor's order (done by itself when the order changes).
@@ -65,6 +68,7 @@ private:
         // Where a dragged tile would land: the index among the other tiles, and the lane when that is between the splitter and the mixer (-1 otherwise).
         struct Drop {
             int index = 0, lane = -1;
+            juce::Rectangle<int> rect;  // where the marker goes: a thin bar where the tile would land
         };
         Drop dropAt(juce::Point<int> p, sas::SlotRef dragged) const;
         void paint(juce::Graphics&) override;
@@ -74,7 +78,7 @@ private:
 
         std::vector<Tile> tiles;
         int selected = -1;
-        int marker = -1;  // a drop marker while dragging: the tile it goes in front of
+        juce::Rectangle<int> markerRect;  // a drop marker while dragging (empty: none)
         std::function<void(int)> onSelect, onToggle;
         std::function<void()> onAdd;
 

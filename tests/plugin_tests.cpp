@@ -2334,3 +2334,65 @@ TEST_CASE("the parallel page can be rendered to a picture", "[.screenshots]") {
     out.truncate();
     png.writeImageToStream(img, out);
 }
+
+TEST_CASE("an overdrive dropped on lane B moves to lane B", "[rack]") {
+    JuceInit init;
+    SasProcessor p;
+    REQUIRE(p.addParallel());
+    REQUIRE(p.addModule(ModuleType::Overdrive));  // it goes in front of the first amp, in lane A
+    RackPage page(p);
+    page.setSize(1000, 700);
+    page.rebuild();
+    using T = ModuleType;
+    int odTile = -1, ampB = -1;
+    for (int i = 0; i < page.tileCount(); ++i) {
+        if (page.unitSlot(i).type == T::Overdrive) odTile = i;
+        if (page.unitSlot(i) == sas::SlotRef{T::Amp, 1}) ampB = i;
+    }
+    REQUIRE(odTile >= 0);
+    REQUIRE(ampB >= 0);
+    CHECK(page.tileLane(odTile) == 0);
+    // Dropped on the tile of the second amp (the point is in the page's own coordinates).
+    const auto box = page.tileBox(ampB);
+    const auto where = box.getCentre() + page.mapOrigin();
+    juce::DragAndDropTarget::SourceDetails details(ModuleUnit::dragDescription({T::Overdrive, 0}), &page, where);
+    page.itemDropped(details);
+    odTile = -1;
+    for (int i = 0; i < page.tileCount(); ++i)
+        if (page.unitSlot(i).type == T::Overdrive) odTile = i;
+    REQUIRE(odTile >= 0);
+    CHECK(page.tileLane(odTile) == 1);
+}
+
+TEST_CASE("an overdrive dropped on an empty cell of lane B, or between its tiles, moves to lane B", "[rack]") {
+    JuceInit init;
+    using T = ModuleType;
+    for (int variant = 0; variant < 4; ++variant) {
+        SasProcessor p;
+        REQUIRE(p.addParallel());
+        REQUIRE(p.addModule(T::Overdrive));
+        RackPage page(p);
+        page.setSize(900, 700);
+        page.rebuild();
+        int cabB = -1, cabA = -1, splitter = -1;
+        for (int i = 0; i < page.tileCount(); ++i) {
+            if (page.unitSlot(i).type == T::Splitter) splitter = i;
+            if (page.unitSlot(i) == sas::SlotRef{T::Cabinet, 1}) cabB = i;
+            if (page.unitSlot(i) == sas::SlotRef{T::Cabinet, 0}) cabA = i;
+        }
+        REQUIRE(cabB >= 0);
+        juce::Point<int> where;
+        if (variant == 0) where = page.tileBox(cabA).getCentre() + juce::Point<int>(0, 78);        // the empty cell below the first cabinet
+        if (variant == 1) where = juce::Point<int>(page.tileBox(cabB).getRight() - 2, page.tileBox(cabB).getY() + 30);        // just before the end of the second cabinet's tile
+        if (variant == 2) where = page.tileBox(cabB).getTopLeft() + juce::Point<int>(-6, 30);      // the gap in front of the second cabinet
+        if (variant == 3) where = page.tileBox(splitter).getCentre() + juce::Point<int>(0, 78);     // under the splitter, where the wire to lane B comes down
+        juce::DragAndDropTarget::SourceDetails details(ModuleUnit::dragDescription({T::Overdrive, 0}), &page, where + page.mapOrigin());
+        page.itemDropped(details);
+        int od = -1;
+        for (int i = 0; i < page.tileCount(); ++i)
+            if (page.unitSlot(i).type == T::Overdrive) od = i;
+        INFO("variant " << variant);
+        REQUIRE(od >= 0);
+        CHECK(page.tileLane(od) == 1);
+    }
+}
