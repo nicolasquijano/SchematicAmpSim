@@ -15,6 +15,7 @@
 #include "sas/boost.h"
 #include "sas/chorus.h"
 #include "sas/limiter.h"
+#include "sas/tape.h"
 #include "sas/fuzz.h"
 #include "sas/flanger.h"
 #include "sas/tremolo.h"
@@ -134,6 +135,17 @@ inline constexpr const char* flRate = "fl_rate";          // Hz
 inline constexpr const char* flDepth = "fl_depth";        // percent
 inline constexpr const char* flManual = "fl_manual";      // percent, centre of the sweep
 inline constexpr const char* flFeedback = "fl_feedback";  // percent, -90 .. 90
+// The tape echo (sas/tape.h): a module of the rack only.
+inline constexpr const char* tpOn = "tape_on";
+inline constexpr const char* tpTime = "tape_time";            // ms, the distance to the first head
+inline constexpr const char* tpHeads = "tape_heads";          // which of the three playback heads are heard
+inline constexpr const char* tpIntensity = "tape_intensity";  // percent, feedback (past 100 it swells and self-oscillates)
+inline constexpr const char* tpMix = "tape_mix";              // percent
+inline constexpr const char* tpTone = "tape_tone";            // Hz, the highs the loop carries
+inline constexpr const char* tpWow = "tape_wow";              // percent
+inline constexpr const char* tpFlutter = "tape_flutter";      // percent
+inline constexpr const char* tpSat = "tape_sat";              // percent, the saturation of the tape
+inline constexpr const char* tpStereo = "tape_stereo";        // 0 = mono, 1 = the heads spread across the picture
 // The clean boost and the limiter (sas/boost.h, sas/limiter.h): modules of the rack only.
 inline constexpr const char* bstOn = "bst_on";
 inline constexpr const char* bstGain = "bst_gain";  // dB
@@ -262,6 +274,7 @@ public:
     void applyReverbPreset(int index, int instance = 0);
     void applyWahPreset(int index, int instance = 0);
     void applyFuzzPreset(int index, int instance = 0);
+    void applyTapePreset(int index, int instance = 0);
     void clearImpulseResponse(int slot = 0, int cabinet = 0);
     juce::String impulseResponseName(int slot = 0, int cabinet = 0) const;
     // Magnitude response of the loaded IR in dB (mean 0), log-spaced from 50 Hz to 10 kHz; empty when nothing is loaded.

@@ -83,6 +83,7 @@ Layout SasProcessor::createLayout(const std::vector<sas::AmpDef>& defs) {
     RackState::addParams(l, sas::ModuleType::Wah, 0);
     RackState::addParams(l, sas::ModuleType::Fuzz, 0);
     RackState::addParams(l, sas::ModuleType::Boost, 0);
+    RackState::addParams(l, sas::ModuleType::TapeEcho, 0);
     RackState::addParams(l, sas::ModuleType::Limiter, 0);
     RackState::addParams(l, sas::ModuleType::Compressor, 0);
     RackState::addParams(l, sas::ModuleType::NamPedal, 0);
@@ -488,6 +489,21 @@ void SasProcessor::applyModuleParams(const sas::RackOrder& order) {
                 static_cast<sas::FlangerModule*>(m)->setParams(q);
                 break;
             }
+            case T::TapeEcho: {
+                sas::TapeParams q;
+                q.on = p(ids::tpOn) > 0.5;
+                q.timeMs = p(ids::tpTime);
+                q.heads = int(p(ids::tpHeads) + 0.5);
+                q.intensity = p(ids::tpIntensity) / 100.0;
+                q.mix = p(ids::tpMix) / 100.0;
+                q.toneHz = p(ids::tpTone);
+                q.wow = p(ids::tpWow) / 100.0;
+                q.flutter = p(ids::tpFlutter) / 100.0;
+                q.saturation = p(ids::tpSat) / 100.0;
+                q.stereo = p(ids::tpStereo) > 0.5;
+                static_cast<sas::TapeEchoModule*>(m)->setParams(q);
+                break;
+            }
             case T::Boost: {
                 sas::BoostParams q;
                 q.on = p(ids::bstOn) > 0.5;
@@ -795,6 +811,7 @@ std::unique_ptr<sas::Module> SasProcessor::makeModule(sas::ModuleType type, int 
         case T::Wah: return std::make_unique<sas::WahModule>();
         case T::Fuzz: return std::make_unique<sas::FuzzModule>();
         case T::Boost: return std::make_unique<sas::BoostModule>();
+        case T::TapeEcho: return std::make_unique<sas::TapeEchoModule>();
         case T::Limiter: return std::make_unique<sas::LimiterModule>();
         case T::Pitch: return std::make_unique<sas::PitchModule>();
         case T::Eq: return std::make_unique<sas::EqModule>();
@@ -1493,6 +1510,29 @@ void SasProcessor::applyEqPreset(int index, int instance) {
         set(ids::eqGain[b], p.band[std::size_t(b)].gainDb);
         set(ids::eqQ[b], p.band[std::size_t(b)].q);
     }
+}
+
+void SasProcessor::applyTapePreset(int index, int instance) {
+    if (index < 0 || index >= kTapePresetCount) return;
+    const TapePreset& p = kTapePresets[index];
+    auto set = [this, instance](const char* id, double value) {
+        if (auto* q = apvts.getParameter(RackState::paramId(id, instance))) {
+            q->beginChangeGesture();
+            q->setValueNotifyingHost(q->convertTo0to1(float(value)));
+            q->endChangeGesture();
+        }
+    };
+    set(ids::tpOn, p.on ? 1.0 : 0.0);
+    if (!p.on) return;  // "Off" only switches it off, so the knobs keep what the player had set
+    set(ids::tpTime, p.timeMs);
+    set(ids::tpHeads, p.heads);
+    set(ids::tpIntensity, p.intensity);
+    set(ids::tpMix, p.mix);
+    set(ids::tpTone, p.toneHz);
+    set(ids::tpWow, p.wow);
+    set(ids::tpFlutter, p.flutter);
+    set(ids::tpSat, p.saturation);
+    set(ids::tpStereo, p.stereo ? 1.0 : 0.0);
 }
 
 void SasProcessor::applyFuzzPreset(int index, int instance) {

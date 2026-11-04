@@ -15,7 +15,7 @@ namespace {
 
 // Caps (docs/MODULAR_RACK.md, 4.1; the CPU table in section 6 holds them).
 constexpr int kCaps[sas::kModuleTypeCount] = {2 /*Amp*/, 2 /*Cabinet*/, 2 /*Gate*/, 2 /*Compressor*/, 4 /*Overdrive*/, 2 /*NamPedal*/, 2 /*Phaser*/,
-                                              2 /*Chorus*/, 2 /*Vibe*/, 2 /*Pitch*/, 2 /*Eq*/, 2 /*Delay*/, 2 /*Reverb*/, 1 /*Splitter*/, 1 /*Mixer*/, 2 /*Tremolo*/, 2 /*Flanger*/, 2 /*Wah*/, 2 /*Fuzz*/, 2 /*Boost*/, 2 /*Limiter*/};
+                                              2 /*Chorus*/, 2 /*Vibe*/, 2 /*Pitch*/, 2 /*Eq*/, 2 /*Delay*/, 2 /*Reverb*/, 1 /*Splitter*/, 1 /*Mixer*/, 2 /*Tremolo*/, 2 /*Flanger*/, 2 /*Wah*/, 2 /*Fuzz*/, 2 /*Boost*/, 2 /*Limiter*/, 2 /*TapeEcho*/};
 
 // Mono: both channels of a stereo pair get the same modulation. Stereo: the right channel's modulation is out of step with the left's.
 std::unique_ptr<juce::AudioParameterChoice> channelMode(const juce::ParameterID& id, const juce::String& name) {
@@ -90,6 +90,7 @@ const std::vector<const char*>& paramIds(ModuleType type) {
     static const std::vector<const char*> fuzz{ids::fzOn, ids::fzType, ids::fzFuzz, ids::fzTone, ids::fzBias, ids::fzMix, ids::fzLevel};
     static const std::vector<const char*> boost{ids::bstOn, ids::bstGain, ids::bstTone, ids::bstSoft};
     static const std::vector<const char*> limiter{ids::limOn, ids::limGain, ids::limCeiling, ids::limRelease};
+    static const std::vector<const char*> tape{ids::tpOn, ids::tpTime, ids::tpHeads, ids::tpIntensity, ids::tpMix, ids::tpTone, ids::tpWow, ids::tpFlutter, ids::tpSat, ids::tpStereo};
     static const std::vector<const char*> pitch{ids::pitch, ids::pitchFine};
     static const std::vector<const char*> eq = [] {
         std::vector<const char*> v{ids::eqOn, ids::eqHpf, ids::eqLpf};
@@ -118,6 +119,7 @@ const std::vector<const char*>& paramIds(ModuleType type) {
         case ModuleType::Wah: return wah;
         case ModuleType::Fuzz: return fuzz;
         case ModuleType::Boost: return boost;
+        case ModuleType::TapeEcho: return tape;
         case ModuleType::Limiter: return limiter;
         case ModuleType::Pitch: return pitch;
         case ModuleType::Eq: return eq;
@@ -142,6 +144,7 @@ const char* onId(ModuleType type) {
         case ModuleType::Wah: return ids::wahOn;
         case ModuleType::Fuzz: return ids::fzOn;
         case ModuleType::Boost: return ids::bstOn;
+        case ModuleType::TapeEcho: return ids::tpOn;
         case ModuleType::Limiter: return ids::limOn;
         case ModuleType::Eq: return ids::eqOn;
         case ModuleType::Delay: return ids::dlyOn;
@@ -245,6 +248,22 @@ void addParams(Layout& l, ModuleType type, int k) {
             l.add(pct(I(ids::flFeedback), N("Flanger feedback"), -90.0f, 90.0f, 50.0f));
             l.add(channelMode(id(I(ids::flStereo)), N("Flanger channels")));
             break;
+        case ModuleType::TapeEcho: {
+            juce::NormalisableRange<float> time(40.0f, 800.0f, 0.0f);
+            time.setSkewForCentre(200.0f);
+            l.add(toggle(I(ids::tpOn), N("Tape echo"), false));
+            l.add(std::make_unique<juce::AudioParameterFloat>(id(I(ids::tpTime)), N("Tape time"), time, 180.0f,
+                                                              juce::AudioParameterFloatAttributes().withLabel("ms").withStringFromValueFunction([](float v, int) { return juce::String(v, 0); })));
+            l.add(std::make_unique<juce::AudioParameterChoice>(id(I(ids::tpHeads)), N("Tape heads"), juce::StringArray{"1", "2", "3", "1+2", "2+3", "1+3", "1+2+3"}, 3));
+            l.add(pct(I(ids::tpIntensity), N("Tape intensity"), 0.0f, 110.0f, 45.0f));
+            l.add(pct(I(ids::tpMix), N("Tape mix"), 0.0f, 100.0f, 30.0f));
+            l.add(hz(I(ids::tpTone), N("Tape tone"), 1500.0f, 10000.0f, 5000.0f));
+            l.add(pct(I(ids::tpWow), N("Tape wow"), 0.0f, 100.0f, 30.0f));
+            l.add(pct(I(ids::tpFlutter), N("Tape flutter"), 0.0f, 100.0f, 30.0f));
+            l.add(pct(I(ids::tpSat), N("Tape saturation"), 0.0f, 100.0f, 40.0f));
+            l.add(channelMode(id(I(ids::tpStereo)), N("Tape channels")));
+            break;
+        }
         case ModuleType::Boost:
             l.add(toggle(I(ids::bstOn), N("Boost"), false));
             l.add(std::make_unique<juce::AudioParameterFloat>(id(I(ids::bstGain)), N("Boost gain"), juce::NormalisableRange<float>(0.0f, 30.0f, 0.0f), 12.0f,

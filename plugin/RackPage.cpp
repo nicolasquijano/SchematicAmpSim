@@ -19,7 +19,7 @@ const std::vector<Category>& categories() {
         {"Modulation", {ModuleType::Phaser, ModuleType::Chorus, ModuleType::Vibe, ModuleType::Flanger, ModuleType::Tremolo}},
         {"Pitch", {ModuleType::Pitch}},
         {"EQ", {ModuleType::Eq}},
-        {"Space", {ModuleType::Delay, ModuleType::Reverb}},
+        {"Space", {ModuleType::Delay, ModuleType::TapeEcho, ModuleType::Reverb}},
     };
     return c;
 }
@@ -54,6 +54,7 @@ juce::Colour colourOf(ModuleType t) {
         case ModuleType::Pitch: return juce::Colour(0xffd868a8);
         case ModuleType::Eq: return juce::Colour(0xff48b8c8);
         case ModuleType::Delay:
+        case ModuleType::TapeEcho:
         case ModuleType::Reverb: return juce::Colour(0xff5890e0);
         case ModuleType::Splitter:
         case ModuleType::Mixer: return juce::Colour(0xffc8c8c8);

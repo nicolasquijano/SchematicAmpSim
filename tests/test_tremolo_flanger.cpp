@@ -507,3 +507,133 @@ TEST_CASE("limiter: gain pushes the level up to the ceiling and no further", "[l
     CHECK(peak <= std::pow(10.0f, -3.0f / 20.0f) * 1.0001f);
     CHECK(peak > 0.6f);
 }
+
+#include "sas/tape.h"
+
+namespace {
+// A single click through the echo; returns the left channel.
+std::vector<float> tapeClick(sas::TapeParams p, std::size_t n = 96000, std::vector<float>* right = nullptr) {
+    sas::TapeEcho t;
+    p.on = true;
+    t.prepare(kFs);
+    t.setParams(p);
+    std::vector<float> l(n, 0.0f), r(n, 0.0f);
+    for (std::size_t i = 0; i < 40; ++i) l[100 + i] = r[100 + i] = float(std::sin(6.283185307179586 * double(i) / 40.0)) * 0.5f;
+    for (std::size_t s = 0; s < n; s += 256) t.process(l.data() + s, r.data() + s, std::min<std::size_t>(256, n - s));
+    if (right) *right = r;
+    return l;
+}
+double window(const std::vector<float>& v, std::size_t from, std::size_t len) {
+    double s = 0.0;
+    for (std::size_t i = from; i < from + len && i < v.size(); ++i) s += double(v[i]) * v[i];
+    return std::sqrt(s);
+}
+}  // namespace
+
+TEST_CASE("tape echo: off is transparent; the repeats come at 1, 2 and 3 times the time, and the heads choose which", "[tape]") {
+    sas::TapeEcho t;
+    sas::TapeParams p;
+    t.prepare(kFs);
+    t.setParams(p);
+    auto a = tone(24000), b = a, br = a;
+    for (std::size_t s = 0; s < a.size(); s += 256) {
+        const std::size_t n = std::min<std::size_t>(256, a.size() - s);
+        t.process(b.data() + s, br.data() + s, n);
+    }
+    CHECK(a == b);
+    p.timeMs = 200.0;
+    p.intensity = 0.0;
+    p.mix = 1.0;
+    p.wow = p.flutter = 0.0;
+    p.toneHz = 10000.0;
+    const std::size_t d = 9600;  // 200 ms
+    p.heads = 6;
+    const auto all = tapeClick(p);
+    for (std::size_t k = 1; k <= 3; ++k) CHECK(window(all, 100 + k * d - 200, 600) > 0.1);
+    CHECK(window(all, 100 + 4 * d - 200, 600) < 0.01);
+    p.heads = 1;  // only the second head
+    const auto second = tapeClick(p);
+    CHECK(window(second, 100 + d - 200, 600) < 0.01);
+    CHECK(window(second, 100 + 2 * d - 200, 600) > 0.1);
+    CHECK(window(second, 100 + 3 * d - 200, 600) < 0.01);
+}
+
+TEST_CASE("tape echo: each repeat is darker, the feedback sets how many, and past 100 % it stays bounded", "[tape]") {
+    sas::TapeParams p;
+    p.timeMs = 150.0;
+    p.heads = 0;
+    p.mix = 1.0;
+    p.wow = p.flutter = 0.0;
+    p.intensity = 0.7;
+    const std::size_t d = 7200;
+    const auto x = tapeClick(p);
+    const double first = window(x, 100 + d - 100, 400), third = window(x, 100 + 3 * d - 100, 400);
+    CHECK(third > 0.02);
+    CHECK(third < first);
+    p.intensity = 0.2;
+    const auto few = tapeClick(p);
+    CHECK(window(few, 100 + 3 * d - 100, 400) < 0.5 * third);
+    // Tone: a dark loop loses the highs of the click faster than an open one.
+    p.intensity = 0.6;
+    p.toneHz = 1500.0;
+    const auto dark = tapeClick(p);
+    p.toneHz = 10000.0;
+    const auto open = tapeClick(p);
+    CHECK(window(open, 100 + 3 * d - 100, 400) > 1.2 * window(dark, 100 + 3 * d - 100, 400));
+    // Self-oscillation: bounded, and it keeps going.
+    p.intensity = 1.1;
+    p.saturation = 0.5;
+    const auto swell = tapeClick(p, 192000);
+    float peak = 0.0f;
+    for (float v : swell) {
+        REQUIRE(std::isfinite(v));
+        peak = std::max(peak, std::fabs(v));
+    }
+    CHECK(peak < 2.0f);
+    CHECK(window(swell, 180000, 4000) > 0.05);
+}
+
+TEST_CASE("tape echo: stereo spreads the heads, mono keeps both ears alike; wow bends the repeats; it rings out after it is switched off", "[tape]") {
+    sas::TapeParams p;
+    p.heads = 6;
+    p.mix = 1.0;
+    std::vector<float> r;
+    const auto l = tapeClick(p, 96000, &r);
+    double gap = 0.0;
+    for (std::size_t i = 0; i < l.size(); ++i) gap += std::fabs(double(l[i]) - double(r[i]));
+    CHECK(gap < 1e-3);
+    p.stereo = true;
+    const auto l2 = tapeClick(p, 96000, &r);
+    gap = 0.0;
+    for (std::size_t i = 0; i < l2.size(); ++i) gap += std::fabs(double(l2[i]) - double(r[i]));
+    CHECK(gap > 1.0);
+    p.stereo = false;
+    p.wow = 0.0;
+    p.flutter = 0.0;
+    const auto steady = tapeClick(p);
+    p.wow = 1.0;
+    p.flutter = 1.0;
+    const auto wobbly = tapeClick(p);
+    double d = 0.0;
+    for (std::size_t i = 0; i < steady.size(); ++i) d += std::fabs(double(steady[i]) - double(wobbly[i]));
+    CHECK(d > 0.5);
+    // Switched off: the repeats still come, and then it stops by itself.
+    sas::TapeEcho t;
+    p.wow = p.flutter = 0.0;
+    p.on = true;
+    t.prepare(kFs);
+    t.setParams(p);
+    std::vector<float> a(256, 0.3f), b(256, 0.3f);
+    for (int i = 0; i < 20; ++i) t.process(a.data(), b.data(), 256);
+    p.on = false;
+    t.setParams(p);
+    CHECK(t.active());
+    int blocks = 0;
+    std::vector<float> z(256, 0.0f), z2(256, 0.0f);
+    while (t.active() && blocks < 5000) {
+        t.process(z.data(), z2.data(), 256);
+        ++blocks;
+    }
+    CHECK(blocks > 20);
+    CHECK_FALSE(t.active());
+}

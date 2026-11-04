@@ -12,6 +12,7 @@
 #include "sas/boost.h"
 #include "sas/chorus.h"
 #include "sas/limiter.h"
+#include "sas/tape.h"
 #include "sas/fuzz.h"
 #include "sas/flanger.h"
 #include "sas/tremolo.h"
@@ -72,6 +73,7 @@ private:
 };
 using EqModule = FxModule<ParametricEq, EqParams, Channels::Stereo>;
 using DelayModule = FxModule<StereoDelay, DelayParams, Channels::Stereo>;
+using TapeEchoModule = FxModule<TapeEcho, TapeParams, Channels::Stereo>;
 using ReverbModule = FxModule<PlateReverb, PlateParams, Channels::Stereo>;
 
 // Noise gate: active while it is on or its gain is still recovering to 1. Mono (the detector listens to one channel).

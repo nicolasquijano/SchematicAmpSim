@@ -60,6 +60,36 @@ inline constexpr ReverbPreset kReverbPresets[] = {
 };
 inline constexpr int kReverbPresetCount = int(sizeof(kReverbPresets) / sizeof(kReverbPresets[0]));
 
+// The tape echo: the time to the first head, which heads are heard (0 = 1, 1 = 2, 2 = 3, 3 = 1+2, 4 = 2+3, 5 = 1+3, 6 = 1+2+3), and the character of the tape
+// (everything else in percent, the tone in Hz). Choosing one switches it on ("Off" switches it off).
+struct TapePreset {
+    const char* name;
+    bool on;
+    double timeMs;
+    int heads;
+    double intensity, mix, toneHz, wow, flutter, saturation;
+    bool stereo;
+};
+
+inline constexpr TapePreset kTapePresets[] = {
+    {"Off", false, 180, 3, 45, 30, 5000, 30, 30, 40, false},
+    // One quick, warm repeat that thickens the note: the tape version of the rockabilly slap.
+    {"Tape slapback", true, 110, 0, 18, 30, 6500, 15, 15, 30, false},
+    // Two heads at once: the repeats come in a pair, a flowing echo that fills the gaps between notes.
+    {"Classic echo", true, 180, 3, 45, 30, 5000, 30, 30, 40, false},
+    // All three heads: the rolling, rhythmic repeats of a space echo; the heads are spread across the picture.
+    {"Rolling triplets", true, 220, 6, 40, 30, 5500, 25, 25, 35, true},
+    // Long, dark, swampy repeats that keep returning: for slow parts and dub.
+    {"Dark dub", true, 350, 4, 62, 35, 3200, 45, 40, 60, false},
+    // Wide and open: the three heads left, middle and right.
+    {"Wide stereo", true, 260, 6, 50, 30, 6000, 30, 30, 40, true},
+    // Past 100 % the repeats build up into a self-oscillating swell: play a note and let it bloom.
+    {"Swell", true, 300, 4, 98, 40, 3500, 40, 35, 70, true},
+    // Old, stretched tape: the pitch drifts and wobbles on every repeat.
+    {"Worn tape", true, 200, 3, 50, 32, 3800, 80, 70, 55, false},
+};
+inline constexpr int kTapePresetCount = int(sizeof(kTapePresets) / sizeof(kTapePresets[0]));
+
 // The fuzz: the type (0 = Face, 1 = Muff, 2 = Octave) and its knobs (fuzz, tone and bias on the 0..10 scale of the panel, mix in percent).
 // Choosing one switches the fuzz on ("Off" switches it off).
 struct FuzzPreset {

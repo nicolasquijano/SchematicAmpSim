@@ -2488,7 +2488,7 @@ TEST_CASE("the tremolo and the flanger are modules of the rack: added, heard, sa
     JuceInit init;
     using T = sas::ModuleType;
     const auto in = legacy::input();
-    for (const auto type : {T::Tremolo, T::Flanger, T::Wah, T::Fuzz, T::Boost, T::Limiter}) {
+    for (const auto type : {T::Tremolo, T::Flanger, T::Wah, T::Fuzz, T::Boost, T::Limiter, T::TapeEcho}) {
         const bool trem = type == T::Tremolo;
         SasProcessor p;
         p.prepareToPlay(48000.0, 256);
@@ -2496,7 +2496,7 @@ TEST_CASE("the tremolo and the flanger are modules of the rack: added, heard, sa
         const auto before = playOn(p, in);
         REQUIRE(p.addModule(type));
         { const auto order = typesOf(p.rackOrder()); CHECK(std::find(order.begin(), order.end(), type) != order.end()); }
-        setParam(p, trem ? ids::trOn : type == T::Wah ? ids::wahOn : type == T::Fuzz ? ids::fzOn : type == T::Boost ? ids::bstOn : type == T::Limiter ? ids::limOn : ids::flOn, 1.0f);
+        setParam(p, trem ? ids::trOn : type == T::Wah ? ids::wahOn : type == T::Fuzz ? ids::fzOn : type == T::Boost ? ids::bstOn : type == T::Limiter ? ids::limOn : type == T::TapeEcho ? ids::tpOn : ids::flOn, 1.0f);
         if (trem) setParam(p, ids::trDepth, 100.0f);
         for (int i = 0; i < 40; ++i) playOn(p, std::vector<float>(256, 0.0f));
         const auto after = playOn(p, in);
@@ -2558,4 +2558,26 @@ TEST_CASE("fuzz presets set the whole fuzz, switch it on, and Off leaves the kno
     p.applyFuzzPreset(0);
     CHECK(val(ids::fzOn) < 0.5f);
     CHECK(val(ids::fzMix) == mix);
+}
+
+TEST_CASE("tape echo presets set the whole echo, switch it on, and Off leaves the knobs alone", "[rack]") {
+    JuceInit init;
+    SasProcessor p;
+    p.prepareToPlay(48000.0, 256);
+    REQUIRE(p.addModule(sas::ModuleType::TapeEcho));
+    auto val = [&](const char* id) { return p.apvts.getRawParameterValue(id)->load(); };
+    for (int i = 1; i < kTapePresetCount; ++i) {
+        p.applyTapePreset(i);
+        const TapePreset& t = kTapePresets[i];
+        CHECK(val(ids::tpOn) > 0.5f);
+        CHECK(val(ids::tpTime) == Catch::Approx(t.timeMs).margin(1.0));
+        CHECK(int(val(ids::tpHeads) + 0.5f) == t.heads);
+        CHECK(val(ids::tpIntensity) == Catch::Approx(t.intensity).margin(0.5));
+        CHECK((val(ids::tpStereo) > 0.5f) == t.stereo);
+    }
+    p.applyTapePreset(6);  // "Swell"
+    const float fb = val(ids::tpIntensity);
+    p.applyTapePreset(0);
+    CHECK(val(ids::tpOn) < 0.5f);
+    CHECK(val(ids::tpIntensity) == fb);
 }

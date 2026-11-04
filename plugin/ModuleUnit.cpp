@@ -31,6 +31,9 @@ const std::vector<Item>& itemsFor(ModuleType t) {
                                            {Item::Knob, ids::flFeedback, "FEEDBACK %"}, {Item::Combo, ids::flStereo, "CHANNELS"}};
     static const std::vector<Item> fuzz{{Item::Combo, ids::fzType, "TYPE"}, {Item::Knob, ids::fzFuzz, "FUZZ"}, {Item::Knob, ids::fzTone, "TONE"},
                                         {Item::Knob, ids::fzBias, "BIAS"}, {Item::Knob, ids::fzMix, "MIX %"}, {Item::Knob, ids::fzLevel, "LEVEL dB"}};
+    static const std::vector<Item> tape{{Item::Knob, ids::tpTime, "TIME ms"}, {Item::Combo, ids::tpHeads, "HEADS"}, {Item::Knob, ids::tpIntensity, "INTENSITY %"},
+                                        {Item::Knob, ids::tpMix, "MIX %"}, {Item::Knob, ids::tpTone, "TONE Hz"}, {Item::Knob, ids::tpWow, "WOW %"},
+                                        {Item::Knob, ids::tpFlutter, "FLUTTER %"}, {Item::Knob, ids::tpSat, "SATURATION %"}, {Item::Combo, ids::tpStereo, "CHANNELS"}};
     static const std::vector<Item> boost{{Item::Knob, ids::bstGain, "GAIN dB"}, {Item::Knob, ids::bstTone, "TONE"}, {Item::Toggle, ids::bstSoft, "Soft clip"}};
     static const std::vector<Item> limiter{{Item::Knob, ids::limGain, "GAIN dB"}, {Item::Knob, ids::limCeiling, "CEILING dB"}, {Item::Knob, ids::limRelease, "RELEASE ms"}};
     static const std::vector<Item> wah{{Item::Combo, ids::wahMode, "MODE"}, {Item::Knob, ids::wahPos, "PEDAL %"}, {Item::Knob, ids::wahHeel, "HEEL Hz"},
@@ -61,6 +64,7 @@ const std::vector<Item>& itemsFor(ModuleType t) {
         case ModuleType::Wah: return wah;
         case ModuleType::Fuzz: return fuzz;
         case ModuleType::Boost: return boost;
+        case ModuleType::TapeEcho: return tape;
         case ModuleType::Limiter: return limiter;
         case ModuleType::Pitch: return pitch;
         case ModuleType::Delay: return delay;
@@ -85,6 +89,7 @@ const char* nameOf(ModuleType t) {
         case ModuleType::Wah: return "WAH";
         case ModuleType::Fuzz: return "FUZZ";
         case ModuleType::Boost: return "CLEAN BOOST";
+        case ModuleType::TapeEcho: return "TAPE ECHO";
         case ModuleType::Limiter: return "LIMITER";
         case ModuleType::Pitch: return "PITCH";
         case ModuleType::Eq: return "EQ";
@@ -356,6 +361,16 @@ ModuleUnit::ModuleUnit(SasProcessor& processor, sas::SlotRef slot, const HostedB
                 for (int i = 0; i < kReverbPresetCount; ++i) menu.addItem(i + 1, juce::String(kReverbPresets[i].name));
                 menu.showMenuAsync(juce::PopupMenu::Options().withTargetComponent(&extraB_), [this](int choice) {
                     if (choice > 0) processor_.applyReverbPreset(choice - 1, slot_.instance);
+                });
+            };
+            break;
+        case ModuleType::TapeEcho:
+            extraB_.setButtonText("Presets");
+            extraB_.onClick = [this] {
+                juce::PopupMenu menu;
+                for (int i = 0; i < kTapePresetCount; ++i) menu.addItem(i + 1, juce::String(kTapePresets[i].name));
+                menu.showMenuAsync(juce::PopupMenu::Options().withTargetComponent(&extraB_), [this](int choice) {
+                    if (choice > 0) processor_.applyTapePreset(choice - 1, slot_.instance);
                 });
             };
             break;
