@@ -178,11 +178,17 @@ void RackPage::Map::paint(juce::Graphics& g) {
     }
     const bool parallel = s >= 0 && m >= 0;
     g.setColour(text.withAlpha(0.35f));
-    // The wires: between neighbours of a row, and from the splitter to the lanes and from the lanes to the mixer.
-    for (int i = 0; i + 1 < n; ++i) {
-        const auto a = l.boxes[std::size_t(i)], b = l.boxes[std::size_t(i + 1)];
-        if (a.getY() == b.getY() && b.getX() > a.getX() && (!parallel || (tiles[std::size_t(i)].lane == tiles[std::size_t(i + 1)].lane) || i == s || i + 1 == m))
-            g.fillRect(a.getRight(), a.getCentreY() - 1, b.getX() - a.getRight(), 2);
+    // The wires: along the upper row (what is shared, lane A and what comes after the mixer, in order), and along lane B.
+    auto inLaneB = [&](int i) { return parallel && i > s && i < m && tiles[std::size_t(i)].lane == 1; };
+    auto wire = [&](int from, int to) {
+        const auto a = l.boxes[std::size_t(from)], b = l.boxes[std::size_t(to)];
+        if (a.getY() == b.getY() && b.getX() > a.getRight()) g.fillRect(a.getRight(), a.getCentreY() - 1, b.getX() - a.getRight(), 2);
+    };
+    int previousUpper = -1, previousLower = -1;
+    for (int i = 0; i < n; ++i) {
+        int& previous = inLaneB(i) ? previousLower : previousUpper;
+        if (previous >= 0) wire(previous, i);
+        previous = i;
     }
     if (parallel) {
         int lastB = -1, firstB = -1;
