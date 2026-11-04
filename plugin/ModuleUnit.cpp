@@ -1,3 +1,4 @@
+#include "I18n.h"
 #include "ModuleUnit.h"
 
 #include "EqPresets.h"
@@ -118,7 +119,7 @@ public:
                     break;
                 }
                 case Item::Toggle: {
-                    auto t = std::make_unique<juce::ToggleButton>(item.caption);
+                    auto t = std::make_unique<juce::ToggleButton>(tr(item.caption));
                     addAndMakeVisible(*t);
                     toggleAtts_.push_back(std::make_unique<juce::AudioProcessorValueTreeState::ButtonAttachment>(p.apvts, id, *t));
                     parts_.push_back({t.get(), 92, item.id});
@@ -127,12 +128,12 @@ public:
                 }
                 case Item::Combo: {
                     auto holder = std::make_unique<Choice>();
-                    holder->caption.setText(item.caption, juce::dontSendNotification);
+                    holder->caption.setText(tr(item.caption), juce::dontSendNotification);
                     holder->caption.setFont(AmpLookAndFeel::font(10.5f, true, 0.12f));
                     holder->addAndMakeVisible(holder->caption);
                     holder->addAndMakeVisible(holder->box);
                     const auto* param = dynamic_cast<juce::AudioParameterChoice*>(p.apvts.getParameter(id));
-                    holder->box.addItemList(param->choices, 1);
+                    holder->box.addItemList(trAll(param->choices), 1);
                     comboAtts_.push_back(std::make_unique<juce::AudioProcessorValueTreeState::ComboBoxAttachment>(p.apvts, id, holder->box));
                     addAndMakeVisible(*holder);
                     parts_.push_back({holder.get(), slot.type == sas::ModuleType::Wah ? 108 : 124, item.id});
@@ -205,7 +206,7 @@ public:
         addAndMakeVisible(*hpf_);
         addAndMakeVisible(*lpf_);
         for (int b = 0; b < sas::EqParams::kBands; ++b) {
-            const char* caption[3] = {"FREQ Hz", "GAIN dB", "Q"};
+            const juce::String caption[3] = {tr("FREQ Hz"), tr("GAIN dB"), "Q"};
             const char* base[3] = {ids::eqFreq[b], ids::eqGain[b], ids::eqQ[b]};
             for (int k = 0; k < 3; ++k) {
                 knobs_[b][k] = std::make_unique<KnobWithLabel>(p.apvts, RackState::paramId(base[k], slot.instance).toRawUTF8(), caption[k]);
@@ -250,7 +251,7 @@ private:
     void select(int band) {
         for (int b = 0; b < sas::EqParams::kBands; ++b)
             for (auto& k : knobs_[b]) k->setVisible(b == band);
-        band_.setText("BAND " + juce::String(band + 1), juce::dontSendNotification);
+        band_.setText(tr("BAND ") + juce::String(band + 1), juce::dontSendNotification);
         resized();
     }
     SasProcessor& processor_;
@@ -280,8 +281,8 @@ private:
 
 juce::String ModuleUnit::title(sas::SlotRef slot) {
     // The second amp and cabinet are the ones of lane B.
-    if (slot.instance > 0 && (slot.type == ModuleType::Amp || slot.type == ModuleType::Cabinet)) return juce::String(nameOf(slot.type)) + " B";
-    return juce::String(nameOf(slot.type)) + (slot.instance > 0 ? " " + juce::String(slot.instance + 1) : juce::String());
+    if (slot.instance > 0 && (slot.type == ModuleType::Amp || slot.type == ModuleType::Cabinet)) return tr(nameOf(slot.type)) + " B";
+    return tr(nameOf(slot.type)) + (slot.instance > 0 ? " " + juce::String(slot.instance + 1) : juce::String());
 }
 
 juce::String ModuleUnit::dragDescription(sas::SlotRef slot) { return "rack:" + juce::String(int(slot.type)) + ":" + juce::String(slot.instance); }
@@ -299,9 +300,9 @@ bool ModuleUnit::parseDragDescription(const juce::String& text, sas::SlotRef& sl
 ModuleUnit::ModuleUnit(SasProcessor& processor, sas::SlotRef slot, const HostedBodyFactory& hosted) : processor_(processor), slot_(slot) {
     if (slot.type == ModuleType::Amp || slot.type == ModuleType::Cabinet) {
         if (hosted) body_ = hosted(slot.type, slot.instance);
-        if (!body_) body_ = std::make_unique<NoteBody>("The controls of this module are not available here.");
+        if (!body_) body_ = std::make_unique<NoteBody>(tr("The controls of this module are not available here."));
     } else if (slot.type == ModuleType::Splitter) {
-        body_ = std::make_unique<NoteBody>("The signal splits here into lane A (above) and lane B (below), and joins again at the mixer.");
+        body_ = std::make_unique<NoteBody>(tr("The signal splits here into lane A (above) and lane B (below), and joins again at the mixer."));
     } else if (slot.type == ModuleType::Eq) {
         body_ = std::make_unique<EqBody>(processor, slot);
     } else {
@@ -314,26 +315,26 @@ ModuleUnit::ModuleUnit(SasProcessor& processor, sas::SlotRef slot, const HostedB
     name_.setInterceptsMouseClicks(false, false);
     addAndMakeVisible(name_);
     if (const char* on = RackState::onId(slot.type)) {
-        on_.setButtonText("On");
+        on_.setButtonText(tr("On"));
         addAndMakeVisible(on_);
         onAtt_ = std::make_unique<juce::AudioProcessorValueTreeState::ButtonAttachment>(processor.apvts, RackState::paramId(on, slot.instance), on_);
     }
     for (auto* b : {&up_, &down_, &remove_, &add_}) addAndMakeVisible(*b);
-    up_.setTooltip("Move up (earlier in the signal path)");
-    down_.setTooltip("Move down (later in the signal path)");
-    remove_.setTooltip("Remove this module");
-    add_.setTooltip("Add a module after this one");
+    up_.setTooltip(tr("Move up (earlier in the signal path)"));
+    down_.setTooltip(tr("Move down (later in the signal path)"));
+    remove_.setTooltip(tr("Remove this module"));
+    add_.setTooltip(tr("Add a module after this one"));
     up_.onClick = [this] { if (onMove) onMove(slot_, -1); };
     down_.onClick = [this] { if (onMove) onMove(slot_, +1); };
     remove_.onClick = [this] { if (onRemove) onRemove(slot_); };
     add_.onClick = [this] { if (onAddAfter) onAddAfter(slot_); };
     remove_.setEnabled(!RackState::isFixed(slot));
-    add_.setTooltip("Add a module after this one");
+    add_.setTooltip(tr("Add a module after this one"));
 
     switch (slot.type) {
         case ModuleType::Delay:
-            extraA_.setButtonText("Tap");
-            extraB_.setButtonText("Presets");
+            extraA_.setButtonText(tr("Tap"));
+            extraB_.setButtonText(tr("Presets"));
             extraA_.onClick = [this] {
                 const double now = juce::Time::getMillisecondCounterHiRes();
                 const double gap = now - lastTapMs_;
@@ -348,67 +349,67 @@ ModuleUnit::ModuleUnit(SasProcessor& processor, sas::SlotRef slot, const HostedB
             };
             extraB_.onClick = [this] {
                 juce::PopupMenu menu;
-                for (int i = 0; i < kDelayPresetCount; ++i) menu.addItem(i + 1, juce::String(kDelayPresets[i].name));
+                for (int i = 0; i < kDelayPresetCount; ++i) menu.addItem(i + 1, tr(kDelayPresets[i].name));
                 menu.showMenuAsync(juce::PopupMenu::Options().withTargetComponent(&extraB_), [this](int choice) {
                     if (choice > 0) processor_.applyDelayPreset(choice - 1, slot_.instance);
                 });
             };
             break;
         case ModuleType::Reverb:
-            extraB_.setButtonText("Presets");
+            extraB_.setButtonText(tr("Presets"));
             extraB_.onClick = [this] {
                 juce::PopupMenu menu;
-                for (int i = 0; i < kReverbPresetCount; ++i) menu.addItem(i + 1, juce::String(kReverbPresets[i].name));
+                for (int i = 0; i < kReverbPresetCount; ++i) menu.addItem(i + 1, tr(kReverbPresets[i].name));
                 menu.showMenuAsync(juce::PopupMenu::Options().withTargetComponent(&extraB_), [this](int choice) {
                     if (choice > 0) processor_.applyReverbPreset(choice - 1, slot_.instance);
                 });
             };
             break;
         case ModuleType::TapeEcho:
-            extraB_.setButtonText("Presets");
+            extraB_.setButtonText(tr("Presets"));
             extraB_.onClick = [this] {
                 juce::PopupMenu menu;
-                for (int i = 0; i < kTapePresetCount; ++i) menu.addItem(i + 1, juce::String(kTapePresets[i].name));
+                for (int i = 0; i < kTapePresetCount; ++i) menu.addItem(i + 1, tr(kTapePresets[i].name));
                 menu.showMenuAsync(juce::PopupMenu::Options().withTargetComponent(&extraB_), [this](int choice) {
                     if (choice > 0) processor_.applyTapePreset(choice - 1, slot_.instance);
                 });
             };
             break;
         case ModuleType::Fuzz:
-            extraB_.setButtonText("Presets");
+            extraB_.setButtonText(tr("Presets"));
             extraB_.onClick = [this] {
                 juce::PopupMenu menu;
-                for (int i = 0; i < kFuzzPresetCount; ++i) menu.addItem(i + 1, juce::String(kFuzzPresets[i].name));
+                for (int i = 0; i < kFuzzPresetCount; ++i) menu.addItem(i + 1, tr(kFuzzPresets[i].name));
                 menu.showMenuAsync(juce::PopupMenu::Options().withTargetComponent(&extraB_), [this](int choice) {
                     if (choice > 0) processor_.applyFuzzPreset(choice - 1, slot_.instance);
                 });
             };
             break;
         case ModuleType::Wah:
-            extraB_.setButtonText("Presets");
+            extraB_.setButtonText(tr("Presets"));
             extraB_.onClick = [this] {
                 juce::PopupMenu menu;
-                for (int i = 0; i < kWahPresetCount; ++i) menu.addItem(i + 1, juce::String(kWahPresets[i].name));
+                for (int i = 0; i < kWahPresetCount; ++i) menu.addItem(i + 1, tr(kWahPresets[i].name));
                 menu.showMenuAsync(juce::PopupMenu::Options().withTargetComponent(&extraB_), [this](int choice) {
                     if (choice > 0) processor_.applyWahPreset(choice - 1, slot_.instance);
                 });
             };
             break;
         case ModuleType::Eq:
-            extraB_.setButtonText("Presets");
+            extraB_.setButtonText(tr("Presets"));
             extraB_.onClick = [this] {
                 juce::PopupMenu menu;
-                for (int i = 0; i < kEqPresetCount; ++i) menu.addItem(i + 1, i == 0 ? juce::String("Flat (reset)") : juce::String(kEqPresets[i].name));
+                for (int i = 0; i < kEqPresetCount; ++i) menu.addItem(i + 1, i == 0 ? juce::String(tr("Flat (reset)")) : tr(kEqPresets[i].name));
                 menu.showMenuAsync(juce::PopupMenu::Options().withTargetComponent(&extraB_), [this](int choice) {
                     if (choice > 0) processor_.applyEqPreset(choice - 1, slot_.instance);
                 });
             };
             break;
         case ModuleType::NamPedal:
-            extraA_.setButtonText("Load...");
-            extraB_.setButtonText("Clear");
+            extraA_.setButtonText(tr("Load..."));
+            extraB_.setButtonText(tr("Clear"));
             extraA_.onClick = [this] {
-                chooser_ = std::make_unique<juce::FileChooser>("Choose a Neural Amp Modeler pedal model", juce::File{}, "*.nam");
+                chooser_ = std::make_unique<juce::FileChooser>(tr("Choose a Neural Amp Modeler pedal model"), juce::File{}, "*.nam");
                 chooser_->launchAsync(juce::FileBrowserComponent::openMode | juce::FileBrowserComponent::canSelectFiles, [this](const juce::FileChooser& fc) {
                     const auto file = fc.getResult();
                     if (file == juce::File{}) return;
@@ -416,7 +417,7 @@ ModuleUnit::ModuleUnit(SasProcessor& processor, sas::SlotRef slot, const HostedB
                         if (auto* on = processor_.apvts.getParameter(RackState::paramId(ids::nmpOn, slot_.instance))) on->setValueNotifyingHost(1.0f);  // audible right away
                     } else {
                         juce::AlertWindow::showMessageBoxAsync(juce::MessageBoxIconType::WarningIcon, "Schematic Amp Sim",
-                                                               "Could not load that model: " + processor_.namPedalMessage(slot_.instance) + ".");
+                                                               tr("Could not load that model: ") + i18n::namMessage(processor_.namPedalMessage(slot_.instance)) + ".");
                     }
                     refresh();
                 });
@@ -442,8 +443,8 @@ int ModuleUnit::preferredHeight() const { return kHeaderHeight + body_->height()
 void ModuleUnit::refresh() {
     if (slot_.type != ModuleType::NamPedal) return;
     const bool loaded = processor_.namPedalLoaded(slot_.instance);
-    const auto msg = processor_.namPedalMessage(slot_.instance);
-    name_.setText(title(slot_) + "   " + (loaded ? processor_.namPedalName(slot_.instance) + (msg.isEmpty() ? juce::String() : "  (" + msg + ")") : juce::String("no pedal model")),
+    const auto msg = i18n::namMessage(processor_.namPedalMessage(slot_.instance));
+    name_.setText(title(slot_) + "   " + (loaded ? processor_.namPedalName(slot_.instance) + (msg.isEmpty() ? juce::String() : "  (" + msg + ")") : juce::String(tr("no pedal model"))),
                   juce::dontSendNotification);
 }
 
@@ -490,7 +491,7 @@ void ModuleUnit::paint(juce::Graphics& g) {
     g.setFont(AmpLookAndFeel::font(10.0f));
     if (sumsToMono_) {
         g.setColour(label.withAlpha(0.8f));
-        g.drawText("sums to mono", getWidth() - 400, 0, 100, kHeaderHeight, juce::Justification::centredRight);
+        g.drawText(tr("sums to mono"), getWidth() - 400, 0, 100, kHeaderHeight, juce::Justification::centredRight);
     }
     if (cpu_ > 0.0f) {
         g.setColour(hot_ ? accent : label.withAlpha(0.8f));

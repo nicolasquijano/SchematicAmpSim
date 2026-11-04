@@ -11,6 +11,10 @@
 #include "RackState.h"
 #include "EqPresets.h"
 #include "FxPresets.h"
+#include "I18n.h"
+
+// The tests read texts of the interface in English, whatever the language of the machine they run on.
+static const int sForceEnglish = (i18n::useForSession(std::getenv("SAS_TEST_LANGUAGE") != nullptr && std::string(std::getenv("SAS_TEST_LANGUAGE")) == "es" ? i18n::Language::Spanish : i18n::Language::English), 0);
 
 namespace {
 
@@ -2595,4 +2599,84 @@ TEST_CASE("the equaliser has eight bands: the three added ones are bells, flat u
     p.applyEqPreset(2);  // "Warm blues"
     CHECK(p.apvts.getRawParameterValue(ids::eqGain[6])->load() == 0.0f);  // the preset leaves the added bands flat
     CHECK(p.apvts.getRawParameterValue(ids::eqGain[0])->load() > 1.0f);   // and sets its own five
+}
+
+TEST_CASE("the interface follows the language: Spanish texts, English when there is no translation, and the language of the system is detected", "[i18n]") {
+    JuceInit init;
+    const auto before = i18n::active();
+    i18n::useForSession(i18n::Language::English);
+    CHECK(tr("Remove this module") == "Remove this module");
+    i18n::useForSession(i18n::Language::Spanish);
+    CHECK(tr("Remove this module") == juce::String::fromUTF8("Quitar este m\303\263dulo"));
+    CHECK(tr("a text that has no translation") == "a text that has no translation");  // English, never empty
+    CHECK(tr("") == "");
+    CHECK(tr("TONE") == "TONO");
+    // The system language: any Spanish is Spanish, the rest English.
+    CHECK(i18n::fromSystemCode("es") == i18n::Language::Spanish);
+    CHECK(i18n::fromSystemCode("es_AR") == i18n::Language::Spanish);
+    CHECK(i18n::fromSystemCode("es-ES") == i18n::Language::Spanish);
+    CHECK(i18n::fromSystemCode("ES") == i18n::Language::Spanish);
+    CHECK(i18n::fromSystemCode("en") == i18n::Language::English);
+    CHECK(i18n::fromSystemCode("fr_FR") == i18n::Language::English);
+    CHECK(i18n::fromSystemCode("") == i18n::Language::English);
+    // A message with a number inside, and the model messages of the processor.
+    CHECK(i18n::namMessage("the file is too big") == juce::String::fromUTF8("el archivo es demasiado grande"));
+    CHECK(i18n::namMessage("Trained at 44100 Hz, played at 48000 Hz: it will sound off-pitch.").contains("44100"));
+    CHECK(i18n::namMessage("Trained at 44100 Hz, played at 48000 Hz: it will sound off-pitch.").contains("48000"));
+    CHECK(trAll(juce::StringArray{"Mono", "Stereo"}) == juce::StringArray{"Mono", juce::String::fromUTF8("Est\303\251reo")});
+    i18n::useForSession(before);
+}
+
+TEST_CASE("the editor is built in Spanish and in English with the same structure", "[i18n]") {
+    JuceInit init;
+    const auto before = i18n::active();
+    juce::StringArray pages[2];
+    int k = 0;
+    for (auto lang : {i18n::Language::English, i18n::Language::Spanish}) {
+        i18n::useForSession(lang);
+        SasProcessor p;
+        p.prepareToPlay(48000.0, 512);
+        std::unique_ptr<juce::AudioProcessorEditor> base(p.createEditor());
+        auto* ed = dynamic_cast<SasEditor*>(base.get());
+        REQUIRE(ed != nullptr);
+        base->setSize(1100, 700);
+        pages[k++] = ed->pageNames();
+    }
+    CHECK(pages[0] == juce::StringArray{"Rack", "Tuner"});
+    CHECK(pages[1] == juce::StringArray{"Rack", "Afinador"});
+    i18n::useForSession(before);
+}
+
+// Every module's panel at the narrowest width the rack gives it, to see that the texts fit (in the language of SAS_TEST_LANGUAGE).
+TEST_CASE("every module panel can be rendered to a picture", "[.screenshots]") {
+    JuceInit init;
+    const char* dir = std::getenv("SAS_SCREENSHOT_DIR");
+    if (!dir) { SKIP("SAS_SCREENSHOT_DIR is not set"); }
+    juce::File(dir).createDirectory();
+    SasProcessor p;
+    p.prepareToPlay(48000.0, 512);
+    std::unique_ptr<juce::AudioProcessorEditor> ed(p.createEditor());
+    juce::Component host;
+    host.setLookAndFeel(&ed->getLookAndFeel());
+    std::vector<std::unique_ptr<ModuleUnit>> units;
+    int y = 0;
+    const int width = 860;
+    for (auto type : {ModuleType::Gate, ModuleType::Compressor, ModuleType::Overdrive, ModuleType::NamPedal, ModuleType::Phaser, ModuleType::Chorus, ModuleType::Vibe, ModuleType::Tremolo,
+                      ModuleType::Flanger, ModuleType::Wah, ModuleType::Fuzz, ModuleType::Boost, ModuleType::Limiter, ModuleType::Pitch, ModuleType::Delay, ModuleType::TapeEcho,
+                      ModuleType::Reverb, ModuleType::Eq}) {
+        units.push_back(std::make_unique<ModuleUnit>(p, sas::SlotRef{type, 0}));
+        auto& u = *units.back();
+        host.addAndMakeVisible(u);
+        u.setBounds(0, y, width, u.preferredHeight());
+        y += u.preferredHeight() + 4;
+    }
+    host.setSize(width, y);
+    const auto img = host.createComponentSnapshot(host.getLocalBounds(), true, 1.0f);
+    juce::PNGImageFormat png;
+    juce::FileOutputStream out(juce::File(dir).getChildFile("modules.png"));
+    REQUIRE(out.openedOk());
+    out.setPosition(0);
+    out.truncate();
+    png.writeImageToStream(img, out);
+    host.setLookAndFeel(nullptr);
 }

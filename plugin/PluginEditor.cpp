@@ -1,3 +1,4 @@
+#include "I18n.h"
 #include "PluginEditor.h"
 #include "IconData.h"
 #include "ParallelPanels.h"
@@ -158,7 +159,7 @@ KnobWithLabel::KnobWithLabel(juce::AudioProcessorValueTreeState& apvts, const ch
     slider_.setColour(juce::Slider::textBoxBackgroundColourId, juce::Colours::transparentBlack);
     slider_.setColour(juce::Slider::textBoxOutlineColourId, juce::Colours::transparentBlack);
     addAndMakeVisible(slider_);
-    caption_.setText(caption, juce::dontSendNotification);
+    caption_.setText(tr(caption), juce::dontSendNotification);
     caption_.setJustificationType(juce::Justification::centred);
     caption_.setFont(AmpLookAndFeel::font(10.5f, true, 0.1f));
     addAndMakeVisible(caption_);
@@ -259,7 +260,7 @@ void IrCurve::paint(juce::Graphics& g) {
     if (curve_.size() < 2) {
         g.setColour(label);
         g.setFont(AmpLookAndFeel::font(11.0f));
-        g.drawText("no impulse loaded", b, juce::Justification::centred);
+        g.drawText(tr("no impulse loaded"), b, juce::Justification::centred);
         return;
     }
     juce::Path path;
@@ -300,7 +301,7 @@ void TunerDisplay::paint(juce::Graphics& g) {
     if (!active_ || !valid_) {
         g.setColour(label);
         g.setFont(AmpLookAndFeel::font(15.0f));
-        g.drawText(active_ ? "play a note" : "press  Tuner on  to start", b.withTrimmedBottom(40.0f), juce::Justification::centred);
+        g.drawText(active_ ? tr("play a note") : tr("press  Tuner on  to start"), b.withTrimmedBottom(40.0f), juce::Justification::centred);
         if (active_) {
             g.setFont(AmpLookAndFeel::font(80.0f, true));
             g.setColour(label.withAlpha(0.25f));
@@ -336,8 +337,8 @@ void TunerDisplay::paint(juce::Graphics& g) {
     g.drawLine(meter.getX(), meter.getBottom(), meter.getRight(), meter.getBottom(), 1.0f);
     g.setFont(AmpLookAndFeel::font(11.0f, true, 0.1f));
     g.setColour(label);
-    g.drawText("FLAT", juce::Rectangle<float>(meter.getX(), meter.getBottom() + 4.0f, 60.0f, 14.0f), juce::Justification::centredLeft);
-    g.drawText("SHARP", juce::Rectangle<float>(meter.getRight() - 60.0f, meter.getBottom() + 4.0f, 60.0f, 14.0f), juce::Justification::centredRight);
+    g.drawText(tr("FLAT"), juce::Rectangle<float>(meter.getX(), meter.getBottom() + 4.0f, 60.0f, 14.0f), juce::Justification::centredLeft);
+    g.drawText(tr("SHARP"), juce::Rectangle<float>(meter.getRight() - 60.0f, meter.getBottom() + 4.0f, 60.0f, 14.0f), juce::Justification::centredRight);
     if (active_ && valid_) {
         const float x = cx + half * juce::jlimit(-50.0f, 50.0f, needle_) / 50.0f;
         juce::Path needle;
@@ -436,7 +437,7 @@ void paintPanelBoxes(juce::Graphics& g, const AmpLookAndFeel& look, const std::v
             g.fillRoundedRectangle(b.getX() + 10.0f, b.getY() + 9.0f, 3.0f, 9.0f, 1.5f);
             g.setColour(look.label());
             g.setFont(AmpLookAndFeel::font(10.0f, true, 0.07f));
-            g.drawText(p.caption, p.bounds.getX() + 18, p.bounds.getY() + 4, p.bounds.getWidth() - 28, 18, juce::Justification::centredLeft);
+            g.drawText(tr(p.caption), p.bounds.getX() + 18, p.bounds.getY() + 4, p.bounds.getWidth() - 28, 18, juce::Justification::centredLeft);
         }
     }
 }
@@ -457,7 +458,7 @@ SasEditor::SasEditor(SasProcessor& p)
     ampList_.setModel(this);
     ampList_.setRowHeight(26);
     addAndMakeVisible(ampList_);
-    ampSearch_.setTextToShowWhenEmpty("Search amps", look_.text().withAlpha(0.45f));
+    ampSearch_.setTextToShowWhenEmpty(tr("Search amps"), look_.text().withAlpha(0.45f));
     ampSearch_.setFont(AmpLookAndFeel::font(13.0f, false, 0.01f));
     ampSearch_.setMultiLine(false);
     ampSearch_.setReturnKeyStartsNewLine(false);
@@ -471,12 +472,12 @@ SasEditor::SasEditor(SasProcessor& p)
     styleCombo(quality_, ids::quality, qualityAtt_);
     styleCombo(cab_, ids::cab, cabAtt_);
     styleCombo(pickup_, ids::pickup, pickupAtt_);
-    styleCaption(pickupCaption_, "PICKUP");
+    styleCaption(pickupCaption_, tr("PICKUP"));
     styleCombo(noise_, ids::noise, noiseAtt_);
     styleCombo(unit_, ids::unit, unitAtt_);
-    styleCaption(noiseCaption_, "NOISE AND HUM");
-    styleCaption(unitCaption_, "UNIT");
-    styleCaption(tubeCaption_, "POWER TUBES");
+    styleCaption(noiseCaption_, tr("NOISE AND HUM"));
+    styleCaption(unitCaption_, tr("UNIT"));
+    styleCaption(tubeCaption_, tr("POWER TUBES"));
     addAndMakeVisible(tube_);
     tube_.onChange = [this] {
         if (auto* param = processor_.apvts.getParameter(ids::tube)) {
@@ -495,7 +496,7 @@ SasEditor::SasEditor(SasProcessor& p)
     };
     idleLabel_.setFont(AmpLookAndFeel::font(11.5f));
     addAndMakeVisible(idleLabel_);
-    conditionNote_.setText("Tubes, wear and unit rebuild the circuits; they act in the Normal, High and Efficient qualities.", juce::dontSendNotification);
+    conditionNote_.setText(tr("Tubes, wear and unit rebuild the circuits; they act in the Normal, High and Efficient qualities."), juce::dontSendNotification);
     conditionNote_.setFont(AmpLookAndFeel::font(10.5f));
     addAndMakeVisible(conditionNote_);
     // The jack list depends on the amp, so it is filled by showAmp() and wired by hand.
@@ -523,17 +524,17 @@ SasEditor::SasEditor(SasProcessor& p)
             }
         };
     }
-    styleCaption(ampCaption_, "AMP");
-    styleCaption(qualityCaption_, "QUALITY");
-    styleCaption(jackCaption_, "INPUT JACK");
-    styleCaption(cabCaption_, "SOURCE");
+    styleCaption(ampCaption_, tr("AMP"));
+    styleCaption(qualityCaption_, tr("QUALITY"));
+    styleCaption(jackCaption_, tr("INPUT JACK"));
+    styleCaption(cabCaption_, tr("SOURCE"));
     addAndMakeVisible(tunerDisplay_);
     addAndMakeVisible(tunerOn_);
     tunerOnAtt_ = std::make_unique<juce::AudioProcessorValueTreeState::ButtonAttachment>(p.apvts, ids::tunerOn, tunerOn_);
     addAndMakeVisible(tunerMute_);
     tunerMuteAtt_ = std::make_unique<juce::AudioProcessorValueTreeState::ButtonAttachment>(p.apvts, ids::tunerMute, tunerMute_);
     addAndMakeVisible(speakerIntense_);
-    speakerIntense_.setTooltip("Stronger cone, heating and break-up effects");
+    speakerIntense_.setTooltip(tr("Stronger cone, heating and break-up effects"));
     speakerIntenseAtt_ = std::make_unique<juce::AudioProcessorValueTreeState::ButtonAttachment>(p.apvts, ids::speakerIntense, speakerIntense_);
     addAndMakeVisible(vibrato_);
     vibratoAtt_ = std::make_unique<juce::AudioProcessorValueTreeState::ButtonAttachment>(p.apvts, ids::vibOn, vibrato_);
@@ -547,7 +548,10 @@ SasEditor::SasEditor(SasProcessor& p)
     blendNote_.setText("A  <  >  B", juce::dontSendNotification);
     addAndMakeVisible(blendNote_);
     cabNote_.setFont(AmpLookAndFeel::font(10.5f));
-    cabNote_.setText("IR plays the impulses above, mixed by the blend. Filter is a simple cabinet curve; Off is the raw amp.", juce::dontSendNotification);
+    for (juce::Button* b : std::initializer_list<juce::Button*>{&presets_, &speakerIntense_, &tunerOn_, &tunerMute_, &vibrato_, &rackTab_, &tunerTab_, &loadA_, &clearA_, &loadB_, &clearB_,
+                                                           &namLoad_, &namClear_, &namCabLoad_, &namCabClear_})
+        b->setButtonText(tr(b->getButtonText()));  // the texts these were built with are English
+    cabNote_.setText(tr("IR plays the impulses above, mixed by the blend. Filter is a simple cabinet curve; Off is the raw amp."), juce::dontSendNotification);
     addAndMakeVisible(cabNote_);
     for (auto* b : {&loadA_, &clearA_, &loadB_, &clearB_}) addAndMakeVisible(*b);
     addAndMakeVisible(curveA_);
@@ -590,8 +594,8 @@ SasEditor::SasEditor(SasProcessor& p)
     headOutAtt_ = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment>(p.apvts, ids::output, headOutKnob_);
     headInKnob_.setDoubleClickReturnValue(true, p.apvts.getParameter(ids::input)->convertFrom0to1(p.apvts.getParameter(ids::input)->getDefaultValue()));
     headOutKnob_.setDoubleClickReturnValue(true, p.apvts.getParameter(ids::output)->convertFrom0to1(p.apvts.getParameter(ids::output)->getDefaultValue()));
-    headInKnob_.setTooltip("Input level (dB), in front of the first amp");
-    headOutKnob_.setTooltip("Output level (dB)");
+    headInKnob_.setTooltip(tr("Input level (dB), in front of the first amp"));
+    headOutKnob_.setTooltip(tr("Output level (dB)"));
 
     // Who lives where: the left column and the tuner stay with the editor; the amp's controls and the cabinet's go to their panels, which the
     // amp unit and the cabinet unit of the rack page host.
@@ -697,12 +701,12 @@ void SasEditor::styleCombo(juce::ComboBox& box, const char* paramId,
     addAndMakeVisible(box);
     // Items first, then the attachment selects the stored one.
     const auto* param = dynamic_cast<juce::AudioParameterChoice*>(processor_.apvts.getParameter(paramId));
-    box.addItemList(param->choices, 1);
+    box.addItemList(trAll(param->choices), 1);
     att = std::make_unique<juce::AudioProcessorValueTreeState::ComboBoxAttachment>(processor_.apvts, paramId, box);
 }
 
 void SasEditor::styleCaption(juce::Label& l, const juce::String& text) {
-    l.setText(text, juce::dontSendNotification);
+    l.setText(tr(text), juce::dontSendNotification);
     l.setFont(AmpLookAndFeel::font(10.5f, true, 0.12f));
     l.setColour(juce::Label::textColourId, look_.label());
     addAndMakeVisible(l);
@@ -901,8 +905,8 @@ void SasEditor::showAmp(int index) {
     }
 
     jack_.clear(juce::dontSendNotification);
-    for (std::size_t j = 0; j < def.preamp.jacks.size(); ++j) jack_.addItem(juce::String(def.preamp.jacks[j].label), int(j) + 1);
-    jackCaption_.setText(juce::String(def.preamp.jackLabel), juce::dontSendNotification);
+    for (std::size_t j = 0; j < def.preamp.jacks.size(); ++j) jack_.addItem(tr(def.preamp.jacks[j].label), int(j) + 1);
+    jackCaption_.setText(tr(def.preamp.jackLabel), juce::dontSendNotification);
     for (int i = 0; i < 4; ++i) {
         selBox_[i].clear(juce::dontSendNotification);
         const bool has = i < int(def.preamp.selectors.size());
@@ -910,8 +914,8 @@ void SasEditor::showAmp(int index) {
         selCaption_[i].setVisible(has);
         if (!has) continue;
         const auto& sd = def.preamp.selectors[std::size_t(i)];
-        for (std::size_t p = 0; p < sd.positions.size(); ++p) selBox_[i].addItem(juce::String(sd.positions[p].label), int(p) + 1);
-        selCaption_[i].setText(juce::String(sd.label), juce::dontSendNotification);
+        for (std::size_t p = 0; p < sd.positions.size(); ++p) selBox_[i].addItem(tr(sd.positions[p].label), int(p) + 1);
+        selCaption_[i].setText(tr(sd.label), juce::dontSendNotification);
         const int now = int(processor_.apvts.getRawParameterValue(ids::sel[i])->load() + 0.5f);
         selBox_[i].setSelectedItemIndex(juce::jlimit(0, int(sd.positions.size()) - 1, now), juce::dontSendNotification);
     }
@@ -972,7 +976,7 @@ void SasEditor::timerCallback() {
         tube_.setSelectedItemIndex(tubeNow, juce::dontSendNotification);
     {
         const float ma = processor_.idleMilliamps();
-        idleLabel_.setText(ma > 0.5f ? juce::String(ma, 1) + " mA per tube" : juce::String("plate current: Normal / High only"), juce::dontSendNotification);
+        idleLabel_.setText(ma > 0.5f ? juce::String(ma, 1) + tr(" mA per tube") : juce::String(tr("plate current: Normal / High only")), juce::dontSendNotification);
     }
 
     updateImpulseStatus();
@@ -1003,7 +1007,7 @@ void SasEditor::updateTuner() {
 void SasEditor::updateImpulseStatus() {
     for (int slot = 0; slot < 2; ++slot) {
         const auto name = processor_.impulseResponseName(slot);
-        (slot == 0 ? nameA_ : nameB_).setText(name.isEmpty() ? juce::String("empty") : name, juce::dontSendNotification);
+        (slot == 0 ? nameA_ : nameB_).setText(name.isEmpty() ? juce::String(tr("empty")) : name, juce::dontSendNotification);
         (slot == 0 ? curveA_ : curveB_).setCurve(processor_.impulseResponseCurve(slot));
     }
 }
@@ -1012,9 +1016,17 @@ void SasEditor::updateImpulseStatus() {
 void SasEditor::showPresetMenu() {
     const auto folder = SasProcessor::presetFolder();
     juce::PopupMenu menu;
-    menu.addItem(1, "Save preset...");
-    menu.addItem(2, "Load preset file...");
-    menu.addItem(3, "Open the presets folder");
+    menu.addItem(1, tr("Save preset..."));
+    menu.addItem(2, tr("Load preset file..."));
+    menu.addItem(3, tr("Open the presets folder"));
+    {  // the language of the interface: it applies the next time the editor window is opened
+        juce::PopupMenu languages;
+        const auto chosen = i18n::preference();
+        for (auto lang : {i18n::Language::Auto, i18n::Language::English, i18n::Language::Spanish})
+            languages.addItem(10 + int(lang), i18n::languageName(lang), true, chosen == lang);
+        menu.addSeparator();
+        menu.addSubMenu(tr("Language"), languages);
+    }
     juce::Array<juce::File> files;
     folder.findChildFiles(files, juce::File::findFiles, false, "*.sasp");
     files.sort();
@@ -1025,21 +1037,24 @@ void SasEditor::showPresetMenu() {
     menu.showMenuAsync(juce::PopupMenu::Options().withTargetComponent(&presets_), [this, folder, files](int choice) {
         auto load = [this](const juce::File& f) {
             if (!processor_.loadPreset(f))
-                juce::AlertWindow::showMessageBoxAsync(juce::MessageBoxIconType::WarningIcon, "Schematic Amp Sim", "Could not read that preset.");
+                juce::AlertWindow::showMessageBoxAsync(juce::MessageBoxIconType::WarningIcon, "Schematic Amp Sim", tr("Could not read that preset."));
         };
-        if (choice == 1) {
+        if (choice >= 10 && choice <= 12) {
+            i18n::setPreference(static_cast<i18n::Language>(choice - 10));
+            juce::AlertWindow::showMessageBoxAsync(juce::MessageBoxIconType::InfoIcon, "Schematic Amp Sim", tr("The language changes the next time the editor window is opened."));
+        } else if (choice == 1) {
             folder.createDirectory();
-            chooser_ = std::make_unique<juce::FileChooser>("Save the preset", folder.getChildFile("My preset.sasp"), "*.sasp");
+            chooser_ = std::make_unique<juce::FileChooser>(tr("Save the preset"), folder.getChildFile("My preset.sasp"), "*.sasp");
             chooser_->launchAsync(juce::FileBrowserComponent::saveMode | juce::FileBrowserComponent::canSelectFiles | juce::FileBrowserComponent::warnAboutOverwriting,
                                   [this](const juce::FileChooser& fc) {
                                       auto file = fc.getResult();
                                       if (file == juce::File{}) return;
                                       if (!file.hasFileExtension("sasp")) file = file.withFileExtension("sasp");
                                       if (!processor_.savePreset(file))
-                                          juce::AlertWindow::showMessageBoxAsync(juce::MessageBoxIconType::WarningIcon, "Schematic Amp Sim", "Could not write that file.");
+                                          juce::AlertWindow::showMessageBoxAsync(juce::MessageBoxIconType::WarningIcon, "Schematic Amp Sim", tr("Could not write that file."));
                                   });
         } else if (choice == 2) {
-            chooser_ = std::make_unique<juce::FileChooser>("Load a preset", folder, "*.sasp");
+            chooser_ = std::make_unique<juce::FileChooser>(tr("Load a preset"), folder, "*.sasp");
             chooser_->launchAsync(juce::FileBrowserComponent::openMode | juce::FileBrowserComponent::canSelectFiles, [load](const juce::FileChooser& fc) {
                 const auto file = fc.getResult();
                 if (file != juce::File{}) load(file);
@@ -1057,7 +1072,7 @@ void SasEditor::showImpulseMenu(int slot, juce::Component& anchor) {
     juce::PopupMenu menu;
     for (int i = 0; i < SasProcessor::builtInImpulseResponseCount(); ++i) menu.addItem(100 + i, SasProcessor::builtInImpulseResponseName(i));
     menu.addSeparator();
-    menu.addItem(1, "From file...");
+    menu.addItem(1, tr("From file..."));
     menu.showMenuAsync(juce::PopupMenu::Options().withTargetComponent(&anchor), [this, slot](int choice) {
         if (choice == 1) {
             chooseImpulseResponse(slot);
@@ -1068,13 +1083,13 @@ void SasEditor::showImpulseMenu(int slot, juce::Component& anchor) {
 }
 
 void SasEditor::chooseNamModel() {
-    chooser_ = std::make_unique<juce::FileChooser>("Choose a Neural Amp Modeler model", juce::File{}, "*.nam");
+    chooser_ = std::make_unique<juce::FileChooser>(tr("Choose a Neural Amp Modeler model"), juce::File{}, "*.nam");
     chooser_->launchAsync(juce::FileBrowserComponent::openMode | juce::FileBrowserComponent::canSelectFiles, [this](const juce::FileChooser& fc) {
         const auto file = fc.getResult();
         if (file == juce::File{}) return;
         if (!processor_.loadNamModel(file))
             juce::AlertWindow::showMessageBoxAsync(juce::MessageBoxIconType::WarningIcon, "Schematic Amp Sim",
-                                                   "Could not load that model: " + processor_.namModelMessage() + ".");
+                                                   tr("Could not load that model: ") + i18n::namMessage(processor_.namModelMessage()) + ".");
         refreshNam();
     });
 }
@@ -1083,14 +1098,14 @@ void SasEditor::chooseNamModel() {
 void SasEditor::refreshNam() {
     const bool loaded = processor_.namModelLoaded();
     const auto name = processor_.namModelName();
-    namName_.setText(loaded ? name : juce::String("No model loaded"), juce::dontSendNotification);
-    namNote_.setText(loaded ? processor_.namModelMessage() : juce::String("Load a .nam file; the signal passes through unchanged until then."),
+    namName_.setText(loaded ? name : juce::String(tr("No model loaded")), juce::dontSendNotification);
+    namNote_.setText(loaded ? i18n::namMessage(processor_.namModelMessage()) : juce::String(tr("Load a .nam file; the signal passes through unchanged until then.")),
                      juce::dontSendNotification);
     namClear_.setEnabled(loaded);
 }
 
 void SasEditor::chooseNamCab() {
-    chooser_ = std::make_unique<juce::FileChooser>("Choose a Neural Amp Modeler cabinet model", juce::File{}, "*.nam");
+    chooser_ = std::make_unique<juce::FileChooser>(tr("Choose a Neural Amp Modeler cabinet model"), juce::File{}, "*.nam");
     chooser_->launchAsync(juce::FileBrowserComponent::openMode | juce::FileBrowserComponent::canSelectFiles, [this](const juce::FileChooser& fc) {
         const auto file = fc.getResult();
         if (file == juce::File{}) return;
@@ -1099,7 +1114,7 @@ void SasEditor::chooseNamCab() {
             if (auto* cab = processor_.apvts.getParameter(ids::cab)) cab->setValueNotifyingHost(cab->convertTo0to1(3.0f));
         } else {
             juce::AlertWindow::showMessageBoxAsync(juce::MessageBoxIconType::WarningIcon, "Schematic Amp Sim",
-                                                   "Could not load that model: " + processor_.namCabMessage() + ".");
+                                                   tr("Could not load that model: ") + i18n::namMessage(processor_.namCabMessage()) + ".");
         }
         refreshNamCab();
     });
@@ -1107,13 +1122,13 @@ void SasEditor::chooseNamCab() {
 
 void SasEditor::refreshNamCab() {
     const bool loaded = processor_.namCabLoaded();
-    const auto msg = processor_.namCabMessage();
-    namCabName_.setText(loaded ? processor_.namCabName() + (msg.isEmpty() ? juce::String() : "  (" + msg + ")") : juce::String("no NAM cabinet"), juce::dontSendNotification);
+    const auto msg = i18n::namMessage(processor_.namCabMessage());
+    namCabName_.setText(loaded ? processor_.namCabName() + (msg.isEmpty() ? juce::String() : "  (" + msg + ")") : juce::String(tr("no NAM cabinet")), juce::dontSendNotification);
     namCabClear_.setEnabled(loaded);
 }
 
 void SasEditor::chooseImpulseResponse(int slot) {
-    chooser_ = std::make_unique<juce::FileChooser>("Choose a cabinet impulse response", juce::File{}, "*.wav;*.aif;*.aiff;*.flac");
+    chooser_ = std::make_unique<juce::FileChooser>(tr("Choose a cabinet impulse response"), juce::File{}, "*.wav;*.aif;*.aiff;*.flac");
     chooser_->launchAsync(juce::FileBrowserComponent::openMode | juce::FileBrowserComponent::canSelectFiles,
                           [this, slot](const juce::FileChooser& fc) {
                               const auto file = fc.getResult();
@@ -1123,7 +1138,7 @@ void SasEditor::chooseImpulseResponse(int slot) {
                                   if (auto* cab = processor_.apvts.getParameter(ids::cab)) cab->setValueNotifyingHost(cab->convertTo0to1(2.0f));
                               } else {
                                   juce::AlertWindow::showMessageBoxAsync(juce::MessageBoxIconType::WarningIcon, "Schematic Amp Sim",
-                                                                         "Could not read that file as an impulse response.");
+                                                                         tr("Could not read that file as an impulse response."));
                               }
                           });
 }
@@ -1164,8 +1179,8 @@ void SasEditor::paint(juce::Graphics& g) {
 
     g.setColour(look_.label());
     g.setFont(AmpLookAndFeel::font(10.0f, true, 0.1f));
-    g.drawText("IN", headInLabel_, juce::Justification::centredRight);
-    g.drawText("OUT", headOutLabel_, juce::Justification::centredRight);
+    g.drawText(tr("IN"), headInLabel_, juce::Justification::centredRight);
+    g.drawText(tr("OUT"), headOutLabel_, juce::Justification::centredRight);
     {  // what the modules cost: amber from 70 % of a block, red past it
         const float cpu = totalCpu();
         g.setColour(cpu > 90.0f ? juce::Colour(0xffe64632) : cpu > 70.0f ? look_.accent() : look_.label());
@@ -1254,8 +1269,8 @@ void SasEditor::resized() {
         headIn_.setBounds(x, row - 7, kBar, 14);
         x -= kKnob + 4;
         headInKnob_.setBounds(x, row - kKnob / 2, kKnob, kKnob);
-        x -= 24;
-        headInLabel_ = {x, row - 8, 20, 16};
+        x -= 32;
+        headInLabel_ = {x, row - 8, 28, 16};
         area.removeFromTop(4);
     }
     rackPage_->setVisible(page_ == 0);
@@ -1265,9 +1280,9 @@ void SasEditor::resized() {
         // Tuner page: the display fills the page, the switches and the reference pitch sit in a column on the right.
         auto side = area.removeFromRight(150);
         area.removeFromRight(gap);
-        panels_.push_back({area, "CHROMATIC TUNER"});
+        panels_.push_back({area, tr("CHROMATIC TUNER")});
         tunerDisplay_.setBounds(area.reduced(10, 8).withTrimmedTop(14));
-        panels_.push_back({side, "TUNER"});
+        panels_.push_back({side, tr("TUNER")});
         auto in = side.reduced(10, 6);
         in.removeFromTop(20);
         tunerOn_.setBounds(in.removeFromTop(26));
@@ -1317,7 +1332,7 @@ void SasEditor::layoutAmpPanel() {
         }
         face_->setBounds(faceArea);
     } else {
-        panels.push_back({top, "AMP CONTROLS"});
+        panels.push_back({top, tr("AMP CONTROLS")});
         auto row = top.reduced(6, 4);
         row.removeFromTop(16);
         if (selectors > 0) {
@@ -1349,7 +1364,7 @@ void SasEditor::layoutAmpPanel() {
     // Middle row: the guitar and the power tubes (the input and output levels are in the header).
     auto guitarPanel = mid.removeFromLeft(190);
     mid.removeFromLeft(gap);
-    panels.push_back({guitarPanel, "GUITAR INPUT"});
+    panels.push_back({guitarPanel, tr("GUITAR INPUT")});
     {
         auto gin = guitarPanel.reduced(8, 4);
         gin.removeFromTop(18);
@@ -1361,14 +1376,14 @@ void SasEditor::layoutAmpPanel() {
     if (!namAmp) {
         auto tubesPanel = mid.removeFromLeft(std::clamp(mid.getWidth() * 28 / 100, 200, 290));
         mid.removeFromLeft(gap);
-        panels.push_back({tubesPanel, "POWER TUBES"});
+        panels.push_back({tubesPanel, tr("POWER TUBES")});
         tubes_.setBounds(tubesPanel.reduced(8, 4).withTrimmedTop(18));
     }
     tubes_.setVisible(!namAmp);
 
     // The amp's condition fills the rest of the row (the speaker's dynamics are with the cabinet).
     auto condPanel = mid;
-    panels.push_back({condPanel, "AMP CONDITION"});
+    panels.push_back({condPanel, tr("AMP CONDITION")});
     {
         const int condKnobW = 75;
         auto cin = condPanel.reduced(8, 4);
@@ -1401,7 +1416,7 @@ void SasEditor::layoutCabPanel() {
     auto slotA = top.removeFromLeft((top.getWidth() - gap) / 2);
     top.removeFromLeft(gap);
     auto slotB = top;
-    auto slot = [&](juce::Rectangle<int> panel, const char* caption, juce::TextButton& load, juce::TextButton& clear, juce::Label& name, IrCurve& curve) {
+    auto slot = [&](juce::Rectangle<int> panel, const juce::String& caption, juce::TextButton& load, juce::TextButton& clear, juce::Label& name, IrCurve& curve) {
         panels.push_back({panel, caption});
         auto in = panel.reduced(10, 6);
         in.removeFromTop(18);
@@ -1414,8 +1429,8 @@ void SasEditor::layoutCabPanel() {
         in.removeFromTop(6);
         curve.setBounds(in);
     };
-    slot(slotA, "IMPULSE A", loadA_, clearA_, nameA_, curveA_);
-    slot(slotB, "IMPULSE B", loadB_, clearB_, nameB_, curveB_);
+    slot(slotA, tr("IMPULSE A"), loadA_, clearA_, nameA_, curveA_);
+    slot(slotB, tr("IMPULSE B"), loadB_, clearB_, nameB_, curveB_);
 
     auto cabPanel = area.removeFromLeft(200);
     area.removeFromLeft(gap);
@@ -1424,7 +1439,7 @@ void SasEditor::layoutCabPanel() {
     auto speakerPanel = area.removeFromLeft(118);
     area.removeFromLeft(gap);
     auto stereoPanel = area;
-    panels.push_back({cabPanel, "CABINET"});
+    panels.push_back({cabPanel, tr("CABINET")});
     {
         auto in = cabPanel.reduced(10, 6);
         in.removeFromTop(20);
@@ -1439,21 +1454,21 @@ void SasEditor::layoutCabPanel() {
         in.removeFromTop(2);
         cabNote_.setBounds(in);
     }
-    panels.push_back({blendPanel, "A / B BLEND"});
+    panels.push_back({blendPanel, tr("A / B BLEND")});
     {
         auto in = blendPanel.reduced(6, 4);
         in.removeFromTop(16);
         blendNote_.setBounds(in.removeFromBottom(14));
         blend_.setBounds(in);
     }
-    panels.push_back({speakerPanel, "SPEAKER"});
+    panels.push_back({speakerPanel, tr("SPEAKER")});
     {
         auto in = speakerPanel.reduced(6, 4);
         in.removeFromTop(16);
         speakerIntense_.setBounds(in.removeFromBottom(20).withSizeKeepingCentre(80, 20));
         speaker_.setBounds(in);
     }
-    panels.push_back({stereoPanel, "STEREO"});
+    panels.push_back({stereoPanel, tr("STEREO")});
     {
         auto in = stereoPanel.reduced(6, 4);
         in.removeFromTop(16);

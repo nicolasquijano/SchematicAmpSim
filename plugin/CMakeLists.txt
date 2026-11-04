@@ -33,6 +33,9 @@ target_sources(SchematicAmpSim PRIVATE
   PluginEditor.cpp
   PluginEditor.h
   CabinetModule.h
+  I18n.cpp
+  I18n.h
+  I18nEs.cpp
   ModuleUnit.cpp
   ModuleUnit.h
   ParallelPanels.cpp
@@ -114,3 +117,8 @@ target_link_libraries(SchematicAmpSim
   PUBLIC
     juce::juce_recommended_config_flags
     juce::juce_recommended_warning_flags)
+
+# The Spanish texts are written as UTF-8 in the source.
+if(MSVC)
+  set_source_files_properties(I18nEs.cpp PROPERTIES COMPILE_OPTIONS /utf-8)
+endif()

@@ -1,3 +1,4 @@
+#include "I18n.h"
 #include "RackPage.h"
 
 #include "RackState.h"
@@ -357,8 +358,8 @@ void RackPage::removeParallelAsked() {
         doIt();
         return;
     }
-    juce::AlertWindow::showOkCancelBox(juce::MessageBoxIconType::QuestionIcon, "Remove the parallel",
-                                       "Lane B has " + juce::String(extra) + " more module(s) besides the second amp and cabinet: they are removed with it. Lane A stays as it is.", "Remove", "Keep",
+    juce::AlertWindow::showOkCancelBox(juce::MessageBoxIconType::QuestionIcon, tr("Remove the parallel"),
+                                       tr("Lane B has {n} more module(s) besides the second amp and cabinet: they are removed with it. Lane A stays as it is.").replace("{n}", juce::String(extra)), tr("Remove"), tr("Keep"),
                                        this, juce::ModalCallbackFunction::create([this, doIt](int result) {
                                            if (result == 1) doIt();
                                        }));
@@ -479,24 +480,24 @@ void RackPage::timerCallback() {
 
 juce::PopupMenu RackPage::addMenu(const SasProcessor& processor, int idBase) {
     juce::PopupMenu menu;
-    menu.addItem(idBase - 1, processor.hasParallel() ? juce::String("Parallel (already there)") : juce::String("Parallel: two lanes, A and B"), processor.canAddParallel());
+    menu.addItem(idBase - 1, processor.hasParallel() ? juce::String(tr("Parallel (already there)")) : juce::String(tr("Parallel: two lanes, A and B")), processor.canAddParallel());
     // What a parallel can hold besides the pedals: a second amp and a second cabinet, or neither (a reverb or a dry path of its own, say).
     juce::PopupMenu lane;
-    lane.addItem(idBase + int(ModuleType::Amp), "Second amp", processor.canAdd(ModuleType::Amp));
-    lane.addItem(idBase + int(ModuleType::Cabinet), "Second cabinet", processor.canAdd(ModuleType::Cabinet));
+    lane.addItem(idBase + int(ModuleType::Amp), tr("Second amp"), processor.canAdd(ModuleType::Amp));
+    lane.addItem(idBase + int(ModuleType::Cabinet), tr("Second cabinet"), processor.canAdd(ModuleType::Cabinet));
     lane.addSeparator();
     for (const auto& cat : categories())
         for (auto t : cat.types)
             lane.addItem(idBase + kLaneBOffset + int(t), ModuleUnit::title({t, 0}), processor.hasParallel() && processor.canAdd(t));
-    menu.addSubMenu("Lane B", lane);
+    menu.addSubMenu(tr("Lane B"), lane);
     menu.addSeparator();
     for (const auto& cat : categories()) {
         juce::PopupMenu sub;
         for (auto t : cat.types) {
             const bool ok = processor.canAdd(t);
-            sub.addItem(idBase + int(t), ModuleUnit::title({t, 0}) + (ok ? juce::String() : "  (limit reached)"), ok);
+            sub.addItem(idBase + int(t), ModuleUnit::title({t, 0}) + (ok ? juce::String() : tr("  (limit reached)")), ok);
         }
-        menu.addSubMenu(cat.name, sub);
+        menu.addSubMenu(tr(cat.name), sub);
     }
     return menu;
 }
