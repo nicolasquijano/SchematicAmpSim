@@ -15,7 +15,7 @@ namespace {
 
 // Caps (docs/MODULAR_RACK.md, 4.1; the CPU table in section 6 holds them).
 constexpr int kCaps[sas::kModuleTypeCount] = {2 /*Amp*/, 2 /*Cabinet*/, 2 /*Gate*/, 2 /*Compressor*/, 4 /*Overdrive*/, 2 /*NamPedal*/, 2 /*Phaser*/,
-                                              2 /*Chorus*/, 2 /*Vibe*/, 2 /*Pitch*/, 2 /*Eq*/, 2 /*Delay*/, 2 /*Reverb*/, 1 /*Splitter*/, 1 /*Mixer*/, 2 /*Tremolo*/, 2 /*Flanger*/, 2 /*Wah*/, 2 /*Fuzz*/};
+                                              2 /*Chorus*/, 2 /*Vibe*/, 2 /*Pitch*/, 2 /*Eq*/, 2 /*Delay*/, 2 /*Reverb*/, 1 /*Splitter*/, 1 /*Mixer*/, 2 /*Tremolo*/, 2 /*Flanger*/, 2 /*Wah*/, 2 /*Fuzz*/, 2 /*Boost*/, 2 /*Limiter*/};
 
 // Mono: both channels of a stereo pair get the same modulation. Stereo: the right channel's modulation is out of step with the left's.
 std::unique_ptr<juce::AudioParameterChoice> channelMode(const juce::ParameterID& id, const juce::String& name) {
@@ -88,6 +88,8 @@ const std::vector<const char*>& paramIds(ModuleType type) {
     static const std::vector<const char*> wah{ids::wahOn, ids::wahMode, ids::wahPos, ids::wahHeel, ids::wahToe, ids::wahQ, ids::wahMix, ids::wahLevel, ids::wahSens,
                                               ids::wahAttack, ids::wahRelease, ids::wahDir, ids::wahRate, ids::wahStereo};
     static const std::vector<const char*> fuzz{ids::fzOn, ids::fzType, ids::fzFuzz, ids::fzTone, ids::fzBias, ids::fzMix, ids::fzLevel};
+    static const std::vector<const char*> boost{ids::bstOn, ids::bstGain, ids::bstTone, ids::bstSoft};
+    static const std::vector<const char*> limiter{ids::limOn, ids::limGain, ids::limCeiling, ids::limRelease};
     static const std::vector<const char*> pitch{ids::pitch, ids::pitchFine};
     static const std::vector<const char*> eq = [] {
         std::vector<const char*> v{ids::eqOn, ids::eqHpf, ids::eqLpf};
@@ -115,6 +117,8 @@ const std::vector<const char*>& paramIds(ModuleType type) {
         case ModuleType::Flanger: return flanger;
         case ModuleType::Wah: return wah;
         case ModuleType::Fuzz: return fuzz;
+        case ModuleType::Boost: return boost;
+        case ModuleType::Limiter: return limiter;
         case ModuleType::Pitch: return pitch;
         case ModuleType::Eq: return eq;
         case ModuleType::Delay: return delay;
@@ -137,6 +141,8 @@ const char* onId(ModuleType type) {
         case ModuleType::Flanger: return ids::flOn;
         case ModuleType::Wah: return ids::wahOn;
         case ModuleType::Fuzz: return ids::fzOn;
+        case ModuleType::Boost: return ids::bstOn;
+        case ModuleType::Limiter: return ids::limOn;
         case ModuleType::Eq: return ids::eqOn;
         case ModuleType::Delay: return ids::dlyOn;
         case ModuleType::Reverb: return ids::plOn;
@@ -238,6 +244,21 @@ void addParams(Layout& l, ModuleType type, int k) {
             l.add(pct(I(ids::flManual), N("Flanger manual"), 0.0f, 100.0f, 40.0f));
             l.add(pct(I(ids::flFeedback), N("Flanger feedback"), -90.0f, 90.0f, 50.0f));
             l.add(channelMode(id(I(ids::flStereo)), N("Flanger channels")));
+            break;
+        case ModuleType::Boost:
+            l.add(toggle(I(ids::bstOn), N("Boost"), false));
+            l.add(std::make_unique<juce::AudioParameterFloat>(id(I(ids::bstGain)), N("Boost gain"), juce::NormalisableRange<float>(0.0f, 30.0f, 0.0f), 12.0f,
+                                                              juce::AudioParameterFloatAttributes().withLabel("dB").withStringFromValueFunction([](float v, int) { return juce::String(v, 1); })));
+            l.add(knob(I(ids::bstTone), N("Boost tone"), 5.0f));
+            l.add(toggle(I(ids::bstSoft), N("Boost soft clip"), false));
+            break;
+        case ModuleType::Limiter:
+            l.add(toggle(I(ids::limOn), N("Limiter"), false));
+            l.add(std::make_unique<juce::AudioParameterFloat>(id(I(ids::limGain)), N("Limiter gain"), juce::NormalisableRange<float>(0.0f, 24.0f, 0.0f), 0.0f,
+                                                              juce::AudioParameterFloatAttributes().withLabel("dB").withStringFromValueFunction([](float v, int) { return juce::String(v, 1); })));
+            l.add(std::make_unique<juce::AudioParameterFloat>(id(I(ids::limCeiling)), N("Limiter ceiling"), juce::NormalisableRange<float>(-12.0f, 0.0f, 0.0f), -1.0f,
+                                                              juce::AudioParameterFloatAttributes().withLabel("dB").withStringFromValueFunction([](float v, int) { return juce::String(v, 1); })));
+            l.add(rate(I(ids::limRelease), N("Limiter release"), 10.0f, 1000.0f, 120.0f, 120.0f, "ms"));
             break;
         case ModuleType::Fuzz:
             l.add(toggle(I(ids::fzOn), N("Fuzz"), false));

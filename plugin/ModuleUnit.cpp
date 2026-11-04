@@ -31,6 +31,8 @@ const std::vector<Item>& itemsFor(ModuleType t) {
                                            {Item::Knob, ids::flFeedback, "FEEDBACK %"}, {Item::Combo, ids::flStereo, "CHANNELS"}};
     static const std::vector<Item> fuzz{{Item::Combo, ids::fzType, "TYPE"}, {Item::Knob, ids::fzFuzz, "FUZZ"}, {Item::Knob, ids::fzTone, "TONE"},
                                         {Item::Knob, ids::fzBias, "BIAS"}, {Item::Knob, ids::fzMix, "MIX %"}, {Item::Knob, ids::fzLevel, "LEVEL dB"}};
+    static const std::vector<Item> boost{{Item::Knob, ids::bstGain, "GAIN dB"}, {Item::Knob, ids::bstTone, "TONE"}, {Item::Toggle, ids::bstSoft, "Soft clip"}};
+    static const std::vector<Item> limiter{{Item::Knob, ids::limGain, "GAIN dB"}, {Item::Knob, ids::limCeiling, "CEILING dB"}, {Item::Knob, ids::limRelease, "RELEASE ms"}};
     static const std::vector<Item> wah{{Item::Combo, ids::wahMode, "MODE"}, {Item::Knob, ids::wahPos, "PEDAL %"}, {Item::Knob, ids::wahHeel, "HEEL Hz"},
                                        {Item::Knob, ids::wahToe, "TOE Hz"}, {Item::Knob, ids::wahQ, "Q"}, {Item::Knob, ids::wahMix, "MIX %"},
                                        {Item::Knob, ids::wahLevel, "LEVEL dB"}, {Item::Knob, ids::wahSens, "ENV SENS %"}, {Item::Knob, ids::wahAttack, "ENV ATTACK ms"},
@@ -58,6 +60,8 @@ const std::vector<Item>& itemsFor(ModuleType t) {
         case ModuleType::Flanger: return flanger;
         case ModuleType::Wah: return wah;
         case ModuleType::Fuzz: return fuzz;
+        case ModuleType::Boost: return boost;
+        case ModuleType::Limiter: return limiter;
         case ModuleType::Pitch: return pitch;
         case ModuleType::Delay: return delay;
         case ModuleType::Reverb: return reverb;
@@ -80,6 +84,8 @@ const char* nameOf(ModuleType t) {
         case ModuleType::Flanger: return "FLANGER";
         case ModuleType::Wah: return "WAH";
         case ModuleType::Fuzz: return "FUZZ";
+        case ModuleType::Boost: return "CLEAN BOOST";
+        case ModuleType::Limiter: return "LIMITER";
         case ModuleType::Pitch: return "PITCH";
         case ModuleType::Eq: return "EQ";
         case ModuleType::Delay: return "DELAY";

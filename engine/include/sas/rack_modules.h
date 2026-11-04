@@ -9,7 +9,9 @@
 #include <vector>
 
 #include "sas/chain.h"
+#include "sas/boost.h"
 #include "sas/chorus.h"
+#include "sas/limiter.h"
 #include "sas/fuzz.h"
 #include "sas/flanger.h"
 #include "sas/tremolo.h"
@@ -51,6 +53,23 @@ using VibeModule = FxModule<Vibe, VibeParams, Channels::Flexible>;
 using TremoloModule = FxModule<Tremolo, TremoloParams, Channels::Flexible>;
 using FlangerModule = FxModule<Flanger, FlangerParams, Channels::Flexible>;
 using WahModule = FxModule<Wah, WahParams, Channels::Flexible>;
+using BoostModule = FxModule<Boost, BoostParams, Channels::Flexible>;
+
+// A limiter: it looks ahead, so it delays the signal by that time (reported as latency while it works).
+class LimiterModule final : public Module {
+public:
+    void prepare(double fs, int) override { dsp_.prepare(fs); }
+    void process(float* l, float* r, std::size_t n) override { dsp_.process(l, r, n); }
+    bool active() const override { return dsp_.active(); }
+    Channels channels() const override { return Channels::Flexible; }
+    double latencySamples() const override { return dsp_.latencySamples(); }
+    void reset() override { dsp_.reset(); }
+    void setParams(const LimiterParams& p) { dsp_.setParams(p); }
+    double reductionDb() const { return dsp_.reductionDb(); }
+
+private:
+    Limiter dsp_;
+};
 using EqModule = FxModule<ParametricEq, EqParams, Channels::Stereo>;
 using DelayModule = FxModule<StereoDelay, DelayParams, Channels::Stereo>;
 using ReverbModule = FxModule<PlateReverb, PlateParams, Channels::Stereo>;

@@ -1,5 +1,6 @@
 // The tremolo and the flanger.
 #include <algorithm>
+#include <catch2/catch_approx.hpp>
 #include <catch2/catch_test_macros.hpp>
 #include <cmath>
 #include <vector>
@@ -411,4 +412,98 @@ TEST_CASE("fuzz: the types differ, the tone and the mix do what they say", "[fuz
         const float expect = float(0.3 * (std::sin(6.283185307179586 * 196.0 * t) + 0.4 * std::sin(6.283185307179586 * 392.0 * t)));
         REQUIRE(std::fabs(dryOnly[i] - expect) < 2e-3f);
     }
+}
+
+#include "sas/boost.h"
+#include "sas/limiter.h"
+
+TEST_CASE("boost: off is transparent; the gain is what it says; tone tilts; soft clip rounds the peaks", "[boost]") {
+    sas::Boost b;
+    sas::BoostParams p;
+    b.prepare(kFs);
+    b.setParams(p);
+    auto a = tone(48000), c = a;
+    run(b, c, nullptr);
+    CHECK(a == c);
+    auto gainAt = [&](sas::BoostParams q, double hz, double amp) {
+        sas::Boost x;
+        q.on = true;
+        x.prepare(kFs);
+        x.setParams(q);
+        std::vector<float> v(48000);
+        for (std::size_t i = 0; i < v.size(); ++i) v[i] = float(amp * std::sin(6.283185307179586 * hz * double(i) / kFs));
+        auto in = v;
+        run(x, v, nullptr);
+        double s = 0.0, t = 0.0;
+        for (std::size_t i = 12000; i < v.size(); ++i) {
+            s += double(in[i]) * in[i];
+            t += double(v[i]) * v[i];
+        }
+        return std::sqrt(t / s);
+    };
+    p.gainDb = 12.0;
+    p.tone = 0.5;
+    CHECK(gainAt(p, 1000.0, 0.05) == Catch::Approx(3.98).epsilon(0.03));
+    p.gainDb = 0.0;
+    CHECK(gainAt(p, 1000.0, 0.05) == Catch::Approx(1.0).epsilon(0.02));
+    p.tone = 1.0;
+    CHECK(gainAt(p, 4000.0, 0.05) > 1.2 * gainAt(p, 200.0, 0.05));
+    p.tone = 0.0;
+    CHECK(gainAt(p, 4000.0, 0.05) < 0.85 * gainAt(p, 200.0, 0.05));
+    p.tone = 0.5;
+    p.gainDb = 30.0;
+    p.softClip = false;
+    const double hard = gainAt(p, 1000.0, 0.2);  // 0.2 * 31.6 = 6.3 times: far above full scale, passes through
+    p.softClip = true;
+    CHECK(gainAt(p, 1000.0, 0.2) < 0.5 * hard);  // rounded off near 1.25
+}
+
+TEST_CASE("limiter: nothing goes over the ceiling; what is under it passes, late by the lookahead", "[limiter]") {
+    sas::Limiter lim;
+    sas::LimiterParams p;
+    p.on = true;
+    p.gainDb = 0.0;
+    p.ceilingDb = -6.0;  // 0.5
+    lim.prepare(kFs);
+    lim.setParams(p);
+    // A quiet part, then a burst far above the ceiling, then quiet again.
+    std::vector<float> l(48000), r(48000);
+    for (std::size_t i = 0; i < l.size(); ++i) {
+        const double amp = (i > 12000 && i < 24000) ? 1.0 : 0.1;
+        l[i] = float(amp * std::sin(6.283185307179586 * 220.0 * double(i) / kFs));
+        r[i] = float(0.5 * amp * std::sin(6.283185307179586 * 330.0 * double(i) / kFs));
+    }
+    const auto inL = l;
+    for (std::size_t s = 0; s < l.size(); s += 256) lim.process(l.data() + s, r.data() + s, std::min<std::size_t>(256, l.size() - s));
+    float peakAll = 0.0f;
+    for (std::size_t i = 0; i < l.size(); ++i) peakAll = std::max({peakAll, std::fabs(l[i]), std::fabs(r[i])});
+    CHECK(peakAll <= std::pow(10.0f, -6.0f / 20.0f) * 1.0001f);
+    CHECK(peakAll > 0.46f);  // and it did not just turn everything down
+    // Before the burst the signal passes unchanged, delayed by the lookahead.
+    const int look = int(lim.latencySamples());
+    CHECK(look == 48);
+    for (std::size_t i = 4000; i < 11000; ++i) REQUIRE(std::fabs(l[i] - inL[i - std::size_t(look)]) < 1e-4f);
+    // After it the gain comes back.
+    double rmsEnd = 0.0, rmsIn = 0.0;
+    for (std::size_t i = 44000; i < 47000; ++i) {
+        rmsEnd += double(l[i]) * l[i];
+        rmsIn += double(inL[i - std::size_t(look)]) * inL[i - std::size_t(look)];
+    }
+    CHECK(std::sqrt(rmsEnd / rmsIn) > 0.97);
+}
+
+TEST_CASE("limiter: gain pushes the level up to the ceiling and no further", "[limiter]") {
+    sas::Limiter lim;
+    sas::LimiterParams p;
+    p.on = true;
+    p.gainDb = 18.0;
+    p.ceilingDb = -3.0;
+    lim.prepare(kFs);
+    lim.setParams(p);
+    auto x = tone(48000);
+    for (std::size_t s = 0; s < x.size(); s += 256) lim.process(x.data() + s, nullptr, std::min<std::size_t>(256, x.size() - s));
+    float peak = 0.0f;
+    for (std::size_t i = 12000; i < x.size(); ++i) peak = std::max(peak, std::fabs(x[i]));
+    CHECK(peak <= std::pow(10.0f, -3.0f / 20.0f) * 1.0001f);
+    CHECK(peak > 0.6f);
 }

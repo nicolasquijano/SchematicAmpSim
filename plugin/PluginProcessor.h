@@ -12,7 +12,9 @@
 #include "RackState.h"
 #include "sas/amp_def.h"
 #include "sas/chain.h"
+#include "sas/boost.h"
 #include "sas/chorus.h"
+#include "sas/limiter.h"
 #include "sas/fuzz.h"
 #include "sas/flanger.h"
 #include "sas/tremolo.h"
@@ -132,6 +134,15 @@ inline constexpr const char* flRate = "fl_rate";          // Hz
 inline constexpr const char* flDepth = "fl_depth";        // percent
 inline constexpr const char* flManual = "fl_manual";      // percent, centre of the sweep
 inline constexpr const char* flFeedback = "fl_feedback";  // percent, -90 .. 90
+// The clean boost and the limiter (sas/boost.h, sas/limiter.h): modules of the rack only.
+inline constexpr const char* bstOn = "bst_on";
+inline constexpr const char* bstGain = "bst_gain";  // dB
+inline constexpr const char* bstTone = "bst_tone";  // 0 .. 10, 5 is flat
+inline constexpr const char* bstSoft = "bst_soft";  // soft clip
+inline constexpr const char* limOn = "lim_on";
+inline constexpr const char* limGain = "lim_gain";        // dB pushed into the limiter
+inline constexpr const char* limCeiling = "lim_ceiling";  // dB
+inline constexpr const char* limRelease = "lim_release";  // ms
 // The fuzz (sas/fuzz.h): a module of the rack only.
 inline constexpr const char* fzOn = "fz_on";
 inline constexpr const char* fzType = "fz_type";    // Face / Muff / Octave

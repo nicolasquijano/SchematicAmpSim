@@ -82,6 +82,8 @@ Layout SasProcessor::createLayout(const std::vector<sas::AmpDef>& defs) {
     RackState::addParams(l, sas::ModuleType::Flanger, 0);
     RackState::addParams(l, sas::ModuleType::Wah, 0);
     RackState::addParams(l, sas::ModuleType::Fuzz, 0);
+    RackState::addParams(l, sas::ModuleType::Boost, 0);
+    RackState::addParams(l, sas::ModuleType::Limiter, 0);
     RackState::addParams(l, sas::ModuleType::Compressor, 0);
     RackState::addParams(l, sas::ModuleType::NamPedal, 0);
     l.add(std::make_unique<juce::AudioParameterBool>(juce::ParameterID{ids::tunerOn, kVersion}, "Tuner", false));
@@ -486,6 +488,24 @@ void SasProcessor::applyModuleParams(const sas::RackOrder& order) {
                 static_cast<sas::FlangerModule*>(m)->setParams(q);
                 break;
             }
+            case T::Boost: {
+                sas::BoostParams q;
+                q.on = p(ids::bstOn) > 0.5;
+                q.gainDb = p(ids::bstGain);
+                q.tone = p(ids::bstTone) / 10.0;
+                q.softClip = p(ids::bstSoft) > 0.5;
+                static_cast<sas::BoostModule*>(m)->setParams(q);
+                break;
+            }
+            case T::Limiter: {
+                sas::LimiterParams q;
+                q.on = p(ids::limOn) > 0.5;
+                q.gainDb = p(ids::limGain);
+                q.ceilingDb = p(ids::limCeiling);
+                q.releaseMs = p(ids::limRelease);
+                static_cast<sas::LimiterModule*>(m)->setParams(q);
+                break;
+            }
             case T::Fuzz: {
                 sas::FuzzParams q;
                 q.on = p(ids::fzOn) > 0.5;
@@ -774,6 +794,8 @@ std::unique_ptr<sas::Module> SasProcessor::makeModule(sas::ModuleType type, int 
         case T::Flanger: return std::make_unique<sas::FlangerModule>();
         case T::Wah: return std::make_unique<sas::WahModule>();
         case T::Fuzz: return std::make_unique<sas::FuzzModule>();
+        case T::Boost: return std::make_unique<sas::BoostModule>();
+        case T::Limiter: return std::make_unique<sas::LimiterModule>();
         case T::Pitch: return std::make_unique<sas::PitchModule>();
         case T::Eq: return std::make_unique<sas::EqModule>();
         case T::Delay: return std::make_unique<sas::DelayModule>();
@@ -883,7 +905,7 @@ bool SasProcessor::addModule(sas::ModuleType type, int insertAt, int wantedLane)
                 insertAt = ampAt;
                 while (insertAt > 0 && rackOrder_.slots[std::size_t(insertAt - 1)].type == T::Overdrive) --insertAt;
                 break;
-            case T::Gate: case T::NamPedal: case T::Pitch: case T::Wah: case T::Fuzz: {
+            case T::Gate: case T::NamPedal: case T::Pitch: case T::Wah: case T::Fuzz: case T::Boost: {
                 // In front of the compressor and the overdrive that sit next to the amp, so the amp keeps running them as it always did.
                 insertAt = ampAt;
                 while (insertAt > 0 && (rackOrder_.slots[std::size_t(insertAt - 1)].type == T::Overdrive || rackOrder_.slots[std::size_t(insertAt - 1)].type == T::Compressor)) --insertAt;

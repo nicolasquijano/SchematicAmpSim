@@ -2488,7 +2488,7 @@ TEST_CASE("the tremolo and the flanger are modules of the rack: added, heard, sa
     JuceInit init;
     using T = sas::ModuleType;
     const auto in = legacy::input();
-    for (const auto type : {T::Tremolo, T::Flanger, T::Wah, T::Fuzz}) {
+    for (const auto type : {T::Tremolo, T::Flanger, T::Wah, T::Fuzz, T::Boost, T::Limiter}) {
         const bool trem = type == T::Tremolo;
         SasProcessor p;
         p.prepareToPlay(48000.0, 256);
@@ -2496,7 +2496,7 @@ TEST_CASE("the tremolo and the flanger are modules of the rack: added, heard, sa
         const auto before = playOn(p, in);
         REQUIRE(p.addModule(type));
         { const auto order = typesOf(p.rackOrder()); CHECK(std::find(order.begin(), order.end(), type) != order.end()); }
-        setParam(p, trem ? ids::trOn : type == T::Wah ? ids::wahOn : type == T::Fuzz ? ids::fzOn : ids::flOn, 1.0f);
+        setParam(p, trem ? ids::trOn : type == T::Wah ? ids::wahOn : type == T::Fuzz ? ids::fzOn : type == T::Boost ? ids::bstOn : type == T::Limiter ? ids::limOn : ids::flOn, 1.0f);
         if (trem) setParam(p, ids::trDepth, 100.0f);
         for (int i = 0; i < 40; ++i) playOn(p, std::vector<float>(256, 0.0f));
         const auto after = playOn(p, in);
