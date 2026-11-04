@@ -411,3 +411,43 @@ TEST_CASE("a change of the lane latency fades instead of clicking", "[rack]") {
     for (std::size_t i = 1; i < out.size(); ++i) biggest = std::max(biggest, std::abs(out[i] - out[i - 1]));
     CHECK(biggest < 0.35f);
 }
+
+namespace {
+// An amp that is not ready yet: it reports itself inactive, like an AmpModule whose circuits are still being built.
+struct LateAmp final : Module {
+    void prepare(double, int) override {}
+    void process(float* l, float*, std::size_t n) override { for (std::size_t i = 0; i < n; ++i) l[i] *= 3.0f; }
+    bool active() const override { return ready; }
+    bool isAmp() const override { return true; }
+    Channels channels() const override { return Channels::MonoOnly; }
+    void reset() override {}
+    bool ready = false;
+};
+}  // namespace
+
+TEST_CASE("a lane whose amp is not ready is silent and comes in smoothly", "[rack]") {
+    Rack rack;
+    rack.prepare(48000.0, 64);
+    rack.setModule(kS, std::make_unique<SplitterModule>());
+    rack.setModule(kM, std::make_unique<MixerModule>());
+    rack.setModule(kA, std::make_unique<Gain>(1.0f));
+    auto amp = std::make_unique<LateAmp>();
+    auto* ampPtr = amp.get();
+    rack.setModule({ModuleType::Amp, 1}, std::move(amp));
+    rack.publish(lanesOf({{kS, 0}, {kA, 0}, {SlotRef{ModuleType::Amp, 1}, 1}, {kM, 0}}));
+    std::vector<float> l(64, 1.0f), r(64, 0.0f);
+    rack.process(l.data(), r.data(), 64);
+    CHECK(l[10] == 1.0f);  // lane A alone: lane B has nothing to play yet
+    ampPtr->ready = true;
+    float previous = 1.0f, biggestStep = 0.0f;
+    for (int b = 0; b < 12; ++b) {
+        std::fill(l.begin(), l.end(), 1.0f);
+        rack.process(l.data(), r.data(), 64);
+        for (float v : l) {
+            biggestStep = std::max(biggestStep, std::abs(v - previous));
+            previous = v;
+        }
+    }
+    CHECK(l[10] == 4.0f);          // both lanes, once it is ready: 1 + 3
+    CHECK(biggestStep < 0.05f);    // and it arrived by a ramp, not a jump
+}

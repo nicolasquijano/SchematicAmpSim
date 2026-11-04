@@ -161,7 +161,7 @@ private:
     bool run(const RackOrder* order, float* l, float* r, std::size_t n, const Segment& seg, bool stereoIn);
     bool runOrder(const RackOrder* order, float* l, float* r, std::size_t n);
     bool runLanes(const RackOrder& order, float* l, float* r, std::size_t n, bool stereo);
-    void mixLanes(const MixerParams& mp, float* l, float* r, float* bl, float* br, std::size_t n, bool stereoA, bool stereoB, int diffWanted);
+    void mixLanes(const MixerParams& mp, float* l, float* r, float* bl, float* br, std::size_t n, bool stereoA, bool stereoB, int diffWanted, float targetA, float targetB);
     Module* at(const RackOrder& order, int k) const;
     void retire(SlotRef slot, std::unique_ptr<Module> module, std::uint64_t needGen);
 
@@ -192,6 +192,7 @@ private:
     enum class MixFade { Idle, Out, In };
     MixFade mixFade_ = MixFade::Idle;
     int mixFadeLeft_ = 0;
+    float laneGainA_ = 1.0f, laneGainB_ = 1.0f;  // a lane whose amp is not ready is held at 0 and ramped in
 };
 
 }  // namespace sas

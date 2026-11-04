@@ -187,17 +187,25 @@ bool Rack::runLanes(const RackOrder& order, float* l, float* r, std::size_t n, b
     const Module* mixer = at(order, m);
     const MixerParams* mp = mixer ? mixer->mixerParams() : nullptr;
     const MixerParams defaults;
-    mixLanes(mp ? *mp : defaults, l, r, bl, br, n, stereoA, stereoB, std::clamp(diff, -int(kDelay) + 1, int(kDelay) - 1));
+    // A lane with an amp whose circuits are not built yet plays nothing (otherwise it would be the raw guitar through its other modules).
+    auto ready = [&](const Segment& seg) {
+        for (int j = 0; j < seg.n; ++j)
+            if (const Module* m = at(order, seg.idx[j]); m && m->isAmp()) return m->active();
+        return true;
+    };
+    mixLanes(mp ? *mp : defaults, l, r, bl, br, n, stereoA, stereoB, std::clamp(diff, -int(kDelay) + 1, int(kDelay) - 1), ready(a) ? 1.0f : 0.0f, ready(b) ? 1.0f : 0.0f);
     return true;
 }
 
 // Sums lane A (l, r) and lane B (bl, br) into (l, r): the levels, a balance-style pan per lane (0 leaves it as it is), the phase of B, and the
 // delay that lines the two up. When the alignment changes the result fades out, the delay changes at silence, and it fades back in.
-void Rack::mixLanes(const MixerParams& mp, float* l, float* r, float* bl, float* br, std::size_t n, bool stereoA, bool stereoB, int diffWanted) {
+void Rack::mixLanes(const MixerParams& mp, float* l, float* r, float* bl, float* br, std::size_t n, bool stereoA, bool stereoB, int diffWanted, float targetA, float targetB) {
     if (!lanesInit_) {
         for (auto& ring : ring_) std::fill(ring.begin(), ring.end(), 0.0f);
         diffApplied_ = diffWanted;
         mixFade_ = MixFade::Idle;
+        laneGainA_ = targetA;
+        laneGainB_ = targetB;
         lanesInit_ = true;
     }
     auto gains = [](float pan, float& left, float& right) {
@@ -207,9 +215,13 @@ void Rack::mixLanes(const MixerParams& mp, float* l, float* r, float* bl, float*
     float aL, aR, bL, bR;
     gains(mp.panA, aL, aR);
     gains(mp.panB, bL, bR);
-    const float la = mp.levelA, lb = mp.levelB * (mp.invertB ? -1.0f : 1.0f);
+    const float la0 = mp.levelA, lb0 = mp.levelB * (mp.invertB ? -1.0f : 1.0f);
+    const float step = 1.0f / float(std::max(1, fadeLen_));
     const std::size_t mask = kDelay - 1;
     for (std::size_t i = 0; i < n; ++i) {
+        laneGainA_ += std::clamp(targetA - laneGainA_, -step, step);
+        laneGainB_ += std::clamp(targetB - laneGainB_, -step, step);
+        const float la = la0 * laneGainA_, lb = lb0 * laneGainB_;
         if (mixFade_ == MixFade::Idle && diffWanted != diffApplied_) {
             mixFade_ = MixFade::Out;
             mixFadeLeft_ = fadeLen_;
