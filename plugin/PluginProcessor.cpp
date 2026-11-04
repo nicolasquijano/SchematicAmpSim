@@ -139,6 +139,10 @@ private:
     AmpRunner& runner_;
 };
 
+double SasProcessor::cabValue(int cabinet, const char* id) const {
+    return cabinet == 0 ? double(apvts.getRawParameterValue(id)->load()) : moduleParam({sas::ModuleType::Cabinet, cabinet}, id);
+}
+
 double SasProcessor::ampValue(int instance, const char* id) const {
     return instance == 0 ? double(apvts.getRawParameterValue(id)->load()) : moduleParam({sas::ModuleType::Amp, instance}, id);
 }
@@ -230,7 +234,8 @@ SasProcessor::SasProcessor()
     int firstCab = 0;
     for (int i = 0; i < builtInImpulseResponseCount(); ++i)
         if (builtInImpulseResponseName(i) == "4x12 OS Mix 1") firstCab = i;
-    loadBuiltInImpulseResponse(firstCab, 0);
+    firstCab_ = firstCab;
+    loadBuiltInImpulseResponse(firstCab, 0, 0);
     // The parameters of every module instance, found once (the audio thread reads them by pointer).
     for (int t = 0; t < sas::kModuleTypeCount; ++t)
         for (int k = 0; k < RackState::maxInstances(static_cast<sas::ModuleType>(t)); ++k)
@@ -314,12 +319,14 @@ void SasProcessor::prepareToPlay(double sampleRate, int samplesPerBlock) {
     // announced here (some hosts send bigger ones), and a block above the announced maximum crashes it.
     juce::dsp::ProcessSpec spec{sampleRate, static_cast<juce::uint32>(kMaxChunk), 1};
     (void)samplesPerBlock;
-    for (auto& slot : ir_) slot.conv.prepare(spec);
-    irWasActive_ = false;
+    for (auto& bank : cabs_) {
+        for (auto& slot : bank.ir) slot.conv.prepare(spec);
+        bank.irWasActive = false;
+        bank.dbl.prepare(sampleRate);
+    }
     latencyReported_ = -1;
     rack_.prepare(sampleRate, int(kMaxChunk));
     tuner_.prepare(sampleRate);
-    double_.prepare(sampleRate);
 }
 
 sas::ChainSettings SasProcessor::readSettings(bool irAvailable, int instance) {
@@ -349,7 +356,7 @@ sas::ChainSettings SasProcessor::readSettings(bool irAvailable, int instance) {
     s.jack = def.preamp.jacks.empty() ? 0 : std::size_t(juce::jlimit(0, int(def.preamp.jacks.size()) - 1, int(raw(ids::jack) + 0.5)));
     const auto cab = static_cast<CabMode>(juce::jlimit(0, 3, int(raw(ids::cab) + 0.5)));
     // With no IR loaded the IR mode falls back to the cab filter instead of the raw amp.
-    s.cabFilter = cab == CabMode::Filter || (cab == CabMode::Ir && !irAvailable) || (cab == CabMode::Nam && namCabActive_.load() == nullptr);
+    s.cabFilter = cab == CabMode::Filter || (cab == CabMode::Ir && !irAvailable) || (cab == CabMode::Nam && namCabActive_.load() == nullptr);  // (the cabinet module applies it)
     s.cabFilterInChain = false;  // the cabinet module applies it
     s.jackLevelMatch = true;  // the jacks always play at a similar level; the old "level_match" parameter stays only so saved projects load
     s.selectors.clear();
@@ -530,28 +537,44 @@ void SasProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::MidiBuff
         }
     }
 
-    const bool aLoaded = ir_[0].loaded.load(), bLoaded = ir_[1].loaded.load();
-    const bool irLoaded = aLoaded || bLoaded;
-    const auto cabParam = static_cast<CabMode>(juce::jlimit(0, 3, int(apvts.getRawParameterValue(ids::cab)->load() + 0.5f)));
-    const bool irActive = cabParam == CabMode::Ir && irLoaded;
-    sas::NamModel* const namCab = cabParam == CabMode::Nam ? namCabActive_.load() : nullptr;
-    if (namCab && !namCabWasActive_) namCab->reset();
-    namCabWasActive_ = namCab != nullptr;
-    cabNamCab_ = namCab;
-    cabIrActive_ = irActive;
-    cabALoaded_ = aLoaded;
-    cabBLoaded_ = bLoaded;
-    // With no IR loaded the IR mode falls back to the cab filter instead of the raw amp (and so does a NAM cabinet that has no model).
-    const bool cabFilterOn = cabParam == CabMode::Filter || (cabParam == CabMode::Ir && !irLoaded) || (cabParam == CabMode::Nam && namCab == nullptr);
-    const double irLatency = irActive ? double(std::max(aLoaded ? ir_[0].conv.getLatency() : 0, bLoaded ? ir_[1].conv.getLatency() : 0)) : 0.0;
-    const bool cabOn = apvts.getRawParameterValue(ids::cabOn)->load() > 0.5f;
-    if (cabOn && !cabWasOn_) {  // coming back: nothing of the convolution's old audio
-        for (auto& slot : ir_) slot.conv.reset();
-        if (auto* cabModule = static_cast<CabinetModule*>(rack_.audioModule({sas::ModuleType::Cabinet, 0}))) cabModule->reset();
+    double irLatencyOf[2] = {0.0, 0.0};
+    bool irActiveOf[2] = {false, false};
+    for (int cabinet = 0; cabinet < 2; ++cabinet) {
+        auto* cabModule = static_cast<CabinetModule*>(rack_.audioModule({sas::ModuleType::Cabinet, cabinet}));
+        if (!cabModule) continue;
+        auto& cb = cabs_[cabinet];
+        const bool aLoaded = cb.ir[0].loaded.load(), bLoaded = cb.ir[1].loaded.load();
+        const bool irLoaded = aLoaded || bLoaded;
+        const auto cabParam = static_cast<CabMode>(juce::jlimit(0, 3, int(cabValue(cabinet, ids::cab) + 0.5)));
+        const bool irActive = cabParam == CabMode::Ir && irLoaded;
+        // Only the first cabinet has a NAM cabinet; the second one, set to NAM, plays its filter.
+        sas::NamModel* const namCab = cabinet == 0 && cabParam == CabMode::Nam ? namCabActive_.load() : nullptr;
+        if (cabinet == 0) {
+            if (namCab && !namCabWasActive_) namCab->reset();
+            namCabWasActive_ = namCab != nullptr;
+        }
+        cb.namNow = namCab;
+        cb.irActiveNow = irActive;
+        cb.aLoaded = aLoaded;
+        cb.bLoaded = bLoaded;
+        // With no IR loaded the IR mode falls back to the cab filter instead of the raw amp (and so does a NAM cabinet that has no model).
+        const bool cabFilterOn = cabParam == CabMode::Filter || (cabParam == CabMode::Ir && !irLoaded) || (cabParam == CabMode::Nam && namCab == nullptr);
+        const double irLatency = irActive ? double(std::max(aLoaded ? cb.ir[0].conv.getLatency() : 0, bLoaded ? cb.ir[1].conv.getLatency() : 0)) : 0.0;
+        const bool cabOn = cabValue(cabinet, ids::cabOn) > 0.5;
+        if (cabOn && !cb.wasOn) {  // coming back: nothing of the convolution's old audio
+            for (auto& slot : cb.ir) slot.conv.reset();
+            cabModule->reset();
+        }
+        cb.wasOn = cabOn;
+        cabModule->setBlock(cabFilterOn, cabOn ? irLatency : 0.0, cabOn);
+        if (irActive && !cb.irWasActive)
+            for (auto& slot : cb.ir) slot.conv.reset();
+        cb.irWasActive = irActive;
+        irLatencyOf[cabinet] = irLatency;
+        irActiveOf[cabinet] = irActive;
     }
-    cabWasOn_ = cabOn;
-    if (auto* cab = static_cast<CabinetModule*>(rack_.audioModule({sas::ModuleType::Cabinet, 0}))) cab->setBlock(cabFilterOn, cabOn ? irLatency : 0.0, cabOn);
-    if (auto* amp = ampModule()) amp->setSettings(readSettings(irLoaded));
+    for (int instance = 0; instance < 2; ++instance)
+        if (auto* amp = ampModule(instance)) amp->setSettings(readSettings(anyIrLoaded(instance), instance));
     const sas::RackOrder order = rack_.order();
     applyModuleParams(order);
 
@@ -561,10 +584,6 @@ void SasProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::MidiBuff
         latencyReported_ = latency;
         setLatencySamples(latency);
     }
-    if (irActive && !irWasActive_)
-        for (auto& slot : ir_) slot.conv.reset();
-    irWasActive_ = irActive;
-
     const bool tunerOn = apvts.getRawParameterValue(ids::tunerOn)->load() > 0.5f;
     const bool tunerMuted = tunerOn && apvts.getRawParameterValue(ids::tunerMute)->load() > 0.5f;
     idleMa_.store(float(amps_[0].chain->idleMilliamps()));
@@ -609,15 +628,17 @@ void SasProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::MidiBuff
 // The cabinet: the filter (or the NAM cabinet, or the impulse responses), then the automatic double tracking. A mono signal in, a stereo pair out.
 void SasProcessor::processCabinet(CabinetModule& cab, float* m, float* mR, std::size_t nn) {
     const int n = int(nn);
+    const int cabinet = cab.instance();
+    auto& cb = cabs_[cabinet];
     if (cab.filterOn())
         for (int i = 0; i < n; ++i) m[i] = cab.filter().process(m[i]);
-    if (cabNamCab_) {  // the NAM cabinet: through a scratch block, the model reads its input while it writes
-        cabNamCab_->process(m, mono2_.data(), std::size_t(n));
+    if (cb.namNow) {  // the NAM cabinet: through a scratch block, the model reads its input while it writes
+        cb.namNow->process(m, mono2_.data(), std::size_t(n));
         std::copy(mono2_.data(), mono2_.data() + n, m);
     }
     bool haveR = false;
-    if (cabIrActive_) {
-        const bool aLoaded = cabALoaded_, bLoaded = cabBLoaded_;
+    if (cb.irActiveNow) {
+        const bool aLoaded = cb.aLoaded, bLoaded = cb.bLoaded;
         auto convolve = [n](IrSlot& slot, float* data) {
             float* chans[1] = {data};
             juce::dsp::AudioBlock<float> block(chans, 1, std::size_t(n));
@@ -626,37 +647,36 @@ void SasProcessor::processCabinet(CabinetModule& cab, float* m, float* mR, std::
         if (aLoaded && bLoaded) {
             // Both slots: an equal-power blend, and the width that separates them: at 0 both ears get the blend, at 10 the left ear gets A and the
             // right ear B (two microphones, one on each side). Ramped over the block so a knob move does not click.
-            const double theta = juce::jlimit(0.0, 1.0, double(apvts.getRawParameterValue(ids::irBlend)->load()) / 10.0) * (juce::MathConstants<double>::pi * 0.5);
+            const double theta = juce::jlimit(0.0, 1.0, cabValue(cabinet, ids::irBlend) / 10.0) * (juce::MathConstants<double>::pi * 0.5);
             const float gA = float(std::cos(theta)), gB = float(std::sin(theta));
-            const float width = juce::jlimit(0.0f, 1.0f, apvts.getRawParameterValue(ids::irWidth)->load() / 10.0f);
+            const float width = juce::jlimit(0.0f, 1.0f, float(cabValue(cabinet, ids::irWidth)) / 10.0f);
             float* m2 = mono2_.data();
             std::copy(m, m + n, m2);
-            convolve(ir_[0], m);
-            convolve(ir_[1], m2);
+            convolve(cb.ir[0], m);
+            convolve(cb.ir[1], m2);
             for (int i = 0; i < n; ++i) {
                 const float t = float(i + 1) / float(n);
-                const float ga = blendGainA_ + (gA - blendGainA_) * t, gb = blendGainB_ + (gB - blendGainB_) * t;
-                const float w = widthNow_ + (width - widthNow_) * t;
+                const float ga = cb.blendGainA + (gA - cb.blendGainA) * t, gb = cb.blendGainB + (gB - cb.blendGainB) * t;
+                const float w = cb.widthNow + (width - cb.widthNow) * t;
                 const float a = m[i], b = m2[i];
                 const float blend = a * ga + b * gb;
                 m[i] = (1.0f - w) * blend + w * a;
                 mR[i] = (1.0f - w) * blend + w * b;
             }
-            blendGainA_ = gA;
-            blendGainB_ = gB;
-            widthNow_ = width;
+            cb.blendGainA = gA;
+            cb.blendGainB = gB;
+            cb.widthNow = width;
             haveR = true;
         } else {
-            convolve(aLoaded ? ir_[0] : ir_[1], m);
-            blendGainA_ = aLoaded ? 1.0f : 0.0f;  // so a second slot loaded later fades in from this state
-            blendGainB_ = aLoaded ? 0.0f : 1.0f;
+            convolve(aLoaded ? cb.ir[0] : cb.ir[1], m);
+            cb.blendGainA = aLoaded ? 1.0f : 0.0f;  // so a second slot loaded later fades in from this state
+            cb.blendGainB = aLoaded ? 0.0f : 1.0f;
         }
     }
     if (!haveR) std::copy(m, m + n, mR);
     // Automatic double tracking widens whatever the cabinet left (identical channels, or the A / B pair).
-    double_.setAmount(double(apvts.getRawParameterValue(ids::doubleAmount)->load()) / 10.0,
-                      8.0 + 22.0 * double(apvts.getRawParameterValue(ids::doubleTime)->load()) / 10.0);
-    double_.process(m, mR, std::size_t(n));
+    cb.dbl.setAmount(cabValue(cabinet, ids::doubleAmount) / 10.0, 8.0 + 22.0 * cabValue(cabinet, ids::doubleTime) / 10.0);
+    cb.dbl.process(m, mR, std::size_t(n));
 }
 
 void CabinetModule::process(float* l, float* r, std::size_t n) { owner_.processCabinet(*this, l, r, n); }
@@ -671,7 +691,7 @@ std::unique_ptr<sas::Module> SasProcessor::makeModule(sas::ModuleType type, int 
             amp->setChain(amps_[instance].chain.get());
             return amp;
         }
-        case T::Cabinet: return std::make_unique<CabinetModule>(*this);
+        case T::Cabinet: return std::make_unique<CabinetModule>(*this, instance);
         case T::Gate: return std::make_unique<sas::GateModule>();
         case T::Compressor: return std::make_unique<sas::CompressorModule>();
         case T::Overdrive: return std::make_unique<sas::OverdriveModule>();
@@ -823,7 +843,9 @@ static std::vector<float> responseCurve(const juce::AudioBuffer<float>& mono, do
     return curve;
 }
 
-bool SasProcessor::loadImpulseResponseFromMemory(const void* data, std::size_t size, const juce::String& name, int slot) {
+bool SasProcessor::loadImpulseResponseFromMemory(const void* data, std::size_t size, const juce::String& name, int slot, int cabinet) {
+    if (cabinet < 0 || cabinet > 1) return false;
+    auto& cb = cabs_[cabinet];
     if (slot < 0 || slot >= kIrSlots) return false;
     // The file is decoded here and the samples are handed over by value: the memory overload of the JUCE convolution reads its
     // source later on a background thread, after a caller's temporary buffer is gone, and then silently loads nothing.
@@ -847,15 +869,15 @@ bool SasProcessor::loadImpulseResponseFromMemory(const void* data, std::size_t s
     auto curve = responseCurve(mono, reader->sampleRate, bandPower);
     const double gain = bandPower > 0.0 ? 1.0 / std::sqrt(bandPower) : 1.0 / std::sqrt(energy);
     mono.applyGain(float(gain));
-    ir_[slot].conv.loadImpulseResponse(std::move(mono), reader->sampleRate, juce::dsp::Convolution::Stereo::no, juce::dsp::Convolution::Trim::yes,
+    cb.ir[slot].conv.loadImpulseResponse(std::move(mono), reader->sampleRate, juce::dsp::Convolution::Stereo::no, juce::dsp::Convolution::Trim::yes,
                                        juce::dsp::Convolution::Normalise::no);
     {
         const juce::ScopedLock lock(irLock_);
-        ir_[slot].bytes = juce::MemoryBlock(data, size);
-        ir_[slot].name = name;
-        ir_[slot].curve = std::move(curve);
+        cb.ir[slot].bytes = juce::MemoryBlock(data, size);
+        cb.ir[slot].name = name;
+        cb.ir[slot].curve = std::move(curve);
     }
-    ir_[slot].loaded = true;
+    cb.ir[slot].loaded = true;
     return true;
 }
 
@@ -1055,36 +1077,40 @@ juce::String SasProcessor::builtInImpulseResponseName(int index) {
     return words.joinIntoString(" ");
 }
 
-bool SasProcessor::loadBuiltInImpulseResponse(int index, int slot) {
+bool SasProcessor::loadBuiltInImpulseResponse(int index, int slot, int cabinet) {
     if (index < 0 || index >= CabData::namedResourceListSize) return false;
     int size = 0;
     const char* data = CabData::getNamedResource(CabData::namedResourceList[index], size);
-    return data != nullptr && loadImpulseResponseFromMemory(data, std::size_t(size), builtInImpulseResponseName(index), slot);
+    return data != nullptr && loadImpulseResponseFromMemory(data, std::size_t(size), builtInImpulseResponseName(index), slot, cabinet);
 }
 
-bool SasProcessor::loadImpulseResponse(const juce::File& file, int slot) {
+bool SasProcessor::loadImpulseResponse(const juce::File& file, int slot, int cabinet) {
     juce::MemoryBlock bytes;
     if (!file.existsAsFile() || !file.loadFileAsData(bytes) || bytes.getSize() == 0) return false;
-    return loadImpulseResponseFromMemory(bytes.getData(), bytes.getSize(), file.getFileName(), slot);
+    return loadImpulseResponseFromMemory(bytes.getData(), bytes.getSize(), file.getFileName(), slot, cabinet);
 }
 
-void SasProcessor::clearImpulseResponse(int slot) {
+void SasProcessor::clearImpulseResponse(int slot, int cabinet) {
+    if (cabinet < 0 || cabinet > 1) return;
+    auto& cb = cabs_[cabinet];
     if (slot < 0 || slot >= kIrSlots) return;
-    ir_[slot].loaded = false;
+    cb.ir[slot].loaded = false;
     const juce::ScopedLock lock(irLock_);
-    ir_[slot].bytes.reset();
-    ir_[slot].name.clear();
-    ir_[slot].curve.clear();
+    cb.ir[slot].bytes.reset();
+    cb.ir[slot].name.clear();
+    cb.ir[slot].curve.clear();
 }
 
-juce::String SasProcessor::impulseResponseName(int slot) const {
+juce::String SasProcessor::impulseResponseName(int slot, int cabinet) const {
+    const auto& cb = cabs_[juce::jlimit(0, 1, cabinet)];
     const juce::ScopedLock lock(irLock_);
-    return slot >= 0 && slot < kIrSlots ? ir_[slot].name : juce::String();
+    return slot >= 0 && slot < kIrSlots ? cb.ir[slot].name : juce::String();
 }
 
-std::vector<float> SasProcessor::impulseResponseCurve(int slot) const {
+std::vector<float> SasProcessor::impulseResponseCurve(int slot, int cabinet) const {
+    const auto& cb = cabs_[juce::jlimit(0, 1, cabinet)];
     const juce::ScopedLock lock(irLock_);
-    return slot >= 0 && slot < kIrSlots ? ir_[slot].curve : std::vector<float>{};
+    return slot >= 0 && slot < kIrSlots ? cb.ir[slot].curve : std::vector<float>{};
 }
 
 // ------------------------------------------------------------------ state
@@ -1093,19 +1119,22 @@ std::vector<float> SasProcessor::impulseResponseCurve(int slot) const {
 // The NAM pedal of the first instance keeps the property names of the first versions; the others add their number.
 static juce::String namPedalKey(const char* base, int instance) { return instance == 0 ? juce::String(base) : juce::String(base) + juce::String(instance + 1); }
 
-static const char* const kIrDataKey[SasProcessor::kIrSlots] = {"irData", "irDataB"};
-static const char* const kIrNameKey[SasProcessor::kIrSlots] = {"irName", "irNameB"};
+// The first cabinet keeps the property names of the first versions; the second one adds "C2".
+static juce::String irDataKey(int cabinet, int slot) { return juce::String(slot == 0 ? "irData" : "irDataB") + (cabinet == 0 ? "" : "C2"); }
+static juce::String irNameKey(int cabinet, int slot) { return juce::String(slot == 0 ? "irName" : "irNameB") + (cabinet == 0 ? "" : "C2"); }
 
 void SasProcessor::getStateInformation(juce::MemoryBlock& dest) {
     auto state = apvts.copyState();
     {
         const juce::ScopedLock lock(irLock_);
-        for (int s = 0; s < kIrSlots; ++s) {
-            state.removeProperty(kIrDataKey[s], nullptr);
-            state.removeProperty(kIrNameKey[s], nullptr);
-            if (ir_[s].bytes.getSize() > 0 && ir_[s].bytes.getSize() <= kMaxStoredIrBytes) {
-                state.setProperty(kIrNameKey[s], ir_[s].name, nullptr);
-                state.setProperty(kIrDataKey[s], juce::Base64::toBase64(ir_[s].bytes.getData(), ir_[s].bytes.getSize()), nullptr);
+        for (int cabinet = 0; cabinet < 2; ++cabinet)
+            for (int s = 0; s < kIrSlots; ++s) {
+                const auto& cb = cabs_[cabinet];
+            state.removeProperty(irDataKey(cabinet, s), nullptr);
+            state.removeProperty(irNameKey(cabinet, s), nullptr);
+            if (cb.ir[s].bytes.getSize() > 0 && cb.ir[s].bytes.getSize() <= kMaxStoredIrBytes) {
+                state.setProperty(irNameKey(cabinet, s), cb.ir[s].name, nullptr);
+                state.setProperty(irDataKey(cabinet, s), juce::Base64::toBase64(cb.ir[s].bytes.getData(), cb.ir[s].bytes.getSize()), nullptr);
             }
         }
     }
@@ -1156,15 +1185,16 @@ void SasProcessor::setStateInformation(const void* data, int size) {
     if (const auto rack = tree.getChildWithName("RACK"); rack.isValid()) rackOrder_ = RackState::fromTree(rack);
     else rackOrder_ = RackState::fromLegacy(apvts, tree.hasProperty("namPedalData"));
     syncRack(sas::Transition::Immediate);
-    for (int s = 0; s < kIrSlots; ++s) {
-        if (tree.hasProperty(kIrDataKey[s])) {
-            juce::MemoryOutputStream out;
-            if (juce::Base64::convertFromBase64(out, tree[kIrDataKey[s]].toString()) && out.getDataSize() > 0)
-                if (!loadImpulseResponseFromMemory(out.getData(), out.getDataSize(), tree[kIrNameKey[s]].toString(), s)) clearImpulseResponse(s);
-        } else {
-            clearImpulseResponse(s);
+    for (int cabinet = 0; cabinet < 2; ++cabinet)
+        for (int s = 0; s < kIrSlots; ++s) {
+            if (tree.hasProperty(irDataKey(cabinet, s))) {
+                juce::MemoryOutputStream out;
+                if (juce::Base64::convertFromBase64(out, tree[irDataKey(cabinet, s)].toString()) && out.getDataSize() > 0)
+                    if (!loadImpulseResponseFromMemory(out.getData(), out.getDataSize(), tree[irNameKey(cabinet, s)].toString(), s, cabinet)) clearImpulseResponse(s, cabinet);
+            } else {
+                clearImpulseResponse(s, cabinet);
+            }
         }
-    }
     if (tree.hasProperty("namData")) {
         juce::MemoryOutputStream out;
         if (juce::Base64::convertFromBase64(out, tree["namData"].toString()) && out.getDataSize() > 0)

@@ -10,7 +10,8 @@ class SasProcessor;
 
 class CabinetModule final : public sas::Module {
 public:
-    explicit CabinetModule(SasProcessor& owner) : owner_(owner) {}
+    CabinetModule(SasProcessor& owner, int instance) : owner_(owner), instance_(instance) {}
+    int instance() const { return instance_; }
 
     void prepare(double fs, int) override { filter_ = sas::CabFilter(float(fs)); }
     void process(float* l, float* r, std::size_t n) override;
@@ -30,6 +31,7 @@ public:
 
 private:
     SasProcessor& owner_;
+    int instance_ = 0;
     sas::CabFilter filter_{48000.0f};
     bool filterOn_ = true, on_ = true;
     double latency_ = 0.0;

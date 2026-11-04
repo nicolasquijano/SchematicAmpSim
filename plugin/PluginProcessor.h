@@ -168,11 +168,12 @@ public:
     // Cabinet impulse response. Both are message-thread calls.
     // Two slots (A = 0, B = 1) that are mixed with the "ir_blend" parameter; with only one loaded it plays alone.
     static constexpr int kIrSlots = 2;
-    bool loadImpulseResponse(const juce::File& file, int slot = 0);
+    // Every impulse call takes the cabinet too (0, or 1 for the second cabinet of a parallel).
+    bool loadImpulseResponse(const juce::File& file, int slot = 0, int cabinet = 0);
     // The impulse responses carried inside the plugin (plugin/cabs): how many, their display names, and loading one into a slot.
     static int builtInImpulseResponseCount();
     static juce::String builtInImpulseResponseName(int index);
-    bool loadBuiltInImpulseResponse(int index, int slot = 0);
+    bool loadBuiltInImpulseResponse(int index, int slot = 0, int cabinet = 0);
     // The Neural Amp Modeler loader amp ("NAM Loader"): the .nam model it runs. Message-thread calls. The model's bytes are kept in the project
     // state, so a project opens with its model on another machine. A model that fails to load leaves the previous one in place.
     bool loadNamModel(const juce::File& file);
@@ -204,10 +205,10 @@ public:
     const sas::SpectrumFeed& spectrumFeed() const { return spectrumFeed_; }
     void applyDelayPreset(int index, int instance = 0);   // each effect has its own presets (plugin/FxPresets.h)
     void applyReverbPreset(int index, int instance = 0);
-    void clearImpulseResponse(int slot = 0);
-    juce::String impulseResponseName(int slot = 0) const;
+    void clearImpulseResponse(int slot = 0, int cabinet = 0);
+    juce::String impulseResponseName(int slot = 0, int cabinet = 0) const;
     // Magnitude response of the loaded IR in dB (mean 0), log-spaced from 50 Hz to 10 kHz; empty when nothing is loaded.
-    std::vector<float> impulseResponseCurve(int slot = 0) const;
+    std::vector<float> impulseResponseCurve(int slot = 0, int cabinet = 0) const;
 
     // Amps available in this build (sorted by id) and the one the "amp" parameter selects.
     const std::vector<sas::AmpDef>& amps() const { return defs_; }
@@ -245,11 +246,12 @@ private:
     class ChainBuilder;
 
     static juce::AudioProcessorValueTreeState::ParameterLayout createLayout(const std::vector<sas::AmpDef>& defs);
-    bool loadImpulseResponseFromMemory(const void* data, std::size_t size, const juce::String& name, int slot);
+    bool loadImpulseResponseFromMemory(const void* data, std::size_t size, const juce::String& name, int slot, int cabinet);
     bool loadNamFromMemory(const void* data, std::size_t size, const juce::String& name);
     bool loadNamCabFromMemory(const void* data, std::size_t size, const juce::String& name);
     bool loadNamPedalFromMemory(const void* data, std::size_t size, const juce::String& name, int instance);
-    bool anyIrLoaded() const { return ir_[0].loaded.load() || ir_[1].loaded.load(); }
+    bool anyIrLoaded(int cabinet = 0) const { return cabs_[cabinet].ir[0].loaded.load() || cabs_[cabinet].ir[1].loaded.load(); }
+    double cabValue(int cabinet, const char* id) const;  // a parameter of that cabinet
     sas::ChainSettings readSettings(bool irAvailable, int instance = 0);
     void swapInBuiltChain(int instance);
     double ampValue(int instance, const char* id) const;  // a parameter of the amp of that instance
@@ -297,12 +299,19 @@ private:
         juce::String name;
         std::vector<float> curve;     // magnitude response for the editor
     };
-    IrSlot ir_[kIrSlots];
-    bool irWasActive_ = false;
-    float blendGainA_ = 1.0f, blendGainB_ = 0.0f;  // the gains in force at the end of the last block (ramped to the new ones)
-    std::vector<float> mono2_, monoR_;  // the second IR's signal, and the right channel
-    float widthNow_ = 0.0f;             // the A / B width in force at the end of the last block
-    sas::StereoDouble double_;
+    // What one cabinet owns: its two impulse slots, the blend state and the double tracking, and what processBlock tells its module each block.
+    struct CabBank {
+        IrSlot ir[kIrSlots];
+        bool irWasActive = false;
+        float blendGainA = 1.0f, blendGainB = 0.0f;  // the gains in force at the end of the last block (ramped to the new ones)
+        float widthNow = 0.0f;                       // the A / B width in force at the end of the last block
+        sas::StereoDouble dbl;
+        sas::NamModel* namNow = nullptr;             // the NAM cabinet this block (only the first cabinet has one)
+        bool irActiveNow = false, aLoaded = false, bLoaded = false, wasOn = true;
+    };
+    CabBank cabs_[2];
+    std::vector<float> mono2_, monoR_;  // the second IR's signal, and the right channel (scratch, shared by the cabinets: they run one after another)
+    int firstCab_ = 0;                  // the built-in impulse a new cabinet opens with
     mutable juce::CriticalSection irLock_;  // guards the slots' bytes / name / curve (message thread vs state calls)
 
     // The NAM model: owned here, handed to the chain as a plain pointer (namActive_). The model before the current one is kept for one more
@@ -335,8 +344,6 @@ private:
     sas::RackOrder rackOrder_;
     std::array<std::array<std::vector<std::atomic<float>*>, sas::Rack::kMaxInstances>, sas::kModuleTypeCount> modParams_;
     // What the cabinet module needs this block (set by processBlock).
-    sas::NamModel* cabNamCab_ = nullptr;
-    bool cabIrActive_ = false, cabALoaded_ = false, cabBLoaded_ = false, cabWasOn_ = true;
     sas::SpectrumFeed spectrumFeed_;  // the output, for the picture of what is sounding on the EQ page
     sas::TunerFeed tuner_;
     std::atomic<float> inputPeak_{0.0f}, outputPeak_{0.0f}, gateGain_{1.0f}, idleMa_{0.0f};
