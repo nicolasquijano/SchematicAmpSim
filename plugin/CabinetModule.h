@@ -14,13 +14,14 @@ public:
 
     void prepare(double fs, int) override { filter_ = sas::CabFilter(float(fs)); }
     void process(float* l, float* r, std::size_t n) override;
-    bool active() const override { return true; }
+    bool active() const override { return on_; }  // off: the amp's raw signal goes on
     sas::Channels channels() const override { return sas::Channels::MonoToStereo; }
     double latencySamples() const override { return latency_; }
     void reset() override { filter_.reset(); }
 
     // Per block, from the processor: what the mode is and how late the convolution is.
-    void setBlock(bool filterOn, double latencySamples) {
+    void setBlock(bool filterOn, double latencySamples, bool on = true) {
+        on_ = on;
         filterOn_ = filterOn;
         latency_ = latencySamples;
     }
@@ -30,6 +31,6 @@ public:
 private:
     SasProcessor& owner_;
     sas::CabFilter filter_{48000.0f};
-    bool filterOn_ = true;
+    bool filterOn_ = true, on_ = true;
     double latency_ = 0.0;
 };

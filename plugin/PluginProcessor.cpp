@@ -98,6 +98,7 @@ Layout SasProcessor::createLayout(const std::vector<sas::AmpDef>& defs) {
     l.add(std::make_unique<juce::AudioParameterChoice>(
         juce::ParameterID{ids::unit, kVersion}, "Unit",
         juce::StringArray{"Ideal", "Unit 1", "Unit 2", "Unit 3", "Unit 4", "Unit 5", "Unit 6", "Unit 7", "Unit 8", "Unit 9"}, 0));
+    RackState::addParams(l, sas::ModuleType::Cabinet, 0);
     RackState::addExtraInstances(l);
     return l;
 }
@@ -506,7 +507,13 @@ void SasProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::MidiBuff
     // With no IR loaded the IR mode falls back to the cab filter instead of the raw amp (and so does a NAM cabinet that has no model).
     const bool cabFilterOn = cabParam == CabMode::Filter || (cabParam == CabMode::Ir && !irLoaded) || (cabParam == CabMode::Nam && namCab == nullptr);
     const double irLatency = irActive ? double(std::max(aLoaded ? ir_[0].conv.getLatency() : 0, bLoaded ? ir_[1].conv.getLatency() : 0)) : 0.0;
-    if (auto* cab = static_cast<CabinetModule*>(rack_.audioModule({sas::ModuleType::Cabinet, 0}))) cab->setBlock(cabFilterOn, irLatency);
+    const bool cabOn = apvts.getRawParameterValue(ids::cabOn)->load() > 0.5f;
+    if (cabOn && !cabWasOn_) {  // coming back: nothing of the convolution's old audio
+        for (auto& slot : ir_) slot.conv.reset();
+        if (auto* cabModule = static_cast<CabinetModule*>(rack_.audioModule({sas::ModuleType::Cabinet, 0}))) cabModule->reset();
+    }
+    cabWasOn_ = cabOn;
+    if (auto* cab = static_cast<CabinetModule*>(rack_.audioModule({sas::ModuleType::Cabinet, 0}))) cab->setBlock(cabFilterOn, cabOn ? irLatency : 0.0, cabOn);
     if (auto* amp = ampModule()) amp->setSettings(readSettings(irLoaded));
     const sas::RackOrder order = rack_.order();
     applyModuleParams(order);

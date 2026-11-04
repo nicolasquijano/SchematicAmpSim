@@ -46,6 +46,7 @@ inline constexpr const char* input = "input";
 inline constexpr const char* output = "output";
 inline constexpr const char* quality = "quality";
 inline constexpr const char* cab = "cab";
+inline constexpr const char* cabOn = "cab_on";  // the cabinet module is on (off: the raw amp)
 inline constexpr const char* jack = "jack";
 inline constexpr const char* levelMatch = "level_match";
 inline constexpr const char* sel[4] = {"sel1", "sel2", "sel3", "sel4"};  // the amp's own switches (amp.json "selectors"), 5 positions at most
@@ -328,7 +329,7 @@ private:
     std::array<std::array<std::vector<std::atomic<float>*>, sas::Rack::kMaxInstances>, sas::kModuleTypeCount> modParams_;
     // What the cabinet module needs this block (set by processBlock).
     sas::NamModel* cabNamCab_ = nullptr;
-    bool cabIrActive_ = false, cabALoaded_ = false, cabBLoaded_ = false;
+    bool cabIrActive_ = false, cabALoaded_ = false, cabBLoaded_ = false, cabWasOn_ = true;
     sas::SpectrumFeed spectrumFeed_;  // the output, for the picture of what is sounding on the EQ page
     sas::TunerFeed tuner_;
     std::atomic<float> inputPeak_{0.0f}, outputPeak_{0.0f}, gateGain_{1.0f}, idleMa_{0.0f};

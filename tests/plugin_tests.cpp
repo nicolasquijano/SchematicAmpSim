@@ -2028,3 +2028,26 @@ TEST_CASE("the gate, the amp and the cabinet cannot be removed and a rack that l
     REQUIRE(p.addModule(T::Gate));  // a second gate is an ordinary module
     CHECK(p.removeModule({T::Gate, 1}));
 }
+
+TEST_CASE("the cabinet can be switched off: the amp's raw signal, and the switch is a parameter of its own", "[rack]") {
+    JuceInit init;
+    const auto in = legacy::input();
+    auto render = [&](float cabOn) {
+        SasProcessor p;
+        setParam(p, ids::cabOn, cabOn);
+        return legacy::render(p, in);
+    };
+    REQUIRE(RackState::onId(sas::ModuleType::Cabinet) != nullptr);
+    const auto on = render(1.0f), off = render(0.0f);
+    double diff = 0.0, energy = 0.0;
+    for (std::size_t i = 0; i < on.size(); ++i) {
+        diff += std::abs(double(on[i]) - double(off[i]));
+        energy += double(off[i]) * off[i];
+        REQUIRE(std::isfinite(off[i]));
+    }
+    CHECK(energy > 0.0);          // still plays
+    CHECK(diff / double(on.size()) > 1e-5);  // and it is not the filtered signal
+    // An old project has no such switch: it comes in on, and sounds as it did (the golden renders say so).
+    SasProcessor p;
+    CHECK(p.apvts.getRawParameterValue(ids::cabOn)->load() > 0.5f);
+}

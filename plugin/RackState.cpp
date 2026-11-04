@@ -66,6 +66,7 @@ std::unique_ptr<juce::AudioParameterFloat> dbParam(const juce::String& id, const
 
 const std::vector<const char*>& paramIds(ModuleType type) {
     static const std::vector<const char*> none;
+    static const std::vector<const char*> cabinet{ids::cabOn};
     static const std::vector<const char*> gate{ids::gateOn, ids::gateThreshold, ids::gateRelease};
     static const std::vector<const char*> comp{ids::compOn, ids::compSustain, ids::compBlend, ids::compTone, ids::compLevel, ids::compFast};
     static const std::vector<const char*> drive{ids::tsOn, ids::tsDrive, ids::tsTone, ids::tsLevel};
@@ -86,6 +87,7 @@ const std::vector<const char*>& paramIds(ModuleType type) {
     static const std::vector<const char*> delay{ids::dlyOn, ids::dlyTime, ids::dlySync, ids::dlyFeedback, ids::dlyMix, ids::dlyTone, ids::dlyPing, ids::dlyAnalog};
     static const std::vector<const char*> reverb{ids::plOn, ids::plHall, ids::plDecay, ids::plPre, ids::plTone, ids::plLow, ids::plMix, ids::plMod, ids::plShimmer, ids::plShimmerInt};
     switch (type) {
+        case ModuleType::Cabinet: return cabinet;
         case ModuleType::Gate: return gate;
         case ModuleType::Compressor: return comp;
         case ModuleType::Overdrive: return drive;
@@ -103,6 +105,7 @@ const std::vector<const char*>& paramIds(ModuleType type) {
 
 const char* onId(ModuleType type) {
     switch (type) {
+        case ModuleType::Cabinet: return ids::cabOn;
         case ModuleType::Gate: return ids::gateOn;
         case ModuleType::Compressor: return ids::compOn;
         case ModuleType::Overdrive: return ids::tsOn;
@@ -122,6 +125,9 @@ void addParams(Layout& l, ModuleType type, int k) {
     auto N = [k](const juce::String& base) { return paramName(base.toRawUTF8(), k); };
     auto id = [&](const juce::String& s) { return juce::ParameterID{s, kParamVersion}; };
     switch (type) {
+        case ModuleType::Cabinet:
+            l.add(toggle(I(ids::cabOn), N("Cabinet on"), true));
+            break;
         case ModuleType::Gate:
             l.add(toggle(I(ids::gateOn), N("Noise gate"), false));
             l.add(std::make_unique<juce::AudioParameterFloat>(id(I(ids::gateThreshold)), N("Gate threshold"), juce::NormalisableRange<float>(-80.0f, -20.0f, 0.0f), -60.0f,
