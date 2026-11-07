@@ -1,0 +1,27 @@
+* Super-lead preamp, stage 3 of 4: the mixing node, V3b and V3a (the cathode follower). V1a's plate (stage 1) arrives through VL2 and V2b's plate
+* (stage 2) through VL3. The FX divider and V4b's grid network are repeated here as V3a's load. See preamp.net for how the netlist is split.
+
+.nodes x p1a c7n x1 g3b p2b ww p3b k3b kcf sj g4b
+
+V VRAIL x 314.8 378
+
+S VL2 p1a 1 0
+S VL3 p2b 1 0
+C C7 p1a c7n 0.02u
+R R17 c7n x1 2M2
+C C8 c7n x1 120p
+R R18 x1 0 330k
+R R21 x1 g3b 220k
+C C10 p2b ww 0.02u
+R R20 ww 0 2M2
+R OPT2 ww x1 1G
+
+T V3B g3b p3b k3b 12AX7
+R R22 x p3b 220k
+R R23 k3b 0 1k8
+C C11 k3b 0 1u
+T V3A p3b x kcf 12AX7
+R R25 kcf sj 100k
+R R24 sj 0 2k2
+C C12 sj g4b 1u
+R R26 g4b 0 1M

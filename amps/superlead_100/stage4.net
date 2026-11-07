@@ -1,0 +1,37 @@
+* Super-lead preamp, stage 4 of 4: V4b, V4a (the cathode follower), the tone stack and the Masters. V3a's cathode (stage 3) arrives through VL4 into
+* the FX divider. See preamp.net for how the netlist is split.
+
+.nodes x kcf sj g4b p4b k4b ci m t w3 n1 n2 wm om mm nm
+
+V VRAIL x 301.3 378
+
+S VL4 kcf 1 0
+R R25 kcf sj 100k
+R R24 sj 0 2k2
+C C12 sj g4b 1u
+R R26 g4b 0 1M
+T V4B g4b p4b k4b 12AX7
+R R28 x p4b 220k
+R R27 k4b 0 2k2
+T V4A p4b x ci 12AX7
+R R29 ci 0 100k
+
+R R30 ci m 47k
+C C14 ci t 470p
+R VR_TT t w3 1
+R VR_TB w3 n1 1
+C C15 m n1 0.02u
+R VR_BASS n1 n2 1
+R VR_MT n2 wm 1
+R VR_MB wm 0 1
+C C16 m wm 0.02u
+
+* The two Master volumes (1M each) off the treble wiper, joined through the optocouplers VR3 (Lead) and VR4 (Clean).
+R VR_P6T w3 om 1
+R VR_P6B om 0 1
+R OPT3 om mm 1G
+R VR_P7T w3 nm 1
+R VR_P7B nm 0 1
+R OPT4 nm mm 1k
+* The cut for the power amp is at node mm; 1M stands for the phase inverter's grid network.
+R RMLOAD mm 0 1M

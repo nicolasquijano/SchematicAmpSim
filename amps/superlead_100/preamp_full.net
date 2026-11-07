@@ -1,0 +1,147 @@
+* Super-lead 100 W overdrive head, preamp (the "Super Lead Overdrive 100W" drawing of 15 March 1996, revised sheet 1 of 2
+* with the corrections listed in the notes that come with it). Input, V1b, a Crunch / Clean network (S1) and a Bright
+* switch (S2), the Normal channel V1a, the Overdrive (lead) channel V2a + V2b, the two channels meeting at the mixing
+* node x1, V3b + V3a (cathode follower), the FX loop (left connected through, FX Send tapped from a divider), V4b + V4a
+* (cathode follower), then the Marshall-type tone stack, the two Master volumes and the optocoupler switches that
+* choose the channel. B+2 (378 V) is the rail node x; B+3 and B+4 hang from it through 15k with 10u each.
+*
+* Not modelled: the FX Send / Return jacks (the loop is wired through), the footswitch circuit (the optocouplers are
+* resistors set by the channel selector: Clean = VR1 and VR4 on, Lead = VR2 and VR3 on).
+*
+* Reading notes (change them here, not in code):
+*  - the Clean channel is fed from the node A BEFORE the 470k || 2n parallel network, the Lead channel from after it
+*    (the notes say the drawing had it the other way);
+*  - S1: Crunch connects A straight to the Normal Volume pot; Clean puts 470k in series and 39k to ground (a divider
+*    of about -22 dB);
+*  - S2 Bright: 470p in series with 470k from the top of the Normal Volume pot to its wiper;
+*  - the 1n across the Overdrive Volume pot (C100) is kept (the "Warren Haynes" mod removes it);
+*  - the opto's on resistance is taken as 1k and its off resistance as 1G.
+
+* Rail node x (B+2, 378 V), driven from the power amp at run time; B+3 and B+4 through 15k.
+V VRAIL x 100 378
+R R61 x b4 15k
+C C37 b4 0 10u
+R R62 x b3 15k
+C C38 b3 0 10u
+* The guitar behind a variable source resistance.
+I VIN gin 1
+R RSRC gin in 7k
+* The guitar behind its source impedance. RSRC is the plain 7k source: the "Off" setting, and what a pedal in front of the amp
+* looks like. A pickup replaces it with its own impedance as seen from the open-circuit voltage (the recording): the
+* coil (winding resistance RPU + inductance) in parallel with its winding capacitance CPU and an eddy-current loss resistor
+* RPL, then the cable capacitance (200 pF per 2 m, switched in steps of 200, 400 and 800 pF). The engine sets the values:
+* single coil = coil 1 (2.5 H), humbucker and P-90 = coil 2 (5 H) with their own resistances; open = 1e12.
+R RPU1 gin pkb1 1e12
+.xfmr LPU1 L=2.5
+  W pkb1 in 1 pu
+.end
+R RPU2 gin pkb2 1e12
+.xfmr LPU2 L=5
+  W pkb2 in 1 pu
+.end
+C CPU gin in 110p
+R RPL gin in 1e12
+R SWK1 in pkk1 1e12
+C CCAB1 pkk1 0 200p
+R SWK2 in pkk2 1e12
+C CCAB2 pkk2 0 400p
+R SWK4 in pkk4 1e12
+C CCAB4 pkk4 0 800p
+
+
+* Input jack: 1M to ground, 68k stopper, V1b with 1.8k / 1u cathode and 220k plate load (B+4).
+R RJ1 in 0 1M
+R R2 in ng1 68k
+T V1B ng1 p1 k1 12AX7
+R R4 b4 p1 220k
+R R3 k1 0 1k8
+C C1 k1 0 1u
+
+* Plate to node A through 0.02u; A to B through 470k || 2n; B is the top of the OD Volume (500k) with 1n across it.
+C C2 p1 aa 0.02u
+R R5 aa bb 470k
+C C3 aa bb 2n
+R VR_P1T bb ov 1
+R VR_P1B ov 0 1
+C C100 bb ov 1n
+
+* Overdrive channel: 470k stopper, V2a (100k plate load on B+3, 1.8k / 1u cathode), 0.02u and 470k into V2b's grid with
+* 1M and the optocoupler VR1 to ground (on in Clean mode); V2b has the 100k plate load with 1n across it and a 39k
+* unbypassed cathode.
+R R8 ov g2a 470k
+T V2A g2a p2a k2a 12AX7
+R R11 b3 p2a 100k
+R R9 k2a 0 1k8
+C C4 k2a 0 1u
+C C6 p2a dd 0.02u
+R R12 dd uu 470k
+R R13 uu 0 1M
+R OPT1 uu 0 1k
+T V2B uu p2b k2b 12AX7
+R R19 b3 p2b 100k
+C C9 b3 p2b 1n
+R R14 k2b 0 39k
+C C10 p2b ww 0.02u
+R R20 ww 0 2M2
+R OPT2 ww x1 1G
+
+* Normal channel: the Crunch / Clean network on node A, the Normal Volume (500k) with the Bright network, V1a (100k plate
+* load on B+4, 2.2k cathode), 0.02u into 2.2M || 120p, 330k to ground and 220k to the mixing node.
+R SW_CR aa ss 1
+R R6 aa r6 470k
+R SW_CL r6 ss 1e12
+R R7 ss r7 39k
+R SW_R7 r7 0 1e12
+R VR_P2T ss nw 1
+R VR_P2B nw 0 1
+C C5 ss br 470p
+R R10 br bw 470k
+R SW_BRIGHT bw nw 1e12
+T V1A nw p1a k1a 12AX7
+R R15 b4 p1a 100k
+R R16 k1a 0 2k2
+C C7 p1a c7n 0.02u
+R R17 c7n x1 2M2
+C C8 c7n x1 120p
+R R18 x1 0 330k
+R R21 x1 g3b 220k
+
+* V3b (220k plate load on B+2, 1.8k / 1u cathode) drives V3a, a cathode follower whose 100k + 2.2k load makes the FX Send
+* divider; the loop is wired through: 1u into V4b's grid (1M), V4b with a 2.2k cathode and 220k load, and V4a, the
+* cathode follower with 100k to ground that feeds the tone stack.
+T V3B g3b p3b k3b 12AX7
+R R22 x p3b 220k
+R R23 k3b 0 1k8
+C C11 k3b 0 1u
+T V3A p3b x kcf 12AX7
+R R25 kcf sj 100k
+R R24 sj 0 2k2
+C C12 sj g4b 1u
+R R26 g4b 0 1M
+T V4B g4b p4b k4b 12AX7
+R R28 x p4b 220k
+R R27 k4b 0 2k2
+T V4A p4b x ci 12AX7
+R R29 ci 0 100k
+
+* Tone stack (sheet 2): the Marshall arrangement, 47k slope, 470p on the Treble pot (250k), 0.02u to the Bass (1M, a
+* rheostat) and to the Mid pot (25k wiper).
+R R30 ci m 47k
+C C14 ci t 470p
+R VR_TT t w3 1
+R VR_TB w3 n1 1
+C C15 m n1 0.02u
+R VR_BASS n1 n2 1
+R VR_MT n2 wm 1
+R VR_MB wm 0 1
+C C16 m wm 0.02u
+
+* The two Master volumes (1M each) off the treble wiper, joined through the optocouplers VR3 (Lead) and VR4 (Clean).
+R VR_P6T w3 om 1
+R VR_P6B om 0 1
+R OPT3 om mm 1G
+R VR_P7T w3 nm 1
+R VR_P7B nm 0 1
+R OPT4 nm mm 1k
+* The cut for the power amp is at node mm; 1M stands for the phase inverter's grid network.
+R RMLOAD mm 0 1M

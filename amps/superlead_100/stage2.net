@@ -1,0 +1,36 @@
+* Super-lead preamp, stage 2 of 4: the Overdrive channel (V2a, V2b). Node aa (after the 0.02u of V1b) arrives through VL1 into the Overdrive
+* Volume network; V2b's plate and the mixing node's resistors are repeated at the output as its load (the Normal channel's branch as 2M2 to
+* ground). See preamp.net for how the netlist is split.
+
+.nodes x b3 aa bb ov g2a p2a k2a dd uu p2b k2b ww x1 g3b
+
+V VRAIL x 701.9 378
+R R62 x b3 15k
+C C38 b3 0 10u
+
+S VL1 aa 1 0
+R R5 aa bb 470k
+C C3 aa bb 2n
+R VR_P1T bb ov 1
+R VR_P1B ov 0 1
+C C100 bb ov 1n
+R R8 ov g2a 470k
+T V2A g2a p2a k2a 12AX7
+R R11 b3 p2a 100k
+R R9 k2a 0 1k8
+C C4 k2a 0 1u
+C C6 p2a dd 0.02u
+R R12 dd uu 470k
+R R13 uu 0 1M
+R OPT1 uu 0 1k
+T V2B uu p2b k2b 12AX7
+R R19 b3 p2b 100k
+C C9 b3 p2b 1n
+R R14 k2b 0 39k
+C C10 p2b ww 0.02u
+R R20 ww 0 2M2
+R OPT2 ww x1 1G
+R R18 x1 0 330k
+R R21 x1 g3b 220k
+R RG3 g3b 0 1G
+R RV1A x1 0 2M2
