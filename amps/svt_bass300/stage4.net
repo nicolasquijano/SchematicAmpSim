@@ -1,0 +1,61 @@
+* Ampeg SVT preamp, stage 4 of 4: the V4b follower, the mid-range network, V5, the master, and channel 2's stack. V4A's plate (stage 3) arrives
+* through VL3 at p4a, where the follower reads it, and V2B's plate (stage 2) through VL2 into C13 and the stack. It has no tube, so it needs no
+* supply: the rail source below only exists because every stage has one. See preamp.net for how the netlist is split.
+
+.nodes x p4a k4b f e1 ve e2 vl e3 wm a3 a2 a1t s3 s2 c20 tn g5 k5 out mo p2b a2s bb2 w52 d2 t62 w62 b62
+
+V VRAIL x 1 430
+R RDUM x 0 1G
+
+S VL3 p4a 1 0
+S VL2 p2b 1 0
+C C13 p2b a2s 100n
+R R220B a2s bb2 220k
+R VR_BS2T bb2 w52 1
+R VR_BS2B w52 d2 1
+C C001B bb2 w52 1n
+C C01B w52 d2 10n
+R R22KB d2 0 22k
+C C47PB a2s t62 470p
+R VR_TR2T t62 w62 1
+R VR_TR2B w62 b62 1
+C C47NB b62 0 4n7
+R R22 w52 w62 120k
+R R23 t62 tn 100k
+
+G GB4 k4b p4a 0 2m
+R RB4 k4b 0 500
+R R37 k4b f 47k
+* Mid-range network.
+R R36 f e1 6k8
+R R38 e1 ve 220k
+C C19 f e2 680n
+R R39 e2 ve 620
+R VR_MIDT ve wm 1
+R VR_MIDB wm vl 1
+R R34 vl e3 470
+C C16 e3 0 680n
+.xfmr L1 L=1
+  W wm a3 0.292 l1
+  W a3 a2 0.222 l1
+  W a2 a1t 0.486 l1
+  K l1 l1 0.9998
+.end
+C C17 a3 s3 33n
+C C18 a2 s2 150n
+R SW_M1 a1t 0 1
+R SW_M2 s2 0 1e12
+R SW_M3 s3 0 1e12
+R R40 a3 0 220k
+R R41 a2 0 220k
+* Into V5: 0.02u through 100k from the mid-range output, channel 2 through 100k into the same node.
+C C20 f c20 100n
+R R42 c20 tn 100k
+C C21 tn g5 20n
+G GB5 k5 g5 0 2.2m
+R RB5 k5 0 450
+R R43 g5 0 1M
+C C22 k5 out 100n
+* Master volume (not in the drawing, which has none): a 100k log pot where the drawing has R46's 100k to ground, its wiper feeds the power amp.
+R VR_MST out mo 1
+R VR_MSB mo 0 1

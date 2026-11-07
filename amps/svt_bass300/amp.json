@@ -17,6 +17,13 @@
  "preamp": {
   "netlist": "preamp.net",
   "tolerance": 2e-06,
+  "stages": [
+   {"netlist": "stage2.net", "input": true},
+   {"netlist": "stage3.net", "links": [{"stage": 0, "from": "p1", "source": "VL0"}]},
+   {"netlist": "stage4.net", "links": [
+     {"stage": 2, "from": "p4a", "source": "VL3"},
+     {"stage": 1, "from": "p2b", "source": "VL2"}]}
+  ],
   "rail_source": "VRAIL",
   "input_source": "VIN",
   "output_node": "mo",

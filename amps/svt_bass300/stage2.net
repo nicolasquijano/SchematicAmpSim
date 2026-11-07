@@ -1,0 +1,70 @@
+* Ampeg SVT preamp, stage 2 of 4: channel 2 (V2A, Ultra Lo, volume 2, V2B) up to V2B's plate, p2b. It takes the guitar like stage 1 does. Stage 4
+* receives p2b through VL2. Channel 2's stack is repeated here as V2B's load (its own copy, with a fitted 130k to ground for the V5 input node
+* behind R23: R42 plus the follower's output network); stage 4 has the stack for real, so it loads the V5 input node the way it does in the whole
+* circuit. See preamp.net for how the netlist is split.
+
+.nodes x rb rd gin in pkb1 pkb2 pkk1 pkk2 pkk4 jb2 jn2 g2 p2a k2a q2 vt2 wv2 uh2 p2b k2b a2s bb2 w52 d2 t62 w62 b62 tn
+
+V VRAIL x 305.2 430
+R R47 x rb 25.02k
+C C23 rb 0 13.11u
+R RDEC rb rd 12.77k
+C CDEC rd 0 14.72u
+
+I VIN gin 1
+R RSRC gin in 7k
+* The guitar behind its source impedance (see the other amps for the pickup model).
+R RPU1 gin pkb1 1e12
+.xfmr LPU1 L=2.5
+  W pkb1 in 1 pu
+.end
+R RPU2 gin pkb2 1e12
+.xfmr LPU2 L=5
+  W pkb2 in 1 pu
+.end
+C CPU gin in 110p
+R RPL gin in 1e12
+R SWK1 in pkk1 1e12
+C CCAB1 pkk1 0 200p
+R SWK2 in pkk2 1e12
+C CCAB2 pkk2 0 400p
+R SWK4 in pkk4 1e12
+C CCAB4 pkk4 0 800p
+
+R SW_N2 in jn2 1e12
+R SW_B2 in jb2 1e12
+R R13 jn2 g2 47k
+R R12 jb2 g2 100k
+C C8 jb2 g2 4n7
+R R15 g2 0 5.6M
+
+* Channel 2: V2a (220k, 3k3), 0.1u into the Ultra Lo coupling, volume 2 and Ultra Hi, V2b (100k load, 3k3 cathode), 0.1u into the stack.
+T V2A g2 p2a k2a 12AX7
+R R14 rd p2a 220k
+R R16 k2a 0 3k3
+C C9 p2a q2 100n
+R R19 q2 vt2 10M
+C C11 q2 vt2 1n
+R SW_UL2 q2 vt2 1e12
+R VR_V2T vt2 wv2 1
+R VR_V2B wv2 0 1
+R SW_UH2 vt2 uh2 1e12
+C C12 uh2 wv2 500p
+T V2B wv2 p2b k2b 12AX7
+R R20 rd p2b 100k
+R R21 k2b 0 3k3
+C C13 p2b a2s 100n
+* Stack 2 (the same as stack 1; its output at the top of the treble pot goes through 100k to V5's input).
+R R220B a2s bb2 220k
+R VR_BS2T bb2 w52 1
+R VR_BS2B w52 d2 1
+C C001B bb2 w52 1n
+C C01B w52 d2 10n
+R R22KB d2 0 22k
+C C47PB a2s t62 470p
+R VR_TR2T t62 w62 1
+R VR_TR2B w62 b62 1
+C C47NB b62 0 4n7
+R R22 w52 w62 120k
+R R23 t62 tn 100k
+R RTN tn 0 130k

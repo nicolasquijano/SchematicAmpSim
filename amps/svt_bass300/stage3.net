@@ -1,0 +1,61 @@
+* Ampeg SVT preamp, stage 3 of 4: channel 1 from the V1b follower on (SW1, volume 1, V3A, stack 1, V3B) and V4A. V1A's plate (stage 1) arrives
+* through VL0 at p1, where the follower reads it. See preamp.net for how the netlist is split.
+
+.nodes x rb rd p1 kb1 n1 jx jk jka jm vt1 wv1 uh1 p3 k3 a1 bb1 w51 d1 t61 w61 b61 g3b p3b k3b m3 g4 p4a k4a
+
+V VRAIL x 190.0 430
+R R47 x rb 15.584k
+C C23 rb 0 21.05u
+R RDEC rb rd 10.044k
+C CDEC rd 0 18.72u
+
+S VL0 p1 1 0
+G GB1 kb1 p1 0 1.8m
+R RB1 kb1 0 550
+C C2 kb1 n1 100n
+* SW1: direct / bass cut / ultra low.
+R SW_DIR n1 vt1 1
+R R8 n1 jx 150k
+C C3 n1 jx 2n
+R R9 jx vt1 150k
+C C4 n1 jk 2n
+C C5 jk vt1 2n
+R SW_KA jk jka 1e12
+R R10 jka jm 820k
+R SW_RB jka jm 1e12
+R R11 jm 0 68k
+* Volume 1 (1M lin) and Ultra Hi (500p across its top section).
+R VR_V1T vt1 wv1 1
+R VR_V1B wv1 0 1
+R SW_UH1 vt1 uh1 1e12
+C C6 uh1 wv1 500p
+* V3a (47k load, 4k7 cathode), 0.1u into the stack.
+T V3A wv1 p3 k3 12AX7
+R R24 rd p3 47k
+R R25 k3 0 4k7
+C C7 p3 a1 100n
+* Stack 1.
+R R220A a1 bb1 220k
+R VR_BS1T bb1 w51 1
+R VR_BS1B w51 d1 1
+C C001A bb1 w51 1n
+C C01A w51 d1 10n
+R R22KA d1 0 22k
+C C47PA a1 t61 470p
+R VR_TR1T t61 w61 1
+R VR_TR1B w61 b61 1
+C C47NA b61 0 4n7
+R R26 w51 w61 120k
+* V3b (220k load, 560 + 7k5 cathode, 1M grid return to the cathode divider), 0.1... 10n into V4a.
+C C14 t61 g3b 10n
+T V3B g3b p3b k3b 12AX7
+R R28 rd p3b 220k
+R R29 k3b m3 560
+R R30 m3 0 7k5
+R R27 g3b m3 1M
+C C15 p3b g4 10n
+R R31 g4 0 1M
+
+T V4A g4 p4a k4a 12AX7
+R R32 rb p4a 470k
+R R33 k4a 0 3k3
