@@ -148,7 +148,12 @@ public:
     // Start every sample's Newton solve with full steps (true), or carry the step-length cap of the previous sample over (false, the old way).
     // Only acts in the fast modes (tables); the formula mode keeps the old path so it still matches the Rust reference.
     bool resetStepHint = true;
-
+    // How a trial step is judged. 0 = the residual norm only. 1 = the norm of the Newton step it leaves (|J^-1 f|^2 with the current factors) on every
+    // trial. 2 = the residual first and, only when that rejects the step, the Newton-step norm: a step that grows the residual but shrinks the
+    // Newton step is accepted. The residual alone rejects almost every long step in the knee of a push-pull pair (one tube cut off, the other
+    // starting to conduct), so Newton crawled at lambda 0.03 and often failed; mode 2 removes that and costs nothing on samples the residual test
+    // already accepts (docs/PLAN_RESCATES.md).
+    int scaledMerit = 2;
     // Diagnostics (tools/diag_newton.cpp): called after every Newton iteration when set. Off by default; one test of a null pointer per
     // iteration otherwise.
     struct NewtonTrace {
@@ -158,6 +163,7 @@ public:
         std::size_t worstPort;  // the port with that residual
         bool accepted;
         const double* x;        // the port voltages after the step (portCount() of them)
+        int limiter;            // what fixed the step length: 0 full step, 1 grid cap, 2 grid room, 3 step hint (lambdaHint_), 4 line search
     };
     void (*trace)(void* user, const NewtonTrace&) = nullptr;
     void* traceUser = nullptr;
@@ -227,7 +233,7 @@ private:
     std::vector<double> f_, lu_;
     std::vector<std::size_t> piv_;
     bool luValid_ = false;
-    std::vector<double> dx_, xt_;
+    std::vector<double> dx_, xt_, ms_;
 
     double fmax_ = 0.0;
     std::vector<char> gridPort_;

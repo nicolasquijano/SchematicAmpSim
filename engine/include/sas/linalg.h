@@ -142,6 +142,7 @@ inline bool luFactorFixed(double* a, std::size_t* piv) {
         if (p != col)
             for (std::size_t c = 0; c < N; ++c) std::swap(a[p * N + c], a[col * N + c]);
         const double inv = 1.0 / a[col * N + col];
+        a[col * N + col] = inv;  // the fixed-size solve multiplies by it: a division on the back-substitution's critical path costs ~14 cycles per row
         for (std::size_t r = col + 1; r < N; ++r) {
             const double f = a[r * N + col] * inv;
             a[r * N + col] = f;
@@ -151,6 +152,7 @@ inline bool luFactorFixed(double* a, std::size_t* piv) {
     return true;
 }
 
+// Pairs with luFactorFixed / luFactorFixedNoPivot, which leave the reciprocal of each pivot on the diagonal (not with luFactor / luSolve).
 template <std::size_t N>
 inline void luSolveFixed(const double* lu, const std::size_t* piv, double* b) {
     for (std::size_t col = 0; col < N; ++col) std::swap(b[col], b[piv[col]]);
@@ -162,15 +164,15 @@ inline void luSolveFixed(const double* lu, const std::size_t* piv, double* b) {
     for (std::size_t r = N; r-- > 0;) {
         double sum = b[r];
         for (std::size_t c = r + 1; c < N; ++c) sum -= lu[r * N + c] * b[c];
-        b[r] = sum / lu[r * N + r];
+        b[r] = sum * lu[r * N + r];
     }
 }
 
 // LU without row exchanges, for matrices that are diagonally dominant in practice (the Newton
 // Jacobian I + K D of these circuits). Returns false if a pivot is tiny or a multiplier exceeds
 // `maxMultiplier` (growth), in which case the caller factors again with partial pivoting. The
-// pivot search is the branchy part of luFactor, so this is noticeably faster. piv[i] = i, so the
-// same luSolve works.
+// pivot search is the branchy part of luFactor, so this is noticeably faster. piv[i] = i, so
+// luSolveFixed works (the diagonal holds the reciprocal pivots, as in luFactorFixed).
 template <std::size_t N>
 inline bool luFactorFixedNoPivot(double* a, std::size_t* piv, double maxMultiplier) {
     for (std::size_t col = 0; col < N; ++col) {
@@ -178,6 +180,7 @@ inline bool luFactorFixedNoPivot(double* a, std::size_t* piv, double maxMultipli
         if (!(std::abs(pv) > 1e-9)) return false;
         piv[col] = col;
         const double inv = 1.0 / pv;
+        a[col * N + col] = inv;
         for (std::size_t r = col + 1; r < N; ++r) {
             const double f = a[r * N + col] * inv;
             if (!(std::abs(f) <= maxMultiplier)) return false;
@@ -197,6 +200,16 @@ inline bool luFactorNoPivotFast(double* a, std::size_t* piv, std::size_t n, doub
         case 14: return luFactorFixedNoPivot<14>(a, piv, maxMultiplier);
         case 16: return luFactorFixedNoPivot<16>(a, piv, maxMultiplier);
         case 18: return luFactorFixedNoPivot<18>(a, piv, maxMultiplier);
+        case 2: return luFactorFixedNoPivot<2>(a, piv, maxMultiplier);
+        case 3: return luFactorFixedNoPivot<3>(a, piv, maxMultiplier);
+        case 4: return luFactorFixedNoPivot<4>(a, piv, maxMultiplier);
+        case 5: return luFactorFixedNoPivot<5>(a, piv, maxMultiplier);
+        case 7: return luFactorFixedNoPivot<7>(a, piv, maxMultiplier);
+        case 9: return luFactorFixedNoPivot<9>(a, piv, maxMultiplier);
+        case 11: return luFactorFixedNoPivot<11>(a, piv, maxMultiplier);
+        case 13: return luFactorFixedNoPivot<13>(a, piv, maxMultiplier);
+        case 15: return luFactorFixedNoPivot<15>(a, piv, maxMultiplier);
+        case 17: return luFactorFixedNoPivot<17>(a, piv, maxMultiplier);
         default: return false;  // no specialised version: use the pivoting one
     }
 }
@@ -210,6 +223,16 @@ inline bool luFactorFast(double* a, std::size_t* piv, std::size_t n) {
         case 14: return luFactorFixed<14>(a, piv);
         case 16: return luFactorFixed<16>(a, piv);
         case 18: return luFactorFixed<18>(a, piv);
+        case 2: return luFactorFixed<2>(a, piv);
+        case 3: return luFactorFixed<3>(a, piv);
+        case 4: return luFactorFixed<4>(a, piv);
+        case 5: return luFactorFixed<5>(a, piv);
+        case 7: return luFactorFixed<7>(a, piv);
+        case 9: return luFactorFixed<9>(a, piv);
+        case 11: return luFactorFixed<11>(a, piv);
+        case 13: return luFactorFixed<13>(a, piv);
+        case 15: return luFactorFixed<15>(a, piv);
+        case 17: return luFactorFixed<17>(a, piv);
         default: return luFactor(a, piv, n);
     }
 }
@@ -223,6 +246,16 @@ inline void luSolveFast(const double* lu, const std::size_t* piv, double* b, std
         case 14: luSolveFixed<14>(lu, piv, b); break;
         case 16: luSolveFixed<16>(lu, piv, b); break;
         case 18: luSolveFixed<18>(lu, piv, b); break;
+        case 2: luSolveFixed<2>(lu, piv, b); break;
+        case 3: luSolveFixed<3>(lu, piv, b); break;
+        case 4: luSolveFixed<4>(lu, piv, b); break;
+        case 5: luSolveFixed<5>(lu, piv, b); break;
+        case 7: luSolveFixed<7>(lu, piv, b); break;
+        case 9: luSolveFixed<9>(lu, piv, b); break;
+        case 11: luSolveFixed<11>(lu, piv, b); break;
+        case 13: luSolveFixed<13>(lu, piv, b); break;
+        case 15: luSolveFixed<15>(lu, piv, b); break;
+        case 17: luSolveFixed<17>(lu, piv, b); break;
         default: luSolve(lu, piv, b, n); break;
     }
 }

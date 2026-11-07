@@ -3,10 +3,79 @@
 #include "sas/tables.h"
 
 #include <algorithm>
+#include <cstdlib>
 #include <cstring>
 #include <cmath>
 #include <limits>
 #include <stdexcept>
+
+#if defined(_M_X64) || defined(__x86_64__)
+#define SAS_X64 1
+#include <immintrin.h>
+#if defined(_MSC_VER)
+#include <intrin.h>
+#endif
+#endif
+
+namespace {
+#ifdef SAS_X64
+#if defined(__GNUC__) || defined(__clang__)
+#define SAS_TARGET_AVX2 __attribute__((target("avx2")))
+#else
+#define SAS_TARGET_AVX2
+#endif
+
+bool cpuHasAvx2() {
+    if (std::getenv("SAS_NO_AVX2")) return false;  // for A/B timing and for ruling the vector path out when hunting a problem
+#if defined(_MSC_VER)
+    int info[4];
+    __cpuid(info, 0);
+    if (info[0] < 7) return false;
+    __cpuid(info, 1);
+    const bool osxsave = (info[2] & (1 << 27)) != 0, avx = (info[2] & (1 << 28)) != 0;
+    if (!osxsave || !avx || (_xgetbv(0) & 6) != 6) return false;
+    __cpuidex(info, 7, 0);
+    return (info[1] & (1 << 5)) != 0;
+#else
+    return __builtin_cpu_supports("avx2");
+#endif
+}
+
+// out[i] = sum_j s[i * n + j] * r[j] with 256-bit vectors (two independent accumulators). The sums are in a different order than the scalar
+// version, so the last bit of each differs; nothing audible.
+SAS_TARGET_AVX2 void matvecAvx2(const double* s, const double* r, double* out, std::size_t n) {
+    for (std::size_t i = 0; i < n; ++i) {
+        const double* row = s + i * n;
+        __m256d a0 = _mm256_setzero_pd(), a1 = _mm256_setzero_pd();
+        std::size_t j = 0;
+        for (; j + 8 <= n; j += 8) {
+            a0 = _mm256_add_pd(a0, _mm256_mul_pd(_mm256_loadu_pd(row + j), _mm256_loadu_pd(r + j)));
+            a1 = _mm256_add_pd(a1, _mm256_mul_pd(_mm256_loadu_pd(row + j + 4), _mm256_loadu_pd(r + j + 4)));
+        }
+        if (j + 4 <= n) {
+            a0 = _mm256_add_pd(a0, _mm256_mul_pd(_mm256_loadu_pd(row + j), _mm256_loadu_pd(r + j)));
+            j += 4;
+        }
+        a0 = _mm256_add_pd(a0, a1);
+        const __m128d lo = _mm256_castpd256_pd128(a0), hi = _mm256_extractf128_pd(a0, 1);
+        __m128d v = _mm_add_pd(lo, hi);
+        double acc = _mm_cvtsd_f64(_mm_add_sd(v, _mm_unpackhi_pd(v, v)));
+        for (; j < n; ++j) acc += row[j] * r[j];
+        out[i] = acc;
+    }
+}
+#endif
+
+#ifdef SAS_X64
+inline bool useAvx2() {
+    static const bool v = cpuHasAvx2();
+    return v;
+}
+#else
+constexpr bool useAvx2() { return false; }
+#endif
+}  // namespace
+
 
 namespace sas {
 
@@ -308,6 +377,7 @@ Solver::Solver(Circuit circuit, double fs, bool useTables)
     piv_.assign(p, 0);
     dx_.assign(p, 0.0);
     xt_.assign(p, 0.0);
+    ms_.assign(p, 0.0);
     xGood_.assign(p, 0.0);
     pGood_.assign(p, 0.0);
     pTarget_.assign(p, 0.0);
@@ -529,34 +599,65 @@ bool Solver::newton(std::size_t maxIter, bool reuseLu) {
     if (!carryLu) luValid_ = false;
     bool staleFirst = carryLu, retried = false;
     double merit = residualCached();
+    // Only in the fast modes (tables): the formula mode is the one that matches the Rust reference, and a different path of iterations lands on a different point within the tolerance.
+    const int meritMode = fast_ ? scaledMerit : 0;
     for (std::size_t it = 0; it < maxIter;) {
         if (fmax_ < tol) return true;
         ++newtonIterations;
         if (!newtonDirection()) return false;
+        double meritS = 0.0;  // the Newton step's squared norm at the current point (mode 2 uses it only when the residual test fails)
+        if (meritMode) {
+            for (std::size_t r = 0; r < p; ++r) meritS += dx_[r] * dx_[r];
+            if (meritMode == 1) merit = meritS;
+        }
         double lambda = 1.0;
+        int limiter = 0;  // for the trace: what fixed this step's length (0 full step, 1 grid cap, 2 grid room, 3 step hint, 4 line search)
         for (std::size_t r = 0; r < p; ++r) {
             if (gridPort_[r] && dx_[r] > 0.0) {
                 const double limited = limitGrid(x_[r] + dx_[r], x_[r]);
-                lambda = std::min(lambda, std::max((limited - x_[r]) / dx_[r], 1e-3));
+                const double l1 = std::max((limited - x_[r]) / dx_[r], 1e-3);
+                if (l1 < lambda) limiter = 1;
+                lambda = std::min(lambda, l1);
                 // The cap on how far a grid may rise in one iteration guards against landing deep in conduction, where the current is
                 // exponential. A step that stays below the conduction onset cannot do that, so inside that region the grid may take the full step.
                 // Only in the fast modes (tables): the formula mode is the one that matches the Rust reference to the last digits, and a
                 // different path of iterations lands on a different point within the tolerance.
                 const double room = fast_ ? std::max(gridUpLimit_[r], kGridFreeTop - x_[r]) : gridUpLimit_[r];
-                lambda = std::min(lambda, std::max(room / dx_[r], 1e-3));
+                const double l2 = std::max(room / dx_[r], 1e-3);
+                if (l2 < lambda) limiter = 2;
+                lambda = std::min(lambda, l2);
             }
         }
+        if (lambdaHint_ < lambda) limiter = 3;
         lambda = std::min(lambda, lambdaHint_);
 
         bool accepted = false, firstTrial = true;
         for (int tries = 0; tries < 12; ++tries) {
             for (std::size_t r = 0; r < p; ++r) xt_[r] = x_[r] + lambda * dx_[r];
-            const double tm = eval(true);
+            double tm = eval(true);
+            auto stepNorm = [&] {
+                for (std::size_t r = 0; r < p; ++r) ms_[r] = -f_[r];
+                luSolveFast(lu_.data(), piv_.data(), ms_.data(), p);
+                double s = 0.0;
+                for (std::size_t r = 0; r < p; ++r) s += ms_[r] * ms_[r];
+                return s;
+            };
+            const double tmRes = tm;
+            if (meritMode == 1) tm = stepNorm();
+            if (tries > 0) limiter = 4;
             if (tm < merit || lambda < 1e-3) {
                 if (lambda < 1.0 || tm > luKeepRatio * merit) luValid_ = false;
                 lambdaHint_ = firstTrial ? std::min(lambda * 2.0, 1.0) : lambda;
                 x_ = xt_;
                 merit = tm;
+                accepted = true;
+                break;
+            }
+            if (meritMode == 2 && stepNorm() < meritS) {  // the residual grew but the Newton step shrank: accept
+                luValid_ = false;
+                lambdaHint_ = firstTrial ? std::min(lambda * 2.0, 1.0) : lambda;
+                x_ = xt_;
+                merit = tmRes;
                 accepted = true;
                 break;
             }
@@ -567,7 +668,7 @@ bool Solver::newton(std::size_t maxIter, bool reuseLu) {
             std::size_t worst = 0;
             for (std::size_t r = 1; r < p; ++r)
                 if (std::abs(f_[r]) > std::abs(f_[worst])) worst = r;
-            trace(traceUser, NewtonTrace{it, accepted ? lambda : 0.0, fmax_, worst, accepted, x_.data()});
+            trace(traceUser, NewtonTrace{it, accepted ? lambda : 0.0, fmax_, worst, accepted, x_.data(), limiter});
         }
         if (!accepted) {
             luValid_ = false;
@@ -650,11 +751,26 @@ void Solver::computeSrAndP() {
     SAS_PROF(ProfMatvec);
     const std::size_t n = n_;
     r_[n] = 0.0;
+    // Four independent partial sums: a single accumulator makes the row a chain of dependent additions (about four cycles each), which was
+    // the largest part of the cost of the big preamps. The order of the additions changes the last bit of each sum, nothing audible.
+    const double* r = r_.data();
+#ifdef SAS_X64
+    if (useAvx2() && n >= 8) {
+        matvecAvx2(s_.data(), r, sr_.data(), n);
+    } else
+#endif
     for (std::size_t i = 0; i < n; ++i) {
-        double acc = 0.0;
         const double* srow = &s_[i * n];
-        for (std::size_t j = 0; j < n; ++j) acc += srow[j] * r_[j];
-        sr_[i] = acc;
+        double a0 = 0.0, a1 = 0.0, a2 = 0.0, a3 = 0.0;
+        std::size_t j = 0;
+        for (; j + 4 <= n; j += 4) {
+            a0 += srow[j] * r[j];
+            a1 += srow[j + 1] * r[j + 1];
+            a2 += srow[j + 2] * r[j + 2];
+            a3 += srow[j + 3] * r[j + 3];
+        }
+        for (; j < n; ++j) a0 += srow[j] * r[j];
+        sr_[i] = (a0 + a1) + (a2 + a3);
     }
     sr_[n] = 0.0;
     for (std::size_t i = 0; i < p_; ++i) pvec_[i] = sr_[brA_[i]] - sr_[brB_[i]];
