@@ -322,3 +322,26 @@ con frecuencia distinta** (los de Two Notes no dicen su frecuencia y corren a la
 | Two Notes y Amalgam estándar | 11 – 13 |
 
 Picos de salida 0,17 – 0,80 con una entrada de unos −12 dBFS, ruido residual en silencio hasta 2e-3 (−54 dB, es el offset propio del modelo).
+
+## Preamp partido en etapas: SVT y Superlead (2026-11-07)
+
+El costo de un solver crece con el cuadrado de sus puertos no lineales: por iteración de Newton, `~21,5·p² + 250` ciclos (ajuste sobre 20 solvers,
+±10 %). Un preamp de 12 o 16 puertos en un bloque cuesta mucho más que varias etapas chicas, así que se partió el del SVT (12 puertos) y el del
+Superlead 100 (16). `sas_stage_cost` mide cada etapa; `sas_split_check` compara el amp partido con el mismo preamp en una netlist (`preamp_full.net`).
+
+**Motor.** Una etapa puede tomar la guitarra (`"input": true`: dos canales en paralelo), enlazarse con varias etapas anteriores (`"links"`) o con
+ninguna. Los cortes se hacen donde el nodo solo alimenta un seguidor (no lo carga: corte exacto) o repitiendo la carga lineal en la etapa de
+arriba y manejando la de abajo con una fuente de 1 ohm. Una rejilla que conduce no se puede cortar: el primer intento del SVT cortaba entre V3B y
+V4A y bajaba 3–4 dB. La fuente (R47/C23, RDEC/CDEC) se repite en cada etapa con las resistencias escaladas por (corriente total / corriente de la
+etapa) y los capacitores por la inversa: igual caída y mismas constantes de tiempo. Se pierde la interacción entre etapas por la fuente compartida.
+
+| Amp | Etapas (puertos) | Preamp, ciclos/muestra | CPU del amp, Normal |
+|---|---|---|---|
+| SVT | 2 + 6 + 4 + 0 | 10 400 → 4 700 | lead-hot 48 % → 35 %, crunch 56 → 41 % |
+| Superlead 100 | 4 + 4 + 4 + 4 | 18 900 → 6 500 | 65 % → 32 % (Efficient 26 %) |
+
+**Precisión.** SVT canal 1 y Superlead (limpio y lead): nivel dentro de 0,15 dB y bandas principales dentro de 0,5 dB. SVT canal 2: −1,4 dB de
+nivel y unos 3 dB menos a 110 Hz (se pierde el acople por la fuente compartida con V4A). Con ganancia alta las formas de onda difieren más
+(−12 a −20 dB) aunque el nivel y las bandas coinciden. Escuchado en el plugin: bien.
+
+Candidatos restantes (estimado): Mod BE 100 (14 puertos, −20 puntos); los demás menos de 5 puntos.

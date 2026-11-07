@@ -60,3 +60,11 @@ target_link_libraries(sas_bench_modules PRIVATE sas_engine sas_amps)
 # Loads real .nam models the way the plugin does: CPU, rate match and output sanity.
 add_executable(sas_nam_check nam_check.cpp)
 target_link_libraries(sas_nam_check PRIVATE sas_engine sas_amps)
+
+# Cost of each preamp stage by size (nodes, ports): what splitting a big preamp would save.
+add_executable(sas_stage_cost stage_cost.cpp)
+target_link_libraries(sas_stage_cost PRIVATE sas_engine sas_amps)
+
+# A split preamp against the same preamp as one netlist (level, octave bands, waveform).
+add_executable(sas_split_check split_check.cpp)
+target_link_libraries(sas_split_check PRIVATE sas_engine sas_amps)
