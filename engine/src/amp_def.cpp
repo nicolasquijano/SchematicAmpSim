@@ -70,8 +70,21 @@ PreampDef parsePreamp(const json& j, const FileReader& read) {
             PreampStageDef sd;
             sd.netlist = str(s, "netlist", "preamp.stages");
             sd.netlistText = read(sd.netlist);
-            sd.linkFrom = str(s, "link_from", "preamp.stages." + sd.netlist);
-            sd.linkSource = str(s, "link_source", "preamp.stages." + sd.netlist);
+            if (s.contains("link_from") || s.contains("link_source")) {
+                sd.linkFrom = str(s, "link_from", "preamp.stages." + sd.netlist);
+                sd.linkSource = str(s, "link_source", "preamp.stages." + sd.netlist);
+            }
+            if (s.contains("links"))
+                for (const auto& l : s.at("links")) {
+                    PreampLinkDef ld;
+                    ld.stage = std::size_t(num(l, "stage", "preamp.stages.links"));
+                    ld.from = str(l, "from", "preamp.stages.links");
+                    ld.source = str(l, "source", "preamp.stages.links");
+                    sd.links.push_back(std::move(ld));
+                }
+            sd.input = s.contains("input") && s.at("input").is_boolean() && s.at("input").get<bool>();
+            if (sd.linkFrom.empty() && sd.links.empty() && !sd.input)
+                bad("preamp.stages." + sd.netlist, "a stage needs a link from an earlier stage or \"input\": true");
             p.stages.push_back(std::move(sd));
         }
     p.railSource = str(j, "rail_source", "preamp");

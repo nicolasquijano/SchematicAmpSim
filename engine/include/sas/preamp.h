@@ -69,8 +69,9 @@ public:
         }
         for (std::size_t k = 1; k < stages_.size(); ++k) {
             Stage& s = stages_[k];
-            s.solver.setSource(s.link, stages_[k - 1].solver.voltage(s.linkFrom));
-            s.solver.step();
+            for (const Link& l : s.links) s.solver.setSource(l.src, stages_[l.from].solver.voltage(l.node));
+            if (s.input) s.solver.process(j.drivesInput ? vin : 0.0);
+            else s.solver.step();
         }
         if (vib_ && ++vibCount_ >= vibEvery_) advanceVibrato();
         return stages_.back().solver.voltage(out_);
@@ -103,11 +104,16 @@ private:
         bool drivesInput = false;
         std::vector<std::pair<Refs, double>> resistors;
     };
+    struct Link {
+        std::size_t from = 0;  // the stage whose node drives the source
+        SrcId src{0};
+        Node node = 0;
+    };
     struct Stage {
         Solver solver;
         SrcId rail{0};
-        SrcId link{0};     // stages after the first: the source fed from the previous stage
-        Node linkFrom = 0;  // node of the previous stage that drives it
+        std::vector<Link> links;  // stages after the first: sources fed from earlier stages
+        bool input = false;       // also driven by the guitar (a parallel channel)
     };
 
     static void potValues(const Knob& k, double value, double minOhms, double& top, double& bottom);

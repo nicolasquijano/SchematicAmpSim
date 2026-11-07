@@ -57,9 +57,18 @@ struct SelectorDef {
 // with the voltage of node `linkFrom` of the previous part (one-way coupling: the later part does
 // not load the earlier one, so the cut belongs at a low-impedance node such as a cathode follower).
 // The netlist's S element sets the Thevenin resistance of the link.
+// A stage may also hang off an earlier stage other than the previous one (`links`: `stage` counts the main preamp as 0) and several
+// at once, and it may be fed by the guitar itself (`input`: its own `input_source` is driven like the first stage's, which is how two
+// parallel channels share the guitar). `linkFrom`/`linkSource` stay the shorthand for "from the previous stage"; both may be empty.
+struct PreampLinkDef {
+    std::size_t stage = 0;
+    std::string from, source;
+};
 struct PreampStageDef {
     std::string netlist, netlistText;
     std::string linkFrom, linkSource;
+    std::vector<PreampLinkDef> links;
+    bool input = false;
 };
 
 // Optical tremolo (the Fender "vibrato"): a small oscillator circuit of its own, solved at a low rate

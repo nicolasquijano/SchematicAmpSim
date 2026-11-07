@@ -141,15 +141,21 @@ Preamp::Preamp(const AmpDef& def, double fs, double railVolts, bool useTables, b
         ParsedNetlist& net = nets[i];
         const SrcId rail = net.source(pd.railSource);
         net.circuit.setSourceDc(rail, railVolts);
-        SrcId link{0};
-        Node linkFrom = 0;
+        std::vector<Link> links;
+        bool fedByGuitar = i == 0;
         if (i > 0) {
             const PreampStageDef& sd = pd.stages[i - 1];
-            link = net.source(sd.linkSource);
-            linkFrom = nets[i - 1].node(sd.linkFrom);
-            net.circuit.setSourceDc(link, stages_[i - 1].solver.voltage(linkFrom));
+            fedByGuitar = sd.input;
+            auto addLink = [&](std::size_t from, const std::string& node, const std::string& source) {
+                if (from >= i) throw std::runtime_error("amp '" + def.id + "': a preamp stage can only link from an earlier stage");
+                Link l{from, net.source(source), nets[from].node(node)};
+                net.circuit.setSourceDc(l.src, stages_[from].solver.voltage(l.node));
+                links.push_back(l);
+            };
+            if (!sd.linkSource.empty()) addLink(i - 1, sd.linkFrom, sd.linkSource);
+            for (const auto& l : sd.links) addLink(l.stage, l.from, l.source);
         }
-        stages_.push_back(Stage{Solver(std::move(net.circuit), fs, useTables), rail, link, linkFrom});
+        stages_.push_back(Stage{Solver(std::move(net.circuit), fs, useTables), rail, std::move(links), i > 0 && fedByGuitar});
         // Guitar signals are millivolts at the first grid, so Newton must converge tightly here.
         stages_.back().solver.tolerance = pd.tolerance;
         stages_.back().solver.refresh();

@@ -863,11 +863,14 @@ TEST_CASE("American Bass 300 (SVT): the supply, the bias and the first stages ar
     CHECK(idleMa < 35.0);                        // the drawing's 0.072 V across 1 ohm for three tubes is 24 mA
     Preamp pre(def, kFs, power.railX());
     const auto pnet = parseNetlist(def.preamp.netlistText, def.preamp.netlist);
+    // The preamp is four solvers (amp.json "stages"): V1A, channel 2, channel 1 from V1b to V4A, and the tail. V4A is in the third.
+    const auto vnet = parseNetlist(def.preamp.stages[1].netlistText, "stage3");
     auto p = [&](const char* n) { return pre.solver().voltage(pnet.node(n)); };
-    INFO("V1a plate " << p("p1") << " V, V4a plate " << p("p4a") << " V");
+    auto v4 = [&](const char* n) { return pre.solver(2).voltage(vnet.node(n)); };
+    INFO("V1a plate " << p("p1") << " V, V4a plate " << v4("p4a") << " V");
     CHECK(p("rb") > 280.0);
     CHECK(p("rb") < 420.0);                      // the +300 V rail
-    CHECK(std::abs(p("p4a") - 130.0) < 70.0);    // V4a's plate (V4b is a buffer here)
+    CHECK(std::abs(v4("p4a") - 130.0) < 70.0);   // V4a's plate (V4b is a buffer here)
 }
 
 TEST_CASE("American Bass 300 (SVT): it is quiet at rest, the switches and the controls act") {
