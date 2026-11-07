@@ -3,6 +3,8 @@
 // runs, and - for the samples that needed many iterations - which device port kept the largest residual (devices in netlist order; ports:
 // triode 0 = grid-cathode, 1 = plate-cathode; pentode 0 = grid, 1 = plate, 2 = screen).
 //   sas_diag_newton <amp id> [case: clean|crunch|lead|lead-hot] [threshold iterations, default 8]
+#include <algorithm>
+#include <chrono>
 #include <cmath>
 #include <cstdio>
 #include <cstdlib>
@@ -11,6 +13,8 @@
 #include <sstream>
 #include <string>
 #include <vector>
+
+#include <intrin.h>
 
 #include "sas/amp.h"
 #include "sas/embedded_amps.h"
@@ -57,6 +61,8 @@ struct Stats {
     std::map<std::size_t, std::uint64_t> worst;      // for hard samples: device*8+port -> iterations where it had the largest residual
     std::vector<std::size_t> worstThisSample;
     std::vector<std::string> log;  // this sample's iterations, printed for the first hard sample (SAS_DUMP=1)
+    std::uint64_t limAll[5] = {}, limHard[5] = {};  // iterations by what fixed the step length (see NewtonTrace::limiter), all samples / hard ones
+    std::vector<int> limThisSample;
     double minVpk = 1e9;
     std::uint64_t lowPlate = 0, plateSamples = 0;
 };
@@ -67,6 +73,8 @@ void onTrace(void* user, const sas::Solver::NewtonTrace& t) {
     ++s.steps;
     if (!t.accepted) ++s.rejected;
     else if (t.lambda < 0.999) ++s.shortened;
+    ++s.limAll[t.limiter];
+    s.limThisSample.push_back(t.limiter);
     const std::size_t dev = s.solver->portDevice(t.worstPort);
     s.worstThisSample.push_back(dev * 8 + (t.worstPort - s.solver->devicePortBase(dev)));
     if (std::getenv("SAS_DUMP")) {
@@ -124,6 +132,49 @@ int main(int argc, char** argv) {
     for (std::size_t i = 0; i < knobs.size(); ++i)
         if (def.preamp.knobs[i].name == "master") knobs[i] = c->master;
 
+    if (const char* modeEnv = std::getenv("SAS_MODE")) {
+        // Timing without the trace: SAS_MODE = normal (circuits at 96 kHz), high (192 kHz) or efficient (preamp 96 kHz, power amp 48 kHz), the
+        // host at 48 kHz. Prints % of a core (wall time of 3 s of audio), iterations per host sample and the failures.
+        const std::string mode = modeEnv;
+        const double host = 48000.0, seconds = 3.0;
+        const double circuitFs = mode == "high" ? host * 4.0 : mode == "efficient" ? host : host * 2.0;
+        const std::size_t count = std::size_t(circuitFs * seconds);
+        std::vector<double> sig(count);
+        {
+            std::uint64_t st = 0x123456789abcdef0ull;
+            for (std::size_t i = 0; i < count; ++i) {
+                st = st * 6364136223846793005ull + 1442695040888963407ull;
+                const double noise = double(st >> 11) / double(1ull << 53) - 0.5, t = double(i) / circuitFs;
+                sig[i] = c->amp * (0.6 * std::sin(2 * kPi * 110.0 * t) + 0.3 * std::sin(2 * kPi * 330.7 * t + 0.4) + 0.1 * std::sin(2 * kPi * 1234.5 * t) + 0.02 * noise);
+            }
+        }
+        double sink = 0.0, wall = 0.0;
+        std::uint64_t preIt = 0, powIt = 0, fails = 0, conts = 0;
+        if (mode == "efficient") {
+            sas::SplitAmp split(def, host);
+            split.setKnobs(knobs, def.power.presenceDefault);
+            const auto t0 = std::chrono::steady_clock::now();
+            for (std::size_t i = 0; i < count; ++i) sink += split.process(float(sig[i]), [](double v) { return v; });
+            wall = std::chrono::duration<double>(std::chrono::steady_clock::now() - t0).count();
+            for (std::size_t k = 0; k < split.pre().stageCount(); ++k) { preIt += split.pre().solver(k).newtonIterations; conts += split.pre().solver(k).continuationRuns; }
+            powIt = split.power().solver().newtonIterations;
+            conts += split.power().solver().continuationRuns;
+            fails = split.newtonFailures();
+        } else {
+            sas::FullAmp full(def, circuitFs, false, true);
+            full.setKnobs(knobs, def.power.presenceDefault);
+            const auto t0 = std::chrono::steady_clock::now();
+            for (std::size_t i = 0; i < count; ++i) sink += full.process(sig[i]);
+            wall = std::chrono::duration<double>(std::chrono::steady_clock::now() - t0).count();
+            for (std::size_t k = 0; k < full.pre().stageCount(); ++k) { preIt += full.pre().solver(k).newtonIterations; conts += full.pre().solver(k).continuationRuns; }
+            powIt = full.power().solver().newtonIterations;
+            conts += full.power().solver().continuationRuns;
+            fails = full.newtonFailures();
+        }
+        std::printf("%s %s %s: %6.1f %% of a core | it/circuit-sample pre %.2f power %.2f | rescues %llu failures %llu (checksum %.3g)\n", id.c_str(), c->name, mode.c_str(),
+                    100.0 * wall / seconds, double(preIt) / double(count), double(powIt) / double(count), (unsigned long long)conts, (unsigned long long)fails, sink);
+        return 0;
+    }
     sas::FullAmp amp(def, kFs, false, true);  // the Normal mode
     amp.setKnobs(knobs, def.power.presenceDefault);
 
@@ -146,13 +197,24 @@ int main(int argc, char** argv) {
 
     const std::size_t n = std::size_t(kFs * 2.0);
     const auto in = signal(c->amp, n);
+    // Cost of the hard samples (a continuation run, or `threshold`+ iterations in any stage) against the rest, in TSC cycles of the whole amp.
+    std::vector<std::uint64_t> cyc(n);
+    std::vector<char> hard(n, 0);
+    std::vector<std::uint64_t> contBefore(stats.size());
     for (std::size_t i = 0; i < n; ++i) {
-        for (auto& s : stats) { s.itThisSample = 0; s.worstThisSample.clear(); s.log.clear(); }
+        for (auto& s : stats) { s.itThisSample = 0; s.worstThisSample.clear(); s.log.clear(); s.limThisSample.clear(); }
+        for (std::size_t k = 0; k < stats.size(); ++k) contBefore[k] = stats[k].solver->continuationRuns;
+        const std::uint64_t t0 = __rdtsc();
         amp.process(in[i]);
+        cyc[i] = __rdtsc() - t0;
+        for (std::size_t k = 0; k < stats.size(); ++k)
+            if (stats[k].solver->continuationRuns != contBefore[k] || stats[k].itThisSample >= threshold) hard[i] = 1;
         for (auto& s : stats) {
             ++s.histogram[s.itThisSample];
-            if (s.itThisSample >= threshold)
+            if (s.itThisSample >= threshold) {
                 for (auto d : s.worstThisSample) ++s.worst[d];
+                for (auto l : s.limThisSample) ++s.limHard[l];
+            }
             static int dumped = 0;
             if (std::getenv("SAS_DUMP") && &s == &stats.back() && i > 30000 && s.itThisSample >= 30 && dumped < 1) {
                 ++dumped;
@@ -163,6 +225,23 @@ int main(int argc, char** argv) {
     }
 
     std::printf("%s, case %s (input %.2f V peak), %zu samples at 96 kHz, Normal mode\n", id.c_str(), c->name, c->amp, n);
+    {
+        // The first 1/8 of the run is skipped (settling). Ceiling = what the hard samples would cost if each took the median of the easy ones.
+        const std::size_t from = n / 8;
+        std::vector<std::uint64_t> easy;
+        long double total = 0, hardCyc = 0;
+        std::size_t hardN = 0;
+        for (std::size_t i = from; i < n; ++i) {
+            total += cyc[i];
+            if (hard[i]) { hardCyc += cyc[i]; ++hardN; } else easy.push_back(cyc[i]);
+        }
+        std::nth_element(easy.begin(), easy.begin() + easy.size() / 2, easy.end());
+        const long double med = easy.empty() ? 0 : easy[easy.size() / 2];
+        const long double ceiling = hardCyc - med * hardN;
+        std::printf("   COST: hard samples %.2f %% of samples, %.1f %% of cycles (%.0f cycles each vs %.0f median easy); recoverable ceiling %.1f %% of total\n",
+                    100.0 * hardN / double(n - from), double(100.0L * hardCyc / total), double(hardN ? hardCyc / hardN : 0), double(med),
+                    double(100.0L * ceiling / total));
+    }
     for (std::size_t s = 0; s < stats.size(); ++s) {
         const auto& st = stats[s];
         std::printf("\n== %s: %zu ports, %.2f iterations/sample, %llu continuation runs, %llu failures\n", names[s].c_str(), st.solver->portCount(),
@@ -172,6 +251,15 @@ int main(int argc, char** argv) {
         if (st.plateSamples)
             std::printf("   output pentodes: lowest plate-cathode voltage seen %.1f V; below 5 V in %.2f %% of the iterations%c", st.minVpk,
                         100.0 * double(st.lowPlate) / double(st.plateSamples), 10);
+        {
+            static const char* names[5] = {"full step", "grid cap", "grid room", "step hint", "line search"};
+            std::uint64_t ta = 0, th = 0;
+            for (int l = 0; l < 5; ++l) { ta += st.limAll[l]; th += st.limHard[l]; }
+            std::printf("   step length fixed by (all iterations | iterations of samples with %zu+):", threshold);
+            for (int l = 0; l < 5; ++l)
+                std::printf("  %s %.1f%% | %.1f%%%c", names[l], 100.0 * double(st.limAll[l]) / double(std::max<std::uint64_t>(1, ta)),
+                            100.0 * double(st.limHard[l]) / double(std::max<std::uint64_t>(1, th)), l == 4 ? 10 : ';');
+        }
         std::printf("   iterations per sample:");
         for (const auto& [k, v] : st.histogram)
             if (100.0 * double(v) / double(n) >= 0.05) std::printf("  %zu:%.1f%%", k, 100.0 * double(v) / double(n));

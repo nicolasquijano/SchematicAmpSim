@@ -16,7 +16,10 @@ add_executable(sas_profile EXCLUDE_FROM_ALL bench.cpp
   ${CMAKE_BINARY_DIR}/engine/compressor_net.cpp
   ${CMAKE_BINARY_DIR}/amps/embedded_amp_files.cpp
   ${CMAKE_SOURCE_DIR}/amps/embedded_amps.cpp)
-target_compile_definitions(sas_profile PRIVATE SAS_PROFILE)
+target_compile_definitions(sas_profile PRIVATE SAS_PROFILE NAM_SAMPLE_FLOAT NAM_ENABLE_A2_FAST NOMINMAX WIN32_LEAN_AND_MEAN)
+# The engine sources include the NAM loader, so the profile build needs the NAM headers and objects too.
+target_include_directories(sas_profile SYSTEM PRIVATE "${nam_SOURCE_DIR}" "${nam_SOURCE_DIR}/Dependencies/eigen" "${nam_SOURCE_DIR}/Dependencies/nlohmann")
+target_sources(sas_profile PRIVATE $<TARGET_OBJECTS:sas_nam_core>)
 target_include_directories(sas_profile PRIVATE ${CMAKE_SOURCE_DIR}/engine/include ${CMAKE_SOURCE_DIR}/amps/include ${CMAKE_BINARY_DIR}/generated)
 target_compile_features(sas_profile PRIVATE cxx_std_20)
 target_link_libraries(sas_profile PRIVATE nlohmann_json::nlohmann_json)

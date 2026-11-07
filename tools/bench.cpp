@@ -145,8 +145,21 @@ int main() {
         const std::size_t n48 = std::size_t(48000.0 * seconds);
         const auto in48 = signal(0.1, n48, 48000.0);
         sas::Compressor comp(48000.0);
+#ifdef SAS_PROFILE
+        for (auto& v : sas::g_profile) v = 0;
+#endif
         const double p = percent([&] { for (double x : in48) sink += comp.process(x); }, seconds);
         std::printf("compressor pedal (circuit, 48 kHz) %5.2f %%  (%.1f it/sample)\n", p, double(comp.solver().newtonIterations) / double(n48));
+#ifdef SAS_PROFILE
+        {
+            const double total = double(sas::g_profile[sas::ProfStep]);
+            std::printf("   compressor solver %s: %zu nodes, %zu ports, %.0f cycles/sample: eval %.0f%%  factor %.0f%%  lu-solve %.0f%%  S*r %.0f%%  v=S*r-K*i %.0f%%\n",
+                        "profile", comp.solver().nodeCount(), comp.solver().portCount(), total / double(n48),
+                        100 * double(sas::g_profile[sas::ProfEval]) / total, 100 * double(sas::g_profile[sas::ProfFactor]) / total,
+                        100 * double(sas::g_profile[sas::ProfSolve]) / total, 100 * double(sas::g_profile[sas::ProfMatvec]) / total,
+                        100 * double(sas::g_profile[sas::ProfReconstruct]) / total);
+        }
+#endif
     }
     std::printf("(checksum %g)\n", sink);
 }

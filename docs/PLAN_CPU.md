@@ -240,6 +240,53 @@ en 10x10 y nada en 16x16. Compilando todo el motor con AVX2, el efecto en el ben
 (-4 % a +10 %): factorizar es el 40 % de los ciclos de la potencia, así que 1,45x ahí vale a lo sumo 10 % del total, y exigiría un binario con selección
 de instrucciones en tiempo de ejecución para no romper en CPUs sin AVX2. No se hizo.
 
+**Remedido (2026-11-03, MSVC 19.44, copia aparte del repositorio):** `sas_bench_chain` con y sin `/arch:AVX2`, dos rondas alternadas, JCM800, Twin y Hiwatt
+en Normal con señal 0,10: 26,2 / 27,5 % contra 25,8 / 26,9 % (JCM800), 29,3 / 29,3 % contra 31,1 / 29,4 % (Twin), 32,6 / 33,1 % contra 32,4 / 32,4 % (Hiwatt).
+La diferencia entre variantes es del tamaño de la que hay entre repeticiones (±2 %). En el microbenchmark de 12x12 la factorización dio 193 ns sin AVX2
+y 202 ns con AVX2: la ganancia de 1,45x de arriba no se repite. La factorización de una matriz densa de este tamaño depende de cada paso anterior y casi no
+tiene trabajo independiente que repartir entre las lanes. Tampoco hay NEON, intrinsics ni `/arch` en el código; NEON no se probó (no hay equipo ARM a mano).
+
+### Estructurar el Jacobiano de la potencia con Woodbury (descartado)
+El solver trabaja en el espacio de puertos: `J = I + K·D` con `K` constante y densa y `D` por bloques (ya se arma por patrón). Cuando la grilla de una
+válvula no conduce su fila de `D` es cero, y `J = I + U·V` con `U = K[:,A]` y `V = D[A,:]` (A = filas no nulas, r de ellas) se resuelve factorizando
+`I + V·U` de r x r y haciendo `dx = f − U·(I + V·U)⁻¹·(V·f)`. `tools/bench_woodbury.cpp` (autónomo: `cl /O2 /EHsc bench_woodbury.cpp`; argumento = grillas sin
+conducir, 0 a 5) lo mide sobre una etapa sintética de 2 pentodos y 3 triodos (12 puertos). Coincide con la resolución directa a 1e-16. Tiempos (ns):
+
+| grillas sin conducir | r | factorizar hoy | factorizar Woodbury | resolver hoy | resolver Woodbury |
+|---|---|---|---|---|---|
+| 0 | 12 | 398 | 408 | 100 | 214 |
+| 3 | 9 | 350 | 238 | 101 | 151 |
+| 5 | 7 | 326 | 161 | 100 | 123 |
+
+Factorizar se abarata pero resolver se encarece (dos productos más). Con la proporción del perfil de arriba (unas 4 resoluciones por factorización, por el
+modo chord) el mejor caso baja de unos 756 a 690 ns (−9 % de esos núcleos, que son el 70 % de la potencia: unos 4 % del total); con 3 grillas sin conducir
+empeora (780 → 888 ns) y con señal fuerte, que es donde más CPU se gasta, no hay ganancia. No se implementó en el solver. Guardar la inversa explícita
+para que resolver sea un producto matriz-vector se descartó por cuenta (calcularla cuesta más de lo que se ahorra); no se midió. Límite: matriz sintética y
+núcleos sueltos, no un amp real.
+
+### Compilar con clang-cl en vez de MSVC (descartado)
+`sas_bench_chain` compilado con clang-cl 23.1.4 (LLVM oficial, `/clang:-ffp-contract=off`, sin `/arch`) contra MSVC 19.44, dos rondas alternadas, Normal, en una copia
+aparte del repositorio. % de un núcleo, señal 0,10 y 0,30: JCM800 26,3 a 26,7 / 26,7 a 27,6 (MSVC) contra 24,3 a 25,3 / 26,2 a 26,8 (clang); Twin 29,0 a 30,6 /
+30,9 a 31,7 contra 29,1 a 29,2 / 31,0 a 31,8; Hiwatt 32,6 a 33,7 / 35,2 a 35,6 contra 30,9 a 31,8 / 33,9 a 34,2. Clang queda entre 0 y 8 % por debajo, del orden de
+la variación entre rondas, y no cambia nada en el Twin. No se comparó la salida de audio entre compiladores. No justifica cambiar de toolchain (el VST3 de
+Windows sigue con MSVC).
+
+**Perfil actual** (`sas_profile`, JCM800 crunch, ciclos por muestra del amp completo: 16 284): resolver LU 36 %, factorizar 27 %, evaluar válvulas 25 %, S·r 10 %,
+K·i 4 %; unas 4 iteraciones de Newton por muestra en la potencia y 3,7 en el preamp. En lead-hot (pico muy alto) hay 1199 + 1959 rescates y 81 fallas, y la CPU
+sube de 44 % a 53,5 %. Pendientes sin medir: PGO con MSVC (se espera algo entre 5 y 15 %, sin evidencia) y microoptimizaciones de los lazos (S·r, armado del Jacobiano,
+residual; a lo sumo unos 5 %). Lo que queda con ganancia grande cambia el sonido (potencia a la tasa base, más etapas en Lite o Eco, partir la potencia).
+
+### PGO con MSVC (descartado)
+Compilado con `/LTCG /GENPROFILE`, entrenado con `sas_bench_chain` en JCM800, Twin, Hiwatt y Plexi, y recompilado con `/USEPROFILE` (en una copia aparte). En amps
+que no se usaron para entrenar empeora: Tweed 16,4 % → 17,8 a 19,1 %, High Gain 31,7 % → 33,7 a 35,3 % (5 a 10 % más); en los de entrenamiento tampoco mejora.
+
+### Recíproco del pivote en la LU de tamaño fijo (aplicado, 2026-11-03)
+`luFactorFixed` y `luFactorFixedNoPivot` dejan `1/pivote` en la diagonal y `luSolveFixed` multiplica en vez de dividir: la división (unos 14 ciclos de latencia) estaba en la
+cadena crítica de la sustitución hacia atrás, una por fila. `sas_bench_lu` (ns): resolver 12x12 102 → 75 (−27 %), 10x10 62 → 52, 16x16 163 → 127; factorizar sin cambio.
+Cadena completa (mínimo de 4 rondas alternadas, 4 amps, 2 niveles, Normal y Efficient, 16 casos): mejora en 15, de −0,3 a −8,2 %, media −3,3 %; remedida en el repositorio
+(mínimo de 3 rondas, JCM800 y Twin, 8 casos, con la PC cargada): −4,2 a +1,6 %, media −1,8 %. Cambia el redondeo en el último dígito (multiplicar por el recíproco);
+los 160 tests rápidos pasan. Solo vale para los tamaños con plantilla (6 a 18, de a 2); la `luFactor`/`luSolve` genéricas no cambian y no deben mezclarse con las de tamaño fijo.
+
 ### Lo que queda (todo cambia algo más que la velocidad)
 - **Etapa de potencia a la frecuencia base (48 kHz) en vez de 96 kHz:** como es el 60 a 83 % del costo, bajaría el total entre 30 y 40 %. Es un
   cambio de sonido posible (el recorte de la potencia genera armónicos que se pliegan, y la integración trapezoidal se desvía en agudos): habría que
