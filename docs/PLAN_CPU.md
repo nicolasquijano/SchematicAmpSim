@@ -308,3 +308,17 @@ Ejemplos de CPU, Normal → 1x: JCM800 limpio 24 → 12 %, crunch 41 → 26 %, l
 **Corrección (probando con una grabación real, `Foo_Monkeys.wav`, pico 0,92, con `sas_bench_chain`):** con señal fuerte el 1x puro es *peor* que Normal (2x). El preamp a la tasa base deja de converger (JCM800, escala 1,0: 4420 resolvedores fallidos contra 9 en 2x; 35 793 continuaciones contra 14 921) y el CPU sube de 76 % a 96 %. Con señal suave (escala 0,1) el 1x sí ahorra (28 % → 16,5 %). La variante híbrida (preamp 2x, potencia 1x) no tiene ese problema y a escala 1,0 baja a 38 %.
 
 **Decisión:** la quinta calidad es **Efficient (2x/1x)** (preamp a 2x, potencia a la tasa base). El 1x puro se descartó: ahorra mucho con señal suave, pero se dispara con guitarra fuerte, justo donde más importa. Normal (2x) sigue siendo el valor por defecto.
+
+## NAM con modelos reales (2026-11-07)
+
+`tools/nam_check.cpp` (`sas_nam_check`) carga `.nam` como lo hace el plugin (`NamModel`, 48 kHz, bloques de 256) y mide CPU, ajuste de frecuencia y
+cordura de la salida. Probados 38 modelos reales (Two Notes Captures, TH-U, un A2 de Downloads): **todos cargan, ninguna salida no finita, ninguno
+con frecuencia distinta** (los de Two Notes no dicen su frecuencia y corren a la del host).
+
+| Familia | CPU (% de un núcleo, 48 kHz) |
+|---|---|
+| Amalgam "Feather" (livianos) | 3,9 – 4,3 |
+| TH-U y A2 (WaveNet) | 7,6 – 7,8 |
+| Two Notes y Amalgam estándar | 11 – 13 |
+
+Picos de salida 0,17 – 0,80 con una entrada de unos −12 dBFS, ruido residual en silencio hasta 2e-3 (−54 dB, es el offset propio del modelo).

@@ -148,6 +148,7 @@ int main(int argc, char** argv) {
                 sig[i] = c->amp * (0.6 * std::sin(2 * kPi * 110.0 * t) + 0.3 * std::sin(2 * kPi * 330.7 * t + 0.4) + 0.1 * std::sin(2 * kPi * 1234.5 * t) + 0.02 * noise);
             }
         }
+        if (std::getenv("SAS_SILENCE")) std::fill(sig.begin(), sig.end(), 0.0);  // digital silence: what the amp costs when idle
         double sink = 0.0, wall = 0.0;
         std::uint64_t preIt = 0, powIt = 0, fails = 0, conts = 0;
         if (mode == "efficient") {

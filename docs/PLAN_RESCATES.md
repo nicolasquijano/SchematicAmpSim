@@ -246,3 +246,10 @@ modo híbrido (el aplicado). Entre paréntesis rescates / muestras sin converger
 Conclusión: la mejora vale para los tres modos. En Efficient es igual o mayor que en Normal; en High es menor porque a 192 kHz Newton ya converge mejor
 (la solución anterior está más cerca) y el costo lo domina el solver base, no los rescates. Ninguna combinación empeora. SVT sigue sobre un núcleo en High
 (~87 % con el crunch y el lead-hot) y Hiwatt lead-hot en High ~95 %.
+
+## Descartado (2026-11-07): tablas exp/tanh del compresor y fase B2
+
+- **Tablas Hermite de exp/tanh** para diodos, BJT/NPN, bias del OTA y salida del op-amp del compresor (opción `deviceTables` del solver): 7,15–7,34 %
+  de un núcleo contra 7,10–7,16 % sin tablas. Sin ganancia (el `exp` de la CPU ya es barato); revertido.
+- **Fase B2** (amortiguar el codo/flyback del push-pull): techo recuperable en lead-hot, Normal: SVT 18 % del total, Hiwatt 14 %, con 0 fallas
+  tras el mérito escalado. La ganancia real sería una fracción de eso y cambia el sonido; no alcanza el criterio de ≥3 % de CPU. No se hace.
