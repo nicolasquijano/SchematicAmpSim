@@ -14,7 +14,15 @@
 #include <string>
 #include <vector>
 
+#if defined(_MSC_VER)
 #include <intrin.h>
+#elif defined(__x86_64__) || defined(__i386__)
+#include <x86intrin.h>
+#else
+#include <chrono>
+// No time-stamp counter on this CPU (Apple Silicon): nanoseconds stand in for cycles.
+static inline unsigned long long __rdtsc() { return (unsigned long long)std::chrono::steady_clock::now().time_since_epoch().count(); }
+#endif
 
 #include "sas/amp.h"
 #include "sas/embedded_amps.h"
