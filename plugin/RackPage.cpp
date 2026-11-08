@@ -16,11 +16,11 @@ struct Category {
 
 const std::vector<Category>& categories() {
     static const std::vector<Category> c{
-        {"Effects", {ModuleType::Gate, ModuleType::Compressor, ModuleType::Overdrive, ModuleType::NamPedal, ModuleType::Fuzz, ModuleType::Wah, ModuleType::Boost, ModuleType::Limiter, ModuleType::Acoustic}},
-        {"Modulation", {ModuleType::Phaser, ModuleType::Chorus, ModuleType::Vibe, ModuleType::Flanger, ModuleType::Tremolo}},
+        {"Effects", {ModuleType::Gate, ModuleType::Compressor, ModuleType::Overdrive, ModuleType::NamPedal, ModuleType::Fuzz, ModuleType::Wah, ModuleType::Boost, ModuleType::Limiter, ModuleType::Acoustic, ModuleType::Klon}},
+        {"Modulation", {ModuleType::Phaser, ModuleType::Chorus, ModuleType::Vibe, ModuleType::Flanger, ModuleType::Tremolo, ModuleType::Leslie}},
         {"Pitch", {ModuleType::Pitch}},
         {"EQ", {ModuleType::Eq}},
-        {"Space", {ModuleType::Delay, ModuleType::TapeEcho, ModuleType::Reverb}},
+        {"Space", {ModuleType::Delay, ModuleType::TapeEcho, ModuleType::Reverb, ModuleType::SpringReverb}},
     };
     return c;
 }
@@ -45,11 +45,13 @@ juce::Colour colourOf(ModuleType t) {
         case ModuleType::Compressor: return juce::Colour(0xff58b878);
         case ModuleType::Overdrive:
         case ModuleType::Fuzz:
+        case ModuleType::Klon:
         case ModuleType::NamPedal: return juce::Colour(0xffe06a3c);
         case ModuleType::Phaser:
         case ModuleType::Chorus:
         case ModuleType::Vibe:
         case ModuleType::Tremolo:
+        case ModuleType::Leslie:
         case ModuleType::Flanger: return juce::Colour(0xffa070d8);
         case ModuleType::Acoustic:
         case ModuleType::Wah: return juce::Colour(0xffe8c040);
@@ -57,6 +59,7 @@ juce::Colour colourOf(ModuleType t) {
         case ModuleType::Eq: return juce::Colour(0xff48b8c8);
         case ModuleType::Delay:
         case ModuleType::TapeEcho:
+        case ModuleType::SpringReverb:
         case ModuleType::Reverb: return juce::Colour(0xff5890e0);
         case ModuleType::Splitter:
         case ModuleType::Mixer: return juce::Colour(0xffc8c8c8);

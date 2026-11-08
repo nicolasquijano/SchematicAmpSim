@@ -226,6 +226,57 @@ inline constexpr ModulePreset kBoostPresets[] = {
     {"Treble booster", true, {{ids::bstGain, 16}, {ids::bstTone, 9}, {ids::bstSoft, 1}}},
 };
 
+// The rotary speaker: speed (0 stop, 1 slow, 2 fast), depth and horn / rotor balance on the 0..10 scale, mix in percent.
+inline constexpr ModulePreset kLesliePresets[] = {
+    {"Off", false, {}},
+    // The slow speed: a gentle, wide sway (the chorale).
+    {"Chorale", true, {{ids::lesSpeed, 1}, {ids::lesDepth, 7}, {ids::lesBalance, 5}, {ids::lesMix, 100}}},
+    // The fast speed: the quick, shimmering throb (the tremolo).
+    {"Tremolo", true, {{ids::lesSpeed, 2}, {ids::lesDepth, 7}, {ids::lesBalance, 5}, {ids::lesMix, 100}}},
+    // A little of it, behind the dry sound.
+    {"Gentle", true, {{ids::lesSpeed, 1}, {ids::lesDepth, 4}, {ids::lesBalance, 5}, {ids::lesMix, 60}}},
+    // All the depth and the horn forward: a swirling, airy lead.
+    {"Deep and bright", true, {{ids::lesSpeed, 2}, {ids::lesDepth, 10}, {ids::lesBalance, 7.5}, {ids::lesMix, 100}}},
+    // Rotor forward: a warm, slow bass swell.
+    {"Warm rotor", true, {{ids::lesSpeed, 1}, {ids::lesDepth, 8}, {ids::lesBalance, 2.5}, {ids::lesMix, 100}}},
+    // The brake: the horn stops and the sound sits to one side.
+    {"Brake", true, {{ids::lesSpeed, 0}, {ids::lesDepth, 7}, {ids::lesBalance, 5}, {ids::lesMix, 100}}},
+};
+
+// The spring reverb: tank (0 short, 1 medium, 2 long), tone on the 0..10 scale, mix in percent.
+inline constexpr ModulePreset kSpringPresets[] = {
+    {"Off", false, {}},
+    // A little splash at the back of a clean sound.
+    {"Classic", true, {{ids::spType, 1}, {ids::spTone, 5}, {ids::spMix, 30}}},
+    // A small combo's short tank: tight and boingy.
+    {"Short drip", true, {{ids::spType, 0}, {ids::spTone, 6}, {ids::spMix, 35}}},
+    // The long tank: a lazy, dark decay.
+    {"Long and dark", true, {{ids::spType, 2}, {ids::spTone, 3}, {ids::spMix, 35}}},
+    // Wet and bright, the surf sound.
+    {"Surf", true, {{ids::spType, 1}, {ids::spTone, 8}, {ids::spMix, 65}}},
+    // Barely there: some air and space.
+    {"Subtle room", true, {{ids::spType, 0}, {ids::spTone, 5}, {ids::spMix, 15}}},
+    // Everything: a big, long splash.
+    {"Splash", true, {{ids::spType, 2}, {ids::spTone, 6}, {ids::spMix, 70}}},
+};
+
+// The Klon-style drive: gain, treble and level on the 0..10 scale.
+inline constexpr ModulePreset kKlonPresets[] = {
+    {"Off", false, {}},
+    // Almost clean, a lift that opens the amp up (the way it is most often used).
+    {"Transparent boost", true, {{ids::klnGain, 2}, {ids::klnTreble, 5}, {ids::klnLevel, 7}}},
+    // A little grit that cleans up with the guitar's volume.
+    {"Light drive", true, {{ids::klnGain, 4}, {ids::klnTreble, 5}, {ids::klnLevel, 6}}},
+    // Gain at noon: the classic overdrive in front of a clean amp.
+    {"Classic", true, {{ids::klnGain, 6}, {ids::klnTreble, 5}, {ids::klnLevel, 5.5}}},
+    // More gain, a little brighter: lead sustain.
+    {"Hot lead", true, {{ids::klnGain, 8}, {ids::klnTreble, 6}, {ids::klnLevel, 4.5}}},
+    // Treble down: round and dark.
+    {"Dark", true, {{ids::klnGain, 5}, {ids::klnTreble, 2}, {ids::klnLevel, 6}}},
+    // Treble up: cutting, for a dull amp.
+    {"Bright", true, {{ids::klnGain, 5}, {ids::klnTreble, 8}, {ids::klnLevel, 5}}},
+};
+
 // The acoustic simulator: body type (0 dreadnought, 1 jumbo, 2 parlor, 3 piezo), body, top, air and squash on the 0..10 scale, mix in percent.
 inline constexpr ModulePreset kAcousticPresets[] = {
     {"Off", false, {}},
@@ -280,6 +331,9 @@ inline PresetList modulePresets(sas::ModuleType type) {
         case T::Pitch: return list(kPitchPresets);
         case T::Boost: return list(kBoostPresets);
         case T::Acoustic: return list(kAcousticPresets);
+        case T::Klon: return list(kKlonPresets);
+        case T::Leslie: return list(kLesliePresets);
+        case T::SpringReverb: return list(kSpringPresets);
         case T::Limiter: return list(kLimiterPresets);
         default: return {};
     }

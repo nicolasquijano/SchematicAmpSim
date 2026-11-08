@@ -7,7 +7,7 @@
 namespace sas {
 
 namespace {
-constexpr const char* kNames[kModuleTypeCount] = {"Amp", "Cabinet", "Gate", "Compressor", "Overdrive", "NamPedal", "Phaser", "Chorus", "Vibe", "Pitch", "Eq", "Delay", "Reverb", "Splitter", "Mixer", "Tremolo", "Flanger", "Wah", "Fuzz", "Boost", "Limiter", "TapeEcho", "Acoustic"};
+constexpr const char* kNames[kModuleTypeCount] = {"Amp", "Cabinet", "Gate", "Compressor", "Overdrive", "NamPedal", "Phaser", "Chorus", "Vibe", "Pitch", "Eq", "Delay", "Reverb", "Splitter", "Mixer", "Tremolo", "Flanger", "Wah", "Fuzz", "Boost", "Limiter", "TapeEcho", "Acoustic", "Klon", "Leslie", "SpringReverb"};
 }
 
 const char* moduleTypeName(ModuleType t) { return kNames[std::size_t(t)]; }
@@ -30,6 +30,8 @@ Channels moduleChannels(ModuleType type) {
         case ModuleType::Boost:
         case ModuleType::Acoustic:
         case ModuleType::Limiter: return Channels::Flexible;
+        case ModuleType::Leslie: return Channels::MonoToStereo;
+        case ModuleType::SpringReverb:
         case ModuleType::Eq:
         case ModuleType::Delay:
         case ModuleType::TapeEcho:

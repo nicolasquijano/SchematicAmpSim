@@ -10,6 +10,9 @@
 
 #include "sas/chain.h"
 #include "sas/acoustic.h"
+#include "sas/klon.h"
+#include "sas/leslie.h"
+#include "sas/spring_reverb.h"
 #include "sas/boost.h"
 #include "sas/chorus.h"
 #include "sas/limiter.h"
@@ -101,6 +104,8 @@ using FlangerModule = MixFxModule<Flanger, FlangerParams, Channels::Flexible>;
 using WahModule = FxModule<Wah, WahParams, Channels::Flexible>;
 using BoostModule = FxModule<Boost, BoostParams, Channels::Flexible>;
 using AcousticModule = MixFxModule<Acoustic, AcousticParams, Channels::Flexible>;
+using LeslieModule = FxModule<Leslie, LeslieParams, Channels::MonoToStereo>;  // (it has its own Mix)
+using SpringReverbModule = FxModule<SpringReverb, SpringReverbParams, Channels::Stereo>;  // (it has its own Mix)
 
 // A limiter: it looks ahead, so it delays the signal by that time (reported as latency while it works).
 class LimiterModule final : public Module {
@@ -163,6 +168,29 @@ public:
 private:
     std::unique_ptr<Compressor> comp_;
     CompControls controls_;
+    bool on_ = false;
+};
+
+// The Klon-style overdrive circuit (sas/klon.h): mono, in front of the amp, with its buffer (it loads the guitar like the other pedals) and the latency of its 2x
+// oversampling. The circuit is only touched while it is on.
+class KlonModule final : public Module {
+public:
+    void prepare(double fs, int) override { klon_ = std::make_unique<Klon>(fs); }
+    void process(float* l, float*, std::size_t n) override { klon_->process(l, n); }
+    bool active() const override { return on_ && klon_; }
+    bool buffered() const override { return true; }
+    Channels channels() const override { return Channels::MonoOnly; }
+    double latencySamples() const override { return klon_ ? double(klon_->latencySamples()) : 0.0; }
+    void reset() override {
+        if (klon_) klon_->reset();
+    }
+    void setParams(bool on, const KlonControls& c) {
+        on_ = on;
+        if (on && klon_) klon_->setControls(c);
+    }
+
+private:
+    std::unique_ptr<Klon> klon_;
     bool on_ = false;
 };
 

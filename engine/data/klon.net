@@ -1,0 +1,84 @@
+* Klon Centaur-style overdrive, from the ElectroSmash "Klon Centaur Schematic Parts" drawing (the user's copy) read with the 2009 Aion trace.
+*
+* How it works: the input buffer U1A (TL072 on 9 V, biased at 4.5 V = VB) feeds three paths.
+*  - Gain path: C3 / R6 // C5 into U1B's + input. U1B is non-inverting, gain 1 + R12 // C8 over (R11 // C7 + R10 + the lower half of the dual GAIN pot): about 4.6
+*    at minimum and 26 at maximum, with a mid hump from R11 // C7. The upper half of GAIN is a shunt on the + input. Behind it C9 and R13 into two anti-parallel
+*    germanium diodes to ground (D2 / D3), then C10.
+*  - Clean path: the buffer through R5 // C4, the shunts R8 and C6 + R9 and the second half of the GAIN pot (wiper `bus`): it joins the gain path after the clipping
+*    through R15 + C11 and (R17, and C12 + R18) into the summing amplifier's input node, so some clean signal is always present.
+*  - A second clean branch R7 / C16 / R19 straight to the summing node.
+* U2A (TL072 on 16.2 V / -8.6 V, biased at 4.5 V) sums them inverting (R20 392k // C13 820p, R16 47k). U2B is the tone stage: R22 / R24 100k with the TREBLE pot RV2 (10k)
+* between R21 1.8k and R23 4.7k and C14 3.9n on its wiper. C15, R25 560 and the LEVEL pot into the output.
+*
+* Variable parts (set by the engine): VRG_B and VRG_T (the upper and lower halves of GAIN 1, 100k), VRG2_T and VRG2_B (GAIN 2), VRT_T and VRT_B (TREBLE),
+* VRL_T and VRL_B (LEVEL). Assumptions: the diodes are 1N34A-like (Is 200 nA, n 1.3); the op-amps are the limited element around the 4.5 V bias, with a
+* soft output limit of 3.2 V on 9 V (the indicator LED and its R14 are not part of the audio path) and 11 V on the doubled supply; the charge pump is not modelled, the rails are fixed.
+
+V VB vb 1 4.5
+C CB vb 0 47u
+
+I VIN gin 1
+R R1 gin a 10k
+C C1 a b 0.1u
+R R2 b vb 1M
+O U1A b nm o1 vb TL072_9
+R RFB1 o1 nm 1
+
+* Gain path.
+C C3 o1 na 0.1u
+R R6 na n6 10k
+C C5 na n6 68n
+R VRG_B n6 vb 50k
+R VRG_T p3 vb 50k
+R R10 p3 m6 2k
+R R11 m6 inv 15k
+C C7 m6 inv 82n
+O U1B n6 inv o1b vb TL072_9
+R R12 o1b inv 422k
+C C8 o1b inv 390p
+C C9 o1b d9 1u
+R R13 d9 nd 1k
+D D2 nd 0 GERMANIUM
+D D3 0 nd GERMANIUM
+R RBLEED nd 0 10M
+C C10 nd c10 1u
+
+* Clean path: through R5 // C4, shunted by R8 and C6 + R9, then the second half of GAIN.
+R R5 o1 y1 5.1k
+C C4 o1 y1 68n
+R R8 y1 vb 1.5k
+C C6 y1 c6 0.39u
+R R9 c6 vb 1k
+R VRG2_T y1 bus 50k
+R VRG2_B bus vb 50k
+R R7 na nb 1.5k
+C C16 nb 0 1u
+R R19 nb nsum 15k
+
+* Into the summing amplifier.
+R R16 c10 nsum 47k
+C C11 c10 c11 2.2n
+R R15 c11 bus 22k
+R R17 nsum bus 27k
+C C12 nsum c12 27n
+R R18 c12 bus 12k
+O U2A vb nsum o2a vb TL072_18
+R R20 o2a nsum 392k
+C C13 o2a nsum 820p
+
+* Tone stage.
+R R22 o2a nt 100k
+R R21 o2a pt 1.8k
+R VRT_T pt wt 5k
+R VRT_B wt pb 5k
+C C14 wt nt 3.9n
+O U2B vb nt o2b vb TL072_18
+R R24 o2b nt 100k
+R R23 o2b pb 4.7k
+
+* Output: C15, R25 and the LEVEL pot.
+C C15 o2b c15 4.7u
+R R25 c15 lt 560
+R VRL_T lt y 5k
+R VRL_B y 0 5k
+R R28 y 0 100k

@@ -15,7 +15,7 @@ namespace {
 
 // Caps (docs/MODULAR_RACK.md, 4.1; the CPU table in section 6 holds them).
 constexpr int kCaps[sas::kModuleTypeCount] = {2 /*Amp*/, 2 /*Cabinet*/, 2 /*Gate*/, 2 /*Compressor*/, 4 /*Overdrive*/, 2 /*NamPedal*/, 2 /*Phaser*/,
-                                              2 /*Chorus*/, 2 /*Vibe*/, 2 /*Pitch*/, 2 /*Eq*/, 2 /*Delay*/, 2 /*Reverb*/, 1 /*Splitter*/, 1 /*Mixer*/, 2 /*Tremolo*/, 2 /*Flanger*/, 2 /*Wah*/, 2 /*Fuzz*/, 2 /*Boost*/, 2 /*Limiter*/, 2 /*TapeEcho*/, 2 /*Acoustic*/};
+                                              2 /*Chorus*/, 2 /*Vibe*/, 2 /*Pitch*/, 2 /*Eq*/, 2 /*Delay*/, 2 /*Reverb*/, 1 /*Splitter*/, 1 /*Mixer*/, 2 /*Tremolo*/, 2 /*Flanger*/, 2 /*Wah*/, 2 /*Fuzz*/, 2 /*Boost*/, 2 /*Limiter*/, 2 /*TapeEcho*/, 2 /*Acoustic*/, 2 /*Klon*/, 2 /*Leslie*/, 2 /*SpringReverb*/};
 
 // Mono: both channels of a stereo pair get the same modulation. Stereo: the right channel's modulation is out of step with the left's.
 std::unique_ptr<juce::AudioParameterChoice> channelMode(const juce::ParameterID& id, const juce::String& name) {
@@ -90,6 +90,9 @@ const std::vector<const char*>& paramIds(ModuleType type) {
     static const std::vector<const char*> fuzz{ids::fzOn, ids::fzType, ids::fzFuzz, ids::fzTone, ids::fzBias, ids::fzMix, ids::fzLevel};
     static const std::vector<const char*> boost{ids::bstOn, ids::bstGain, ids::bstTone, ids::bstSoft};
     static const std::vector<const char*> acoustic{ids::acOn, ids::acType, ids::acBody, ids::acTop, ids::acAir, ids::acSquash, ids::acMix};
+    static const std::vector<const char*> leslie{ids::lesOn, ids::lesSpeed, ids::lesDepth, ids::lesBalance, ids::lesMix};
+    static const std::vector<const char*> spring{ids::spOn, ids::spType, ids::spTone, ids::spMix};
+    static const std::vector<const char*> klon{ids::klnOn, ids::klnGain, ids::klnTreble, ids::klnLevel};
     static const std::vector<const char*> limiter{ids::limOn, ids::limGain, ids::limCeiling, ids::limRelease};
     static const std::vector<const char*> tape{ids::tpOn, ids::tpTime, ids::tpHeads, ids::tpIntensity, ids::tpMix, ids::tpTone, ids::tpWow, ids::tpFlutter, ids::tpSat, ids::tpStereo};
     static const std::vector<const char*> pitch{ids::pitch, ids::pitchFine};
@@ -121,6 +124,9 @@ const std::vector<const char*>& paramIds(ModuleType type) {
         case ModuleType::Fuzz: return fuzz;
         case ModuleType::Boost: return boost;
         case ModuleType::Acoustic: return acoustic;
+        case ModuleType::Klon: return klon;
+        case ModuleType::Leslie: return leslie;
+        case ModuleType::SpringReverb: return spring;
         case ModuleType::TapeEcho: return tape;
         case ModuleType::Limiter: return limiter;
         case ModuleType::Pitch: return pitch;
@@ -147,6 +153,9 @@ const char* onId(ModuleType type) {
         case ModuleType::Fuzz: return ids::fzOn;
         case ModuleType::Boost: return ids::bstOn;
         case ModuleType::Acoustic: return ids::acOn;
+        case ModuleType::Klon: return ids::klnOn;
+        case ModuleType::Leslie: return ids::lesOn;
+        case ModuleType::SpringReverb: return ids::spOn;
         case ModuleType::TapeEcho: return ids::tpOn;
         case ModuleType::Limiter: return ids::limOn;
         case ModuleType::Eq: return ids::eqOn;
@@ -271,6 +280,25 @@ void addParams(Layout& l, ModuleType type, int k) {
             l.add(channelMode(id(I(ids::tpStereo)), N("Tape channels")));
             break;
         }
+        case ModuleType::Leslie:
+            l.add(toggle(I(ids::lesOn), N("Leslie"), false));
+            l.add(std::make_unique<juce::AudioParameterChoice>(id(I(ids::lesSpeed)), N("Leslie speed"), juce::StringArray{"Stop", "Slow", "Fast"}, 1));
+            l.add(knob(I(ids::lesDepth), N("Leslie depth"), 7.0f));
+            l.add(knob(I(ids::lesBalance), N("Leslie horn rotor balance"), 5.0f));
+            l.add(pct(I(ids::lesMix), N("Leslie mix"), 0.0f, 100.0f, 100.0f));
+            break;
+        case ModuleType::SpringReverb:
+            l.add(toggle(I(ids::spOn), N("Spring reverb"), false));
+            l.add(std::make_unique<juce::AudioParameterChoice>(id(I(ids::spType)), N("Spring reverb tank"), juce::StringArray{"Short", "Medium", "Long"}, 1));
+            l.add(knob(I(ids::spTone), N("Spring reverb tone"), 5.0f));
+            l.add(pct(I(ids::spMix), N("Spring reverb mix"), 0.0f, 100.0f, 30.0f));
+            break;
+        case ModuleType::Klon:
+            l.add(toggle(I(ids::klnOn), N("Klon"), false));
+            l.add(knob(I(ids::klnGain), N("Klon gain"), 5.0f));
+            l.add(knob(I(ids::klnTreble), N("Klon treble"), 5.0f));
+            l.add(knob(I(ids::klnLevel), N("Klon level"), 5.0f));
+            break;
         case ModuleType::Acoustic:
             l.add(toggle(I(ids::acOn), N("Acoustic"), false));
             l.add(std::make_unique<juce::AudioParameterChoice>(id(I(ids::acType)), N("Acoustic body type"), juce::StringArray{"Dreadnought", "Jumbo", "Parlor", "Piezo"}, 0));

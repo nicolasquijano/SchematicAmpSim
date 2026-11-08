@@ -84,3 +84,11 @@ target_link_libraries(sas_acoustic_check PRIVATE sas_engine)
 # The Jazz Chorus preamp: gain, the distortion switch and what the spring reverb adds.
 add_executable(sas_jc_check jc_check.cpp)
 target_link_libraries(sas_jc_check PRIVATE sas_engine sas_amps)
+
+# The Klon-style drive: level and gain behaviour of the circuit.
+add_executable(sas_klon_check klon_check.cpp)
+target_link_libraries(sas_klon_check PRIVATE sas_engine)
+
+# The Leslie and the spring reverb modules: the sway between the channels and the tail of each tank.
+add_executable(sas_leslie_spring_check leslie_spring_check.cpp)
+target_link_libraries(sas_leslie_spring_check PRIVATE sas_engine)

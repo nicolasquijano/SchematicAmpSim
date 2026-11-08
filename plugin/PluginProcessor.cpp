@@ -87,6 +87,9 @@ Layout SasProcessor::createLayout(const std::vector<sas::AmpDef>& defs) {
     RackState::addParams(l, sas::ModuleType::Boost, 0);
     RackState::addParams(l, sas::ModuleType::TapeEcho, 0);
     RackState::addParams(l, sas::ModuleType::Acoustic, 0);
+    RackState::addParams(l, sas::ModuleType::Klon, 0);
+    RackState::addParams(l, sas::ModuleType::Leslie, 0);
+    RackState::addParams(l, sas::ModuleType::SpringReverb, 0);
     RackState::addParams(l, sas::ModuleType::Limiter, 0);
     RackState::addParams(l, sas::ModuleType::Compressor, 0);
     RackState::addParams(l, sas::ModuleType::NamPedal, 0);
@@ -517,6 +520,33 @@ void SasProcessor::applyModuleParams(const sas::RackOrder& order) {
                 static_cast<sas::TapeEchoModule*>(m)->setParams(q);
                 break;
             }
+            case T::Leslie: {
+                sas::LeslieParams q;
+                q.on = p(ids::lesOn) > 0.5;
+                q.speed = int(p(ids::lesSpeed) + 0.5);
+                q.depth = p(ids::lesDepth) / 10.0;
+                q.balance = p(ids::lesBalance) / 10.0;
+                q.mix = p(ids::lesMix) / 100.0;
+                static_cast<sas::LeslieModule*>(m)->setParams(q);
+                break;
+            }
+            case T::SpringReverb: {
+                sas::SpringReverbParams q;
+                q.on = p(ids::spOn) > 0.5;
+                q.type = int(p(ids::spType) + 0.5);
+                q.tone = p(ids::spTone) / 10.0;
+                q.mix = p(ids::spMix) / 100.0;
+                static_cast<sas::SpringReverbModule*>(m)->setParams(q);
+                break;
+            }
+            case T::Klon: {
+                sas::KlonControls q;
+                q.gain = p(ids::klnGain) / 10.0;
+                q.treble = p(ids::klnTreble) / 10.0;
+                q.level = p(ids::klnLevel) / 10.0;
+                static_cast<sas::KlonModule*>(m)->setParams(p(ids::klnOn) > 0.5, q);
+                break;
+            }
             case T::Acoustic: {
                 sas::AcousticParams q;
                 q.on = p(ids::acOn) > 0.5;
@@ -892,6 +922,9 @@ std::unique_ptr<sas::Module> SasProcessor::makeModule(sas::ModuleType type, int 
         case T::Fuzz: return std::make_unique<sas::FuzzModule>();
         case T::Boost: return std::make_unique<sas::BoostModule>();
         case T::Acoustic: return std::make_unique<sas::AcousticModule>();
+        case T::Klon: return std::make_unique<sas::KlonModule>();
+        case T::Leslie: return std::make_unique<sas::LeslieModule>();
+        case T::SpringReverb: return std::make_unique<sas::SpringReverbModule>();
         case T::TapeEcho: return std::make_unique<sas::TapeEchoModule>();
         case T::Limiter: return std::make_unique<sas::LimiterModule>();
         case T::Pitch: return std::make_unique<sas::PitchModule>();
@@ -1023,7 +1056,7 @@ bool SasProcessor::addModule(sas::ModuleType type, int insertAt, int wantedLane)
         auto firstTimeEffect = [&] {
             for (int i = 0; i < rackOrder_.count; ++i) {
                 const auto t = rackOrder_.slots[std::size_t(i)].type;
-                if (t == T::Delay || t == T::TapeEcho || t == T::Reverb || t == T::Limiter) return i;
+                if (t == T::Delay || t == T::TapeEcho || t == T::Reverb || t == T::SpringReverb || t == T::Limiter) return i;
             }
             return rackOrder_.count;
         };
@@ -1033,7 +1066,7 @@ bool SasProcessor::addModule(sas::ModuleType type, int insertAt, int wantedLane)
                 insertAt = ampAt;
                 while (insertAt > 0 && rackOrder_.slots[std::size_t(insertAt - 1)].type == T::Overdrive) --insertAt;
                 break;
-            case T::Gate: case T::NamPedal: case T::Pitch: case T::Wah: case T::Fuzz: case T::Boost: case T::Acoustic: {
+            case T::Gate: case T::NamPedal: case T::Pitch: case T::Wah: case T::Fuzz: case T::Boost: case T::Acoustic: case T::Klon: {
                 // In front of the compressor and the overdrive that sit next to the amp, so the amp keeps running them as it always did.
                 insertAt = ampAt;
                 while (insertAt > 0 && (rackOrder_.slots[std::size_t(insertAt - 1)].type == T::Overdrive || rackOrder_.slots[std::size_t(insertAt - 1)].type == T::Compressor)) --insertAt;

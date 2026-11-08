@@ -21,7 +21,7 @@
 //
 // Node "0" or "gnd" is ground. A value is an expression without spaces: numbers with an SI suffix
 // (k M G m u n p f; M is mega, m is milli; the schematic form 4k7 = 4.7k, 1M0 = 1M also works), parameters, + - * / ( ) and sqrt exp ln abs.
-// MODEL is a built-in name: 12AX7, 12AT7, 12AY7, 6550DS (data sheet fits), ECC83, ECC81, EL34, 6550 (stock Koren), 6L6GC, 6L6GCDS (data sheet fit), EL84, 6V6GT, SIGNAL, RECTIFIER_BRIDGE, C1815, MPSA06, MMBT6429 (N), LM13700 (A), RC4558, NJM072 / NJM4558 (op-amps on +-15 V), JC_POWER (a 60 W solid-state output stage as one op-amp).
+// MODEL is a built-in name: 12AX7, 12AT7, 12AY7, 6550DS (data sheet fits), ECC83, ECC81, EL34, 6550 (stock Koren), 6L6GC, 6L6GCDS (data sheet fit), EL84, 6V6GT, SIGNAL, RECTIFIER_BRIDGE, C1815, MPSA06, MMBT6429 (N), LM13700 (A), RC4558, NJM072 / NJM4558 (op-amps on +-15 V), TL072_9 / TL072_18 (op-amps on 9 V / 18 V around a 4.5 V bias), GERMANIUM (D), JC_POWER (a 60 W solid-state output stage as one op-amp).
 
 #include <map>
 #include <stdexcept>

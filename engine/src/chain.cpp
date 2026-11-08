@@ -249,7 +249,7 @@ void Chain::processAmp(const float* mono, float* out, std::size_t n) {
                 break;
         }
         // The speaker sees the real drive (before the loudness trim); the trim is applied after it.
-        volts = geq_.process(volts);
+        volts = float(geq_.process(double(volts)));
         float y = speaker_.process(volts / float(kOutputFullScaleVolts)) * ampTrim_;
         if (cabOn) y = cab_.process(y);
         out[i] = y;

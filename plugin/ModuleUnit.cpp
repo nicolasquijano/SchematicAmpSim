@@ -36,6 +36,9 @@ const std::vector<Item>& itemsFor(ModuleType t) {
     static const std::vector<Item> tape{{Item::Knob, ids::tpTime, "TIME ms"}, {Item::Combo, ids::tpHeads, "HEADS"}, {Item::Knob, ids::tpIntensity, "INTENSITY %"},
                                         {Item::Knob, ids::tpMix, "MIX %"}, {Item::Knob, ids::tpTone, "TONE Hz"}, {Item::Knob, ids::tpWow, "WOW %"},
                                         {Item::Knob, ids::tpFlutter, "FLUTTER %"}, {Item::Knob, ids::tpSat, "SATURATION %"}, {Item::Combo, ids::tpStereo, "CHANNELS"}};
+    static const std::vector<Item> leslie{{Item::Combo, ids::lesSpeed, "SPEED"}, {Item::Knob, ids::lesDepth, "DEPTH"}, {Item::Knob, ids::lesBalance, "HORN / ROTOR"}, {Item::Knob, ids::lesMix, "MIX %"}};
+    static const std::vector<Item> spring{{Item::Combo, ids::spType, "TANK"}, {Item::Knob, ids::spTone, "TONE"}, {Item::Knob, ids::spMix, "MIX %"}};
+    static const std::vector<Item> klon{{Item::Knob, ids::klnGain, "GAIN"}, {Item::Knob, ids::klnTreble, "TREBLE"}, {Item::Knob, ids::klnLevel, "LEVEL"}};
     static const std::vector<Item> acoustic{{Item::Combo, ids::acType, "BODY TYPE"}, {Item::Knob, ids::acBody, "BODY"}, {Item::Knob, ids::acTop, "TOP"},
                                             {Item::Knob, ids::acAir, "AIR"}, {Item::Knob, ids::acSquash, "SQUASH"}, {Item::Knob, ids::acMix, "MIX %"}};
     static const std::vector<Item> boost{{Item::Knob, ids::bstGain, "GAIN dB"}, {Item::Knob, ids::bstTone, "TONE"}, {Item::Toggle, ids::bstSoft, "Soft clip"}};
@@ -69,6 +72,9 @@ const std::vector<Item>& itemsFor(ModuleType t) {
         case ModuleType::Fuzz: return fuzz;
         case ModuleType::Boost: return boost;
         case ModuleType::Acoustic: return acoustic;
+        case ModuleType::Klon: return klon;
+        case ModuleType::Leslie: return leslie;
+        case ModuleType::SpringReverb: return spring;
         case ModuleType::TapeEcho: return tape;
         case ModuleType::Limiter: return limiter;
         case ModuleType::Pitch: return pitch;
@@ -95,6 +101,9 @@ const char* nameOf(ModuleType t) {
         case ModuleType::Fuzz: return "FUZZ";
         case ModuleType::Boost: return "CLEAN BOOST";
         case ModuleType::Acoustic: return "ACOUSTIC SIM";
+        case ModuleType::Klon: return "KLON-STYLE DRIVE";
+        case ModuleType::Leslie: return "LESLIE ROTARY";
+        case ModuleType::SpringReverb: return "SPRING REVERB";
         case ModuleType::TapeEcho: return "TAPE ECHO";
         case ModuleType::Limiter: return "LIMITER";
         case ModuleType::Pitch: return "PITCH";
