@@ -5,9 +5,10 @@ version numbers follow [Semantic Versioning](https://semver.org/) (see [docs/REL
 
 ## [Unreleased]
 
+## [0.4.0-beta] - 2026-11-08
+
 ### Added
 - **The amp list is grouped by character**: clean amps, crunch amps, high-gain amps, bass amps and other (the NAM loader), each group in alphabetical order, with a header for each group (amp.json `category`; the search still works and hides the empty groups). The `order` of each amp, which saved projects store, did not change.
-- **The "German Lead 650" (an ENGL E650 II transcription) was removed**: its lead channel never sounded right (the drawing as read was far too hot, and the relay logic could not be settled from the contacts).
 - **Leslie** (rotary speaker, Modulation) and **Spring reverb** (Space), two new modules of the rack. The Leslie splits the sound at 800 Hz into a horn and a rotor that turn at their own rates (Slow 0.8 / 0.67 Hz, Fast 6.7 / 5.8 Hz, with the horn and the heavy drum gliding to the new speed in about 1 and 3 seconds; Stop is the brake), two microphones 120 degrees apart hear the Doppler and the tremolo, and the output is stereo; knobs SPEED, DEPTH, HORN / ROTOR and MIX, 7 presets (`engine/include/sas/leslie.h`). The spring reverb is the behavioural tank of the amps (`sas/spring.h`) with a left and a right tank of slightly different lengths, three tanks (Short, Medium, Long), TONE and MIX, 7 presets (`engine/include/sas/spring_reverb.h`). Both fade over 20 ms when switched; the spring's tail does not ring out. Tools: `sas_klon_check`, `sas_leslie_spring_check`.
 - **Klon-style overdrive**, a new pedal of the rack (Effects, **KLON-STYLE DRIVE**), solved as a circuit from the ElectroSmash drawing of the Klon Centaur: the input buffer, the gain stage (non-inverting, gain 4.6 to 26 with a mid hump) into two germanium diodes, the clean path that stays in the mix through the second half of the dual GAIN pot, the summing amplifier, the tone stage and the level. Knobs GAIN, TREBLE and LEVEL, 6 presets; it runs at twice the host rate and loads the guitar like the other pedals. The charge pump is not modelled (the rails are fixed) and the diodes are an assumed 1N34A-like model; not compared with a real pedal.
 - **Graphic equaliser inside an amp** (`graphic_eq` in amp.json, `sas/graphic_eq.h`): fixed bands, each a peaking filter with a slider (plugin parameters `aeq1..5`, 5 is flat, up to the band's `range_db`), applied at the output of the amp before the speaker, so it works in every quality. The American Lead C+ has the Mark's five bands (60 Hz, 240 Hz, 750 Hz, 2.2 kHz and 6.6 kHz, +-12 dB, one octave wide; the drawn values are not read from the original).
@@ -50,6 +51,12 @@ version numbers follow [Semantic Versioning](https://semver.org/) (see [docs/REL
 
 ### Migrated
 - Projects and presets saved before the rack (without a `<RACK>` node) open as they were: the rack is built from the old parameters, with the same order, and renders the same sound (checked against reference renders). It holds the modules that were on or had their knobs touched, as bypassed modules if they were off, plus the gate, the amp and the cabinet; a switch that an old project automated but that was untouched in the saved state has no module to act on until you add one.
+
+### Known limitations (new in this version)
+- The new amps were transcribed from the users' drawings and measured, not compared with the real amplifiers; their output levels were set by measurement and the tone is not tuned by ear.
+- The American Lead C+ has no reverb, no Simul-Class switch and no mods of the C++ kind; the American Clean 120's power amplifier is one op-amp (not the discrete stage); the American 5153's feedback, presence and resonance board is assumed.
+- The Klon-style drive has no charge pump (fixed rails) and an assumed germanium diode model; the spring reverb's tail does not ring out when the module is switched off.
+- The automated tests were not run for this version.
 
 ## [0.3.0-beta] - 2026-11-03
 
@@ -173,6 +180,7 @@ The first public release: a Windows VST3 with seven circuit-level amplifiers.
 - While the compressor or the overdrive is on, the pickup and cable of the Guitar Input panel have no effect.
 - The saved-project format may still change between 0.x versions.
 
+[0.4.0-beta]: https://github.com/nicolasquijano/SchematicAmpSim/releases/tag/v0.4.0-beta
 [0.3.0-beta]: https://github.com/nicolasquijano/SchematicAmpSim/releases/tag/v0.3.0-beta
 [0.2.0-beta]: https://github.com/nicolasquijano/SchematicAmpSim/releases/tag/v0.2.0-beta
 [0.1.0-beta]: https://github.com/nicolasquijano/SchematicAmpSim/releases/tag/v0.1.0-beta
