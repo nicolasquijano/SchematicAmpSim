@@ -1,6 +1,6 @@
 name: Release
 
-# Pushing a tag like v0.2.0 or v0.2.0-beta builds the Windows and macOS packages and creates a DRAFT release with them attached.
+# Pushing a tag like v0.2.0 or v0.2.0-beta builds the Windows, macOS and Linux packages and creates a DRAFT release with them attached.
 # The draft is for you to read, try and publish by hand (a tag with a "-" in it, like -beta, is marked as a pre-release).
 # See docs/RELEASING.md.
 
@@ -62,9 +62,36 @@ jobs:
           name: macos-packages
           path: dist/*
 
+  linux:
+    name: Linux
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/cache@v4
+        with:
+          path: third_party
+          key: third-party-${{ hashFiles('CMakeLists.txt') }}
+      - name: Tools and libraries
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ninja-build pkg-config libasound2-dev libx11-dev libxrandr-dev libxinerama-dev libxcursor-dev libxext-dev libfreetype-dev libfontconfig1-dev libgl1-mesa-dev xvfb
+      - name: Build and test
+        run: |
+          cmake --preset release-linux
+          cmake --build --preset release-linux
+          xvfb-run -a ctest --preset release-linux
+      - name: Package
+        run: ./package-linux.sh
+      - uses: actions/upload-artifact@v4
+        with:
+          name: linux-packages
+          path: dist/*
+
   draft-release:
     name: Draft release
-    needs: [windows, macos]
+    needs: [windows, macos, linux]
+    # A draft is only a draft: when macOS or Linux fail, the Windows packages are still attached and you decide what to do.
+    if: ${{ always() && needs.windows.result == 'success' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

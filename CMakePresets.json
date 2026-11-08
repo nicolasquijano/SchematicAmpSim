@@ -14,6 +14,16 @@
       "condition": { "type": "equals", "lhs": "${hostSystemName}", "rhs": "Windows" }
     },
     {
+      "name": "release-linux",
+      "displayName": "Ninja + GCC or clang, Release (Linux)",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release"
+      },
+      "condition": { "type": "equals", "lhs": "${hostSystemName}", "rhs": "Linux" }
+    },
+    {
       "name": "release-macos",
       "displayName": "Ninja + clang, Release, universal (macOS)",
       "generator": "Ninja",
@@ -26,10 +36,12 @@
   ],
   "buildPresets": [
     { "name": "release", "configurePreset": "release" },
-    { "name": "release-macos", "configurePreset": "release-macos" }
+    { "name": "release-macos", "configurePreset": "release-macos" },
+    { "name": "release-linux", "configurePreset": "release-linux" }
   ],
   "testPresets": [
     { "name": "release", "configurePreset": "release", "output": { "outputOnFailure": true } },
-    { "name": "release-macos", "configurePreset": "release-macos", "output": { "outputOnFailure": true } }
+    { "name": "release-macos", "configurePreset": "release-macos", "output": { "outputOnFailure": true } },
+    { "name": "release-linux", "configurePreset": "release-linux", "output": { "outputOnFailure": true } }
   ]
 }

@@ -188,7 +188,7 @@ build\tests\sas_plugin_tests.exe "readme screenshots"
 
 ## Status
 
-Windows VST3 and the standalone application are released. macOS (VST3 and Audio Unit, one binary for Apple Silicon and Intel) is built and tested by GitHub Actions on every push, but has not been tried on a real Mac yet and is not notarized. Planned: AAX. The Eco mode and the level
+Windows VST3 and the standalone application are released. A Linux build (VST3 and standalone, x86_64) is built and tested by GitHub Actions on Ubuntu but has not been tried in a Linux DAW yet. macOS (VST3 and Audio Unit, one binary for Apple Silicon and Intel) is built and tested by GitHub Actions on every push, but has not been tried on a real Mac yet and is not notarized. Planned: AAX. The Eco mode and the level
 matching have been verified with tests, not yet extensively by ear.
 
 ## License and trademarks

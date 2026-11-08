@@ -5,6 +5,9 @@ version numbers follow [Semantic Versioning](https://semver.org/) (see [docs/REL
 
 ## [Unreleased]
 
+### Added
+- **Linux build** (x86_64): VST3 and standalone application, built and tested by GitHub Actions on Ubuntu (a `linux` job in `ci.yml` and `release.yml`, `package-linux.sh`, the `release-linux` CMake preset), packaged as a `.tar.gz`. It has not been tried by ear in a Linux DAW.
+
 ## [0.4.0-beta] - 2026-11-08
 
 ### Added

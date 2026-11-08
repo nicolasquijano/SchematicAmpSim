@@ -65,10 +65,10 @@ the `unins000.exe` it leaves there.
 
 Two workflows live in `.github/workflows/`:
 
-- **`ci.yml`** runs on every push to master and every pull request: it builds and runs the tests on Windows (MSVC) and on macOS (clang, universal
+- **`ci.yml`** runs on every push to master and every pull request: it builds and runs the tests on Windows (MSVC), on Linux (GCC, Ubuntu) and on macOS (clang, universal
   arm64 + x86_64, VST3 and Audio Unit), and attaches the packages to the run as artifacts.
 - **`release.yml`** runs when a tag `v*` is pushed (step 7 above): it builds both platforms, packages them and creates a **draft** release with the
-  Windows installer and zip, the macOS zip, the checksums and the changelog section of that version as notes. A tag with a `-` in it
+  Windows installer and zip, the macOS zip, the Linux tarball (`package-linux.sh`), the checksums and the changelog section of that version as notes. A tag with a `-` in it
   (`-beta`) is marked as a pre-release. Read the draft, try the files, then publish it by hand. The manual steps above still work without it.
 
 Neither workflow has run yet on GitHub: the first run may need small fixes (paths on the runners, a missing tool).
