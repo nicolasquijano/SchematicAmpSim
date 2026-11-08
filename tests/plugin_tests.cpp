@@ -14,6 +14,9 @@
 #include "EqPresets.h"
 #include "FxPresets.h"
 #include "I18n.h"
+#include "ModuleUnit.h"
+
+using sas::ModuleType;
 
 // The tests read texts of the interface in English, whatever the language of the machine they run on.
 static const int sForceEnglish = (i18n::useForSession(std::getenv("SAS_TEST_LANGUAGE") != nullptr && std::string(std::getenv("SAS_TEST_LANGUAGE")) == "es" ? i18n::Language::Spanish : i18n::Language::English), 0);
@@ -792,7 +795,7 @@ TEST_CASE("readme screenshots", "[.screenshots]") {
 
     // Four more amps in one picture.
     {
-        const char* ids4[4] = {"twin_65", "tweed_5e3", "highgain_120", "ac30_normal"};
+        const char* ids4[4] = {"twin_65", "plexi_1959", "jcm800_2203kk", "lead_c_plus"};
         juce::Image montage(juce::Image::RGB, 1600, 820, true);
         {
             juce::Graphics g(montage);
@@ -805,60 +808,51 @@ TEST_CASE("readme screenshots", "[.screenshots]") {
         savePng(montage, "amps.png");
     }
 
-    // The Effects page with the pedals and the gate switched on.
+    // The panels of the modules, as the rack's open panel draws them: units stacked on a plain host component, every module switched on.
+    auto panels = [&](const char* file, std::initializer_list<ModuleType> types) {
+        SasProcessor p;
+        for (auto type : types)
+            if (const char* on = RackState::onId(type)) setParam(p, on, 1.0f);
+        p.prepareToPlay(48000.0, 512);
+        std::unique_ptr<juce::AudioProcessorEditor> ed(p.createEditor());
+        juce::Component host;
+        host.setLookAndFeel(&ed->getLookAndFeel());
+        std::vector<std::unique_ptr<ModuleUnit>> units;
+        int y = 0;
+        for (auto type : types) {
+            units.push_back(std::make_unique<ModuleUnit>(p, sas::SlotRef{type, 0}));
+            auto& u = *units.back();
+            host.addAndMakeVisible(u);
+            u.setBounds(0, y, 860, u.preferredHeight());
+            y += u.preferredHeight() + 4;
+        }
+        host.setSize(860, y);
+        savePng(host.createComponentSnapshot(host.getLocalBounds(), true, scale), file);
+        host.setLookAndFeel(nullptr);
+    };
+    panels("modules-drive.png", {ModuleType::Compressor, ModuleType::Overdrive, ModuleType::Klon, ModuleType::Fuzz, ModuleType::Boost});
+    panels("modules-mod.png", {ModuleType::Phaser, ModuleType::Chorus, ModuleType::Vibe, ModuleType::Leslie, ModuleType::Tremolo, ModuleType::Flanger});
+    panels("modules-space.png", {ModuleType::Delay, ModuleType::TapeEcho, ModuleType::Reverb, ModuleType::SpringReverb});
+    panels("modules-tone.png", {ModuleType::Eq, ModuleType::Acoustic, ModuleType::Wah, ModuleType::Limiter});
+
+    // The rack with a few modules in it (the open panel is the amp's).
     {
         SasProcessor p;
-        setParam(p, ids::compOn, 1.0f);
-        setParam(p, ids::tsOn, 1.0f);
-        setParam(p, ids::gateOn, 1.0f);
-        setParam(p, ids::noise, 2.0f);
-        setParam(p, ids::wear, 3.0f);
         p.prepareToPlay(48000.0, 512);
-        REQUIRE(p.loadNamPedal(juce::File(SAS_NAM_EXAMPLES_DIR "/wavenet.nam")));
-        setParam(p, ids::nmpOn, 1.0f);
+        p.setRackOrder([] {
+            sas::RackOrder o;
+            for (auto s : {sas::SlotRef{ModuleType::Gate, 0}, {ModuleType::Klon, 0}, {ModuleType::Fuzz, 0}, {ModuleType::Amp, 0}, {ModuleType::Cabinet, 0},
+                           {ModuleType::Leslie, 0}, {ModuleType::Delay, 0}, {ModuleType::SpringReverb, 0}})
+                o.slots[std::size_t(o.count++)] = s;
+            return o;
+        }());
+        setParam(p, ids::klnOn, 1.0f);
+        setParam(p, ids::spOn, 1.0f);
+        setParam(p, ids::lesOn, 1.0f);
         std::unique_ptr<juce::AudioProcessorEditor> ed(p.createEditor());
         ed->setSize(1000, 520);
         play(p, *dynamic_cast<SasEditor*>(ed.get()), 196.0, 0.2);
-        clickTab(*ed, "Effects");
-        savePng(ed->createComponentSnapshot(ed->getLocalBounds(), true, scale), "effects.png");
-    }
-
-    // The Cabinet page with two impulse responses, a little width and double tracking.
-    {
-        auto makeIr = [](const juce::String& name, float smoothing, float decay) {
-            auto file = juce::File::getSpecialLocation(juce::File::tempDirectory).getChildFile(name);
-            file.deleteFile();
-            juce::WavAudioFormat wav;
-            std::unique_ptr<juce::AudioFormatWriter> w(wav.createWriterFor(new juce::FileOutputStream(file), 48000.0, 1, 24, {}, 0));
-            juce::AudioBuffer<float> ir(1, 12000);
-            juce::Random rnd(11);
-            float lp = 0.0f;
-            for (int i = 0; i < ir.getNumSamples(); ++i) {
-                const float noise = rnd.nextFloat() * 2.0f - 1.0f;
-                lp += smoothing * (noise - lp);
-                ir.setSample(0, i, (smoothing < 0.5f ? lp : noise - 0.6f * lp) * std::exp(-float(i) / decay));
-            }
-            w->writeFromAudioSampleBuffer(ir, 0, ir.getNumSamples());
-            return file;
-        };
-        const auto a = makeIr("Cabinet A.wav", 0.12f, 700.0f), b = makeIr("Cabinet B.wav", 0.5f, 500.0f);
-        SasProcessor p;
-        setParam(p, ids::cab, 2.0f);
-        p.prepareToPlay(48000.0, 512);
-        REQUIRE(p.loadImpulseResponse(a, 0));
-        REQUIRE(p.loadImpulseResponse(b, 1));
-        setParam(p, ids::irWidth, 4.0f);
-        setParam(p, ids::doubleAmount, 3.0f);
-        setParam(p, ids::speaker, 3.0f);
-        std::unique_ptr<juce::AudioProcessorEditor> ed(p.createEditor());
-        ed->setSize(1000, 520);
-        auto* se = dynamic_cast<SasEditor*>(ed.get());
-        play(p, *se, 196.0, 0.2);
-        se->updateImpulseStatus();
-        clickTab(*ed, "Cabinet");
-        savePng(ed->createComponentSnapshot(ed->getLocalBounds(), true, scale), "cabinet.png");
-        a.deleteFile();
-        b.deleteFile();
+        savePng(ed->createComponentSnapshot(ed->getLocalBounds(), true, scale), "rack.png");
     }
 
     // The tuner on an A2 (110 Hz), in tune.
@@ -877,7 +871,7 @@ TEST_CASE("readme screenshots", "[.screenshots]") {
 
     // The newest amps in one picture.
     {
-        const char* ids4[4] = {"deluxe_reverb", "boutique_od", "superlead_100", "modbe_100"};
+        const char* ids4[4] = {"american_5153", "jazz_clean_120", "triplestack_3ch", "svt_bass300"};
         juce::Image montage(juce::Image::RGB, 1600, 820, true);
         {
             juce::Graphics g(montage);
@@ -900,43 +894,6 @@ TEST_CASE("readme screenshots", "[.screenshots]") {
         ed->setSize(1000, 520);
         play(p, *dynamic_cast<SasEditor*>(ed.get()), 196.0, 0.2);
         savePng(ed->createComponentSnapshot(ed->getLocalBounds(), true, scale), "nam-loader.png");
-    }
-
-    // The Space page (delay and reverb on), the Mod page (phaser, chorus and vibe on) and the EQ page with a preset and the spectrum.
-    {
-        SasProcessor p;
-        setParam(p, ids::dlyOn, 1.0f);
-        setParam(p, ids::plOn, 1.0f);
-        setParam(p, ids::plShimmer, 25.0f);
-        p.prepareToPlay(48000.0, 512);
-        std::unique_ptr<juce::AudioProcessorEditor> ed(p.createEditor());
-        ed->setSize(1000, 520);
-        play(p, *dynamic_cast<SasEditor*>(ed.get()), 196.0, 0.2);
-        clickTab(*ed, "Space");
-        savePng(ed->createComponentSnapshot(ed->getLocalBounds(), true, scale), "space.png");
-    }
-    {
-        SasProcessor p;
-        setParam(p, ids::phOn, 1.0f);
-        setParam(p, ids::chOn, 1.0f);
-        setParam(p, ids::vbOn, 1.0f);
-        p.prepareToPlay(48000.0, 512);
-        std::unique_ptr<juce::AudioProcessorEditor> ed(p.createEditor());
-        ed->setSize(1000, 520);
-        play(p, *dynamic_cast<SasEditor*>(ed.get()), 196.0, 0.2);
-        clickTab(*ed, "Mod");
-        savePng(ed->createComponentSnapshot(ed->getLocalBounds(), true, scale), "mod.png");
-    }
-    {
-        SasProcessor p;
-        p.prepareToPlay(48000.0, 512);
-        p.applyEqPreset(3);
-        std::unique_ptr<juce::AudioProcessorEditor> ed(p.createEditor());
-        ed->setSize(1000, 520);
-        auto* se = dynamic_cast<SasEditor*>(ed.get());
-        for (int i = 0; i < 6; ++i) { run(p, 80, 196.0 * (1 + i % 3), 0.2); se->pollMeters(); }
-        clickTab(*ed, "EQ");
-        savePng(ed->createComponentSnapshot(ed->getLocalBounds(), true, scale), "eq.png");
     }
 }
 

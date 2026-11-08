@@ -14,38 +14,33 @@ English version: [README.md](README.md).
 
 ## Capturas
 
-Cada ampli tiene sus propios colores (la lista de amplis está a la izquierda). Cuatro de los dieciséis y, después, los cuatro más nuevos:
+Cada ampli tiene sus propios colores, y la lista de amplis (a la izquierda) está agrupada por carácter: limpios, crunch, alta ganancia y bajo. Cuatro de los veinte amplis de circuito y, después, los cuatro más nuevos (el American 5153, el American Clean 120, el American Triple Stack y el American Bass 300):
 
 <p align="center">
-  <img src="docs/images/amps.png" alt="American Twin, American Tweed, American 5051 y British Class A" width="800"><br>
-  <img src="docs/images/amps-new.png" alt="American Deluxe, American Boutique, American Lead 100 y British Mod 100" width="800">
+  <img src="docs/images/amps.png" alt="American Twin, British Plexi, British 800 KK y American Lead C+" width="800"><br>
+  <img src="docs/images/amps-new.png" alt="American 5153, American Clean 120, American Triple Stack y American Bass 300" width="800">
 </p>
 
-El **Rack**: todos los módulos en orden de señal, con un mapa del camino arriba y un **+** para agregar más.
+El **Rack**: todos los módulos en orden de señal, con un **+** para agregar más; el panel del módulo elegido se abre debajo (aquí el ampli, con su condición: válvulas, bias, ruido, desgaste).
 
 <p align="center">
-  <img src="docs/images/rack.png" alt="El rack: noise gate, dos overdrives, ampli con su condición, gabinete" width="800">
+  <img src="docs/images/rack.png" alt="El rack: noise gate, drive tipo Klon, fuzz, ampli, gabinete, Leslie, delay y reverb de resorte" width="800">
 </p>
 
-El módulo **Cabinet**: dos respuestas al impulso con sus curvas, la mezcla A / B, la dinámica del parlante, los controles
-estéreo y un modelo NAM de gabinete. La página **Effects**: compresor, overdrive, un pedal NAM y el estado del ampli
-(tubos, bias, ruido, desgaste, unidad). El **Tuner**:
+Los módulos, cada uno con sus presets: **compresor, overdrive, drive tipo Klon**, fuzz y boost; **phaser, chorus** (con los modos Juno y JC), vibe, **Leslie rotativo**, trémolo y flanger; **delay, eco de cinta, reverb y reverb de resorte**; **EQ, simulador acústico**, wah y limitador. El módulo **Cabinet** tiene dos impulsos con sus curvas, la mezcla A / B, la dinámica del parlante y los controles estéreo, y un modelo NAM de gabinete.
 
 <p align="center">
-  <img src="docs/images/cabinet.png" alt="La página Cabinet con dos impulsos" width="800"><br>
-  <img src="docs/images/effects.png" alt="La página Effects: compresor, overdrive, pedal NAM y condición del ampli" width="800"><br>
-  <img src="docs/images/tuner.png" alt="El afinador cromático sobre un La2, afinado" width="800">
+  <img src="docs/images/modules-drive.png" alt="Compresor, overdrive, drive tipo Klon, fuzz y boost" width="800"><br>
+  <img src="docs/images/modules-mod.png" alt="Phaser, chorus, vibe, Leslie, trémolo y flanger" width="800"><br>
+  <img src="docs/images/modules-space.png" alt="Delay, eco de cinta, reverb y reverb de resorte" width="800"><br>
+  <img src="docs/images/modules-tone.png" alt="EQ, simulador acústico, wah y limitador" width="800">
 </p>
 
-El ampli **NAM Loader** corre un modelo de Neural Amp Modeler en lugar de los circuitos; la página **Space** tiene el delay y
-el reverb (con shimmer); la página **Mod** el phaser, el chorus y el vibe; la página **EQ** un ecualizador de cinco bandas con
-el espectro de lo que suena:
+El ampli **NAM Loader** corre un modelo de Neural Amp Modeler en lugar de los circuitos; el **Tuner** es un afinador cromático:
 
 <p align="center">
   <img src="docs/images/nam-loader.png" alt="El ampli NAM Loader con un modelo cargado" width="800"><br>
-  <img src="docs/images/space.png" alt="La página Space: delay y reverb" width="800"><br>
-  <img src="docs/images/mod.png" alt="La página Mod: phaser, chorus y vibe" width="800"><br>
-  <img src="docs/images/eq.png" alt="La página EQ con un preset y el espectro" width="800">
+  <img src="docs/images/tuner.png" alt="El afinador cromático sobre un La2, afinado" width="800">
 </p>
 
 (Las imágenes las dibuja el propio editor: en "Estructura del repositorio" se explica cómo regenerarlas.)
@@ -70,7 +65,7 @@ de los proyectos guardados puede cambiar entre versiones 0.x. Las versiones y lo
   6V6, 6L6, 6550), diodos, BJT, amplificadores operacionales.
 - **Los amplis son datos, no código.** Cada ampli es una carpeta con una netlist y un `amp.json` que asigna perillas, jacks de entrada, presence,
   alimentación y nivel de salida a elementos del circuito. Agregar un ampli es agregar archivos; solo se recompila para incrustarlos.
-- **Dieciséis amplis incluidos** (más el NAM Loader). Los nombres que se muestran son genéricos a propósito:
+- **Veinte amplis incluidos** (más el NAM Loader). Los nombres que se muestran son genéricos a propósito:
 
   | Nombre | Circuito |
   |---|---|
@@ -84,6 +79,10 @@ de los proyectos guardados puede cambiar entre versiones 0.x. Las versiones y lo
   | British Hi-Fi | Cabezal de 100 W con mucho headroom y transformadores enormes: canales Brilliant y Normal mezclados, tone stack pasivo, master, cuatro EL34 con bias fijo |
   | British Or | Cabezal de 120 W de principios de los 70: dos etapas 12AX7 iguales alrededor del circuito de tono Orange, un conmutador FAC de seis posiciones, inversor catodino, cuatro EL34, control BOOST. Sin master |
   | American Bass 300 | Cabezal de bajo a válvulas de 300 W estilo 1972: dos canales, interruptores Ultra Lo y Ultra Hi, stack Baxandall, red de medios con inductor toroidal, seis 6550 a 660 V |
+  | British 800 KK | Cabezal de alta ganancia de firma: el preamp a válvulas del 2203 con cuatro KT88, más una etapa de entrada Beast conmutable (una etapa de ganancia NJM072 con dos notches, perilla **ASSAULT**, resuelta como circuito propio delante del preamp) y un **GATE** de ruido aproximado (un expansor descendente) |
+  | American Lead C+ | Cabezal lead de tres modos estilo años 80: modos Clean, Crunch y Lead con los interruptores shift y boost, interruptores Bright, un Master y un Lead Master cableados como divisores de cursor, un ecualizador gráfico de cinco bandas dentro del ampli (60 Hz a 6,6 kHz, ±12 dB), cuatro 6L6GC. Sin reverb ni interruptor Simul-Class |
+  | American Clean 120 | Ampli de estado sólido de 120 W y dos canales: preamp de operacionales discretos con un interruptor de distorsión, controles Bright y Hi-Treble, el bloque de reverb de resorte y una etapa de potencia modelada con un operacional; jacks Low y High, y chorus estéreo disponible en el rack como modo JC |
+  | American 5153 | Cabezal moderno de alta ganancia de 120 W con tres canales (Green, Blue y Red, cada uno con su ganancia, graves, medios, agudos y volumen), preamp de cuatro etapas repartido en tres netlists, inversor de fase de cola larga y cuatro 6L6GC. La placa de realimentación, presencia y resonancia es supuesta |
   | British Class A | Combo clase A de 30 W (dibujo del reissue Top Boost): canal Normal y canal Brilliant, control Cut, cuatro EL84 con bias de cátodo, sin realimentación |
   | American Tweed | Combo tweed de 12 W estilo años 50: dos canales con potenciómetros interactivos, inversor catodino, dos 6V6GT con bias de cátodo, sin realimentación, rectificador 5Y3GT |
   | American Deluxe | Combo blackface de 22 W estilo años 60: canales Normal y Vibrato, reverb con tanque de resorte, vibrato óptico, inversor 12AT7 de cola larga, dos 6V6GT, rectificador 5AR4 |
