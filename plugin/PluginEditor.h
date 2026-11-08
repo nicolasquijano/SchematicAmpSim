@@ -250,7 +250,7 @@ private:
 
     juce::ListBox ampList_{"amps", nullptr};
     juce::TextEditor ampSearch_;
-    std::vector<int> shown_;  // the amp indices that match the search, in list order
+    std::vector<int> shown_;  // the rows of the amp list: an amp index that matches the search, or -(group + 1) for the header of a group (clean, crunch, high gain, bass, other)
     juce::ComboBox quality_, jack_, cab_, pickup_, tube_, noise_, unit_;
     std::unique_ptr<AmpFace> face_;  // the amp's front, for amps that have a faceplate (replaces the generic knobs)
     juce::ComboBox selBox_[6];  // the amp's own switches

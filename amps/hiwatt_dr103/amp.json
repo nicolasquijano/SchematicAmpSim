@@ -1,6 +1,7 @@
 {
  "id": "hiwatt_dr103",
  "order": 9,
+ "category": "crunch",
  "output_db": 2.1,
  "name": "British Hi-Fi",
  "theme": {

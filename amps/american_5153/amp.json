@@ -1,8 +1,9 @@
 {
  "id": "american_5153",
  "order": 21,
+ "category": "highgain",
  "name": "American 5153",
- "output_db": 12.0,
+ "output_db": 4.0,
  "ui": [
   {
    "param": "volume2",

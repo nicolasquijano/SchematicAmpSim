@@ -92,3 +92,11 @@ target_link_libraries(sas_klon_check PRIVATE sas_engine)
 # The Leslie and the spring reverb modules: the sway between the channels and the tail of each tank.
 add_executable(sas_leslie_spring_check leslie_spring_check.cpp)
 target_link_libraries(sas_leslie_spring_check PRIVATE sas_engine)
+
+# Harmonic distortion of an amp (default knobs, first jack) for a 220 Hz sine at three guitar levels, through the whole chain.
+add_executable(sas_thd_check thd_check.cpp)
+target_link_libraries(sas_thd_check PRIVATE sas_engine sas_amps)
+
+# Voltages of named nodes of an amp's first preamp stage for a 220 Hz sine: DC, AC peak and THD at each (find the stage that clips).
+add_executable(sas_node_trace node_trace.cpp)
+target_link_libraries(sas_node_trace PRIVATE sas_engine sas_amps)

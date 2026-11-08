@@ -386,6 +386,7 @@ AmpDef loadAmpDef(const std::string& jsonText, const FileReader& read) {
         d.theme.knobBottom = colourOr(t, "knob_bottom", d.theme.knobBottom);
         d.theme.pointer = colourOr(t, "pointer", d.theme.pointer);
     }
+    if (j.contains("category")) d.category = str(j, "category", "");
     if (j.contains("ui"))
         for (const auto& u : j.at("ui")) {
             UiKnob k;

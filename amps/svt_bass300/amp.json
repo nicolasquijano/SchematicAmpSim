@@ -1,6 +1,7 @@
 {
  "id": "svt_bass300",
  "order": 11,
+ "category": "bass",
  "output_db": 3.1,
  "name": "American Bass 300",
  "theme": {

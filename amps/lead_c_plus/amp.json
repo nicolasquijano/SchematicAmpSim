@@ -1,8 +1,9 @@
 {
  "id": "lead_c_plus",
  "order": 18,
+ "category": "highgain",
  "name": "American Lead C+",
- "output_db": 0.0,
+ "output_db": 1.5,
  "ui": [
   {
    "param": "volume",
@@ -255,8 +256,9 @@
     "name": "lead_master",
     "default": 0.6,
     "pot": {
-     "type": "variable",
-     "resistor": "VR_LM",
+     "type": "wiper",
+     "top": "VR_LMT",
+     "bottom": "VR_LMB",
      "total": 250000.0,
      "taper": "log"
     }
@@ -265,8 +267,9 @@
     "name": "master",
     "default": 0.5,
     "pot": {
-     "type": "variable",
-     "resistor": "VR_M",
+     "type": "wiper",
+     "top": "VR_MT",
+     "bottom": "VR_MB",
      "total": 1000000.0,
      "taper": "log"
     }
@@ -429,12 +432,12 @@
    "jack": "input",
    "params": {
     "bass": 5,
-    "master": 6,
     "middle": 5,
     "presence": 5,
-    "reverb": 6,
     "treble": 6,
-    "volume": 3.6,
+    "master": 6,
+    "reverb": 6,
+    "volume": 7,
     "volume2": 6
    },
    "selectors": {
@@ -446,12 +449,12 @@
    "jack": "input",
    "params": {
     "bass": 5,
-    "master": 5,
     "middle": 5,
     "presence": 5,
-    "reverb": 6,
     "treble": 6,
-    "volume": 4.6,
+    "master": 6,
+    "reverb": 6,
+    "volume": 10,
     "volume2": 6
    },
    "selectors": {
@@ -463,13 +466,13 @@
    "jack": "input",
    "params": {
     "bass": 5,
-    "master": 5,
     "middle": 5,
     "presence": 5,
-    "reverb": 5,
     "treble": 6,
+    "master": 5,
+    "reverb": 5,
     "volume": 5,
-    "volume2": 0.9
+    "volume2": 4.3
    },
    "selectors": {
     "channel": 1
@@ -480,13 +483,13 @@
    "jack": "input",
    "params": {
     "bass": 5,
-    "master": 6,
     "middle": 6.5,
     "presence": 5,
-    "reverb": 7,
     "treble": 6.5,
+    "master": 5,
+    "reverb": 5,
     "volume": 5,
-    "volume2": 3.5
+    "volume2": 6.2
    },
    "selectors": {
     "channel": 1

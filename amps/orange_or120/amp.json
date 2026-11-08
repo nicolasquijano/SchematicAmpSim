@@ -1,6 +1,7 @@
 {
  "id": "orange_or120",
  "order": 10,
+ "category": "crunch",
  "output_db": 4.2,
  "name": "British Or",
  "theme": {

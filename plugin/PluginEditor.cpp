@@ -668,8 +668,23 @@ int SasEditor::getNumRows() { return int(shown_.size()); }
 void SasEditor::refreshAmpList() {
     const auto query = ampSearch_.getText().trim();
     shown_.clear();
-    for (int i = 0; i < ampNames_.size(); ++i)
-        if (query.isEmpty() || ampNames_[i].containsIgnoreCase(query)) shown_.push_back(i);
+    // Grouped by character, each group in alphabetical order; a group only shows when something in it matches.
+    static const char* const kGroups[] = {"clean", "crunch", "highgain", "bass", "other"};
+    const auto& defs = processor_.amps();
+    for (int g = 0; g < 5; ++g) {
+        std::vector<int> members;
+        for (int i = 0; i < ampNames_.size(); ++i) {
+            std::string cat = i < int(defs.size()) ? defs[std::size_t(i)].category : "other";
+            bool known = false;
+            for (const char* k : kGroups) known = known || cat == k;
+            if (!known) cat = "other";
+            if (cat == kGroups[g] && (query.isEmpty() || ampNames_[i].containsIgnoreCase(query))) members.push_back(i);
+        }
+        if (members.empty()) continue;
+        std::sort(members.begin(), members.end(), [&](int a, int b) { return ampNames_[a].compareIgnoreCase(ampNames_[b]) < 0; });
+        shown_.push_back(-(g + 1));
+        shown_.insert(shown_.end(), members.begin(), members.end());
+    }
     ampList_.updateContent();
     juce::SparseSet<int> sel;
     const auto it = std::find(shown_.begin(), shown_.end(), processor_.selectedAmpIndex());
@@ -686,6 +701,15 @@ void SasEditor::refreshAmpList() {
 
 void SasEditor::paintListBoxItem(int row, juce::Graphics& g, int w, int h, bool selected) {
     if (row < 0 || row >= int(shown_.size())) return;
+    if (shown_[std::size_t(row)] < 0) {  // the header of a group
+        static const char* const kTitles[] = {"Clean amps", "Crunch amps", "High-gain amps", "Bass amps", "Other"};
+        g.setColour(look_.label());
+        g.setFont(AmpLookAndFeel::font(10.5f, true, 0.12f));
+        g.drawText(tr(kTitles[-shown_[std::size_t(row)] - 1]).toUpperCase(), 10, 4, w - 14, h - 4, juce::Justification::centredLeft);
+        g.setColour(look_.label().withAlpha(0.25f));
+        g.fillRect(10, h - 1, w - 20, 1);
+        return;
+    }
     if (selected) {
         g.setGradientFill(juce::ColourGradient(look_.accent().withAlpha(0.26f), 0.0f, 0.0f, look_.accent().withAlpha(0.06f), float(w), 0.0f, false));
         g.fillRect(0, 0, w, h);
@@ -700,6 +724,12 @@ void SasEditor::paintListBoxItem(int row, juce::Graphics& g, int w, int h, bool 
 void SasEditor::selectedRowsChanged(int lastRow) {
     if (lastRow < 0 || lastRow >= int(shown_.size())) return;
     const int amp = shown_[std::size_t(lastRow)];
+    if (amp < 0) {  // a header cannot be chosen: the list goes back to the amp in use
+        juce::MessageManager::callAsync([safe = juce::Component::SafePointer<SasEditor>(this)] {
+            if (safe != nullptr) safe->refreshAmpList();
+        });
+        return;
+    }
     if (amp == processor_.selectedAmpIndex()) return;
     if (auto* param = processor_.apvts.getParameter(ids::amp)) {
         param->beginChangeGesture();

@@ -1,6 +1,7 @@
 {
  "id": "modbe_100",
  "order": 15,
+ "category": "highgain",
  "output_db": 0.7,
  "name": "British Mod 100",
  "theme": {

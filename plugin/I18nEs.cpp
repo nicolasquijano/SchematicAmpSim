@@ -35,6 +35,12 @@ const std::unordered_map<std::string, std::string>& spanishTable() {
     // The mods of the JCM800 (schematicheaven.net/mods/22032204mods.html)
     {"MEATY", "CARNOSO"},
     {"BEAST", "BEAST"},
+    {"Clean amps", "Amplis limpios"},
+    {"Crunch amps", "Amplis crunch"},
+    {"High-gain amps", "Amplis de alta ganancia"},
+    {"Bass amps", "Amplis de bajo"},
+    {"Other", "Otros"},
+    {"Hi-gain lead", "Lead de alta ganancia"},
     {"LESLIE ROTARY", "LESLIE ROTATIVO"},
     {"SPRING REVERB", "REVERB DE RESORTE"},
     {"HORN / ROTOR", "CORNETA / ROTOR"},

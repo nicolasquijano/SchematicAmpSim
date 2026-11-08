@@ -1,6 +1,7 @@
 {
   "id": "highgain_120",
   "order": 4,
+  "category": "highgain",
   "output_db": 11.0,
   "name": "American 5051",
 

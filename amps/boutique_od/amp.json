@@ -1,6 +1,7 @@
 {
  "id": "boutique_od",
  "order": 13,
+ "category": "crunch",
  "output_db": 12.0,
  "name": "American Boutique",
  "theme": {

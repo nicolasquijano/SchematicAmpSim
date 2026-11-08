@@ -1,6 +1,7 @@
 {
   "id": "triplestack_3ch",
   "order": 7,
+  "category": "highgain",
   "output_db": 7.0,
   "name": "American Triple Stack",
   "theme": {

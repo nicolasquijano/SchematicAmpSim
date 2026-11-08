@@ -276,6 +276,8 @@ struct AmpDef {
     // Position in the plugin's amp list (then by id). Saved projects store the list index, so an
     // amp keeps its `order` forever and new amps take the next number.
     int order = 1000;
+    // How the amp is grouped in the editor's list (amp.json "category"): "clean", "crunch", "highgain", "bass" or "other" (the default).
+    std::string category = "other";
     // Output trim in dB, set so that every amp plays at the same loudness at its default knobs
     // (see tools/sas_match_levels). Applied by the chain, not part of the circuit.
     double outputDb = 0.0;

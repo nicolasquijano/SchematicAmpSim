@@ -1,6 +1,7 @@
 {
   "id": "deluxe_reverb",
   "order": 12,
+  "category": "clean",
   "output_db": 9.0,
   "name": "American Deluxe",
 

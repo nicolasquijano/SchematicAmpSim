@@ -101,15 +101,16 @@ C C32 lo 0 500p
 * The lead output switch (LDR3A) into V2B's grid.
 R SW_LO lo g2b 1e12
 
-* V2B: R11 / C11 on the grid, 1.5k unbypassed cathode, plate R13; R105 and C9 to the LEAD MASTER (a 250k rheostat to ground through LDR4A, lead only).
+* V2B: R11 / C11 on the grid, 1.5k unbypassed cathode, plate R13; R105 and C9 to the LEAD MASTER (250k, a divider whose bottom goes to ground through LDR4A, so it only acts in the lead channel).
 T V2B g2b p2b k2b 12AX7
 R R11 g2b 0 680k
 C C11 g2b 0 47p
 R R13 x p2b 100k
 R R16 k2b 0 1.5k
 R R105 p2b r105 47k
-C C9 r105 m1o 0.047u
-R VR_LM m1o lm1 125k
+C C9 r105 mt 0.047u
+R VR_LMT mt m1o 1
+R VR_LMB m1o lm1 1
 R SW_LM lm1 0 1e12
 
 * Effects loop (R102 / R101 divider, send / return jacks closed, R12) into V2A, whose cathode has 1k with .47u and 22u (R20 68k, GAIN BOOST grounds it).
@@ -125,7 +126,8 @@ C C15 k2a c15 22u
 R R20 c15 0 68k
 R SW_BOOST c15 0 1e12
 
-* Output: C12, R106 (15k), then the MASTER (1M rheostat to ground). The power amp's input lives in poweramp.net.
+* Output: C12, R106 (15k), then the MASTER (1M, used as a volume control: a divider with the wiper as the output). The power amp's input lives in poweramp.net.
 C C12 p2a y1 0.047u
-R R106 y1 y 15k
-R VR_M y 0 500k
+R R106 y1 mt2 15k
+R VR_MT mt2 y 1
+R VR_MB y 0 1

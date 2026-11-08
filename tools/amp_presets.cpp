@@ -71,11 +71,6 @@ const std::vector<Recipe>& recipes() {
             {"Edge of breakup", 3, "rhythm", "volume2", {{"power", 5}}, {}},
             {"Crunch", 7, "crunch", "volume2", {{"power", 5}}, {}},
             {"Lead", 13, "lead", "volume", {{"master", 5}, {"middle", 5}}, {}, 0.3}}},
-        {"engl_e650", {}, {
-            {"Clean", 0.8, "input", "volume", {{"master", 5}, {"treble", 6}, {"bass", 5}, {"middle", 5}}, {{"channel", 0}}},
-            {"Edge of breakup", 3, "input", "volume", {{"master", 5}, {"treble", 6}, {"bass", 5}, {"middle", 5}}, {{"channel", 0}, {"bright", 1}}},
-            {"Crunch", 7, "input", "reverb", {{"volume2", 2}, {"master", 5}, {"treble", 6}, {"bass", 5}, {"middle", 5}}, {{"channel", 1}}, 0.05},
-            {"Lead", 13, "input", "reverb", {{"volume2", 6}, {"master", 6}, {"treble", 6.5}, {"bass", 5}, {"middle", 6}}, {{"channel", 1}}, 0.05}}},
         {"american_5153", {}, {
             {"Clean", 0.8, "green", "volume2", {{"volume", 5}, {"bass", 5}, {"middle", 5}, {"treble", 6}}, {}, 0.05},
             {"Edge of breakup", 3, "green", "volume2", {{"volume", 5}, {"bass", 5}, {"middle", 5}, {"treble", 6}}, {}, 0.05},
@@ -105,7 +100,7 @@ const std::vector<Recipe>& recipes() {
             {"Clean", 0.8, "input", "volume", {{"master", 6}, {"treble", 6}}, {{"channel", 0}}},
             {"Edge of breakup", 3, "input", "volume", {{"master", 5}, {"treble", 6}}, {{"channel", 0}}},
             {"Crunch", 7, "input", "volume2", {{"reverb", 5}, {"master", 5}, {"treble", 6}}, {{"channel", 1}}, 0.05},
-            {"Lead", 13, "input", "volume2", {{"reverb", 7}, {"master", 6}, {"middle", 6.5}, {"treble", 6.5}}, {{"channel", 1}}, 0.05}}},
+            {"Lead", 13, "input", "volume2", {{"reverb", 5}, {"master", 5}, {"middle", 6.5}, {"treble", 6.5}}, {{"channel", 1}}, 0.05}}},
         {"modbe_100", {}, {
             {"Clean", 0.8, "clean", "volume2", {{"master", 5}}, {}},
             {"Edge of breakup", 3, "be", "volume", {{"master", 5}}, {{"sat", 0}}},
