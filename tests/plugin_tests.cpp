@@ -3,6 +3,8 @@
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/generators/catch_generators.hpp>
 #include <cmath>
+#include <set>
+#include <string>
 #include <cstdlib>
 
 #include <juce_audio_formats/juce_audio_formats.h>
@@ -54,7 +56,7 @@ void setParam(SasProcessor& p, const char* id, float plainValue) {
 void allModules(SasProcessor& p) { p.setRackOrder(RackState::fromLegacy(p.apvts, false, true)); }
 // A parallel with a second amp and cabinet in lane B (what the parallel was before lane B became the player's to fill).
 bool addSecondAmp(SasProcessor& p) {
-    return p.addParallel() && p.addModule(sas::ModuleType::Amp) && p.addModule(sas::ModuleType::Cabinet);
+    return p.addParallel() && p.addModule(sas::ModuleType::Amp, -1, 1) && p.addModule(sas::ModuleType::Cabinet, -1, 1);  // lane B
 }
 
 juce::File writeImpulse(const juce::String& name) {
@@ -1203,15 +1205,15 @@ TEST_CASE("amp switches: the SVT has three, they are parameters, and they change
     setParam(p, ids::quality, 0.0f);
     setParam(p, ids::amp, float(svt));
     bool swapped = false;
-    for (int i = 0; i < 1200 && !swapped; ++i) { run(p, 2, 3000.0, 0.00002); swapped = p.runningAmpIndex() == svt; juce::Thread::sleep(15); }
+    for (int i = 0; i < 1200 && !swapped; ++i) { run(p, 2, 3000.0, 0.0005); swapped = p.runningAmpIndex() == svt; juce::Thread::sleep(15); }
     REQUIRE(swapped);
-    run(p, 20, 3000.0, 0.00002);
-    const double off = rms(run(p, 10, 3000.0, 0.00002));
+    run(p, 20, 3000.0, 0.0005);
+    const double off = rms(run(p, 10, 3000.0, 0.0005));
     setParam(p, ids::sel[1], 1.0f);  // Ultra Hi
-    run(p, 20, 3000.0, 0.00002);
-    const double on = rms(run(p, 10, 3000.0, 0.00002));
+    run(p, 20, 3000.0, 0.0005);
+    const double on = rms(run(p, 10, 3000.0, 0.0005));
     INFO("ultra hi off " << off << ", on " << on);
-    CHECK(on > 1.2 * off);
+    CHECK(on > 1.2 * off);  // the input is a few hundred microvolts, far above the supply hum that moves with the moment of the swap
 }
 
 TEST_CASE("built-in cabinet impulses: three ship with the plugin, load into either slot and survive a project round trip") {
@@ -1669,7 +1671,7 @@ TEST_CASE("unknown module type, newer rackVersion or too many modules loads what
     CHECK(order.slots[0].type == ModuleType::Reverb);
 }
 
-TEST_CASE("a rack without an amp gets one in front of the cabinet", "[rack]") {
+TEST_CASE("a saved rack without an amp stays without one (the amp can be removed); one without a gate gets the gate back", "[rack]") {
     const auto order = RackState::fromTree([] {
         juce::ValueTree rack("RACK");
         for (const char* type : {"Gate", "Cabinet", "Reverb"}) {
@@ -1680,7 +1682,19 @@ TEST_CASE("a rack without an amp gets one in front of the cabinet", "[rack]") {
         }
         return rack;
     }());
-    CHECK(typesOf(order) == std::vector<ModuleType>{ModuleType::Gate, ModuleType::Amp, ModuleType::Cabinet, ModuleType::Reverb});
+    CHECK(typesOf(order) == std::vector<ModuleType>{ModuleType::Gate, ModuleType::Cabinet, ModuleType::Reverb});
+    // The first gate, which cannot be removed, comes back when a rack lacks it.
+    const auto noGate = RackState::fromTree([] {
+        juce::ValueTree rack("RACK");
+        for (const char* type : {"Amp", "Reverb"}) {
+            juce::ValueTree m("M");
+            m.setProperty("type", type, nullptr);
+            m.setProperty("inst", 0, nullptr);
+            rack.appendChild(m, nullptr);
+        }
+        return rack;
+    }());
+    CHECK(typesOf(noGate) == std::vector<ModuleType>{ModuleType::Gate, ModuleType::Amp, ModuleType::Reverb});
 }
 
 TEST_CASE("the order and every extra instance's parameters survive a round trip", "[rack]") {
@@ -1843,7 +1857,12 @@ TEST_CASE("the rack page lists the modules in order and follows add, move and re
     REQUIRE(p.removeModule({ModuleType::Overdrive, 0}));
     page.rebuild();
     CHECK(page.unitCount() == 5);
-    CHECK_FALSE(p.removeModule({ModuleType::Amp, 0}));  // the amp stays
+    REQUIRE(p.removeModule({ModuleType::Amp, 0}));  // the amp can go (and come back)
+    page.rebuild();
+    CHECK(page.unitCount() == 4);
+    REQUIRE(p.addModule(ModuleType::Amp));
+    page.rebuild();
+    CHECK(page.unitCount() == 5);
 }
 
 TEST_CASE("the add menu greys out a type that reached its limit", "[rack]") {
@@ -2022,22 +2041,61 @@ TEST_CASE("the rack page shows the path as tiles and opens one module at a time"
     CHECK(shown() == std::vector<ModuleType>{ModuleType::Delay});
 }
 
-TEST_CASE("the gate, the amp and the cabinet cannot be removed and a rack that lacks them gets them back", "[rack]") {
+TEST_CASE("only the first gate cannot be removed: the amp and the cabinet can go and be put back, and a saved rack without them stays without them", "[rack]") {
     JuceInit init;
+    using T = ModuleType;
     SasProcessor p;
-    CHECK_FALSE(p.removeModule({ModuleType::Gate, 0}));
-    CHECK_FALSE(p.removeModule({ModuleType::Amp, 0}));
-    CHECK_FALSE(p.removeModule({ModuleType::Cabinet, 0}));
-    CHECK_FALSE(p.canAdd(ModuleType::Cabinet));  // only one
+    CHECK_FALSE(p.removeModule({T::Gate, 0}));
+    CHECK_FALSE(p.canAdd(T::Amp));      // there is one already
+    CHECK_FALSE(p.canAdd(T::Cabinet));
+    REQUIRE(p.removeModule({T::Cabinet, 0}));
+    REQUIRE(p.removeModule({T::Amp, 0}));
+    CHECK(typesOf(p.rackOrder()) == std::vector<T>{T::Gate});
+    CHECK(p.canAdd(T::Amp));
+    CHECK(p.canAdd(T::Cabinet));
+    CHECK_FALSE(p.canAdd(T::Amp, 1));   // a second amp needs a parallel
+    REQUIRE(p.addModule(T::Amp));       // put back: the amp, then the cabinet behind it
+    REQUIRE(p.addModule(T::Cabinet));
+    CHECK(typesOf(p.rackOrder()) == std::vector<T>{T::Gate, T::Amp, T::Cabinet});
+    CHECK_FALSE(p.addModule(T::Amp));   // only one without a parallel
+    // A saved rack that lacks them loads without them (the first gate is always there).
     p.setRackOrder([] {
         sas::RackOrder o;
-        o.slots[std::size_t(o.count++)] = {ModuleType::Reverb, 0};
+        o.slots[std::size_t(o.count++)] = {T::Reverb, 0};
         return o;
     }());
-    using T = ModuleType;
-    CHECK(typesOf(p.rackOrder()) == std::vector<T>{T::Gate, T::Amp, T::Cabinet, T::Reverb});
+    CHECK(typesOf(p.rackOrder()) == std::vector<T>{T::Gate, T::Reverb});
     REQUIRE(p.addModule(T::Gate));  // a second gate is an ordinary module
     CHECK(p.removeModule({T::Gate, 1}));
+    // The signal still plays with no amp and no cabinet.
+    const auto out = legacy::render(p, legacy::input());
+    double energy = 0.0;
+    for (const float v : out) {
+        REQUIRE(std::isfinite(v));
+        energy += double(v) * v;
+    }
+    CHECK(energy > 0.0);
+}
+
+TEST_CASE("with a parallel, the first amp and cabinet can be removed from lane A, and the second ones are put in lane B", "[rack]") {
+    JuceInit init;
+    using T = ModuleType;
+    SasProcessor p;
+    REQUIRE(p.addParallel());
+    REQUIRE(p.addModule(T::Amp, -1, 1));  // the second amp, in lane B
+    const int a1 = [&] { for (int i = 0; i < p.rackOrder().count; ++i) if (p.rackOrder().slots[std::size_t(i)] == sas::SlotRef{T::Amp, 1}) return i; return -1; }();
+    REQUIRE(a1 >= 0);
+    CHECK(p.rackOrder().lane[std::size_t(a1)] == 1);
+    REQUIRE(p.removeModule({T::Amp, 0}));  // the first one goes: lane A keeps the cabinet
+    CHECK(p.hasParallel());
+    REQUIRE(p.addModule(T::Amp));          // and comes back to lane A, not lane B
+    for (int i = 0; i < p.rackOrder().count; ++i)
+        if (p.rackOrder().slots[std::size_t(i)] == sas::SlotRef{T::Amp, 0}) CHECK(p.rackOrder().lane[std::size_t(i)] == 0);
+    // Without the amp and the cabinet there is nothing to build a parallel around.
+    SasProcessor q;
+    REQUIRE(q.removeModule({T::Cabinet, 0}));
+    REQUIRE(q.removeModule({T::Amp, 0}));
+    CHECK_FALSE(q.addParallel());
 }
 
 TEST_CASE("the cabinet can be switched off: the amp's raw signal, and the switch is a parameter of its own", "[rack]") {
@@ -2449,21 +2507,21 @@ TEST_CASE("a parallel starts with an empty lane B, and the second amp and cabine
     JuceInit init;
     using T = ModuleType;
     SasProcessor p;
-    CHECK_FALSE(p.canAdd(T::Amp));  // there is no lane B yet
-    CHECK_FALSE(p.addModule(T::Amp));
+    CHECK_FALSE(p.canAdd(T::Amp, 1));  // there is no lane B yet
+    CHECK_FALSE(p.addModule(T::Amp, -1, 1));
     REQUIRE(p.addParallel());
     CHECK(typesOf(p.rackOrder()) == std::vector<T>{T::Gate, T::Splitter, T::Amp, T::Cabinet, T::Mixer});
     for (int i = 0; i < p.rackOrder().count; ++i) CHECK(p.rackOrder().lane[std::size_t(i)] == 0);  // nothing in lane B
-    CHECK(p.canAdd(T::Amp));
+    CHECK(p.canAdd(T::Amp, 1));
     REQUIRE(p.addModule(T::Reverb, -1, 1));  // a reverb of its own in lane B
     REQUIRE(p.rackOrder().count == 6);
     CHECK(p.rackOrder().lane[4] == 1);
     CHECK_FALSE(SasProcessor().addModule(T::Reverb, -1, 1));  // without a parallel there is no lane B
-    REQUIRE(p.addModule(T::Amp));         // and a second amp, when the player wants one
-    REQUIRE(p.addModule(T::Cabinet));
-    CHECK_FALSE(p.canAdd(T::Amp));        // only one second amp
+    REQUIRE(p.addModule(T::Amp, -1, 1));  // and a second amp, when the player wants one
+    REQUIRE(p.addModule(T::Cabinet, -1, 1));
+    CHECK_FALSE(p.canAdd(T::Amp, 1));     // only one second amp
     CHECK(p.removeModule({T::Amp, 1}));   // it can go again, leaving the rest of lane B
-    CHECK(p.canAdd(T::Amp));
+    CHECK(p.canAdd(T::Amp, 1));
     CHECK(p.hasParallel());
     // Taking the parallel away takes everything of lane B.
     REQUIRE(p.removeParallel());
@@ -2679,4 +2737,335 @@ TEST_CASE("every module panel can be rendered to a picture", "[.screenshots]") {
     out.truncate();
     png.writeImageToStream(img, out);
     host.setLookAndFeel(nullptr);
+}
+
+TEST_CASE("a module that is added, or put in the place of another, starts on; replacing keeps the place and the lane", "[rack]") {
+    JuceInit init;
+    using T = sas::ModuleType;
+    SasProcessor p;
+    auto on = [&](sas::SlotRef s) { return p.apvts.getRawParameterValue(RackState::paramId(RackState::onId(s.type), s.instance))->load() > 0.5f; };
+    auto indexOf = [&](sas::SlotRef s) {
+        for (int i = 0; i < p.rackOrder().count; ++i)
+            if (p.rackOrder().slots[std::size_t(i)] == s) return i;
+        return -1;
+    };
+
+    // Adding a pedal or an effect turns it on.
+    REQUIRE(p.addModule(T::Overdrive));
+    CHECK(on({T::Overdrive, 0}));
+    REQUIRE(p.addModule(T::Delay));
+    CHECK(on({T::Delay, 0}));
+
+    // What can be replaced: not the amp, the cabinet or the first gate, not by its own type or by an amp.
+    CHECK_FALSE(p.canReplace({T::Amp, 0}, T::Fuzz));
+    CHECK_FALSE(p.canReplace({T::Cabinet, 0}, T::Fuzz));
+    CHECK_FALSE(p.canReplace({T::Gate, 0}, T::Fuzz));
+    CHECK_FALSE(p.canReplace({T::Overdrive, 0}, T::Overdrive));
+    CHECK_FALSE(p.canReplace({T::Overdrive, 0}, T::Amp));
+    CHECK_FALSE(p.canReplace({T::Fuzz, 0}, T::Wah));  // not in the rack
+
+    // Replacing: same place, the new one is on, the old one is gone, the rack is no bigger.
+    const int at = indexOf({T::Overdrive, 0}), count = p.rackOrder().count;
+    REQUIRE(p.canReplace({T::Overdrive, 0}, T::Fuzz));
+    REQUIRE(p.replaceModule({T::Overdrive, 0}, T::Fuzz));
+    CHECK(p.rackOrder().count == count);
+    CHECK(indexOf({T::Fuzz, 0}) == at);
+    CHECK(indexOf({T::Overdrive, 0}) < 0);
+    CHECK(on({T::Fuzz, 0}));
+    CHECK_FALSE(p.replaceModule({T::Overdrive, 0}, T::Wah));  // it is not there any more
+
+    // A type that is at its limit is refused (a second fuzz would need a free slot of its own).
+    if (RackState::maxInstances(T::Fuzz) == 1) {
+        REQUIRE(p.addModule(T::Boost));
+        CHECK_FALSE(p.canReplace({T::Boost, 0}, T::Fuzz));
+        CHECK_FALSE(p.replaceModule({T::Boost, 0}, T::Fuzz));
+        CHECK(indexOf({T::Boost, 0}) >= 0);
+    }
+
+    // In a parallel the new module stays in the lane of the old one.
+    REQUIRE(p.addParallel());
+    REQUIRE(p.addModule(T::Reverb, -1, 1));
+    const int reverbAt = indexOf({T::Reverb, 0});
+    REQUIRE(reverbAt >= 0);
+    REQUIRE(p.rackOrder().lane[std::size_t(reverbAt)] == 1);
+    REQUIRE(p.replaceModule({T::Reverb, 0}, T::Chorus));
+    CHECK(indexOf({T::Chorus, 0}) == reverbAt);
+    CHECK(p.rackOrder().lane[std::size_t(reverbAt)] == 1);
+    CHECK(on({T::Chorus, 0}));
+    // The ends of the parallel are not replaced.
+    CHECK_FALSE(p.canReplace({T::Splitter, 0}, T::Chorus));
+}
+
+TEST_CASE("the entry of the tile menu is translated", "[rack][i18n]") {
+    JuceInit init;
+    i18n::useForSession(i18n::Language::Spanish);
+    CHECK(tr("Replace with") == "Reemplazar por");
+    CHECK(tr("Remove") == "Quitar");
+    i18n::useForSession(i18n::Language::English);
+    CHECK(tr("Replace with") == "Replace with");
+}
+
+TEST_CASE("a stereo pair that reaches the cabinet leaves it as a stereo pair, in every cabinet mode", "[rack]") {
+    JuceInit init;
+    using T = sas::ModuleType;
+    for (const auto mode : {CabMode::Filter, CabMode::Ir}) {
+        SasProcessor p;
+        p.setRackOrder([] {
+            sas::RackOrder o;
+            for (auto s : {sas::SlotRef{T::Gate, 0}, {T::Amp, 0}, {T::Reverb, 0}, {T::Cabinet, 0}}) o.slots[std::size_t(o.count++)] = s;
+            return o;
+        }());
+        p.prepareToPlay(48000.0, 256);
+        p.applyReverbPreset(2);  // a plate in front of the cabinet: the pair it makes is not the same in both ears
+        setParam(p, ids::cab, float(int(mode)));
+        if (mode == CabMode::Ir) {
+            REQUIRE(SasProcessor::builtInImpulseResponseCount() > 0);
+            REQUIRE(p.loadBuiltInImpulseResponse(0, 0, 0));  // slot A of the first cabinet
+        }
+        juce::MidiBuffer midi;
+        juce::AudioBuffer<float> buf(2, 256);
+        double diff = 0.0, energy = 0.0;
+        for (int blk = 0; blk < 200; ++blk) {
+            buf.clear();
+            if (blk < 4) fill(buf, 220.0, 0.3, 48000.0, blk * 256);
+            p.processBlock(buf, midi);
+            if (blk > 20)
+                for (int i = 0; i < 256; ++i) {
+                    const double l = buf.getSample(0, i), r = buf.getSample(1, i);
+                    diff += (l - r) * (l - r);
+                    energy += 0.5 * (l * l + r * r);
+                }
+        }
+        INFO("mode " << int(mode) << ": difference " << diff << ", energy " << energy);
+        REQUIRE(energy > 1e-9);
+        CHECK(diff > 0.01 * energy);  // the two ears differ (a cabinet that summed the pair to mono would give exactly the same signal on both)
+        for (int i = 0; i < 256; ++i) REQUIRE(std::isfinite(buf.getSample(0, i)));
+    }
+}
+
+TEST_CASE("the modulation effects have a Mix parameter, 100 % by default, that fades the effect out", "[rack]") {
+    JuceInit init;
+    using T = sas::ModuleType;
+    struct Fx { T type; const char* on; const char* mix; };
+    for (const Fx fx : {Fx{T::Phaser, ids::phOn, ids::phMix}, Fx{T::Chorus, ids::chOn, ids::chMix}, Fx{T::Vibe, ids::vbOn, ids::vbMix}, Fx{T::Flanger, ids::flOn, ids::flMix}}) {
+        INFO("module " << int(fx.type));
+        SasProcessor p;
+        p.prepareToPlay(48000.0, 256);
+        REQUIRE(p.apvts.getParameter(fx.mix) != nullptr);
+        CHECK(p.apvts.getRawParameterValue(fx.mix)->load() == Catch::Approx(100.0f));  // as it always sounded
+        REQUIRE(p.addModule(fx.type));
+        CHECK(p.apvts.getRawParameterValue(fx.on)->load() > 0.5f);  // a new module starts on
+        CHECK(p.apvts.getRawParameterValue(fx.mix)->load() == Catch::Approx(100.0f));
+        const auto in = legacy::input();
+        for (int i = 0; i < 40; ++i) playOn(p, std::vector<float>(256, 0.0f));
+        const auto full = playOn(p, in);
+        setParam(p, fx.mix, 0.0f);
+        for (int i = 0; i < 40; ++i) playOn(p, std::vector<float>(256, 0.0f));
+        const auto none = playOn(p, in);
+        setParam(p, fx.on, 0.0f);
+        for (int i = 0; i < 40; ++i) playOn(p, std::vector<float>(256, 0.0f));
+        const auto off = playOn(p, in);
+        double dFullOff = 0.0, dNoneOff = 0.0;
+        for (std::size_t i = 0; i < in.size(); ++i) {
+            dFullOff += double(full[i] - off[i]) * double(full[i] - off[i]);
+            dNoneOff += double(none[i] - off[i]) * double(none[i] - off[i]);
+        }
+        INFO("effect on vs off " << dFullOff << ", mix 0 vs off " << dNoneOff);
+        CHECK(dFullOff > 1e-6);                // the effect is heard
+        CHECK(dNoneOff < 0.01 * dFullOff);     // and at 0 % it is not
+    }
+}
+
+#include "ModulePresets.h"
+
+TEST_CASE("every module without a table of its own has factory presets that set every one of its knobs, in range", "[rack][i18n]") {
+    JuceInit init;
+    using T = sas::ModuleType;
+    SasProcessor p;
+    const T types[] = {T::Gate, T::Compressor, T::Overdrive, T::Phaser, T::Chorus, T::Vibe, T::Tremolo, T::Flanger, T::Pitch, T::Boost, T::Limiter};
+    for (const T type : types) {
+        const auto list = modulePresets(type);
+        INFO("module " << sas::moduleTypeName(type));
+        REQUIRE(list.count >= 6);
+        const char* on = RackState::onId(type);
+        // The knobs of the module: its parameters but the switch.
+        std::set<std::string> knobs;
+        for (const char* id : RackState::paramIds(type))
+            if (!on || std::string(id) != on) knobs.insert(id);
+        // Where the module is switched on or off by the preset, the first one is "Off".
+        if (on) {
+            CHECK(std::string(list.items[0].name) == "Off");
+            CHECK_FALSE(list.items[0].on);
+        }
+        std::set<std::string> names;
+        for (int i = 0; i < list.count; ++i) {
+            const ModulePreset& preset = list.items[i];
+            INFO("preset " << preset.name);
+            CHECK(names.insert(preset.name).second);  // no two with the same name
+            i18n::useForSession(i18n::Language::Spanish);
+            CHECK_FALSE(tr(preset.name).isEmpty());
+            i18n::useForSession(i18n::Language::English);
+            if (on && !preset.on) continue;  // "Off" lists no knobs: it keeps the player's
+            std::set<std::string> listed;
+            for (const auto& v : preset.v)
+                if (v.id) listed.insert(v.id);
+            CHECK(listed == knobs);  // every knob, so a preset never inherits a leftover of the one before
+            // Apply it and read the parameters back: each is where the preset said (an out-of-range value would have been clamped).
+            p.applyModulePreset(type, i);
+            if (on) CHECK(p.apvts.getRawParameterValue(on)->load() > 0.5f);
+            for (const auto& v : preset.v) {
+                if (!v.id) continue;
+                auto* param = p.apvts.getParameter(v.id);
+                REQUIRE(param != nullptr);
+                const auto range = param->getNormalisableRange();
+                const float got = p.apvts.getRawParameterValue(v.id)->load();
+                INFO(v.id << ": wanted " << v.value << ", got " << got);
+                CHECK(std::abs(double(got) - v.value) <= 0.002 * double(range.end - range.start) + 1e-4);
+            }
+        }
+        // "Off" switches the module off and leaves the knobs alone.
+        if (on) {
+            p.applyModulePreset(type, 1);
+            const char* first = nullptr;
+            for (const auto& v : list.items[1].v)
+                if (v.id) { first = v.id; break; }
+            const float before = p.apvts.getRawParameterValue(first)->load();
+            p.applyModulePreset(type, 0);
+            CHECK(p.apvts.getRawParameterValue(on)->load() < 0.5f);
+            CHECK(p.apvts.getRawParameterValue(first)->load() == before);
+        }
+    }
+}
+
+TEST_CASE("every circuit amp has factory presets (Clean, Edge of breakup, Crunch, Lead; the bass amp has its own) that set its channel, knobs and switches", "[rack][i18n]") {
+    JuceInit init;
+    SasProcessor p;
+    int tested = 0;
+    for (std::size_t a = 0; a < p.amps().size(); ++a) {
+        const auto& def = p.amps()[a];
+        if (def.nam) {
+            CHECK(def.presets.empty());  // the model loader has nothing to preset
+            continue;
+        }
+        INFO("amp " << def.id);
+        if (def.id == "svt_bass300") {  // the bass amp has presets for a bass guitar
+            REQUIRE(def.presets.size() >= 6);
+            CHECK(def.presets[0].name == "Clean");
+        } else {
+            REQUIRE(def.presets.size() == 4);
+            CHECK(def.presets[0].name == "Clean");
+            CHECK(def.presets[1].name == "Edge of breakup");
+            CHECK(def.presets[2].name == "Crunch");
+            CHECK(def.presets[3].name == "Lead");
+        }
+        setParam(p, ids::amp, float(a));
+        REQUIRE(p.selectedAmpIndex(0) == int(a));
+        for (std::size_t k = 0; k < def.presets.size(); ++k) {
+            const auto& preset = def.presets[k];
+            INFO("preset " << preset.name);
+            p.applyAmpPreset(int(k));
+            REQUIRE_FALSE(preset.params.empty());
+            for (const auto& [param, value] : preset.params) {
+                auto* q = p.apvts.getParameter(param);
+                REQUIRE(q != nullptr);
+                INFO(param << " should be " << value);
+                CHECK(p.apvts.getRawParameterValue(param)->load() == Catch::Approx(float(value)).margin(0.02));
+            }
+            if (!preset.jack.empty()) CHECK(int(p.apvts.getRawParameterValue(ids::jack)->load() + 0.5f) == int(def.jackIndex(preset.jack)));
+            for (const auto& [name, position] : preset.selectors)
+                for (std::size_t i = 0; i < def.preamp.selectors.size(); ++i)
+                    if (def.preamp.selectors[i].name == name) CHECK(int(p.apvts.getRawParameterValue(ids::sel[i])->load() + 0.5f) == position);
+        }
+        ++tested;
+    }
+    CHECK(tested >= 16);
+    // Out-of-range indices do nothing.
+    p.applyAmpPreset(-1);
+    p.applyAmpPreset(99);
+}
+
+TEST_CASE("the power tubes are drawn from the artwork: the body is there, the plate glows more with more current, the heater is always lit", "[rack]") {
+    JuceInit init;
+    auto render = [](float level, int tubes) {
+        TubeGlow tg;
+        tg.setSize(320, 130);
+        tg.setTubes(tubes, "EL34");
+        for (int i = 0; i < 40; ++i) tg.setGlow(level, 40.0f);  // the glow follows the current with some inertia: let it settle
+        return tg.createComponentSnapshot(tg.getLocalBounds(), false, 1.0f);
+    };
+    const juce::Image cold = render(0.0f, 4), hot = render(1.3f, 4);
+    REQUIRE(cold.isValid());
+    REQUIRE(hot.isValid());
+    // Where the plates of the first tube are (the cell is a quarter of the width; the plate is in the middle of the tube, a bit above the centre).
+    const int px = 40, py = 52;
+    const auto c = cold.getPixelAt(px, py), h = hot.getPixelAt(px, py);
+    INFO("plate pixel cold " << c.toString() << " hot " << h.toString());
+    CHECK(h.getRed() > c.getRed() + 40);    // the hot plate is much redder
+    CHECK(h.getBlue() <= h.getRed());       // and warm, not white
+    // The body is drawn even with no glow: there are opaque pixels around the tube (the base and the glass), and the corner of the cell is empty.
+    int opaque = 0;
+    for (int y = 0; y < cold.getHeight(); ++y)
+        for (int x = 0; x < cold.getWidth(); ++x)
+            if (cold.getPixelAt(x, y).getAlpha() > 200) ++opaque;
+    CHECK(opaque > 400);
+    CHECK(cold.getPixelAt(0, 0).getAlpha() < 10);
+    // More tubes, more of them: the same component with six tubes paints more.
+    const juce::Image six = render(0.5f, 6);
+    int paintedFour = 0, paintedSix = 0;
+    const juce::Image four = render(0.5f, 4);
+    for (int y = 0; y < four.getHeight(); ++y)
+        for (int x = 0; x < four.getWidth(); ++x) {
+            if (four.getPixelAt(x, y).getAlpha() > 30) ++paintedFour;
+            if (six.getPixelAt(x, y).getAlpha() > 30) ++paintedSix;
+        }
+    CHECK(paintedSix > 0);
+    CHECK(paintedFour > 0);
+}
+
+TEST_CASE("choosing another amp puts the amp's own power tubes back", "[rack]") {
+    JuceInit init;
+    SECTION("amp A: the list of amps") {
+        SasProcessor p;
+        setParam(p, ids::tube, 2.0f);  // a tube type picked for this amp
+        const int before = p.selectedAmpIndex();
+        std::unique_ptr<juce::AudioProcessorEditor> ed(p.createEditor());
+        std::function<juce::ListBox*(juce::Component&)> findList = [&](juce::Component& c) -> juce::ListBox* {
+            if (auto* lb = dynamic_cast<juce::ListBox*>(&c); lb && lb->getName() == "amps") return lb;
+            for (auto* child : c.getChildren())
+                if (auto* hit = findList(*child)) return hit;
+            return nullptr;
+        };
+        auto* list = findList(*ed);
+        REQUIRE(list != nullptr);
+        // Choosing another amp from the list gives its own tubes.
+        bool moved = false;
+        for (int row = 0; row < 4 && !moved; ++row) {
+            list->selectRow(row, true, true);
+            moved = p.selectedAmpIndex() != before;
+        }
+        REQUIRE(moved);
+        CHECK(p.apvts.getRawParameterValue(ids::tube)->load() == 0.0f);
+    }
+    SECTION("amp B: its own selector") {
+        SasProcessor p;
+        p.prepareToPlay(48000.0, 512);
+        std::unique_ptr<juce::AudioProcessorEditor> ed(p.createEditor());
+        ed->setSize(1100, 900);
+        REQUIRE(addSecondAmp(p));
+        setParam(p, RackState::paramId(ids::tube, 1).toRawUTF8(), 2.0f);
+        auto* page = findRackPage(*ed);
+        REQUIRE(page != nullptr);
+        page->rebuild();
+        auto* box = dynamic_cast<juce::ComboBox*>(findById(*ed, "amp_b_select"));
+        REQUIRE(box != nullptr);
+        const int now = box->getSelectedItemIndex();
+        box->setSelectedItemIndex(now == 0 ? 1 : 0, juce::sendNotificationSync);
+        CHECK(p.apvts.getRawParameterValue(RackState::paramId(ids::tube, 1))->load() == 0.0f);
+    }
+    SECTION("the call itself") {
+        SasProcessor p;
+        setParam(p, ids::tube, 3.0f);
+        p.resetTubes();
+        CHECK(p.apvts.getRawParameterValue(ids::tube)->load() == 0.0f);
+    }
 }

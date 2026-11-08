@@ -16,6 +16,12 @@
     "pointer": "#e7ffe6"
   },
 
+  "presets": [
+   {"name": "Clean", "jack": "rhythm", "params": {"bass": 5, "master": 5, "middle": 5, "power": 5, "presence": 5, "resonance": 5, "treble": 5, "volume": 5, "volume2": 1}},
+   {"name": "Edge of breakup", "jack": "rhythm", "params": {"bass": 5, "master": 5, "middle": 5, "power": 5, "presence": 5, "resonance": 5, "treble": 5, "volume": 5, "volume2": 1.5}},
+   {"name": "Crunch", "jack": "crunch", "params": {"bass": 5, "master": 5, "middle": 5, "power": 5, "presence": 5, "resonance": 5, "treble": 5, "volume": 5, "volume2": 1.1}},
+   {"name": "Lead", "jack": "lead", "params": {"bass": 5, "master": 5, "middle": 5, "power": 5, "presence": 5, "resonance": 5, "treble": 5, "volume": 0.5, "volume2": 5}}
+  ],
   "preamp": {
     "netlist": "preamp.net",
     "stages": [

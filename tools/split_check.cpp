@@ -73,6 +73,7 @@ int main(int argc, char** argv) {
         if (!f) { std::printf("cannot read %s\n", argv[2]); return 1; }
         full.preamp.netlistText.assign(std::istreambuf_iterator<char>(f), {});
         full.preamp.stages.clear();
+        if (std::getenv("SAS_STOCK_REF")) full.preamp.selectors.clear();  // the reference has no mods to switch
     }
     struct Case { const char* name; std::size_t jack; double amp; std::vector<std::pair<const char*, double>> knobs; std::vector<std::pair<std::size_t, std::size_t>> sel; };
     const std::vector<Case> svtCases = {
@@ -104,7 +105,39 @@ int main(int argc, char** argv) {
         {"lead tone down", 1, 0.15, {{"bass", 0.1}, {"middle", 0.1}, {"treble", 0.1}}, {}},
         {"lead bright", 1, 0.15, {}, {{1, 1}}},
     };
-    const auto& cases = std::string(argv[1]) == "superlead_100" ? slCases : svtCases;
+    const std::vector<Case> mbCases = {
+        {"silence (hum only)", 0, 0.0, {}, {}},
+        {"clean low", 0, 0.05, {}, {}},
+        {"clean hot", 0, 0.3, {{"clean_vol", 0.9}}, {}},
+        {"clean bright 2", 0, 0.1, {}, {{3, 1}}},
+        {"clean tone up", 0, 0.1, {{"clean_bass", 0.9}, {"clean_treble", 0.9}}, {}},
+        {"BE low gain", 1, 0.05, {{"gain", 0.3}}, {}},
+        {"BE mid", 1, 0.15, {}, {}},
+        {"BE hot", 1, 0.3, {{"gain", 0.9}}, {}},
+        {"BE open+fat", 1, 0.15, {}, {{0, 3}}},
+        {"BE sat on, bright voice", 1, 0.15, {}, {{1, 1}, {2, 1}}},
+        {"HBE mid", 2, 0.15, {}, {}},
+        {"HBE hot", 2, 0.3, {{"gain", 0.9}}, {}},
+        {"HBE tone up", 2, 0.15, {{"bass", 0.9}, {"treble", 0.9}}, {}},
+        {"HBE tone down", 2, 0.15, {{"bass", 0.1}, {"middle", 0.1}, {"treble", 0.1}}, {}},
+    };
+    // The JCM800 with its mods (jacks: High 0, Low 1; selectors: meaty, v1b_cathode, v2a_bypass, slope, mid_pot, v1a_bypass). The reference is the stock netlist
+    // (SAS_STOCK_REF=1 drops the selectors from it), so the first rows must match it and the others show what each mod does.
+    const std::vector<Case> jcmCases = {
+        {"stock crunch", 0, 0.15, {}, {}},
+        {"stock lead", 0, 0.3, {{"volume", 0.9}}, {}},
+        {"stock low jack", 1, 0.15, {}, {}},
+        {"mod 1 330p on R3", 0, 0.15, {}, {{0, 1}}},
+        {"mod 2 R6 4.7k", 0, 0.15, {}, {{1, 1}}},
+        {"mod 2 R6 1.5k", 0, 0.15, {}, {{1, 2}}},
+        {"mod 3 V2A bypass", 0, 0.15, {}, {{2, 1}}},
+        {"mod 4 slope 47k", 0, 0.15, {}, {{3, 1}}},
+        {"mod 5 mid pot 50k", 0, 0.15, {{"middle", 0.3}}, {{4, 1}}},
+        {"mod 6 V1A bypass .47u", 0, 0.15, {}, {{5, 1}}},
+        {"all mods", 0, 0.15, {}, {{0, 1}, {1, 1}, {2, 1}, {3, 1}, {4, 1}, {5, 1}}},
+    };
+    const std::string ampId = argv[1];
+    const auto& cases = ampId == "superlead_100" ? slCases : ampId == "modbe_100" ? mbCases : ampId == "jcm800_2203" ? jcmCases : svtCases;
     std::printf("%-22s %9s %9s %9s %8s\n", "case", "level d", "band max", "wave err", "fails");
     for (const auto& c : cases) {
         std::vector<std::vector<double>> out(2);

@@ -48,6 +48,7 @@ Chain::Chain(const AmpDef& def, double fs)
     namLevelDb_.reset(0.0, fs, 20.0);
     for (auto* s : {&namBass_, &namMid_, &namTreble_}) s->reset(0.5, fs, 40.0);
     namTone_.prepare(fs);
+    geq_.prepare(def.graphicEq, fs);
 }
 
 void Chain::setSettings(const ChainSettings& s) {
@@ -62,6 +63,7 @@ void Chain::setSettings(const ChainSettings& s) {
     tsLevel_.setTarget(std::clamp(s.tsLevel, 0.0, 1.0));
     inputDb_.setTarget(s.inputDb);
     outputDb_.setTarget(s.outputDb);
+    geq_.setSliders(s.geq);
     target_.quality = s.quality;
     target_.jack = def_.preamp.jacks.empty() ? 0 : std::min(s.jack, def_.preamp.jacks.size() - 1);
     target_.nam = s.nam;
@@ -247,6 +249,7 @@ void Chain::processAmp(const float* mono, float* out, std::size_t n) {
                 break;
         }
         // The speaker sees the real drive (before the loudness trim); the trim is applied after it.
+        volts = geq_.process(volts);
         float y = speaker_.process(volts / float(kOutputFullScaleVolts)) * ampTrim_;
         if (cabOn) y = cab_.process(y);
         out[i] = y;

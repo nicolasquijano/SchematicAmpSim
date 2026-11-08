@@ -1,0 +1,48 @@
+* Modded-British preamp, stage 2 of 3: V2A and V2B (the BE / HBE chain). The raw input (in) and V1A's plate (p1) arrive through VLIN and VL1; the
+* Gain network behind V2B (2n2, the pot, 470k) is repeated at the output as its load. See preamp.net for how the netlist is split.
+
+.nodes x in p1 c3n v1o v2s ng2 p2 k2 n2 f2 fat s2a s2b g2c r26 r16 ng3 p3 kb gt gw ng4
+
+V VRAIL x 471.8 430
+C C28 x 0 4.664u
+
+S VLIN in 1 0
+S VL1 p1 1 0
+C C3 p1 c3n 2n2
+R R5 c3n v1o 1M
+R R6 v1o 0 68k
+R SW_RAW in v2s 1
+R SW_V1 v1o v2s 1e12
+R R11 v2s 0 10M
+R R7 v2s ng2 33k
+
+T V2A ng2 p2 k2 12AX7
+R R18 x n2 220k
+R R17 n2 p2 100k
+C C13 n2 p2 500p
+R R10 k2 0 2k7
+C C20 k2 0 0.68u
+C C14 p2 f2 2n2
+C C15 p2 fat 22n
+R SW_FAT fat f2 1e12
+R R20 f2 s2a 560k
+C C16 f2 s2a 680p
+R SW_S2A s2a g2c 1
+R R19 f2 s2b 68k
+R SW_S2B s2b g2c 1e12
+R R26 g2c r26 220k
+R SW_S2C r26 0 1
+R R16 g2c r16 68k
+R SW_S2D r16 0 1e12
+R R23 g2c ng3 33k
+
+T V2B ng3 p3 kb 12AX7
+R R21 x p3 100k
+R R24 kb 0 2k7
+C C17 kb 0 0.68u
+C C19 p3 gt 2n2
+R VR_GT gt gw 1
+R VR_GB gw 0 1
+R R30 gw ng4 470k
+C C26 gw ng4 500p
+R R28 ng4 0 470k

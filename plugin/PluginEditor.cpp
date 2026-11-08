@@ -1,6 +1,7 @@
 #include "I18n.h"
 #include "PluginEditor.h"
 #include "IconData.h"
+#include "TubeData.h"
 #include "ParallelPanels.h"
 #include "RackPage.h"
 #include "RackState.h"
@@ -367,53 +368,64 @@ void TubeGlow::setTubes(int count, const juce::String& name) {
 void TubeGlow::setGlow(float level, float mA) {
     level_ = level;
     mA_ = mA;
-    shown_ += 0.25f * (level_ - shown_);  // the glow follows the current with a little inertia, like a hot plate
+    shown_ += 0.30f * (level_ - shown_);  // the glow follows the current with a little inertia, like a hot plate
+    base_ += 0.012f * (level_ - base_);   // and what it has idled at lately: a change from that is what the picture exaggerates
     repaint();
 }
 
+// The tubes are four pictures of the same size (plugin/tubes/tube.vectorcraft), drawn one over the other: the glass, the plates, the base and the pins;
+// the heater, always lit; the plate, whose glow follows the current; and the reflections of the glass on top.
 void TubeGlow::paint(juce::Graphics& g) {
+    static const juce::Image back = juce::ImageCache::getFromMemory(TubeData::tube_back_png, TubeData::tube_back_pngSize);
+    static const juce::Image heater = juce::ImageCache::getFromMemory(TubeData::tube_heater_png, TubeData::tube_heater_pngSize);
+    static const juce::Image plate = juce::ImageCache::getFromMemory(TubeData::tube_plate_png, TubeData::tube_plate_pngSize);
+    static const juce::Image front = juce::ImageCache::getFromMemory(TubeData::tube_front_png, TubeData::tube_front_pngSize);
+    constexpr float kAspect = 160.0f / 480.0f;  // the pictures' width over their height
+
     auto r = getLocalBounds().toFloat();
     auto text = r.removeFromBottom(16.0f);
     const float cell = r.getWidth() / float(count_);
-    const float w = std::min(30.0f, cell - 8.0f), h = std::min(r.getHeight() - 2.0f, 62.0f);
-    const float glow = juce::jlimit(0.0f, 1.0f, shown_ * 1.1f);
+    float h = std::max(10.0f, r.getHeight() - 2.0f), w = h * kAspect;
+    if (w > cell - 4.0f) w = std::max(8.0f, cell - 4.0f), h = w / kAspect;
+    // The glow is the current, and a change of the current is shown three times as strong: when the amp is pushed (the plates draw more) the tubes
+    // flare up well past where they idle, and they settle back as it eases. It goes a little above 1 for the flare.
+    const float glow = juce::jlimit(0.0f, 1.4f, shown_ * 1.1f + 3.0f * (shown_ - base_));
+    const float plateAlpha = std::pow(juce::jlimit(0.0f, 1.0f, glow), 1.6f);  // a plate that carries a typical idle current is only warm; it is orange when pushed
+    g.setImageResamplingQuality(juce::Graphics::highResamplingQuality);
     for (int i = 0; i < count_; ++i) {
         const float cx = r.getX() + cell * (float(i) + 0.5f);
-        const auto env = juce::Rectangle<float>(cx - w * 0.5f, r.getBottom() - h, w, h - 8.0f);
-        juce::Path glass;
-        glass.addRoundedRectangle(env.getX(), env.getY(), env.getWidth(), env.getHeight(), w * 0.5f, w * 0.5f, true, true, false, false);
-
-        g.setColour(juce::Colours::black.withAlpha(0.55f));
-        g.fillPath(glass);
+        const auto dest = juce::Rectangle<float>(cx - w * 0.5f, r.getBottom() - h, w, h);
+        const juce::Point<float> centre(cx, dest.getY() + h * 0.40f);
         {
-            // Everything that glows is clipped to the glass.
-            juce::Graphics::ScopedSaveState state(g);
-            g.reduceClipRegion(glass);
-            const auto plate = juce::Rectangle<float>(cx - w * 0.22f, env.getY() + env.getHeight() * 0.22f, w * 0.44f, env.getHeight() * 0.50f);
-            const auto hot = juce::Colour::fromRGB(255, 96, 28);
-            g.setGradientFill(juce::ColourGradient(hot.withAlpha(0.65f * glow), plate.getCentreX(), plate.getCentreY(), juce::Colours::transparentBlack,
-                                                   plate.getCentreX() + w * 0.9f, plate.getCentreY(), true));
-            g.fillRect(env);
-            g.setColour(juce::Colour::fromRGB(70, 66, 62).interpolatedWith(juce::Colour::fromRGB(255, 120, 40), glow));
-            g.fillRoundedRectangle(plate, 1.5f);
-            g.setColour(juce::Colours::black.withAlpha(0.35f * (1.0f - glow)));
-            g.drawRoundedRectangle(plate, 1.5f, 1.0f);
-            // The heater is always lit.
-            g.setGradientFill(juce::ColourGradient(juce::Colour::fromRGB(255, 176, 70).withAlpha(0.45f), cx, env.getBottom() - 3.0f, juce::Colours::transparentBlack,
-                                                   cx, env.getBottom() - env.getHeight() * 0.35f, true));
-            g.fillRect(env);
-            // Glass highlight.
-            g.setColour(juce::Colours::white.withAlpha(0.10f));
-            g.fillRect(env.getX() + 3.0f, env.getY() + 5.0f, 2.0f, env.getHeight() - 10.0f);
+            // The halo: warm light spilling out of the glass over the panel behind it. It grows and brightens with the glow, taller than wide.
+            const float reach = w * (0.7f + 0.85f * glow);
+            const auto warm = juce::Colour::fromRGB(255, 104, 28);
+            juce::ColourGradient halo(warm.withAlpha(std::min(0.7f, 0.14f + 0.48f * glow)), centre, warm.withAlpha(0.0f), centre.translated(reach, 0.0f), true);
+            halo.addColour(0.45, warm.withAlpha(std::min(0.4f, 0.06f + 0.25f * glow)));
+            juce::FillType fill(halo);
+            fill.transform = juce::AffineTransform::scale(1.0f, 1.9f, centre.x, centre.y);
+            g.setFillType(fill);
+            g.fillRect(juce::Rectangle<float>(centre.x - reach, centre.y - reach * 1.9f, reach * 2.0f, reach * 3.8f));
         }
-        g.setColour(juce::Colours::white.withAlpha(0.28f));
-        g.strokePath(glass, juce::PathStrokeType(1.2f));
-        // Base with its pins.
-        g.setColour(juce::Colour::fromRGB(48, 44, 40));
-        g.fillRoundedRectangle(env.getX() - 1.0f, env.getBottom(), w + 2.0f, 6.0f, 1.5f);
-        g.setColour(juce::Colour::fromRGB(150, 140, 120));
-        g.fillRect(cx - w * 0.3f, env.getBottom() + 6.0f, 1.5f, 2.0f);
-        g.fillRect(cx + w * 0.3f - 1.5f, env.getBottom() + 6.0f, 1.5f, 2.0f);
+        g.setOpacity(1.0f);
+        g.drawImage(back, dest);
+        g.setOpacity(0.9f);
+        g.drawImage(heater, dest);
+        g.setOpacity(plateAlpha);
+        g.drawImage(plate, dest);
+        g.setOpacity(1.0f);
+        g.drawImage(front, dest);
+        if (glow > 0.75f) {
+            // Overexposed: the plate burns white-hot in the middle when the tube flares.
+            const float bloom = std::min(0.7f, (glow - 0.75f) * 1.4f);
+            const auto hot = juce::Colour::fromRGB(255, 226, 170);
+            const juce::Point<float> plateCentre(cx, dest.getY() + h * 0.43f);
+            juce::ColourGradient flare(hot.withAlpha(bloom), plateCentre, hot.withAlpha(0.0f), plateCentre.translated(w * 0.42f, 0.0f), true);
+            juce::FillType fill(flare);
+            fill.transform = juce::AffineTransform::scale(1.0f, 2.6f, plateCentre.x, plateCentre.y);
+            g.setFillType(fill);
+            g.fillRect(juce::Rectangle<float>(plateCentre.x - w * 0.42f, plateCentre.y - w * 1.1f, w * 0.84f, w * 2.2f));
+        }
     }
     g.setColour(getLookAndFeel().findColour(juce::Label::textColourId).withAlpha(0.75f));
     g.setFont(AmpLookAndFeel::font(11.0f));
@@ -510,7 +522,7 @@ SasEditor::SasEditor(SasProcessor& p)
             param->endChangeGesture();
         }
     };
-    for (int i = 0; i < 4; ++i) {
+    for (int i = 0; i < 6; ++i) {
         addChildComponent(selBox_[i]);
         addChildComponent(selCaption_[i]);
         styleCaption(selCaption_[i], "");
@@ -601,7 +613,7 @@ SasEditor::SasEditor(SasProcessor& p)
     // amp unit and the cabinet unit of the rack page host.
     for (auto* c : std::initializer_list<juce::Component*>{&input_, &output_, &cable_, &bias_, &wear_, &inBar_, &outBar_, &tubes_, &pickup_, &pickupCaption_,
                                                            &tube_, &tubeCaption_, &noise_, &noiseCaption_, &unit_, &unitCaption_, &idleLabel_, &conditionNote_, &namLoad_, &namClear_,
-                                                           &namName_, &namNote_, &selBox_[0], &selBox_[1], &selBox_[2], &selBox_[3], &selCaption_[0], &selCaption_[1], &selCaption_[2], &selCaption_[3]})
+                                                           &namName_, &namNote_, &selBox_[0], &selBox_[1], &selBox_[2], &selBox_[3], &selBox_[4], &selBox_[5], &selCaption_[0], &selCaption_[1], &selCaption_[2], &selCaption_[3], &selCaption_[4], &selCaption_[5]})
         ampPanel_.addChildComponent(*c);
     for (auto* c : std::initializer_list<juce::Component*>{&cab_, &cabCaption_, &blend_, &blendNote_, &loadA_, &clearA_, &loadB_, &clearB_, &nameA_, &nameB_, &curveA_, &curveB_, &cabNote_,
                                                            &stereoWidth_, &doubleAmount_, &doubleTime_, &namCabLoad_, &namCabClear_, &namCabName_, &speaker_, &speakerIntense_})
@@ -694,6 +706,7 @@ void SasEditor::selectedRowsChanged(int lastRow) {
         param->setValueNotifyingHost(param->convertTo0to1(float(amp)));
         param->endChangeGesture();
     }
+    processor_.resetTubes(0);  // the new amp comes with its own tubes
 }
 
 void SasEditor::styleCombo(juce::ComboBox& box, const char* paramId,
@@ -907,7 +920,7 @@ void SasEditor::showAmp(int index) {
     jack_.clear(juce::dontSendNotification);
     for (std::size_t j = 0; j < def.preamp.jacks.size(); ++j) jack_.addItem(tr(def.preamp.jacks[j].label), int(j) + 1);
     jackCaption_.setText(tr(def.preamp.jackLabel), juce::dontSendNotification);
-    for (int i = 0; i < 4; ++i) {
+    for (int i = 0; i < 6; ++i) {
         selBox_[i].clear(juce::dontSendNotification);
         const bool has = i < int(def.preamp.selectors.size());
         selBox_[i].setVisible(has);
@@ -966,7 +979,7 @@ void SasEditor::timerCallback() {
     const int jackNow = int(processor_.apvts.getRawParameterValue(ids::jack)->load() + 0.5f);
     if (jackNow < jack_.getNumItems() && jack_.getSelectedItemIndex() != jackNow)
         jack_.setSelectedItemIndex(jackNow, juce::dontSendNotification);
-    for (int i = 0; i < 4; ++i) {
+    for (int i = 0; i < 6; ++i) {
         const int now = int(processor_.apvts.getRawParameterValue(ids::sel[i])->load() + 0.5f);
         if (now < selBox_[i].getNumItems() && selBox_[i].getSelectedItemIndex() != now) selBox_[i].setSelectedItemIndex(now, juce::dontSendNotification);
     }
@@ -1311,7 +1324,7 @@ void SasEditor::layoutAmpPanel() {
     auto mid = area;  // the guitar, the power tubes and the amp's condition share one row
 
     const int selectors = shownAmp_ >= 0 ? int(processor_.amps()[std::size_t(shownAmp_)].preamp.selectors.size()) : 0;
-    for (int i = 0; i < 4; ++i) {
+    for (int i = 0; i < 6; ++i) {
         selBox_[i].setVisible(i < selectors);
         selCaption_[i].setVisible(i < selectors);
     }

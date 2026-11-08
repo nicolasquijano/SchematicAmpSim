@@ -15,8 +15,8 @@
 namespace sas {
 
 // Append-only: a saved project stores the names, not the numbers, but keep the order anyway.
-enum class ModuleType { Amp = 0, Cabinet, Gate, Compressor, Overdrive, NamPedal, Phaser, Chorus, Vibe, Pitch, Eq, Delay, Reverb, Splitter, Mixer, Tremolo, Flanger, Wah, Fuzz, Boost, Limiter, TapeEcho };
-constexpr int kModuleTypeCount = int(ModuleType::TapeEcho) + 1;
+enum class ModuleType { Amp = 0, Cabinet, Gate, Compressor, Overdrive, NamPedal, Phaser, Chorus, Vibe, Pitch, Eq, Delay, Reverb, Splitter, Mixer, Tremolo, Flanger, Wah, Fuzz, Boost, Limiter, TapeEcho, Acoustic };
+constexpr int kModuleTypeCount = int(ModuleType::Acoustic) + 1;
 
 const char* moduleTypeName(ModuleType t);
 std::optional<ModuleType> moduleTypeFromName(std::string_view name);
@@ -24,9 +24,11 @@ std::optional<ModuleType> moduleTypeFromName(std::string_view name);
 // What a module does with the two channels. The rack makes the signal fit:
 //  MonoOnly     sums a stereo pair to mono first, then runs on the left channel (r == nullptr).
 //  MonoToStereo sums a stereo pair, then runs with a right buffer it must fill (a copy of l when it adds no width); the result is stereo.
+//  Widening     takes mono and widens it to stereo, or takes a stereo pair and keeps it stereo (the cabinet): it runs with a right buffer it
+//               must fill when the signal was mono, and with the real right channel when it was not; setStereoInput tells which.
 //  Stereo       needs a pair: a mono signal is copied into the right buffer first.
 //  Flexible     takes whatever comes: r is nullptr while the signal is mono (the phaser, chorus and vibe have always run that way).
-enum class Channels { MonoOnly, MonoToStereo, Stereo, Flexible };
+enum class Channels { MonoOnly, MonoToStereo, Stereo, Flexible, Widening };
 
 // What each type of module does with the channels, without building one (the editor uses it to say where a mono module sums a stereo pair).
 Channels moduleChannels(ModuleType type);
@@ -52,6 +54,8 @@ public:
     // True for pedals that load the guitar (compressor, TS): in front of the amp they replace its source impedance.
     virtual bool buffered() const { return false; }
     virtual Channels channels() const = 0;
+    // Only for `Widening` modules: before each block, whether `r` already holds the right channel (true) or is a buffer to fill from `l` (false).
+    virtual void setStereoInput(bool /*stereo*/) {}
     virtual void reset() = 0;
     virtual Fusion fusion() const { return Fusion::None; }
     virtual bool isAmp() const { return false; }

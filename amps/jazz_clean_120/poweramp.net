@@ -1,0 +1,17 @@
+* "American Clean 120" power amp, simplified: the two 60 W direct-coupled complementary stages of the drawing (Q7 / Q8 differential pair, Q15 / Q16 drivers,
+* Q12 / Q13 outputs, 33.5 V rails) are one op-amp (model JC_POWER, the limited op-amp: gain from R50 27k / R40 1k = 29, output clipped softly at +-31 V, 0.2 ohm
+* output resistance) into the 8 ohm load through the 0.33 ohm emitter resistor. The supply is a stiff 40 V rail node the engine can drive.
+
+S VAUDIO pin 50k 0
+S VHT a 1 40
+R RHT a 0 10k
+R RX a x 1
+C CX x 0 1u
+
+C C59 pin pg 1u
+R R105 pg 0 56k
+O POW pg pm po 0 JC_POWER
+R R50 po pm 27k
+R R40 pm 0 1k
+R R55 po t8 0.33
+R RLOAD t8 0 8

@@ -87,6 +87,17 @@ PreampDef parsePreamp(const json& j, const FileReader& read) {
                 bad("preamp.stages." + sd.netlist, "a stage needs a link from an earlier stage or \"input\": true");
             p.stages.push_back(std::move(sd));
         }
+    if (j.contains("pre")) {
+        const json& r = j.at("pre");
+        p.pre.present = true;
+        p.pre.netlist = str(r, "netlist", "preamp.pre");
+        p.pre.netlistText = read(p.pre.netlist);
+        p.pre.inputSource = str(r, "input_source", "preamp.pre");
+        p.pre.outputNode = str(r, "output_node", "preamp.pre");
+        p.pre.detectNode = str(r, "detect_node", "preamp.pre");
+        p.pre.gateKnob = str(r, "gate_knob", "preamp.pre");
+        p.pre.selector = str(r, "selector", "preamp.pre");
+    }
     p.railSource = str(j, "rail_source", "preamp");
     p.inputSource = str(j, "input_source", "preamp");
     p.outputNode = str(j, "output_node", "preamp");
@@ -143,12 +154,17 @@ PreampDef parsePreamp(const json& j, const FileReader& read) {
                 pd.label = str(pk, "label", "preamp.selectors." + sd.name);
                 if (pk.contains("resistors"))
                     for (const auto& [name, ohms] : pk.at("resistors").items()) pd.resistors.push_back({name, ohms.get<double>()});
+                if (pk.contains("pot_totals"))
+                    for (const auto& [name, ohms] : pk.at("pot_totals").items()) {
+                        if (!ohms.is_number() || ohms.get<double>() <= 0.0) bad("preamp.selectors." + sd.name + ".pot_totals." + name, "expected a resistance in ohms");
+                        pd.potTotals.push_back({name, ohms.get<double>()});
+                    }
                 sd.positions.push_back(std::move(pd));
             }
             if (sd.positions.size() < 2 || sd.positions.size() > 5) bad("preamp.selectors." + sd.name, "a selector has 2 to 5 positions");
             p.selectors.push_back(std::move(sd));
         }
-        if (p.selectors.size() > SelectorDef::kMax) bad("preamp.selectors", "at most 4 selectors");
+        if (p.selectors.size() > SelectorDef::kMax) bad("preamp.selectors", "at most 6 selectors");
     }
     if (p.jacks.empty()) bad("preamp.jacks", "at least one jack is required");
     if (j.contains("jack_label")) p.jackLabel = str(j, "jack_label", "preamp");
@@ -413,6 +429,44 @@ AmpDef loadAmpDef(const std::string& jsonText, const FileReader& read) {
     }
     d.power = parsePower(need(j, "power", ""), read);
     d.lite = parseLite(need(j, "lite", ""));
+    if (j.contains("graphic_eq"))
+        for (const auto& b : j.at("graphic_eq").at("bands")) {
+            GraphicEqBand gb;
+            gb.hz = num(b, "hz", "graphic_eq.bands");
+            gb.q = numOr(b, "q", 1.0);
+            gb.rangeDb = numOr(b, "range_db", 12.0);
+            d.graphicEq.bands.push_back(gb);
+        }
+    if (j.contains("presets")) {
+        for (const auto& pj : j.at("presets")) {
+            AmpPresetDef p;
+            p.name = str(pj, "name", "presets");
+            const std::string where = "presets." + p.name;
+            if (pj.contains("jack")) {
+                p.jack = str(pj, "jack", where);
+                d.jackIndex(p.jack);  // throws when the amp has no such jack
+            }
+            if (pj.contains("params"))
+                for (const auto& [key, value] : pj.at("params").items()) {
+                    bool known = false;
+                    for (const auto& u : d.ui) known = known || u.param == key;
+                    if (!known) bad(where + ".params." + key, "the amp's \"ui\" has no such parameter");
+                    if (!value.is_number() || value.get<double>() < 0.0 || value.get<double>() > 10.0) bad(where + ".params." + key, "expected a number from 0 to 10");
+                    p.params.emplace_back(key, value.get<double>());
+                }
+            if (pj.contains("selectors"))
+                for (const auto& [key, value] : pj.at("selectors").items()) {
+                    std::size_t at = d.preamp.selectors.size();
+                    for (std::size_t i = 0; i < d.preamp.selectors.size(); ++i)
+                        if (d.preamp.selectors[i].name == key) at = i;
+                    if (at == d.preamp.selectors.size()) bad(where + ".selectors." + key, "the amp has no such selector");
+                    if (!value.is_number_integer() || value.get<int>() < 0 || value.get<int>() >= int(d.preamp.selectors[at].positions.size()))
+                        bad(where + ".selectors." + key, "expected the index of one of its positions");
+                    p.selectors.emplace_back(key, value.get<int>());
+                }
+            d.presets.push_back(std::move(p));
+        }
+    }
     return d;
 }
 

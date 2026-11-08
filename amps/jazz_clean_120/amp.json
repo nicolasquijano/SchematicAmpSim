@@ -1,0 +1,368 @@
+{
+ "id": "jazz_clean_120",
+ "order": 19,
+ "name": "American Clean 120",
+ "output_db": 18.0,
+ "ui": [
+  {
+   "param": "volume",
+   "knob": "volume",
+   "label": "VOLUME"
+  },
+  {
+   "param": "bass",
+   "knob": "bass",
+   "label": "BASS"
+  },
+  {
+   "param": "middle",
+   "knob": "middle",
+   "label": "MIDDLE"
+  },
+  {
+   "param": "treble",
+   "knob": "treble",
+   "label": "TREBLE"
+  },
+  {
+   "param": "volume2",
+   "knob": "hi_treble",
+   "label": "HI-TREBLE"
+  },
+  {
+   "param": "master",
+   "knob": "distortion",
+   "label": "DISTORTION"
+  },
+  {
+   "param": "reverb",
+   "knob": "reverb",
+   "label": "REVERB"
+  }
+ ],
+ "theme": {
+  "background": "#0f1012",
+  "panel": "#1a1c20",
+  "edge": "#383c44",
+  "accent": "#7ec8e3",
+  "label": "#8e99a8",
+  "text": "#e6ebf2",
+  "knob_top": "#33363d",
+  "knob_bottom": "#111215",
+  "pointer": "#d8f0fa"
+ },
+ "preamp": {
+  "netlist": "preamp.net",
+  "tolerance": 2e-06,
+  "rail_source": "VRAIL",
+  "input_source": "VIN",
+  "output_node": "y",
+  "pot_min_ohms": 100,
+  "jack_label": "INPUT JACK",
+  "selectors": [
+   {
+    "name": "dist",
+    "label": "DISTORTION",
+    "positions": [
+     {
+      "label": "Off",
+      "resistors": {
+       "SW_DIST": 1000000000000.0,
+       "SW_BUS": 1000000000000.0
+      }
+     },
+     {
+      "label": "On",
+      "resistors": {
+       "SW_DIST": 1,
+       "SW_BUS": 1
+      }
+     }
+    ]
+   }
+  ],
+  "knobs": [
+   {
+    "name": "volume",
+    "default": 0.8,
+    "pot": {
+     "type": "wiper",
+     "top": "VR2T",
+     "bottom": "VR2B",
+     "total": 1000000.0,
+     "taper": "log"
+    }
+   },
+   {
+    "name": "bass",
+    "default": 0.5,
+    "pot": {
+     "type": "variable",
+     "resistor": "VR6",
+     "total": 250000.0,
+     "taper": "log"
+    }
+   },
+   {
+    "name": "middle",
+    "default": 0.5,
+    "pot": {
+     "type": "variable",
+     "resistor": "VR5",
+     "total": 10000.0,
+     "taper": "linear"
+    }
+   },
+   {
+    "name": "treble",
+    "default": 0.5,
+    "pot": {
+     "type": "wiper",
+     "top": "VR4T",
+     "bottom": "VR4B",
+     "total": 250000.0,
+     "taper": "linear"
+    }
+   },
+   {
+    "name": "hi_treble",
+    "default": 0.2,
+    "pot": {
+     "type": "wiper",
+     "top": "VR3T",
+     "bottom": "VR3B",
+     "total": 1000000.0,
+     "taper": "linear"
+    }
+   },
+   {
+    "name": "distortion",
+    "default": 0.0,
+    "pot": {
+     "type": "wiper",
+     "top": "VR1T",
+     "bottom": "VR1B",
+     "total": 50000.0,
+     "taper": "log"
+    }
+   },
+   {
+    "name": "reverb",
+    "default": 0.0,
+    "pot": {
+     "type": "wiper",
+     "top": "VR7T",
+     "bottom": "VR7B",
+     "total": 10000.0,
+     "taper": "linear"
+    }
+   }
+  ],
+  "source_ohms": {
+   "resistors": [
+    "RSRC",
+    "RSRC_LOW"
+   ],
+   "default": 7000,
+   "min": 10
+  },
+  "jacks": [
+   {
+    "name": "high",
+    "label": "High",
+    "drive": "VIN",
+    "resistors": {}
+   },
+   {
+    "name": "low",
+    "label": "Low",
+    "level_db": 8.5,
+    "drive": "VLOW",
+    "resistors": {}
+   }
+  ],
+  "reverb": {
+   "netlist": "reverb.net",
+   "rail_source": "VRAIL",
+   "grid_source": "VG",
+   "grid_node": "o3b",
+   "out_node": "o4b",
+   "main_source": "VREVOUT",
+   "tank_in_node": "ts",
+   "tank_out_source": "VREV",
+   "gain": 0.1,
+   "springs": [
+    {
+     "delay_ms": 29,
+     "sections": 70,
+     "coefficient": -0.5,
+     "loop_gain": 0.88,
+     "loss_hz": 3500
+    },
+    {
+     "delay_ms": 37,
+     "sections": 70,
+     "coefficient": -0.5,
+     "loop_gain": 0.88,
+     "loss_hz": 3500
+    }
+   ]
+  }
+ },
+ "power": {
+  "netlist": "poweramp.net",
+  "tolerance": 0.0001,
+  "input_source": "VAUDIO",
+  "ht_source": "VHT",
+  "ht_node": "a",
+  "rail_node": "x",
+  "output_node": "t8",
+  "load_resistor": "RLOAD",
+  "supply": {
+   "mains_hz": 50,
+   "vac_peak": 47,
+   "rect_source_ohms": 1,
+   "ht_dc_source": 40,
+   "rect_drop": 1.4,
+   "reservoir_farads": 0.0066,
+   "tie_ohms": 1.0,
+   "settle_seconds": 0.15
+  }
+ },
+ "lite": {
+  "base_gain_db": 23.1573,
+  "high_pass_hz": 4.25436,
+  "shelf_hz": 150,
+  "presence_db": [
+   0,
+   0,
+   0,
+   0,
+   0
+  ],
+  "sag_table": [
+   [
+    0,
+    0
+   ],
+   [
+    2.54648,
+    0
+   ],
+   [
+    5.09296,
+    0
+   ],
+   [
+    9.5493,
+    0
+   ],
+   [
+    15.9155,
+    0
+   ],
+   [
+    22.2817,
+    0
+   ],
+   [
+    28.6479,
+    0
+   ],
+   [
+    35.0141,
+    0
+   ],
+   [
+    44.5634,
+    0
+   ],
+   [
+    57.2958,
+    0
+   ],
+   [
+    82.7606,
+    0
+   ],
+   [
+    127.324,
+    0
+   ]
+  ],
+  "rail_x_idle": 45.4562,
+  "rail_sag_fraction": 0.58,
+  "ceiling_light": 37.766,
+  "ceiling_heavy": 26.3293,
+  "ceiling_decay": 140.675,
+  "knee": 7.75405,
+  "sag_attack_s": 0.01,
+  "sag_release_s": 0.06
+ },
+ "presets": [
+  {
+   "name": "Clean",
+   "jack": "high",
+   "params": {
+    "bass": 5,
+    "master": 0,
+    "middle": 5,
+    "treble": 5,
+    "volume": 5,
+    "volume2": 2,
+    "reverb": 2
+   },
+   "selectors": {
+    "dist": 0
+   }
+  },
+  {
+   "name": "Bright clean",
+   "jack": "high",
+   "params": {
+    "bass": 4,
+    "master": 0,
+    "middle": 5,
+    "treble": 6.5,
+    "volume": 6,
+    "volume2": 6,
+    "reverb": 2
+   },
+   "selectors": {
+    "dist": 0
+   }
+  },
+  {
+   "name": "Crunch",
+   "jack": "high",
+   "params": {
+    "bass": 5,
+    "master": 9.4,
+    "middle": 6,
+    "treble": 5.5,
+    "volume": 6,
+    "volume2": 3,
+    "reverb": 2
+   },
+   "selectors": {
+    "dist": 1
+   }
+  },
+  {
+   "name": "Lead",
+   "jack": "high",
+   "params": {
+    "bass": 5,
+    "master": 9.8,
+    "middle": 6.5,
+    "treble": 6,
+    "volume": 8,
+    "volume2": 3,
+    "reverb": 2
+   },
+   "selectors": {
+    "dist": 1
+   }
+  }
+ ]
+}

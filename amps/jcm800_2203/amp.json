@@ -24,6 +24,12 @@
     "pointer": "#f6e7b4"
   },
 
+  "presets": [
+   {"name": "Clean", "jack": "low", "params": {"bass": 5, "master": 6, "middle": 5, "presence": 5, "treble": 6, "volume": 2.7}},
+   {"name": "Edge of breakup", "jack": "high", "params": {"bass": 5, "master": 5, "middle": 5, "presence": 5, "treble": 6, "volume": 3.9}},
+   {"name": "Crunch", "jack": "high", "params": {"bass": 5, "master": 5, "middle": 5, "presence": 5, "treble": 6, "volume": 5.2}},
+   {"name": "Lead", "jack": "high", "params": {"bass": 5, "master": 6, "middle": 6.5, "presence": 5, "treble": 6.5, "volume": 6.2}}
+  ],
   "preamp": {
     "netlist": "preamp.net",
     "tolerance": 2e-6,
@@ -40,6 +46,27 @@
       { "name": "master", "default": 0.5, "pot": { "type": "wiper", "top": "VR2T", "bottom": "VR2B", "total": 1e6,   "taper": "log" } }
     ],
     "source_ohms": { "resistors": ["RSRC", "RSRC_LOW"], "default": 7000, "min": 10 },
+  "selectors": [
+   {"name": "meaty", "label": "MEATY", "positions": [
+     {"label": "Off", "resistors": {"SW_MOD1": 1e12}},
+     {"label": "330p on R3", "resistors": {"SW_MOD1": 1}}]},
+   {"name": "v1b_cathode", "label": "V1B CATHODE", "positions": [
+     {"label": "10k", "resistors": {"R6": 10000}},
+     {"label": "4.7k", "resistors": {"R6": 4700}},
+     {"label": "1.5k", "resistors": {"R6": 1500}}]},
+   {"name": "v2a_bypass", "label": "V2A BYPASS", "positions": [
+     {"label": "Off", "resistors": {"SW_MOD3": 1e12}},
+     {"label": "0.68u", "resistors": {"SW_MOD3": 1}}]},
+   {"name": "slope", "label": "SLOPE", "positions": [
+     {"label": "33k", "resistors": {"R15": 33000}},
+     {"label": "47k", "resistors": {"R15": 47000}}]},
+   {"name": "mid_pot", "label": "MID POT", "positions": [
+     {"label": "22k", "pot_totals": {"middle": 22000}},
+     {"label": "50k", "pot_totals": {"middle": 50000}}]},
+   {"name": "v1a_bypass", "label": "V1A BYPASS", "positions": [
+     {"label": "0.68u", "resistors": {"SW_MOD6": 1}},
+     {"label": "0.47u", "resistors": {"SW_MOD6": 1e12}}]}
+  ],
     "jacks": [
       { "name": "high", "label": "High", "drive": "VIN",  "resistors": { "SW_C3": 1,    "SW_LOW": 1e12 } },
       { "name": "low",  "label": "Low",  "level_db": 31.5, "drive": "VLOW", "resistors": { "SW_C3": 1e12, "SW_LOW": 1 } }

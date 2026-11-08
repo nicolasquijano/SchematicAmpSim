@@ -1,0 +1,72 @@
+* "American Lead C+" power amp (the 100 W board of the Mark IIC+ drawing): a long-tailed ECC83 phase inverter whose cathodes sit on the feedback network
+* (R67 / R64 / R63 / R62: the tail is the feedback path to ground), four 6L6GC as two parallel pairs (2.2k grid stoppers, 470 R screen resistors from the
+* B supply, grids at the bias supply through 220k each), the output transformer with the 8 and 4 ohm taps, and the HT supply with its
+* choke and the three RC filters (B, C, D). The negative feedback is taken from the 8 ohm tap through the presence rheostat, R60 and R61 / C61.
+* Not modelled: the Simul-Class / Class A switch and its diodes (the 100 W wiring, cathodes grounded), the direct output.
+
+S VAUDIO pin 50k 0
+S VHT a 1 470
+S VBIAS bias 100 -52
+
+* Phase inverter V5: signal in through C66 on V5A's grid.
+C C66 pin ga 0.1u
+R R65 ga j 100k
+R R67 j kk 470
+R R64 n1 j 22k
+R R66 j gb 150k
+C C65 n2 gb 0.1u
+R R62 n2 0 3.3k
+C C64 n2 0 0.047u
+R R63 n1 n2 1.5k
+T V5A ga pa kk 12AX7
+T V5B gb pb kk 12AX7
+R R68 c pa 82.5k
+R R69 c pb 90.9k
+C C68 pb c 120p
+C C70 pa dt 0.1u
+C C71 pb db 0.1u
+
+* Presence: the 250k rheostat in the feedback path (a complementary pair: VRPS is the series part, VRPD an unused dummy), then R60 and R61 / C61 into the feedback node.
+R VRPD pdum 0 100k
+R VRPS t8 pp 1k
+R R60 pp pq 1.5k
+R R61 pq n1 56k
+C C61 pq n1 0.0047u
+
+* Power-tube grids: the bias supply through R70 / R71 (220k) and 47u.
+R R70 dt bias 220k
+R R71 bias db 220k
+C C97 bias 0 47u
+
+* 6L6GC pairs (V9 + V6 on the first phase, V7 + V8 on the second): grid stoppers, screens from B.
+R R74_9 dt g45 2.2k/2
+R R75_8 db g67 2.2k/2
+P V4 g45 pt s45 0 6L6GCDS 2
+P V5 g67 pbm s67 0 6L6GCDS 2
+R R79_9 sb s45 470/2
+R R80_8 sb s67 470/2
+
+* Output transformer (100 W, 4 x 6L6): plate-to-plate 2.8k, 3.5 H per primary half; windings are primary halves, then the 8 ohm secondary
+* with its 4 ohm tap at 0.7071 of the turns from the grounded end.
+R DCR_PT pt npt 40
+R DCR_PB pbm npb 40
+.param n8 = 2*1/sqrt(2800/8)
+.xfmr OT L=3.5 SAT=4.7
+  W npt a 1 pri
+  W a npb 1 pri
+  W t8 t4 0.2929*n8 sec
+  W t4 0 0.7071*n8 sec
+  K pri pri 0.9998
+  K pri sec 0.9993
+  K sec sec 0.9998
+.end
+R RLOAD t8 0 8
+
+* HT supply: A (reservoir, 110u) -> choke (100) -> B (screens, C84) -> R84 -> C (V5 plates) -> R85 -> D (the preamp's rail X).
+R T3 a sb 100
+C C84 sb 0 30u
+R R84 sb c 5.6k
+C C85 c 0 30u
+R R85 c x 5.6k
+C C86 x 0 30u
+R RPREAMP x 0 70k

@@ -1,0 +1,67 @@
+* "German Lead 650" power amp (the ENGL E650 II drawing): C20 and the long-tailed ECC83 phase inverter V4 (cathodes joined through R47 470R; the tail and the
+* feedback network R48 22k / R49 1.5k / R50 3.3k with C23, R51 150k and C21 100n to V4B's grid, as on the drawing), four 5881 as two parallel pairs (2.2k grid stoppers,
+* 470R screen resistors, 330k grid returns to the bias supply, cathodes to ground through the standby switch, closed here), the output transformer with its 16, 8 and 4 ohm
+* sections, and the HT supply. The negative feedback comes from the 8 ohm tap through R52 56k and the LEAD PRESENCE pot P6 (a series rheostat: more resistance, less
+* feedback, more presence); the clean channel's fixed R54 220k cannot be switched from here (it is the preamp's channel relay) so the presence pot always applies.
+
+S VAUDIO pin 50k 0
+S VHT a 1 460
+S VBIAS bias 100 -47.5
+
+C C20 pin ga 100n
+R R44 ga j 100k
+R R47 kk j 470
+T V4A ga pa kk 12AX7
+T V4B gb pb kk 12AX7
+R R48 j n1 22k
+R R49 n1 n2 1.5k
+R R50 n2 0 3.3k
+C C23 n2 0 47n
+R R51 j gb 150k
+C C21 gb n1 100n
+R R55 c pa 82k
+R R56 c pb 100k
+
+* Presence (a complementary pair: VRPS is the series rheostat, VRPD an unused dummy), R52, to the feedback node n1.
+R VRPD pdum 0 100k
+R VRPS t8 pp 1k
+R R52 pp n1 56k
+
+* Power-tube grids: coupling C25 / C26 from V4A's plate and C27 / C28 from V4B's, 330k returns to the bias supply (R57..R60) and 2.2k stoppers (R61..R64).
+C C25 pa dt 94n
+C C27 pb db 94n
+R R57_58 dt bias 165k
+R R59_60 bias db 165k
+C CBIAS bias 0 47u
+
+R R61_62 dt g45 2.2k/2
+R R63_64 db g67 2.2k/2
+P V5 g45 pt s45 0 6L6GCDS 2
+P V6 g67 pbm s67 0 6L6GCDS 2
+R R65_66 sb s45 470/2
+R R67_68 sb s67 470/2
+
+* Output transformer: plate-to-plate 2.8k, 3.5 H per primary half; windings are primary halves, then the 16 / 8 / 4 ohm sections of the secondary.
+R DCR_PT pt npt 40
+R DCR_PBM pbm npb 40
+.param n16 = 2*1/sqrt(2800/16)
+.xfmr OT L=3.5 SAT=4.7
+  W npt a 1 pri
+  W a npb 1 pri
+  W t16 t8 0.2929*n16 sec
+  W t8 t4 0.2071*n16 sec
+  W t4 0 0.5*n16 sec
+  K pri pri 0.9998
+  K pri sec 0.9993
+  K sec sec 0.9998
+.end
+R RLOAD t8 0 8
+
+* HT supply: reservoir A, choke DCR, B (screens), then C (V4 plates) and D (the preamp's rail).
+R T3 a sb 100
+C C84 sb 0 47u
+R R84 sb c 4.7k
+C C85 c 0 47u
+R R85S c x 4.7k
+C C86 x 0 47u
+R RPREAMP x 0 70k

@@ -68,3 +68,19 @@ target_link_libraries(sas_stage_cost PRIVATE sas_engine sas_amps)
 # A split preamp against the same preamp as one netlist (level, octave bands, waveform).
 add_executable(sas_split_check split_check.cpp)
 target_link_libraries(sas_split_check PRIVATE sas_engine sas_amps)
+
+# Works out the factory presets of the amps by measuring how hard each one is driven (see the header of amp_presets.cpp).
+add_executable(sas_amp_presets amp_presets.cpp)
+target_link_libraries(sas_amp_presets PRIVATE sas_engine sas_amps)
+
+# The Kerry King Beast input stage: gain by frequency and Assault setting, and the gate closing on silence.
+add_executable(sas_beast_check beast_check.cpp)
+target_link_libraries(sas_beast_check PRIVATE sas_engine sas_amps)
+
+# The acoustic simulator: its response per body type, and the level it keeps.
+add_executable(sas_acoustic_check acoustic_check.cpp)
+target_link_libraries(sas_acoustic_check PRIVATE sas_engine)
+
+# The Jazz Chorus preamp: gain, the distortion switch and what the spring reverb adds.
+add_executable(sas_jc_check jc_check.cpp)
+target_link_libraries(sas_jc_check PRIVATE sas_engine sas_amps)

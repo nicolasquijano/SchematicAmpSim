@@ -339,9 +339,13 @@ etapa) y los capacitores por la inversa: igual caída y mismas constantes de tie
 |---|---|---|---|
 | SVT | 2 + 6 + 4 + 0 | 10 400 → 4 700 | lead-hot 48 % → 35 %, crunch 56 → 41 % |
 | Superlead 100 | 4 + 4 + 4 + 4 | 18 900 → 6 500 | 65 % → 32 % (Efficient 26 %) |
+| Mod BE 100 | 4 + 4 + 6 | 14 100 → 6 500 | lead 56 % → 33 % (Efficient 28 %) |
 
 **Precisión.** SVT canal 1 y Superlead (limpio y lead): nivel dentro de 0,15 dB y bandas principales dentro de 0,5 dB. SVT canal 2: −1,4 dB de
 nivel y unos 3 dB menos a 110 Hz (se pierde el acople por la fuente compartida con V4A). Con ganancia alta las formas de onda difieren más
 (−12 a −20 dB) aunque el nivel y las bandas coinciden. Escuchado en el plugin: bien.
 
-Candidatos restantes (estimado): Mod BE 100 (14 puertos, −20 puntos); los demás menos de 5 puntos.
+Mod BE 100: nivel dentro de 0,03 dB y bandas dentro de 0,44 dB en los tres modos (Clean, BE, HBE) y con los interruptores; la forma de onda
+coincide a −24 a −50 dB. Las etapas: V1A+V1B, V2A+V2B, y V3A+V3B con el recortador SAT, la pila de tonos y la salida.
+
+Candidatos restantes: ninguno que valga la pena (los demás ahorrarían menos de 5 puntos).

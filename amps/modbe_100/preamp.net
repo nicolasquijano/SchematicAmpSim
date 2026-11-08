@@ -1,34 +1,22 @@
-* Modded-British 100 W three-mode head, preamp ("BE-100 v2", schematic rev 1.5, drawn by Patrice Frey, layout by Equinox).
-* Input, V1A, then three modes chosen by two relays: Clean (V1A taps into a passive Bass / Treble stack and V1B, then straight to
-* the power amp), BE (the guitar straight into V2A) and HBE (V1A into V2A, the hotter one). The BE / HBE chain is V2A, a switched
-* voicing network (S2) with the FAT cap (SW9), V2B, the GAIN pot, V3A, V3B (a cathode follower) with the SAT clipper (SW7) and
-* the VOICE switch (SW3), a Marshall-type stack (Treble, Middle, Bass) and the Master.
+* Modded-British 100 W three-mode head, preamp (see preamp_full.net for the drawing and the reading notes), split in three solvers (amp.json
+* "stages", docs/PLAN_CPU.md). preamp_full.net is the whole circuit, the reference the split is checked against (sas_split_check). The stages:
+*   preamp.net  V1A and V1B: the input, the Clean chain (passive stack, volume, V1B) and what V1A hands to V2A;
+*   stage2.net  V2A and V2B: the BE / HBE chain up to the Gain pot;
+*   stage3.net  V3A, V3B (cathode follower), the SAT clipper, the tone stack, the Master and the output node, with the end of the Clean chain.
+* A stage's load that sits in a later one is repeated in it (linear parts only), and the later stage is driven through a 1 ohm source at the cut
+* node, so the loaded voltage passes unchanged: node in (V2A's raw input), V1A's plate p1 (the HBE feed), V2B's plate p3 (the Gain network) and
+* V1B's plate p5 (the end of the Clean chain). The supply is repeated in each stage with the series resistance of the rail source scaled by
+* (total current / this stage's current) and the decoupling capacitor at x by the inverse; the B+2 / B+3 filter belongs to stage 3 whole.
+* What is lost is the interaction through the shared supply.
 *
-* Not modelled: the FX loop (the two depletion MOSFET buffers; the loop is wired through), the Line Out, the second pole of RELAY1
-* and its ground contact, the heater wiring and the +12 V relay supply.
-*
-* Reading notes where the drawing is hard to follow (change them here, not in code):
-*  - RELAY1 chooses what V2A hears: the raw input (BE) or V1A's output (HBE). RELAY2 chooses the output: the clean chain (Clean)
-*    or the Master (BE and HBE). Which relay a mode energises is not printed; this is the reading that makes the modes make sense.
-*  - the SAT clipper is 10k + 100n from V3B's cathode into two back-to-back MPSA06 junctions to ground (here two diodes), with 1M.
-*  - the clean chain's tap is the junction of R9 and R3 on V1A's plate (the drawing runs a long wire from it to R25 / C10).
-*  - the netlist is written in the Clean state (the first mode).
+* This file: stage 1.
 
-* Rail node x (after the 10k + 4.7k from B+), driven from the power amp at run time; R34 10k then 10k + 100u for V3.
-V VRAIL x 100 430
-R R34 x x2 10k
-C C28 x 0 22u
-C C29 x2 0 22u
-R R43 x2 x3 10k
-C C30 x3 0 100u
-* The guitar behind a variable source resistance.
+.nodes x gin in pkb1 pkb2 pkk1 pkk2 pkk4 ng1 p1 n1 k1 ct ctw cu cb cbw cbw2 br1 br2 cvw p5 k5 cd cl mo c3n v1o v2s ng2
+
+V VRAIL x 317.9 430
+C C28 x 0 6.920u
 I VIN gin 1
 R RSRC gin in 7k
-* The guitar behind its source impedance. RSRC is the plain 7k source: the "Off" setting, and what a pedal in front of the amp
-* looks like. A pickup replaces it with its own impedance as seen from the open-circuit voltage (the recording): the
-* coil (winding resistance RPU + inductance) in parallel with its winding capacitance CPU and an eddy-current loss resistor
-* RPL, then the cable capacitance (200 pF per 2 m, switched in steps of 200, 400 and 800 pF). The engine sets the values:
-* single coil = coil 1 (2.5 H), humbucker and P-90 = coil 2 (5 H) with their own resistances; open = 1e12.
 R RPU1 gin pkb1 1e12
 .xfmr LPU1 L=2.5
   W pkb1 in 1 pu
@@ -46,8 +34,6 @@ C CCAB2 pkk2 0 400p
 R SWK4 in pkk4 1e12
 C CCAB4 pkk4 0 800p
 
-
-* Input jack: 1M to ground, 33k stopper into V1A (2.7k / 0.68u cathode, 220k + 100k plate load, 500p across the 100k).
 R RJ1 in 0 1M
 R R2 in ng1 33k
 T V1A ng1 p1 k1 12AX7
@@ -57,89 +43,14 @@ C C8 n1 p1 500p
 R R4 k1 0 2k7
 C C5 k1 0 0.68u
 
-* RELAY1: what V2A hears. V1A's output goes through 2.2n and 1M with 68k to ground; or the raw input.
 C C3 p1 c3n 2n2
 R R5 c3n v1o 1M
 R R6 v1o 0 68k
-R SW_RAW in v2s 1
 R SW_V1 v1o v2s 1e12
 R R11 v2s 0 10M
 R R7 v2s ng2 33k
+R RG2 ng2 0 1G
 
-* V2A (2.7k / 0.68u cathode, 220k + 100k plate load with 500p) into the voicing network.
-T V2A ng2 p2 k2 12AX7
-R R18 x n2 220k
-R R17 n2 p2 100k
-C C13 n2 p2 500p
-R R10 k2 0 2k7
-C C20 k2 0 0.68u
-C C14 p2 f2 2n2
-C C15 p2 fat 22n
-R SW_FAT fat f2 1e12
-* S2 (two poles): position 1 puts 560k with 680p across it in series and 220k to ground; position 2 puts 68k in series and
-* 68k to ground. R23 33k into V2B's grid.
-R R20 f2 s2a 560k
-C C16 f2 s2a 680p
-R SW_S2A s2a g2c 1
-R R19 f2 s2b 68k
-R SW_S2B s2b g2c 1e12
-R R26 g2c r26 220k
-R SW_S2C r26 0 1
-R R16 g2c r16 68k
-R SW_S2D r16 0 1e12
-R R23 g2c ng3 33k
-
-* V2B (2.7k / 0.68u cathode, 100k plate load), 2.2n into the GAIN pot (1M), 470k || 500p into V3A's grid (470k to ground).
-T V2B ng3 p3 kb 12AX7
-R R21 x p3 100k
-R R24 kb 0 2k7
-C C17 kb 0 0.68u
-C C19 p3 gt 2n2
-R VR_GT gt gw 1
-R VR_GB gw 0 1
-R R30 gw ng4 470k
-C C26 gw ng4 500p
-R R28 ng4 0 470k
-
-* V3A (100k plate load on B+3 with 500p across, 820 / 0.68u cathode) drives V3B, a cathode follower (plate on B+3 through 10k).
-T V3A ng4 p4 k4 12AX7
-R R27 x2 p4 100k
-C C27 x2 p4 500p
-R R29 k4 0 820
-C C24 k4 0 0.68u
-T V3B p4 x3 vb 12AX7
-R R31 vb 0 100k
-* VOICE (SW3): 470u across V3A's cathode in position 1, 500p on V3B's cathode in position 2.
-R SW_V3A k4 c43 1
-C C43 c43 0 470u
-R SW_V3B vb c42 1e12
-C C42 c42 0 500p
-* SAT (SW7): 10k + 100n from V3B's cathode into two back-to-back junctions to ground, 1M to ground.
-R R33 vb s33 10k
-C C25 s33 sat 100n
-R SW_SAT sat sat2 1e12
-D DZ1 sat2 0 SIGNAL
-D DZ2 0 sat2 SIGNAL
-R R38 sat2 0 1M
-
-* Tone stack (Marshall arrangement): 500p on the Treble pot (250k), 33k slope, 22n to the Bass (1M, a rheostat) and 22n to the
-* Mid pot (25k wiper), then 220k and the Master (1M) with 1M to ground.
-C C4 vb tt 500p
-R R8 vb m 33k
-R VR_TT tt w3 1
-R VR_TB w3 n1b 1
-C C1 m n1b 22n
-R VR_BASS n1b n2b 1
-R VR_MIDT n2b wm 1
-R VR_MIDB wm 0 1
-C C6 m wm 22n
-R R59 w3 ms 220k
-R R32 ms 0 1M
-R VR_MT ms mw 1
-R VR_MB mw 0 1
-
-* Clean chain: the tap n1 into 100k and 50p, the passive stack (Treble 1M, Bass 250k, 10k), the Bright caps, the Clean Volume
-* (1M), V1B (820 / 10u cathode, 100k plate load), 0.022u and a 470k / 470k divider.
 C C10 n1 ct 50p
 R R25 n1 cu 100k
 C C7 cu cb 0.022u
@@ -164,7 +75,5 @@ C C9 p5 cd 0.022u
 R R15 cd cl 470k
 R R22 cl 0 470k
 
-* RELAY2: the output. Clean sends the clean chain's divider to the power amp, BE and HBE the Master's wiper.
 R SW_CLN_OUT cl mo 1
-R SW_BE_OUT mw mo 1e12
 R RMLOAD mo 0 1M

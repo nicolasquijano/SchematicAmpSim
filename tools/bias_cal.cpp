@@ -5,6 +5,8 @@
 // shows it (PowerAmp::idleMilliamps).
 #include <cmath>
 #include <cstdio>
+#include <cstdlib>
+#include <string>
 
 #include "sas/condition.h"
 #include "sas/embedded_amps.h"
@@ -24,7 +26,20 @@ double idleMa(const sas::AmpDef& def, int tube, double biasScale) {
 
 }  // namespace
 
-int main() {
+int main(int argc, char** argv) {
+    // sas_bias_cal --stock <amp id> <idle mA>: the factor to put on the bias source of the netlist so that the stock tube idles at that current (a new amp).
+    if (argc >= 4 && std::string(argv[1]) == "--stock") {
+        const sas::AmpDef def = sas::loadEmbeddedAmp(argv[2]);
+        const double target = std::atof(argv[3]);
+        double lo = 0.4, hi = 3.0;
+        for (int it = 0; it < 16; ++it) {
+            const double mid = 0.5 * (lo + hi);
+            (idleMa(def, 0, mid) > target ? lo : hi) = mid;
+        }
+        const double s = 0.5 * (lo + hi);
+        std::printf("%s: bias factor %.4f gives %.2f mA (stock %.2f mA at 1.0)\n", argv[2], s, idleMa(def, 0, s), idleMa(def, 0, 1.0));
+        return 0;
+    }
     for (const auto& id : sas::embeddedAmpIds()) {
         const sas::AmpDef def = sas::loadEmbeddedAmp(id);
         if (def.power.tubes.size() < 2 || !def.power.bias.adjustable()) continue;

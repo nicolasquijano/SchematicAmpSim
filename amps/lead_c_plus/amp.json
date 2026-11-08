@@ -1,0 +1,525 @@
+{
+ "id": "lead_c_plus",
+ "order": 18,
+ "name": "American Lead C+",
+ "output_db": 0.0,
+ "ui": [
+  {
+   "param": "volume",
+   "knob": "volume",
+   "label": "VOL 1"
+  },
+  {
+   "param": "volume2",
+   "knob": "lead_drive",
+   "label": "LEAD DRIVE"
+  },
+  {
+   "param": "reverb",
+   "knob": "lead_master",
+   "label": "LEAD MASTER"
+  },
+  {
+   "param": "bass",
+   "knob": "bass",
+   "label": "BASS"
+  },
+  {
+   "param": "middle",
+   "knob": "middle",
+   "label": "MIDDLE"
+  },
+  {
+   "param": "treble",
+   "knob": "treble",
+   "label": "TREBLE"
+  },
+  {
+   "param": "presence",
+   "label": "PRESENCE"
+  },
+  {
+   "param": "master",
+   "knob": "master",
+   "label": "MASTER"
+  },
+  {
+   "param": "aeq1",
+   "label": "60 Hz"
+  },
+  {
+   "param": "aeq2",
+   "label": "240 Hz"
+  },
+  {
+   "param": "aeq3",
+   "label": "750 Hz"
+  },
+  {
+   "param": "aeq4",
+   "label": "2.2 kHz"
+  },
+  {
+   "param": "aeq5",
+   "label": "6.6 kHz"
+  }
+ ],
+ "theme": {
+  "background": "#0e0e0d",
+  "panel": "#1b1b19",
+  "edge": "#3d3a33",
+  "accent": "#e2c986",
+  "label": "#9a9585",
+  "text": "#ece7d6",
+  "knob_top": "#34322d",
+  "knob_bottom": "#121110",
+  "pointer": "#f3e8c0"
+ },
+ "preamp": {
+  "netlist": "preamp.net",
+  "tolerance": 2e-06,
+  "rail_source": "VRAIL",
+  "input_source": "VIN",
+  "output_node": "y",
+  "pot_min_ohms": 100,
+  "jack_label": "INPUT JACK",
+  "selectors": [
+   {
+    "name": "channel",
+    "label": "CHANNEL",
+    "positions": [
+     {
+      "label": "Rhythm",
+      "resistors": {
+       "SW_LI": 1000000000000.0,
+       "SW_LO": 1000000000000.0,
+       "SW_LM": 1000000000000.0
+      }
+     },
+     {
+      "label": "Lead",
+      "resistors": {
+       "SW_LI": 1000,
+       "SW_LO": 1000,
+       "SW_LM": 1000
+      }
+     }
+    ]
+   },
+   {
+    "name": "shift",
+    "label": "PULL SHIFT",
+    "positions": [
+     {
+      "label": "Off",
+      "resistors": {
+       "SW_SHIFT": 1000000000000.0
+      }
+     },
+     {
+      "label": "On",
+      "resistors": {
+       "SW_SHIFT": 1
+      }
+     }
+    ]
+   },
+   {
+    "name": "tshift",
+    "label": "TREBLE SHIFT",
+    "positions": [
+     {
+      "label": "Off",
+      "resistors": {
+       "SW_TSHIFT": 1000000000000.0
+      }
+     },
+     {
+      "label": "On",
+      "resistors": {
+       "SW_TSHIFT": 1000
+      }
+     }
+    ]
+   },
+   {
+    "name": "bright1",
+    "label": "BRIGHT VOL 1",
+    "positions": [
+     {
+      "label": "Off",
+      "resistors": {
+       "SW_BR": 1000000000000.0
+      }
+     },
+     {
+      "label": "On",
+      "resistors": {
+       "SW_BR": 1
+      }
+     }
+    ]
+   },
+   {
+    "name": "bright_l",
+    "label": "BRIGHT LEAD",
+    "positions": [
+     {
+      "label": "Off",
+      "resistors": {
+       "SW_BL": 1000000000000.0
+      }
+     },
+     {
+      "label": "On",
+      "resistors": {
+       "SW_BL": 1
+      }
+     }
+    ]
+   },
+   {
+    "name": "boost",
+    "label": "GAIN BOOST",
+    "positions": [
+     {
+      "label": "Off",
+      "resistors": {
+       "SW_BOOST": 1000000000000.0
+      }
+     },
+     {
+      "label": "On",
+      "resistors": {
+       "SW_BOOST": 1
+      }
+     }
+    ]
+   }
+  ],
+  "knobs": [
+   {
+    "name": "volume",
+    "default": 0.5,
+    "pot": {
+     "type": "wiper",
+     "top": "VR1T",
+     "bottom": "VR1B",
+     "total": 1000000.0,
+     "taper": "log"
+    }
+   },
+   {
+    "name": "bass",
+    "default": 0.5,
+    "pot": {
+     "type": "variable",
+     "resistor": "VR5",
+     "total": 250000.0,
+     "taper": "log"
+    }
+   },
+   {
+    "name": "middle",
+    "default": 0.5,
+    "pot": {
+     "type": "variable",
+     "resistor": "VR4",
+     "total": 10000.0,
+     "taper": "linear"
+    }
+   },
+   {
+    "name": "treble",
+    "default": 0.6,
+    "pot": {
+     "type": "wiper",
+     "top": "VR3T",
+     "bottom": "VR3B",
+     "total": 250000.0,
+     "taper": "linear"
+    }
+   },
+   {
+    "name": "lead_drive",
+    "default": 0.6,
+    "pot": {
+     "type": "wiper",
+     "top": "VR_LDT",
+     "bottom": "VR_LDB",
+     "total": 1000000.0,
+     "taper": "log"
+    }
+   },
+   {
+    "name": "lead_master",
+    "default": 0.6,
+    "pot": {
+     "type": "variable",
+     "resistor": "VR_LM",
+     "total": 250000.0,
+     "taper": "log"
+    }
+   },
+   {
+    "name": "master",
+    "default": 0.5,
+    "pot": {
+     "type": "variable",
+     "resistor": "VR_M",
+     "total": 1000000.0,
+     "taper": "log"
+    }
+   }
+  ],
+  "source_ohms": {
+   "resistors": [
+    "RSRC"
+   ],
+   "default": 7000,
+   "min": 10
+  },
+  "jacks": [
+   {
+    "name": "input",
+    "label": "Input",
+    "drive": "VIN",
+    "resistors": {}
+   }
+  ]
+ },
+ "power": {
+  "transformer_parasitics": {
+   "primary_pf": 150,
+   "core_loss_ohms": 40000
+  },
+  "tubes": [
+   {
+    "name": "6L6GC",
+    "model": "6L6GCDS",
+    "pmax_w": 30.0,
+    "bias_scale": 1.0
+   },
+   {
+    "name": "EL34",
+    "model": "EL34",
+    "pmax_w": 25.0,
+    "bias_scale": 0.8425
+   },
+   {
+    "name": "KT88",
+    "model": "6550",
+    "pmax_w": 42.0,
+    "bias_scale": 1.1524
+   },
+   {
+    "name": "6550",
+    "model": "6550DS",
+    "pmax_w": 35.0,
+    "bias_scale": 1.1834
+   }
+  ],
+  "bias": {
+   "source": "VBIAS",
+   "idle_resistors": [
+    "DCR_PT",
+    "DCR_PB"
+   ],
+   "tubes_per_half": 2
+  },
+  "netlist": "poweramp.net",
+  "tolerance": 0.0001,
+  "input_source": "VAUDIO",
+  "ht_source": "VHT",
+  "ht_node": "a",
+  "rail_node": "x",
+  "output_node": "t8",
+  "load_resistor": "RLOAD",
+  "presence": {
+   "resistor": "VRPD",
+   "complement": "VRPS",
+   "scale": 250000.0,
+   "min_ohms": 50,
+   "default": 0.5
+  },
+  "supply": {
+   "mains_hz": 50,
+   "vac_peak": 516,
+   "rect_source_ohms": 42,
+   "ht_dc_source": 470,
+   "rect_drop": 1.4,
+   "reservoir_farads": 0.00011,
+   "tie_ohms": 1.0,
+   "settle_seconds": 0.15
+  }
+ },
+ "lite": {
+  "base_gain_db": 28.1577,
+  "high_pass_hz": 29.33,
+  "shelf_hz": 1093.14,
+  "presence_db": [
+   0,
+   0.380661,
+   1.0684,
+   2.68743,
+   9.75752
+  ],
+  "sag_table": [
+   [
+    0,
+    0
+   ],
+   [
+    2.54648,
+    0.286998
+   ],
+   [
+    5.09296,
+    1.14074
+   ],
+   [
+    9.5493,
+    3.93382
+   ],
+   [
+    15.9155,
+    10.407
+   ],
+   [
+    22.2817,
+    18.9935
+   ],
+   [
+    28.6479,
+    28.7605
+   ],
+   [
+    35.0141,
+    38.9695
+   ],
+   [
+    44.5634,
+    53.8786
+   ],
+   [
+    57.2958,
+    65.6674
+   ],
+   [
+    82.7606,
+    67.1691
+   ],
+   [
+    127.324,
+    73.8682
+   ]
+  ],
+  "rail_x_idle": 387.204,
+  "rail_sag_fraction": 0.58,
+  "ceiling_light": 69.0315,
+  "ceiling_heavy": 52.6946,
+  "ceiling_decay": 282.446,
+  "knee": 4.39109,
+  "sag_attack_s": 0.01,
+  "sag_release_s": 0.06
+ },
+ "presets": [
+  {
+   "name": "Clean",
+   "jack": "input",
+   "params": {
+    "bass": 5,
+    "master": 6,
+    "middle": 5,
+    "presence": 5,
+    "reverb": 6,
+    "treble": 6,
+    "volume": 3.6,
+    "volume2": 6
+   },
+   "selectors": {
+    "channel": 0
+   }
+  },
+  {
+   "name": "Edge of breakup",
+   "jack": "input",
+   "params": {
+    "bass": 5,
+    "master": 5,
+    "middle": 5,
+    "presence": 5,
+    "reverb": 6,
+    "treble": 6,
+    "volume": 4.6,
+    "volume2": 6
+   },
+   "selectors": {
+    "channel": 0
+   }
+  },
+  {
+   "name": "Crunch",
+   "jack": "input",
+   "params": {
+    "bass": 5,
+    "master": 5,
+    "middle": 5,
+    "presence": 5,
+    "reverb": 5,
+    "treble": 6,
+    "volume": 5,
+    "volume2": 0.9
+   },
+   "selectors": {
+    "channel": 1
+   }
+  },
+  {
+   "name": "Lead",
+   "jack": "input",
+   "params": {
+    "bass": 5,
+    "master": 6,
+    "middle": 6.5,
+    "presence": 5,
+    "reverb": 7,
+    "treble": 6.5,
+    "volume": 5,
+    "volume2": 3.5
+   },
+   "selectors": {
+    "channel": 1
+   }
+  }
+ ],
+ "graphic_eq": {
+  "bands": [
+   {
+    "hz": 60,
+    "q": 1.0,
+    "range_db": 12.0
+   },
+   {
+    "hz": 240,
+    "q": 1.0,
+    "range_db": 12.0
+   },
+   {
+    "hz": 750,
+    "q": 1.0,
+    "range_db": 12.0
+   },
+   {
+    "hz": 2200,
+    "q": 1.0,
+    "range_db": 12.0
+   },
+   {
+    "hz": 6600,
+    "q": 1.0,
+    "range_db": 12.0
+   }
+  ]
+ }
+}

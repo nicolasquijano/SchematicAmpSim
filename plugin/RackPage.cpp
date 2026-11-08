@@ -16,7 +16,7 @@ struct Category {
 
 const std::vector<Category>& categories() {
     static const std::vector<Category> c{
-        {"Effects", {ModuleType::Gate, ModuleType::Compressor, ModuleType::Overdrive, ModuleType::NamPedal, ModuleType::Fuzz, ModuleType::Wah, ModuleType::Boost, ModuleType::Limiter}},
+        {"Effects", {ModuleType::Gate, ModuleType::Compressor, ModuleType::Overdrive, ModuleType::NamPedal, ModuleType::Fuzz, ModuleType::Wah, ModuleType::Boost, ModuleType::Limiter, ModuleType::Acoustic}},
         {"Modulation", {ModuleType::Phaser, ModuleType::Chorus, ModuleType::Vibe, ModuleType::Flanger, ModuleType::Tremolo}},
         {"Pitch", {ModuleType::Pitch}},
         {"EQ", {ModuleType::Eq}},
@@ -51,6 +51,7 @@ juce::Colour colourOf(ModuleType t) {
         case ModuleType::Vibe:
         case ModuleType::Tremolo:
         case ModuleType::Flanger: return juce::Colour(0xffa070d8);
+        case ModuleType::Acoustic:
         case ModuleType::Wah: return juce::Colour(0xffe8c040);
         case ModuleType::Pitch: return juce::Colour(0xffd868a8);
         case ModuleType::Eq: return juce::Colour(0xff48b8c8);
@@ -264,6 +265,12 @@ void RackPage::Map::paint(juce::Graphics& g) {
 }
 
 void RackPage::Map::mouseDown(const juce::MouseEvent& e) {
+    if (e.mods.isPopupMenu()) {  // right click: the menu of the tile under the cursor, nothing else
+        pressed_ = -1;
+        const int at = tileAt(e.getPosition());
+        if (at >= 0 && at < int(tiles.size()) && onContext) onContext(at);
+        return;
+    }
     pressed_ = tileAt(e.getPosition());
     pressedLight_ = false;
     if (pressed_ >= 0 && pressed_ < int(tiles.size()) && tiles[std::size_t(pressed_)].hasSwitch) {
@@ -323,6 +330,7 @@ RackPage::RackPage(SasProcessor& processor, ModuleUnit::HostedBodyFactory hosted
         refreshTiles();
     };
     map_.onAdd = [this] { showAddMenu(-1, map_); };
+    map_.onContext = [this](int i) { showTileMenu(i); };
     rebuild();
     startTimerHz(20);
 }
@@ -365,6 +373,49 @@ void RackPage::removeParallelAsked() {
                                        }));
 }
 
+void RackPage::removeSlot(sas::SlotRef s) {
+    if (s.type == ModuleType::Splitter || s.type == ModuleType::Mixer) {
+        removeParallelAsked();
+        return;
+    }
+    int at = 0;
+    for (int k = 0; k < shown_.count; ++k)
+        if (shown_.slots[std::size_t(k)] == s) at = k;
+    processor_.removeModule(s);
+    rebuild();
+    select(unitSlot(std::max(0, std::min(at - 1, unitCount() - 1))));  // the one before it
+}
+
+void RackPage::showTileMenu(int index) {
+    if (index < 0 || index >= unitCount()) return;
+    constexpr int kRemove = 1, kReplaceBase = 100;
+    const sas::SlotRef slot = unitSlot(index);
+    const bool ends = slot.type == ModuleType::Splitter || slot.type == ModuleType::Mixer;
+    juce::PopupMenu menu;
+    menu.addItem(kRemove, ends ? juce::String(tr("Remove the parallel")) : juce::String(tr("Remove")), ends || !RackState::isFixed(slot));
+    juce::PopupMenu replace;
+    bool any = false;
+    for (const auto& cat : categories()) {
+        juce::PopupMenu sub;
+        for (auto t : cat.types) {
+            const bool ok = processor_.canReplace(slot, t);
+            any = any || ok;
+            sub.addItem(kReplaceBase + int(t), ModuleUnit::title({t, 0}), ok);
+        }
+        replace.addSubMenu(tr(cat.name), sub);
+    }
+    menu.addSubMenu(tr("Replace with"), replace, any);
+    menu.showMenuAsync(juce::PopupMenu::Options().withTargetScreenArea(map_.localAreaToGlobal(map_.boxOf(index))),
+                       [this, slot, index](int choice) {
+                           if (choice == kRemove) {
+                               removeSlot(slot);
+                           } else if (choice >= kReplaceBase && processor_.replaceModule(slot, static_cast<ModuleType>(choice - kReplaceBase))) {
+                               rebuild();
+                               select(unitSlot(std::min(index, unitCount() - 1)));  // the new one, in the same place
+                           }
+                       });
+}
+
 void RackPage::rebuild() {
     const auto before = shown_;
     shown_ = processor_.rackOrder();
@@ -374,18 +425,7 @@ void RackPage::rebuild() {
     for (int i = 0; i < shown_.count; ++i) {
         const sas::SlotRef slot = shown_.slots[std::size_t(i)];
         auto unit = std::make_unique<ModuleUnit>(processor_, slot, hosted_);
-        unit->onRemove = [this](sas::SlotRef s) {
-            if (s.type == ModuleType::Splitter || s.type == ModuleType::Mixer) {
-                removeParallelAsked();
-                return;
-            }
-            int at = 0;
-            for (int k = 0; k < shown_.count; ++k)
-                if (shown_.slots[std::size_t(k)] == s) at = k;
-            processor_.removeModule(s);
-            rebuild();
-            select(unitSlot(std::max(0, std::min(at - 1, unitCount() - 1))));  // the one before it
-        };
+        unit->onRemove = [this](sas::SlotRef s) { removeSlot(s); };
         unit->onMove = [this](sas::SlotRef s, int delta) {
             for (int k = 0; k < shown_.count; ++k)
                 if (shown_.slots[std::size_t(k)] == s) {
@@ -409,7 +449,7 @@ void RackPage::rebuild() {
     bool stereo = false;
     for (int i = 0; i < shown_.count; ++i) {
         const auto channels = sas::moduleChannels(shown_.slots[std::size_t(i)].type);
-        units_[std::size_t(i)]->setSumsToMono(stereo && (channels == sas::Channels::MonoOnly || channels == sas::Channels::MonoToStereo));
+        units_[std::size_t(i)]->setSumsToMono(stereo && (channels == sas::Channels::MonoOnly || channels == sas::Channels::MonoToStereo));  // (a cabinet keeps a pair)
         if (channels == sas::Channels::MonoOnly) stereo = false;
         else if (channels != sas::Channels::Flexible) stereo = true;
     }
@@ -483,13 +523,16 @@ juce::PopupMenu RackPage::addMenu(const SasProcessor& processor, int idBase) {
     menu.addItem(idBase - 1, processor.hasParallel() ? juce::String(tr("Parallel (already there)")) : juce::String(tr("Parallel: two lanes, A and B")), processor.canAddParallel());
     // What a parallel can hold besides the pedals: a second amp and a second cabinet, or neither (a reverb or a dry path of its own, say).
     juce::PopupMenu lane;
-    lane.addItem(idBase + int(ModuleType::Amp), tr("Second amp"), processor.canAdd(ModuleType::Amp));
-    lane.addItem(idBase + int(ModuleType::Cabinet), tr("Second cabinet"), processor.canAdd(ModuleType::Cabinet));
+    lane.addItem(idBase + kLaneBOffset + int(ModuleType::Amp), tr("Second amp"), processor.canAdd(ModuleType::Amp, 1));
+    lane.addItem(idBase + kLaneBOffset + int(ModuleType::Cabinet), tr("Second cabinet"), processor.canAdd(ModuleType::Cabinet, 1));
     lane.addSeparator();
     for (const auto& cat : categories())
         for (auto t : cat.types)
             lane.addItem(idBase + kLaneBOffset + int(t), ModuleUnit::title({t, 0}), processor.hasParallel() && processor.canAdd(t));
     menu.addSubMenu(tr("Lane B"), lane);
+    // The amp and the cabinet can be removed; this puts them back.
+    if (!processor.inRack({ModuleType::Amp, 0})) menu.addItem(idBase + int(ModuleType::Amp), tr("Amp"), processor.canAdd(ModuleType::Amp));
+    if (!processor.inRack({ModuleType::Cabinet, 0})) menu.addItem(idBase + int(ModuleType::Cabinet), tr("Cabinet"), processor.canAdd(ModuleType::Cabinet));
     menu.addSeparator();
     for (const auto& cat : categories()) {
         juce::PopupMenu sub;

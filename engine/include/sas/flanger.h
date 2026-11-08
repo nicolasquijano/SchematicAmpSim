@@ -21,6 +21,7 @@ struct FlangerParams {
     double manual = 0.4;     // 0 .. 1, centre of the sweep
     double feedback = 0.5;   // -0.9 .. 0.9
     bool stereo = false;     // on a stereo pair, the right channel is a quarter of a cycle behind (false: both together)
+    double mix = 1.0;      // 0 .. 1: how much of the effect is in the output (1: the effect as it is, 0: the dry signal); applied by the rack module
 };
 
 class Flanger {

@@ -1,0 +1,37 @@
+* "American 5153" preamp, stage 3 of 3: the relay K1 (the one-and-two bus, or channel THREE when energised), the effects loop (closed: V7A, a cathode follower that sends,
+* and V7B, the recovery stage) and the output node. The two inputs are the outputs of stage 1 (VL12) and stage 2 (VL3), which are loaded by R_LOAD12 / R_LOAD3 upstream.
+* The muting JFET Q11 and the diodes D9 / D20 are not modelled; the loop's jacks are closed (the send goes straight to the return).
+
+V VRAIL x 100 341
+R R95 x w 10k
+C C36 w 0 22u
+C C40 x 0 47u
+
+S VL12 s12 1 0
+S VL3 s3 1 0
+R SW_K1_12 s12 el 1
+R SW_K1_3 s3 el 1e12
+R R21L el 0 10M
+
+* R157 680k, C61 .01u, R154 10k into V7A's grid (R155 1M to the cathode tap; R156 330k across the input), V7A with R139 1.5k + C54 22u and R140 100k, the send C53 .68u.
+R R157 el e157 680k
+R R156 e157 0 330k
+C C61 e157 c61 10n
+R R154 c61 g7a 10k
+R R155 c61 kb 1M
+T V7A g7a x k7a 12AX7
+R R139 k7a kb 1.5k
+R R140 kb 0 100k
+C C54 k7a kb 22u
+C C53 k7a fx 0.68u
+R R160 fx 0 100k
+
+* The return: R158 10k into V7B (R153 220k), plate R185 68k, cathode R152 3.3k with C60 .0033u; C64 and R_Y couple it to the power amp.
+R R158 fx g7b 10k
+R R153 g7b 0 220k
+T V7B g7b p7b k7b 12AX7
+R R185 x p7b 68k
+R R152 k7b 0 3.3k
+C C60 k7b 0 3.3n
+C C64 p7b y 22n
+R R_Y y 0 220k

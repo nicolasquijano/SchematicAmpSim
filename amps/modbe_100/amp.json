@@ -14,9 +14,23 @@
   "knob_bottom": "#120e16",
   "pointer": "#ead2ff"
  },
+ "presets": [
+  {"name": "Clean", "jack": "clean", "params": {"bass": 5, "master": 5, "middle": 5, "presence": 5, "resonance": 5, "reverb": 5, "treble": 5, "volume": 5, "volume2": 5.2}},
+  {"name": "Edge of breakup", "jack": "be", "params": {"bass": 5, "master": 5, "middle": 5, "presence": 5, "resonance": 5, "reverb": 5, "treble": 5, "volume": 2.2, "volume2": 5}, "selectors": {"sat": 0}},
+  {"name": "Crunch", "jack": "be", "params": {"bass": 5, "master": 5, "middle": 5, "presence": 5, "resonance": 5, "reverb": 5, "treble": 5, "volume": 3.1, "volume2": 5}, "selectors": {"sat": 0}},
+  {"name": "Lead", "jack": "hbe", "params": {"bass": 5, "master": 5, "middle": 5, "presence": 5, "resonance": 5, "reverb": 5, "treble": 5, "volume": 1, "volume2": 5}, "selectors": {"sat": 1, "gainstruct": 1}}
+ ],
  "preamp": {
   "netlist": "preamp.net",
   "tolerance": 2e-06,
+  "stages": [
+   {"netlist": "stage2.net", "links": [
+     {"stage": 0, "from": "in", "source": "VLIN"},
+     {"stage": 0, "from": "p1", "source": "VL1"}]},
+   {"netlist": "stage3.net", "links": [
+     {"stage": 1, "from": "p3", "source": "VL3"},
+     {"stage": 0, "from": "p5", "source": "VL5"}]}
+  ],
   "rail_source": "VRAIL",
   "input_source": "VIN",
   "output_node": "mo",

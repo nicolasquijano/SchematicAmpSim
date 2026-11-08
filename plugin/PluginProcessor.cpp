@@ -1,6 +1,7 @@
 #include "PluginProcessor.h"
 
 #include "FxPresets.h"
+#include "ModulePresets.h"
 
 #include "CabData.h"
 
@@ -34,6 +35,7 @@ Layout SasProcessor::createLayout(const std::vector<sas::AmpDef>& defs) {
     l.add(std::make_unique<juce::AudioParameterChoice>(juce::ParameterID{ids::amp, kVersion}, "Amp", ampNames, 0));
     l.add(knob(ids::volume, "Preamp Volume", 6.0f));
     l.add(knob(ids::volume2, "Preamp Volume II", 5.0f));
+    for (int e = 0; e < 5; ++e) l.add(knob(ids::aeq[e], "Graphic EQ " + juce::String(e + 1), 5.0f));
     l.add(knob(ids::bass, "Bass", 5.0f));
     l.add(knob(ids::middle, "Middle", 5.0f));
     l.add(knob(ids::treble, "Treble", 6.0f));
@@ -56,7 +58,7 @@ Layout SasProcessor::createLayout(const std::vector<sas::AmpDef>& defs) {
     l.add(std::make_unique<juce::AudioParameterChoice>(
         juce::ParameterID{ids::jack, kVersion}, "Input jack", juce::StringArray{"Jack 1", "Jack 2", "Jack 3", "Jack 4", "Jack 5", "Jack 6", "Jack 7", "Jack 8"}, 0));
     l.add(std::make_unique<juce::AudioParameterBool>(juce::ParameterID{ids::levelMatch, kVersion}, "Level match", true));
-    for (int i = 0; i < 4; ++i)
+    for (int i = 0; i < 6; ++i)
         l.add(std::make_unique<juce::AudioParameterChoice>(juce::ParameterID{ids::sel[i], kVersion}, "Amp switch " + juce::String(i + 1),
                                                            juce::StringArray{"Position 1", "Position 2", "Position 3", "Position 4", "Position 5"}, 0));
     RackState::addParams(l, sas::ModuleType::Overdrive, 0);
@@ -84,6 +86,7 @@ Layout SasProcessor::createLayout(const std::vector<sas::AmpDef>& defs) {
     RackState::addParams(l, sas::ModuleType::Fuzz, 0);
     RackState::addParams(l, sas::ModuleType::Boost, 0);
     RackState::addParams(l, sas::ModuleType::TapeEcho, 0);
+    RackState::addParams(l, sas::ModuleType::Acoustic, 0);
     RackState::addParams(l, sas::ModuleType::Limiter, 0);
     RackState::addParams(l, sas::ModuleType::Compressor, 0);
     RackState::addParams(l, sas::ModuleType::NamPedal, 0);
@@ -234,6 +237,7 @@ SasProcessor::SasProcessor()
     }
     mono_.resize(kMaxChunk);
     mono2_.resize(kMaxChunk);
+    mono3_.resize(kMaxChunk);
     monoR_.resize(kMaxChunk);
     amps_[1].activeKey = -1;  // the second amp is built when a parallel asks for it
     for (int i = 0; i < 2; ++i) amps_[i].builder = std::make_unique<ChainBuilder>(*this, i);
@@ -327,7 +331,10 @@ void SasProcessor::prepareToPlay(double sampleRate, int samplesPerBlock) {
     juce::dsp::ProcessSpec spec{sampleRate, static_cast<juce::uint32>(kMaxChunk), 1};
     (void)samplesPerBlock;
     for (auto& bank : cabs_) {
-        for (auto& slot : bank.ir) slot.conv.prepare(spec);
+        for (auto& slot : bank.ir) {
+            slot.conv.prepare(spec);
+            slot.convR.prepare(spec);
+        }
         bank.irWasActive = false;
         bank.dbl.prepare(sampleRate);
     }
@@ -357,6 +364,7 @@ sas::ChainSettings SasProcessor::readSettings(bool irAvailable, int instance) {
     for (std::size_t i = 0; i < s.powerKnobs.size(); ++i)
         s.powerKnobs[i] = ap.powerKnobs[i] ? double(ap.powerKnobs[i]->load()) / 10.0 : def.power.knobs[i].def;
     s.presence = double(ap.presence->load()) / 10.0;
+    for (int e = 0; e < 5; ++e) s.geq[std::size_t(e)] = raw(ids::aeq[e]) / 10.0;
     s.inputDb = raw(ids::input);
     s.outputDb = raw(ids::output);
     s.quality = static_cast<sas::Quality>(juce::jlimit(0, 4, int(raw(ids::quality) + 0.5)));
@@ -367,7 +375,7 @@ sas::ChainSettings SasProcessor::readSettings(bool irAvailable, int instance) {
     s.cabFilterInChain = false;  // the cabinet module applies it
     s.jackLevelMatch = true;  // the jacks always play at a similar level; the old "level_match" parameter stays only so saved projects load
     s.selectors.clear();
-    for (std::size_t i = 0; i < def.preamp.selectors.size() && i < 4; ++i)
+    for (std::size_t i = 0; i < def.preamp.selectors.size() && i < 6; ++i)
         s.selectors.push_back(std::size_t(juce::jlimit(0, int(def.preamp.selectors[i].positions.size()) - 1, int(raw(ids::sel[i]) + 0.5))));
     s.vibratoOn = raw(ids::vibOn) > 0.5;
     s.vibratoSpeed = double(ap.vibSpeed->load()) / 10.0;
@@ -444,17 +452,20 @@ void SasProcessor::applyModuleParams(const sas::RackOrder& order) {
                 q.speedHz = p(ids::phSpeed);
                 q.intense = p(ids::phIntense) > 0.5;
                 q.stereo = p(ids::phStereo) > 0.5;
+                q.mix = p(ids::phMix) / 100.0;
                 static_cast<sas::PhaserModule*>(m)->setParams(q);
                 break;
             }
             case T::Chorus: {
                 sas::ChorusParams q;
                 q.on = p(ids::chOn) > 0.5;
-                q.juno = p(ids::chMode) > 0.5;
+                q.juno = p(ids::chMode) > 0.5 && p(ids::chMode) < 1.5;
+                q.jc = p(ids::chMode) > 1.5;
                 q.rateHz = p(ids::chRate);
                 q.depth = p(ids::chDepth) / 100.0;
                 q.junoButton = int(p(ids::chJuno) + 0.5);
                 q.stereo = p(ids::chStereo) > 0.5;
+                q.mix = p(ids::chMix) / 100.0;
                 static_cast<sas::ChorusModule*>(m)->setParams(q);
                 break;
             }
@@ -465,6 +476,7 @@ void SasProcessor::applyModuleParams(const sas::RackOrder& order) {
                 q.intensity = p(ids::vbIntensity) / 100.0;
                 q.vibrato = p(ids::vbVibrato) > 0.5;
                 q.stereo = p(ids::vbStereo) > 0.5;
+                q.mix = p(ids::vbMix) / 100.0;
                 static_cast<sas::VibeModule*>(m)->setParams(q);
                 break;
             }
@@ -486,6 +498,7 @@ void SasProcessor::applyModuleParams(const sas::RackOrder& order) {
                 q.manual = p(ids::flManual) / 100.0;
                 q.feedback = p(ids::flFeedback) / 100.0;
                 q.stereo = p(ids::flStereo) > 0.5;
+                q.mix = p(ids::flMix) / 100.0;
                 static_cast<sas::FlangerModule*>(m)->setParams(q);
                 break;
             }
@@ -502,6 +515,18 @@ void SasProcessor::applyModuleParams(const sas::RackOrder& order) {
                 q.saturation = p(ids::tpSat) / 100.0;
                 q.stereo = p(ids::tpStereo) > 0.5;
                 static_cast<sas::TapeEchoModule*>(m)->setParams(q);
+                break;
+            }
+            case T::Acoustic: {
+                sas::AcousticParams q;
+                q.on = p(ids::acOn) > 0.5;
+                q.type = int(p(ids::acType) + 0.5);
+                q.body = p(ids::acBody) / 10.0;
+                q.top = p(ids::acTop) / 10.0;
+                q.air = p(ids::acAir) / 10.0;
+                q.squash = p(ids::acSquash) / 10.0;
+                q.mix = p(ids::acMix) / 100.0;
+                static_cast<sas::AcousticModule*>(m)->setParams(q);
                 break;
             }
             case T::Boost: {
@@ -656,11 +681,16 @@ void SasProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::MidiBuff
         const bool irActive = cabParam == CabMode::Ir && irLoaded;
         // Only the first cabinet has a NAM cabinet; the second one, set to NAM, plays its filter.
         sas::NamModel* const namCab = cabinet == 0 && cabParam == CabMode::Nam ? namCabActive_.load() : nullptr;
+        sas::NamModel* const namCabR = namCab ? namCabActiveR_.load() : nullptr;
         if (cabinet == 0) {
-            if (namCab && !namCabWasActive_) namCab->reset();
+            if (namCab && !namCabWasActive_) {
+                namCab->reset();
+                if (namCabR) namCabR->reset();
+            }
             namCabWasActive_ = namCab != nullptr;
         }
         cb.namNow = namCab;
+        cb.namNowR = namCabR;
         cb.irActiveNow = irActive;
         cb.aLoaded = aLoaded;
         cb.bLoaded = bLoaded;
@@ -669,13 +699,19 @@ void SasProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::MidiBuff
         const double irLatency = irActive ? double(std::max(aLoaded ? cb.ir[0].conv.getLatency() : 0, bLoaded ? cb.ir[1].conv.getLatency() : 0)) : 0.0;
         const bool cabOn = cabValue(cabinet, ids::cabOn) > 0.5;
         if (cabOn && !cb.wasOn) {  // coming back: nothing of the convolution's old audio
-            for (auto& slot : cb.ir) slot.conv.reset();
+            for (auto& slot : cb.ir) {
+                slot.conv.reset();
+                slot.convR.reset();
+            }
             cabModule->reset();
         }
         cb.wasOn = cabOn;
         cabModule->setBlock(cabFilterOn, cabOn ? irLatency : 0.0, cabOn);
         if (irActive && !cb.irWasActive)
-            for (auto& slot : cb.ir) slot.conv.reset();
+            for (auto& slot : cb.ir) {
+                slot.conv.reset();
+                slot.convR.reset();
+            }
         cb.irWasActive = irActive;
         irLatencyOf[cabinet] = irLatency;
         irActiveOf[cabinet] = irActive;
@@ -732,26 +768,70 @@ void SasProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::MidiBuff
     }
 }
 
-// The cabinet: the filter (or the NAM cabinet, or the impulse responses), then the automatic double tracking. A mono signal in, a stereo pair out.
+// The cabinet: the filter (or the NAM cabinet, or the impulse responses), then the automatic double tracking. A mono signal in, a stereo pair out;
+// a stereo pair in (a stereo effect in front of the cabinet) goes through the same cabinet channel by channel and stays a pair.
 void SasProcessor::processCabinet(CabinetModule& cab, float* m, float* mR, std::size_t nn) {
     const int n = int(nn);
     const int cabinet = cab.instance();
     auto& cb = cabs_[cabinet];
-    if (cab.filterOn())
+    bool pair = cab.stereoInput();
+    // A NAM cabinet needs its twin for the right channel; without it the pair is summed first, as it used to be.
+    if (pair && cb.namNow && !cb.namNowR) {
+        for (int i = 0; i < n; ++i) m[i] = 0.5f * (m[i] + mR[i]);
+        pair = false;
+    }
+    if (cab.filterOn()) {
         for (int i = 0; i < n; ++i) m[i] = cab.filter().process(m[i]);
+        if (pair)
+            for (int i = 0; i < n; ++i) mR[i] = cab.filterR().process(mR[i]);
+    }
     if (cb.namNow) {  // the NAM cabinet: through a scratch block, the model reads its input while it writes
         cb.namNow->process(m, mono2_.data(), std::size_t(n));
         std::copy(mono2_.data(), mono2_.data() + n, m);
+        if (pair) {
+            cb.namNowR->process(mR, mono2_.data(), std::size_t(n));
+            std::copy(mono2_.data(), mono2_.data() + n, mR);
+        }
     }
-    bool haveR = false;
+    bool haveR = pair;
     if (cb.irActiveNow) {
         const bool aLoaded = cb.aLoaded, bLoaded = cb.bLoaded;
-        auto convolve = [n](IrSlot& slot, float* data) {
+        auto convolve = [n](juce::dsp::Convolution& conv, float* data) {
             float* chans[1] = {data};
             juce::dsp::AudioBlock<float> block(chans, 1, std::size_t(n));
-            slot.conv.process(juce::dsp::ProcessContextReplacing<float>(block));
+            conv.process(juce::dsp::ProcessContextReplacing<float>(block));
         };
-        if (aLoaded && bLoaded) {
+        if (pair) {
+            // Each channel goes through the cabinet. With two impulses the blend applies to both channels; the A / B width, which makes a pair out of
+            // a mono signal, has nothing to do here (the pair is already there), so it is parked at 0 for when the signal is mono again.
+            if (aLoaded && bLoaded) {
+                const double theta = juce::jlimit(0.0, 1.0, cabValue(cabinet, ids::irBlend) / 10.0) * (juce::MathConstants<double>::pi * 0.5);
+                const float gA = float(std::cos(theta)), gB = float(std::sin(theta));
+                float* m2 = mono2_.data();
+                float* r2 = mono3_.data();
+                std::copy(m, m + n, m2);
+                std::copy(mR, mR + n, r2);
+                convolve(cb.ir[0].conv, m);
+                convolve(cb.ir[1].conv, m2);
+                convolve(cb.ir[0].convR, mR);
+                convolve(cb.ir[1].convR, r2);
+                for (int i = 0; i < n; ++i) {
+                    const float t = float(i + 1) / float(n);
+                    const float ga = cb.blendGainA + (gA - cb.blendGainA) * t, gb = cb.blendGainB + (gB - cb.blendGainB) * t;
+                    m[i] = m[i] * ga + m2[i] * gb;
+                    mR[i] = mR[i] * ga + r2[i] * gb;
+                }
+                cb.blendGainA = gA;
+                cb.blendGainB = gB;
+                cb.widthNow = 0.0f;
+            } else {
+                auto& slot = aLoaded ? cb.ir[0] : cb.ir[1];
+                convolve(slot.conv, m);
+                convolve(slot.convR, mR);
+                cb.blendGainA = aLoaded ? 1.0f : 0.0f;
+                cb.blendGainB = aLoaded ? 0.0f : 1.0f;
+            }
+        } else if (aLoaded && bLoaded) {
             // Both slots: an equal-power blend, and the width that separates them: at 0 both ears get the blend, at 10 the left ear gets A and the
             // right ear B (two microphones, one on each side). Ramped over the block so a knob move does not click.
             const double theta = juce::jlimit(0.0, 1.0, cabValue(cabinet, ids::irBlend) / 10.0) * (juce::MathConstants<double>::pi * 0.5);
@@ -759,8 +839,8 @@ void SasProcessor::processCabinet(CabinetModule& cab, float* m, float* mR, std::
             const float width = juce::jlimit(0.0f, 1.0f, float(cabValue(cabinet, ids::irWidth)) / 10.0f);
             float* m2 = mono2_.data();
             std::copy(m, m + n, m2);
-            convolve(cb.ir[0], m);
-            convolve(cb.ir[1], m2);
+            convolve(cb.ir[0].conv, m);
+            convolve(cb.ir[1].conv, m2);
             for (int i = 0; i < n; ++i) {
                 const float t = float(i + 1) / float(n);
                 const float ga = cb.blendGainA + (gA - cb.blendGainA) * t, gb = cb.blendGainB + (gB - cb.blendGainB) * t;
@@ -775,7 +855,7 @@ void SasProcessor::processCabinet(CabinetModule& cab, float* m, float* mR, std::
             cb.widthNow = width;
             haveR = true;
         } else {
-            convolve(aLoaded ? cb.ir[0] : cb.ir[1], m);
+            convolve((aLoaded ? cb.ir[0] : cb.ir[1]).conv, m);
             cb.blendGainA = aLoaded ? 1.0f : 0.0f;  // so a second slot loaded later fades in from this state
             cb.blendGainB = aLoaded ? 0.0f : 1.0f;
         }
@@ -811,6 +891,7 @@ std::unique_ptr<sas::Module> SasProcessor::makeModule(sas::ModuleType type, int 
         case T::Wah: return std::make_unique<sas::WahModule>();
         case T::Fuzz: return std::make_unique<sas::FuzzModule>();
         case T::Boost: return std::make_unique<sas::BoostModule>();
+        case T::Acoustic: return std::make_unique<sas::AcousticModule>();
         case T::TapeEcho: return std::make_unique<sas::TapeEchoModule>();
         case T::Limiter: return std::make_unique<sas::LimiterModule>();
         case T::Pitch: return std::make_unique<sas::PitchModule>();
@@ -849,16 +930,23 @@ void SasProcessor::setRackOrder(const sas::RackOrder& order) {
     syncRack(sas::Transition::Immediate);
 }
 
-bool SasProcessor::canAdd(sas::ModuleType type) const {
+bool SasProcessor::canAdd(sas::ModuleType type, int lane) const {
     int modules = 0, instances = 0;
     for (int i = 0; i < rackOrder_.count; ++i) {
         if (rackOrder_.slots[std::size_t(i)].type != sas::ModuleType::Amp) ++modules;
         if (rackOrder_.slots[std::size_t(i)].type == type) ++instances;
     }
-    // The two ends of a parallel come in with the parallel itself. A second amp or cabinet is a module of lane B: only while there is a parallel.
+    // The two ends of a parallel come in with the parallel itself. An amp or a cabinet is the first one (in the shared part or lane A) when there is none,
+    // or, with `lane` 1, the second one of lane B (only while there is a parallel and it has none yet).
     const bool ends = type == sas::ModuleType::Splitter || type == sas::ModuleType::Mixer;
-    const bool second = type == sas::ModuleType::Amp || type == sas::ModuleType::Cabinet;
-    if (ends || (second && !hasParallel())) return false;
+    const bool pair = type == sas::ModuleType::Amp || type == sas::ModuleType::Cabinet;
+    if (ends) return false;
+    if (pair) {
+        const bool second = lane == 1;
+        if (second && !hasParallel()) return false;
+        if (indexInOrder({type, second ? 1 : 0}) >= 0) return false;
+        return modules < RackState::kMaxModules || type == sas::ModuleType::Amp;
+    }
     return modules < RackState::kMaxModules && instances < RackState::maxInstances(type);
 }
 
@@ -900,40 +988,75 @@ bool SasProcessor::layoutOk() const {
     if (!hasParallel()) return a1 < 0 && c1 < 0;
     // The second amp and cabinet, if they are there, are in lane B; the first ones are in the shared part or in lane A.
     if ((a1 >= 0 && rackOrder_.lane[std::size_t(a1)] != 1) || (c1 >= 0 && rackOrder_.lane[std::size_t(c1)] != 1)) return false;
-    for (const auto fixed : {sas::SlotRef{T::Amp, 0}, sas::SlotRef{T::Cabinet, 0}}) {
-        const int i = indexInOrder(fixed);
-        if (i < 0 || rackOrder_.lane[std::size_t(i)] != 0) return false;
+    for (const auto first : {sas::SlotRef{T::Amp, 0}, sas::SlotRef{T::Cabinet, 0}}) {
+        const int i = indexInOrder(first);
+        if (i >= 0 && rackOrder_.lane[std::size_t(i)] != 0) return false;  // (they can be removed; if they are there they are not in lane B)
     }
     return true;
 }
 
+// A module that is put in the rack plays at once: its switch is on (the parameter's own default is "off" for the pedals and effects).
+static void turnOn(juce::AudioProcessorValueTreeState& apvts, sas::SlotRef slot) {
+    if (const char* on = RackState::onId(slot.type))
+        if (auto* p = apvts.getParameter(RackState::paramId(on, slot.instance))) {
+            p->beginChangeGesture();
+            p->setValueNotifyingHost(1.0f);
+            p->endChangeGesture();
+        }
+}
+
 bool SasProcessor::addModule(sas::ModuleType type, int insertAt, int wantedLane) {
-    if (!canAdd(type)) return false;
+    if (!canAdd(type, wantedLane)) return false;
+    const bool pair = type == sas::ModuleType::Amp || type == sas::ModuleType::Cabinet;
     int instance = 0;
-    for (; instance < RackState::maxInstances(type); ++instance)
-        if (indexInOrder({type, instance}) < 0) break;
+    if (pair) {
+        instance = wantedLane == 1 ? 1 : 0;  // the first amp or cabinet, or the second one of lane B
+    } else {
+        for (; instance < RackState::maxInstances(type); ++instance)
+            if (indexInOrder({type, instance}) < 0) break;
+    }
     const sas::SlotRef slot{type, instance};
     const int ampAt = std::max(0, indexInOrder({sas::ModuleType::Amp, 0}));
     if (insertAt < 0) {
         using T = sas::ModuleType;
+        // Where the time effects start (the delay, the tape echo, the reverb and the limiter): a first amp or cabinet that is put back goes in front of them.
+        auto firstTimeEffect = [&] {
+            for (int i = 0; i < rackOrder_.count; ++i) {
+                const auto t = rackOrder_.slots[std::size_t(i)].type;
+                if (t == T::Delay || t == T::TapeEcho || t == T::Reverb || t == T::Limiter) return i;
+            }
+            return rackOrder_.count;
+        };
         switch (type) {
             case T::Overdrive: insertAt = ampAt; break;  // next to the amp, behind a compressor
             case T::Compressor:  // in front of the overdrives that sit next to the amp, so the amp can run both as it always did
                 insertAt = ampAt;
                 while (insertAt > 0 && rackOrder_.slots[std::size_t(insertAt - 1)].type == T::Overdrive) --insertAt;
                 break;
-            case T::Gate: case T::NamPedal: case T::Pitch: case T::Wah: case T::Fuzz: case T::Boost: {
+            case T::Gate: case T::NamPedal: case T::Pitch: case T::Wah: case T::Fuzz: case T::Boost: case T::Acoustic: {
                 // In front of the compressor and the overdrive that sit next to the amp, so the amp keeps running them as it always did.
                 insertAt = ampAt;
                 while (insertAt > 0 && (rackOrder_.slots[std::size_t(insertAt - 1)].type == T::Overdrive || rackOrder_.slots[std::size_t(insertAt - 1)].type == T::Compressor)) --insertAt;
                 break;
             }
-            case T::Amp: {  // the second amp: at the end of lane B, in front of its cabinet if it has one
+            case T::Amp: {
+                if (instance == 0) {  // the first amp (put back after it was removed): in front of the cabinet, or before the time effects
+                    const int cab = indexInOrder({T::Cabinet, 0});
+                    insertAt = cab >= 0 ? cab : firstTimeEffect();
+                    break;
+                }
+                // the second amp: at the end of lane B, in front of its cabinet if it has one
                 const int cabB = indexInOrder({T::Cabinet, 1});
                 insertAt = cabB >= 0 ? cabB : rackOrder_.mixerIndex();
                 break;
             }
-            case T::Cabinet: {  // the second cabinet: behind the second amp, or at the end of lane B
+            case T::Cabinet: {
+                if (instance == 0) {  // the first cabinet: behind the amp, or before the time effects
+                    const int amp = indexInOrder({T::Amp, 0});
+                    insertAt = amp >= 0 ? amp + 1 : firstTimeEffect();
+                    break;
+                }
+                // the second cabinet: behind the second amp, or at the end of lane B
                 const int ampB = indexInOrder({T::Amp, 1});
                 insertAt = ampB >= 0 ? ampB + 1 : rackOrder_.mixerIndex();
                 break;
@@ -946,7 +1069,8 @@ bool SasProcessor::addModule(sas::ModuleType type, int insertAt, int wantedLane)
     const int s = rackOrder_.splitterIndex(), m = rackOrder_.mixerIndex();
     int lane = (s >= 0 && insertAt > s + 1 && insertAt <= m) ? rackOrder_.lane[std::size_t(insertAt - 1)] : 0;
     if (wantedLane == 1 && !hasParallel()) return false;
-    if (type == sas::ModuleType::Amp || type == sas::ModuleType::Cabinet || wantedLane == 1) {  // the second amp and cabinet are always in lane B, inside the parallel
+    if (pair && instance == 0) lane = 0;  // the first amp and cabinet are in the shared part or lane A
+    if ((pair && instance > 0) || wantedLane == 1) {  // the second amp and cabinet are always in lane B, inside the parallel
         lane = 1;
         insertAt = juce::jlimit(s + 1, m, insertAt);
     }
@@ -958,6 +1082,7 @@ bool SasProcessor::addModule(sas::ModuleType type, int insertAt, int wantedLane)
         return false;
     }
     RackState::resetParams(apvts, slot);
+    turnOn(apvts, slot);
     if (slot == sas::SlotRef{sas::ModuleType::Amp, 1}) {
         // The second amp starts as a copy of the first one's choice, so the sum is at once a doubled amp.
         if (auto* p = apvts.getParameter(RackState::paramId(ids::amp, 1))) {
@@ -977,7 +1102,7 @@ bool SasProcessor::addModule(sas::ModuleType type, int insertAt, int wantedLane)
 
 bool SasProcessor::removeModule(sas::SlotRef slot) {
     if (slot.type == sas::ModuleType::Splitter || slot.type == sas::ModuleType::Mixer) return removeParallel();  // the two ends go together
-    if (RackState::isFixed(slot)) return false;  // the amps, the cabinets and the first gate are always there
+    if (RackState::isFixed(slot)) return false;  // the first gate is always there
     const int at = indexInOrder(slot);
     if (at < 0) return false;
     eraseEntry(at);
@@ -987,6 +1112,38 @@ bool SasProcessor::removeModule(sas::SlotRef slot) {
         clearImpulseResponse(0, 1);
         clearImpulseResponse(1, 1);
     }
+    return true;
+}
+
+bool SasProcessor::canReplace(sas::SlotRef slot, sas::ModuleType type) const {
+    using T = sas::ModuleType;
+    // The amps, the cabinets, the first gate and the two ends of a parallel stay; and nothing is replaced by one of those, or by its own type.
+    for (const auto t : {slot.type, type})
+        if (t == T::Amp || t == T::Cabinet || t == T::Splitter || t == T::Mixer) return false;
+    if (RackState::isFixed(slot) || type == slot.type || indexInOrder(slot) < 0) return false;
+    int instances = 0;
+    for (int i = 0; i < rackOrder_.count; ++i)
+        if (rackOrder_.slots[std::size_t(i)].type == type) ++instances;
+    return instances < RackState::maxInstances(type);
+}
+
+bool SasProcessor::replaceModule(sas::SlotRef slot, sas::ModuleType type) {
+    if (!canReplace(slot, type)) return false;
+    int instance = 0;
+    for (; instance < RackState::maxInstances(type); ++instance)
+        if (indexInOrder({type, instance}) < 0) break;
+    const sas::SlotRef fresh{type, instance};
+    const int at = indexInOrder(slot);
+    const auto saved = rackOrder_;
+    rackOrder_.slots[std::size_t(at)] = fresh;  // same place, same lane
+    if (!layoutOk()) {
+        rackOrder_ = saved;
+        return false;
+    }
+    RackState::resetParams(apvts, fresh);
+    turnOn(apvts, fresh);
+    syncRack(sas::Transition::Duck);
+    if (slot.type == sas::ModuleType::NamPedal) clearNamPedal(slot.instance);  // the old one's model goes with it, as when it is removed
     return true;
 }
 
@@ -1041,8 +1198,9 @@ bool SasProcessor::canAddParallel() const {
 bool SasProcessor::addParallel() {
     using T = sas::ModuleType;
     if (!canAddParallel()) return false;
-    const int ampAt = indexInOrder({T::Amp, 0}), cabAt = indexInOrder({T::Cabinet, 0});
-    if (ampAt < 0 || cabAt < 0) return false;
+    const int ampAt0 = indexInOrder({T::Amp, 0}), cabAt = indexInOrder({T::Cabinet, 0});
+    if (ampAt0 < 0 && cabAt < 0) return false;  // lane A is built around the amp or the cabinet
+    const int ampAt = ampAt0 >= 0 ? ampAt0 : cabAt;
     // The splitter goes in front of the amp and of the compressor and overdrive that sit next to it (they keep working inside the amp, in lane A);
     // the mixer goes behind the cabinet. Lane B starts empty: what goes in it is the player's choice (a second amp and cabinet, a reverb on its own...).
     int start = ampAt;
@@ -1141,8 +1299,11 @@ bool SasProcessor::loadImpulseResponseFromMemory(const void* data, std::size_t s
     auto curve = responseCurve(mono, reader->sampleRate, bandPower);
     const double gain = bandPower > 0.0 ? 1.0 / std::sqrt(bandPower) : 1.0 / std::sqrt(energy);
     mono.applyGain(float(gain));
+    juce::AudioBuffer<float> monoR(mono);  // the right channel's convolution gets the same impulse
     cb.ir[slot].conv.loadImpulseResponse(std::move(mono), reader->sampleRate, juce::dsp::Convolution::Stereo::no, juce::dsp::Convolution::Trim::yes,
                                        juce::dsp::Convolution::Normalise::no);
+    cb.ir[slot].convR.loadImpulseResponse(std::move(monoR), reader->sampleRate, juce::dsp::Convolution::Stereo::no, juce::dsp::Convolution::Trim::yes,
+                                        juce::dsp::Convolution::Normalise::no);
     {
         const juce::ScopedLock lock(irLock_);
         cb.ir[slot].bytes = juce::MemoryBlock(data, size);
@@ -1281,19 +1442,24 @@ bool SasProcessor::loadNamCabFromMemory(const void* data, std::size_t size, cons
     const double fs = sampleRate_ > 0.0 ? sampleRate_ : 48000.0;
     std::string error;
     auto model = sas::NamModel::loadFromMemory(data, size, name.toStdString(), fs, int(kMaxChunk), error);
+    std::string errorR;
+    auto modelR = model ? sas::NamModel::loadFromMemory(data, size, name.toStdString(), fs, int(kMaxChunk), errorR) : nullptr;
     const juce::ScopedLock lock(namLock_);
-    if (!model) {
-        namCabMessage_ = error.empty() ? juce::String("the file could not be loaded") : juce::String(error);
+    if (!model || !modelR) {
+        namCabMessage_ = error.empty() && errorR.empty() ? juce::String("the file could not be loaded") : juce::String(error.empty() ? errorR : error);
         return false;
     }
     namCabPrev_ = std::move(namCab_);
     namCab_ = model;
+    namCabPrevR_ = std::move(namCabR_);
+    namCabR_ = modelR;
     namCabBytes_ = juce::MemoryBlock(data, size);
     namCabName_ = name;
     namCabRate_ = fs;
     namCabMessage_ = model->rateMatches()
                          ? juce::String()
                          : "Trained at " + juce::String(model->trainedRate(), 0) + " Hz, played at " + juce::String(fs, 0) + " Hz: it will sound off-pitch.";
+    namCabActiveR_.store(modelR.get());
     namCabActive_.store(model.get());
     return true;
 }
@@ -1316,8 +1482,11 @@ bool SasProcessor::loadNamCab(const juce::File& file) {
 void SasProcessor::clearNamCab() {
     const juce::ScopedLock lock(namLock_);
     namCabActive_.store(nullptr);
+    namCabActiveR_.store(nullptr);
     namCabPrev_ = std::move(namCab_);
     namCab_.reset();
+    namCabPrevR_ = std::move(namCabR_);
+    namCabR_.reset();
     namCabBytes_.reset();
     namCabName_.clear();
     namCabMessage_.clear();
@@ -1560,6 +1729,53 @@ void SasProcessor::applyFuzzPreset(int index, int instance) {
     set(ids::fzBias, p.bias);
     set(ids::fzMix, p.mix);
     set(ids::fzLevel, p.levelDb);
+}
+
+// The factory presets of the modules that have no function of their own (plugin/ModulePresets.h): they list the parameters they set.
+void SasProcessor::applyModulePreset(sas::ModuleType type, int index, int instance) {
+    const PresetList list = modulePresets(type);
+    if (index < 0 || index >= list.count) return;
+    const ModulePreset& preset = list.items[index];
+    auto set = [this, instance](const char* id, double value) {
+        if (auto* q = apvts.getParameter(RackState::paramId(id, instance))) {
+            q->beginChangeGesture();
+            q->setValueNotifyingHost(q->convertTo0to1(float(value)));
+            q->endChangeGesture();
+        }
+    };
+    if (const char* on = RackState::onId(type)) {
+        set(on, preset.on ? 1.0 : 0.0);
+        if (!preset.on) return;  // "Off" only switches it off, so the knobs keep what the player had set
+    }
+    for (const auto& v : preset.v)
+        if (v.id) set(v.id, v.value);
+}
+
+void SasProcessor::resetTubes(int instance) {
+    if (auto* q = apvts.getParameter(RackState::paramId(ids::tube, instance))) {
+        q->beginChangeGesture();
+        q->setValueNotifyingHost(q->convertTo0to1(0.0f));  // 0 = the amp's own
+        q->endChangeGesture();
+    }
+}
+
+// A factory preset of the amp that instance `instance` has selected (amp.json "presets"): its knobs, its channel and its switches.
+void SasProcessor::applyAmpPreset(int index, int instance) {
+    const auto& def = defs_[std::size_t(selectedAmpIndex(instance))];
+    if (index < 0 || index >= int(def.presets.size())) return;
+    const sas::AmpPresetDef& preset = def.presets[std::size_t(index)];
+    auto set = [this, instance](const juce::String& base, double value) {
+        if (auto* q = apvts.getParameter(RackState::paramId(base.toRawUTF8(), instance))) {
+            q->beginChangeGesture();
+            q->setValueNotifyingHost(q->convertTo0to1(float(value)));
+            q->endChangeGesture();
+        }
+    };
+    for (const auto& [param, value] : preset.params) set(param, value);
+    if (!preset.jack.empty()) set(ids::jack, double(def.jackIndex(preset.jack)));
+    for (const auto& [name, position] : preset.selectors)
+        for (std::size_t i = 0; i < def.preamp.selectors.size() && i < 6; ++i)
+            if (def.preamp.selectors[i].name == name) set(ids::sel[i], double(position));
 }
 
 void SasProcessor::applyWahPreset(int index, int instance) {

@@ -27,8 +27,8 @@ private:
     SasProcessor& processor_;
     int shownAmp_ = -1;
     std::vector<PanelBox> panels_;
-    juce::ComboBox ampBox_, quality_, jack_, pickup_, tube_, noise_, unit_, selBox_[4];
-    juce::Label ampCaption_, qualityCaption_, jackCaption_, pickupCaption_, tubeCaption_, noiseCaption_, unitCaption_, selCaption_[4], note_;
+    juce::ComboBox ampBox_, quality_, jack_, pickup_, tube_, noise_, unit_, selBox_[6];
+    juce::Label ampCaption_, qualityCaption_, jackCaption_, pickupCaption_, tubeCaption_, noiseCaption_, unitCaption_, selCaption_[6], note_;
     std::vector<std::unique_ptr<KnobWithLabel>> knobs_;
     KnobWithLabel input_, cable_, bias_, wear_;
     std::unique_ptr<juce::AudioProcessorValueTreeState::ComboBoxAttachment> ampAtt_, qualityAtt_, pickupAtt_, noiseAtt_, unitAtt_;

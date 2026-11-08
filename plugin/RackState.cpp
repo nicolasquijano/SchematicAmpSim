@@ -15,7 +15,7 @@ namespace {
 
 // Caps (docs/MODULAR_RACK.md, 4.1; the CPU table in section 6 holds them).
 constexpr int kCaps[sas::kModuleTypeCount] = {2 /*Amp*/, 2 /*Cabinet*/, 2 /*Gate*/, 2 /*Compressor*/, 4 /*Overdrive*/, 2 /*NamPedal*/, 2 /*Phaser*/,
-                                              2 /*Chorus*/, 2 /*Vibe*/, 2 /*Pitch*/, 2 /*Eq*/, 2 /*Delay*/, 2 /*Reverb*/, 1 /*Splitter*/, 1 /*Mixer*/, 2 /*Tremolo*/, 2 /*Flanger*/, 2 /*Wah*/, 2 /*Fuzz*/, 2 /*Boost*/, 2 /*Limiter*/, 2 /*TapeEcho*/};
+                                              2 /*Chorus*/, 2 /*Vibe*/, 2 /*Pitch*/, 2 /*Eq*/, 2 /*Delay*/, 2 /*Reverb*/, 1 /*Splitter*/, 1 /*Mixer*/, 2 /*Tremolo*/, 2 /*Flanger*/, 2 /*Wah*/, 2 /*Fuzz*/, 2 /*Boost*/, 2 /*Limiter*/, 2 /*TapeEcho*/, 2 /*Acoustic*/};
 
 // Mono: both channels of a stereo pair get the same modulation. Stereo: the right channel's modulation is out of step with the left's.
 std::unique_ptr<juce::AudioParameterChoice> channelMode(const juce::ParameterID& id, const juce::String& name) {
@@ -73,22 +73,23 @@ const std::vector<const char*>& paramIds(ModuleType type) {
     static const std::vector<const char*> none;
     static const std::vector<const char*> cabinet{ids::cabOn, ids::cab, ids::irBlend, ids::irWidth, ids::doubleAmount, ids::doubleTime};
     static const std::vector<const char*> amp{ids::amp, ids::volume, ids::volume2, ids::bass, ids::middle, ids::treble, ids::presence, ids::master, ids::power, ids::resonance,
-                                              ids::vibSpeed, ids::vibIntensity, ids::vibOn, ids::input, ids::quality, ids::jack, ids::sel[0], ids::sel[1], ids::sel[2], ids::sel[3],
+                                              ids::vibSpeed, ids::vibIntensity, ids::vibOn, ids::aeq[0], ids::aeq[1], ids::aeq[2], ids::aeq[3], ids::aeq[4], ids::input, ids::quality, ids::jack, ids::sel[0], ids::sel[1], ids::sel[2], ids::sel[3], ids::sel[4], ids::sel[5],
                                               ids::pickup, ids::cable, ids::tube, ids::wear, ids::unit, ids::noise, ids::bias, ids::speaker, ids::speakerIntense};
     static const std::vector<const char*> mixer{ids::mixLevelA, ids::mixLevelB, ids::mixPanA, ids::mixPanB, ids::mixInvertB};
     static const std::vector<const char*> gate{ids::gateOn, ids::gateThreshold, ids::gateRelease};
     static const std::vector<const char*> comp{ids::compOn, ids::compSustain, ids::compBlend, ids::compTone, ids::compLevel, ids::compFast};
     static const std::vector<const char*> drive{ids::tsOn, ids::tsDrive, ids::tsTone, ids::tsLevel};
     static const std::vector<const char*> nam{ids::nmpOn, ids::nmpDrive, ids::nmpLevel};
-    static const std::vector<const char*> phaser{ids::phOn, ids::phSpeed, ids::phIntense, ids::phStereo};
-    static const std::vector<const char*> chorus{ids::chOn, ids::chMode, ids::chRate, ids::chDepth, ids::chJuno, ids::chStereo};
-    static const std::vector<const char*> vibe{ids::vbOn, ids::vbSpeed, ids::vbIntensity, ids::vbVibrato, ids::vbStereo};
+    static const std::vector<const char*> phaser{ids::phOn, ids::phSpeed, ids::phIntense, ids::phMix, ids::phStereo};
+    static const std::vector<const char*> chorus{ids::chOn, ids::chMode, ids::chRate, ids::chDepth, ids::chJuno, ids::chMix, ids::chStereo};
+    static const std::vector<const char*> vibe{ids::vbOn, ids::vbSpeed, ids::vbIntensity, ids::vbVibrato, ids::vbMix, ids::vbStereo};
     static const std::vector<const char*> tremolo{ids::trOn, ids::trRate, ids::trDepth, ids::trShape, ids::trStereo};
-    static const std::vector<const char*> flanger{ids::flOn, ids::flRate, ids::flDepth, ids::flManual, ids::flFeedback, ids::flStereo};
+    static const std::vector<const char*> flanger{ids::flOn, ids::flRate, ids::flDepth, ids::flManual, ids::flFeedback, ids::flMix, ids::flStereo};
     static const std::vector<const char*> wah{ids::wahOn, ids::wahMode, ids::wahPos, ids::wahHeel, ids::wahToe, ids::wahQ, ids::wahMix, ids::wahLevel, ids::wahSens,
                                               ids::wahAttack, ids::wahRelease, ids::wahDir, ids::wahRate, ids::wahStereo};
     static const std::vector<const char*> fuzz{ids::fzOn, ids::fzType, ids::fzFuzz, ids::fzTone, ids::fzBias, ids::fzMix, ids::fzLevel};
     static const std::vector<const char*> boost{ids::bstOn, ids::bstGain, ids::bstTone, ids::bstSoft};
+    static const std::vector<const char*> acoustic{ids::acOn, ids::acType, ids::acBody, ids::acTop, ids::acAir, ids::acSquash, ids::acMix};
     static const std::vector<const char*> limiter{ids::limOn, ids::limGain, ids::limCeiling, ids::limRelease};
     static const std::vector<const char*> tape{ids::tpOn, ids::tpTime, ids::tpHeads, ids::tpIntensity, ids::tpMix, ids::tpTone, ids::tpWow, ids::tpFlutter, ids::tpSat, ids::tpStereo};
     static const std::vector<const char*> pitch{ids::pitch, ids::pitchFine};
@@ -119,6 +120,7 @@ const std::vector<const char*>& paramIds(ModuleType type) {
         case ModuleType::Wah: return wah;
         case ModuleType::Fuzz: return fuzz;
         case ModuleType::Boost: return boost;
+        case ModuleType::Acoustic: return acoustic;
         case ModuleType::TapeEcho: return tape;
         case ModuleType::Limiter: return limiter;
         case ModuleType::Pitch: return pitch;
@@ -144,6 +146,7 @@ const char* onId(ModuleType type) {
         case ModuleType::Wah: return ids::wahOn;
         case ModuleType::Fuzz: return ids::fzOn;
         case ModuleType::Boost: return ids::bstOn;
+        case ModuleType::Acoustic: return ids::acOn;
         case ModuleType::TapeEcho: return ids::tpOn;
         case ModuleType::Limiter: return ids::limOn;
         case ModuleType::Eq: return ids::eqOn;
@@ -216,14 +219,16 @@ void addParams(Layout& l, ModuleType type, int k) {
             l.add(toggle(I(ids::phOn), N("Phaser"), false));
             l.add(rate(I(ids::phSpeed), N("Phaser speed"), 0.1f, 8.0f, 1.0f, 0.8f, "Hz"));
             l.add(toggle(I(ids::phIntense), N("Phaser intense"), false));
+            l.add(pct(I(ids::phMix), N("Phaser mix"), 0.0f, 100.0f, 100.0f));
             l.add(channelMode(id(I(ids::phStereo)), N("Phaser channels")));
             break;
         case ModuleType::Chorus:
             l.add(toggle(I(ids::chOn), N("Chorus"), false));
-            l.add(std::make_unique<juce::AudioParameterChoice>(id(I(ids::chMode)), N("Chorus mode"), juce::StringArray{"CE-2", "Juno"}, 0));
+            l.add(std::make_unique<juce::AudioParameterChoice>(id(I(ids::chMode)), N("Chorus mode"), juce::StringArray{"CE-2", "Juno", "JC"}, 0));
             l.add(rate(I(ids::chRate), N("Chorus rate"), 0.1f, 8.0f, 1.4f, 1.2f, "Hz"));
             l.add(pct(I(ids::chDepth), N("Chorus depth"), 0.0f, 100.0f, 50.0f));
             l.add(std::make_unique<juce::AudioParameterChoice>(id(I(ids::chJuno)), N("Chorus Juno button"), juce::StringArray{"I", "II", "I+II"}, 0));
+            l.add(pct(I(ids::chMix), N("Chorus mix"), 0.0f, 100.0f, 100.0f));
             l.add(channelMode(id(I(ids::chStereo)), N("Chorus channels")));
             break;
         case ModuleType::Vibe:
@@ -231,6 +236,7 @@ void addParams(Layout& l, ModuleType type, int k) {
             l.add(rate(I(ids::vbSpeed), N("Vibe speed"), 0.3f, 10.0f, 3.0f, 3.0f, "Hz"));
             l.add(pct(I(ids::vbIntensity), N("Vibe intensity"), 0.0f, 100.0f, 70.0f));
             l.add(toggle(I(ids::vbVibrato), N("Vibe vibrato"), false));
+            l.add(pct(I(ids::vbMix), N("Vibe mix"), 0.0f, 100.0f, 100.0f));
             l.add(channelMode(id(I(ids::vbStereo)), N("Vibe channels")));
             break;
         case ModuleType::Tremolo:
@@ -246,6 +252,7 @@ void addParams(Layout& l, ModuleType type, int k) {
             l.add(pct(I(ids::flDepth), N("Flanger depth"), 0.0f, 100.0f, 70.0f));
             l.add(pct(I(ids::flManual), N("Flanger manual"), 0.0f, 100.0f, 40.0f));
             l.add(pct(I(ids::flFeedback), N("Flanger feedback"), -90.0f, 90.0f, 50.0f));
+            l.add(pct(I(ids::flMix), N("Flanger mix"), 0.0f, 100.0f, 100.0f));
             l.add(channelMode(id(I(ids::flStereo)), N("Flanger channels")));
             break;
         case ModuleType::TapeEcho: {
@@ -264,6 +271,15 @@ void addParams(Layout& l, ModuleType type, int k) {
             l.add(channelMode(id(I(ids::tpStereo)), N("Tape channels")));
             break;
         }
+        case ModuleType::Acoustic:
+            l.add(toggle(I(ids::acOn), N("Acoustic"), false));
+            l.add(std::make_unique<juce::AudioParameterChoice>(id(I(ids::acType)), N("Acoustic body type"), juce::StringArray{"Dreadnought", "Jumbo", "Parlor", "Piezo"}, 0));
+            l.add(knob(I(ids::acBody), N("Acoustic body"), 6.0f));
+            l.add(knob(I(ids::acTop), N("Acoustic top"), 5.0f));
+            l.add(knob(I(ids::acAir), N("Acoustic air"), 4.0f));
+            l.add(knob(I(ids::acSquash), N("Acoustic squash"), 4.0f));
+            l.add(pct(I(ids::acMix), N("Acoustic mix"), 0.0f, 100.0f, 100.0f));
+            break;
         case ModuleType::Boost:
             l.add(toggle(I(ids::bstOn), N("Boost"), false));
             l.add(std::make_unique<juce::AudioParameterFloat>(id(I(ids::bstGain)), N("Boost gain"), juce::NormalisableRange<float>(0.0f, 30.0f, 0.0f), 12.0f,
@@ -381,6 +397,7 @@ static void addAmpInstance(Layout& l, int k, const juce::StringArray& ampNames) 
     l.add(std::make_unique<juce::AudioParameterChoice>(id(I(ids::amp)), N("Amp"), ampNames, 0));
     l.add(knob(I(ids::volume), N("Preamp Volume"), 6.0f));
     l.add(knob(I(ids::volume2), N("Preamp Volume II"), 5.0f));
+    for (int e = 0; e < 5; ++e) l.add(knob(I(ids::aeq[e]), N("Graphic EQ " + juce::String(e + 1)), 5.0f));
     l.add(knob(I(ids::bass), N("Bass"), 5.0f));
     l.add(knob(I(ids::middle), N("Middle"), 5.0f));
     l.add(knob(I(ids::treble), N("Treble"), 6.0f));
@@ -396,7 +413,7 @@ static void addAmpInstance(Layout& l, int k, const juce::StringArray& ampNames) 
     l.add(std::make_unique<juce::AudioParameterChoice>(id(I(ids::quality)), N("Quality"), juce::StringArray{"Normal (2x)", "High (4x)", "Lite (2x)", "Eco (2x)", "Efficient (2x/1x)"}, 4));
     l.add(std::make_unique<juce::AudioParameterChoice>(id(I(ids::jack)), N("Input jack"),
                                                        juce::StringArray{"Jack 1", "Jack 2", "Jack 3", "Jack 4", "Jack 5", "Jack 6", "Jack 7", "Jack 8"}, 0));
-    for (int i = 0; i < 4; ++i)
+    for (int i = 0; i < 6; ++i)
         l.add(std::make_unique<juce::AudioParameterChoice>(id(I(ids::sel[i])), N("Amp switch " + juce::String(i + 1)),
                                                            juce::StringArray{"Position 1", "Position 2", "Position 3", "Position 4", "Position 5"}, 0));
     l.add(std::make_unique<juce::AudioParameterChoice>(id(I(ids::pickup)), N("Guitar pickup"), juce::StringArray{"Off", "Single coil", "Humbucker", "P-90"}, 0));
@@ -422,9 +439,9 @@ void addExtraInstances(Layout& l, const juce::StringArray& ampNames) {
 }
 
 bool isFixed(sas::SlotRef slot) {
-    // The first amp, the first cabinet and the first gate. (The second amp and cabinet of a parallel are ordinary modules of lane B, added if the player
-    // wants them; the splitter and the mixer are not removed one by one: they go with the parallel.)
-    return slot.instance == 0 && (slot.type == ModuleType::Amp || slot.type == ModuleType::Cabinet || slot.type == ModuleType::Gate);
+    // Only the first gate stays. The amp and the cabinet can be removed (and added again); the second amp and cabinet of a parallel are ordinary modules
+    // of lane B; the splitter and the mixer are not removed one by one: they go with the parallel.
+    return slot.instance == 0 && slot.type == ModuleType::Gate;
 }
 
 sas::RackOrder defaultOrder() {
@@ -537,7 +554,7 @@ sas::RackOrder fromTree(const juce::ValueTree& rack) {
                 (slot.type == ModuleType::Cabinet && slot.instance > 0))
                 eraseAt(i);
         }
-    // The fixed modules are always there: the amp (in front of the cabinet, or first), the gate first, the cabinet behind the amp.
+    // The first gate is always there, first. (A rack saved without an amp or a cabinet loads without them: the player removed them.)
     auto insertSlot = [&](int at, sas::SlotRef slot) {
         if (o.count >= sas::RackOrder::kMax) {  // full: the last module that is not fixed makes room
             for (int i = o.count - 1; i >= 0; --i)
@@ -555,12 +572,7 @@ sas::RackOrder fromTree(const juce::ValueTree& rack) {
         o.lane[std::size_t(at)] = 0;
         ++o.count;
     };
-    if (!amp) {
-        const int cab = indexOf({ModuleType::Cabinet, 0});
-        insertSlot(cab >= 0 ? cab : 0, {ModuleType::Amp, 0});
-    }
     if (indexOf({ModuleType::Gate, 0}) < 0) insertSlot(0, {ModuleType::Gate, 0});
-    if (indexOf({ModuleType::Cabinet, 0}) < 0) insertSlot(indexOf({ModuleType::Amp, 0}) + 1, {ModuleType::Cabinet, 0});
     return o;
 }
 

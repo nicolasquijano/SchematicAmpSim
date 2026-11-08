@@ -9,6 +9,7 @@
 #include <vector>
 
 #include "sas/chain.h"
+#include "sas/acoustic.h"
 #include "sas/boost.h"
 #include "sas/chorus.h"
 #include "sas/limiter.h"
@@ -48,13 +49,58 @@ private:
     Dsp dsp_;
 };
 
-using PhaserModule = FxModule<Phaser, PhaserParams, Channels::Flexible>;
-using ChorusModule = FxModule<Chorus, ChorusParams, Channels::Flexible>;
-using VibeModule = FxModule<Vibe, VibeParams, Channels::Flexible>;
-using TremoloModule = FxModule<Tremolo, TremoloParams, Channels::Flexible>;
-using FlangerModule = FxModule<Flanger, FlangerParams, Channels::Flexible>;
+// The same with a Mix control: the effect runs on the signal and the output is the dry signal plus `mix` of what the effect changed (mix 1 is the
+// effect as it is, and costs nothing extra; the knob is ramped over the block so moving it does not click). For the effects that already mix a dry
+// signal inside (phaser, chorus, flanger, vibe), this is how much of that comes out.
+template <class Dsp, class Params, Channels C>
+class MixFxModule final : public Module {
+public:
+    void prepare(double fs, int maxBlock) override {
+        dsp_.prepare(fs);
+        dryL_.assign(std::size_t(std::max(1, maxBlock)), 0.0f);
+        dryR_.assign(std::size_t(std::max(1, maxBlock)), 0.0f);
+    }
+    void process(float* l, float* r, std::size_t n) override {
+        const float target = float(std::clamp(mix_, 0.0, 1.0));
+        if (target >= 1.0f && now_ >= 1.0f) {  // the effect as it is
+            dsp_.process(l, r, n);
+            return;
+        }
+        const std::size_t len = std::min(n, dryL_.size());
+        std::copy(l, l + len, dryL_.begin());
+        if (r) std::copy(r, r + len, dryR_.begin());
+        dsp_.process(l, r, n);
+        for (std::size_t i = 0; i < len; ++i) {
+            const float m = now_ + (target - now_) * float(i + 1) / float(len);
+            l[i] = dryL_[i] + (l[i] - dryL_[i]) * m;
+            if (r) r[i] = dryR_[i] + (r[i] - dryR_[i]) * m;
+        }
+        now_ = target;
+    }
+    bool active() const override { return dsp_.active(); }
+    Channels channels() const override { return C; }
+    void reset() override { dsp_.reset(); }
+    void setParams(const Params& p) {
+        mix_ = p.mix;
+        dsp_.setParams(p);
+    }
+    Dsp& dsp() { return dsp_; }
+
+private:
+    Dsp dsp_;
+    double mix_ = 1.0;
+    float now_ = 1.0f;  // the mix in force at the end of the last block
+    std::vector<float> dryL_, dryR_;
+};
+
+using PhaserModule = MixFxModule<Phaser, PhaserParams, Channels::Flexible>;
+using ChorusModule = MixFxModule<Chorus, ChorusParams, Channels::Flexible>;
+using VibeModule = MixFxModule<Vibe, VibeParams, Channels::Flexible>;
+using TremoloModule = FxModule<Tremolo, TremoloParams, Channels::Flexible>;  // (its depth already is the mix)
+using FlangerModule = MixFxModule<Flanger, FlangerParams, Channels::Flexible>;
 using WahModule = FxModule<Wah, WahParams, Channels::Flexible>;
 using BoostModule = FxModule<Boost, BoostParams, Channels::Flexible>;
+using AcousticModule = MixFxModule<Acoustic, AcousticParams, Channels::Flexible>;
 
 // A limiter: it looks ahead, so it delays the signal by that time (reported as latency while it works).
 class LimiterModule final : public Module {

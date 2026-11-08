@@ -79,7 +79,7 @@ private:
         std::vector<Tile> tiles;
         int selected = -1;
         juce::Rectangle<int> markerRect;  // a drop marker while dragging (empty: none)
-        std::function<void(int)> onSelect, onToggle;
+        std::function<void(int)> onSelect, onToggle, onContext;  // onContext: right click on a tile
         std::function<void()> onAdd;
 
     private:
@@ -91,6 +91,8 @@ private:
     void layoutUnits();
     void refreshTiles();
     void removeParallelAsked();
+    void removeSlot(sas::SlotRef slot);       // removes a module (or, for the ends of a parallel, asks about the parallel) and selects the one before it
+    void showTileMenu(int index);             // right click on a tile: remove it, or replace it by another module
     ModuleUnit* unitFor(sas::SlotRef slot) const;
 
     SasProcessor& processor_;

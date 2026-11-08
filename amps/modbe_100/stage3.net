@@ -1,0 +1,61 @@
+* Modded-British preamp, stage 3 of 3: V3A, V3B (the cathode follower), the SAT clipper, the VOICE switch, the tone stack, the Master and the
+* output node, with the end of the Clean chain. V2B's plate (stage 2) arrives through VL3 into the Gain network and V1B's plate (stage 1) through
+* VL5 into C9. See preamp.net for how the netlist is split.
+
+.nodes x x2 x3 p3 p5 gt gw ng4 p4 k4 c43 vb s33 sat sat2 c42 tt m w3 n1b n2b wm ms mw cd cl mo
+
+V VRAIL x 211.2 430
+C C28 x 0 10.417u
+R R34 x x2 10k
+C C29 x2 0 22u
+R R43 x2 x3 10k
+C C30 x3 0 100u
+
+S VL3 p3 1 0
+S VL5 p5 1 0
+C C19 p3 gt 2n2
+R VR_GT gt gw 1
+R VR_GB gw 0 1
+R R30 gw ng4 470k
+C C26 gw ng4 500p
+R R28 ng4 0 470k
+
+T V3A ng4 p4 k4 12AX7
+R R27 x2 p4 100k
+C C27 x2 p4 500p
+R R29 k4 0 820
+C C24 k4 0 0.68u
+T V3B p4 x3 vb 12AX7
+R R31 vb 0 100k
+R SW_V3A k4 c43 1
+C C43 c43 0 470u
+R SW_V3B vb c42 1e12
+C C42 c42 0 500p
+
+R R33 vb s33 10k
+C C25 s33 sat 100n
+R SW_SAT sat sat2 1e12
+D DZ1 sat2 0 SIGNAL
+D DZ2 0 sat2 SIGNAL
+R R38 sat2 0 1M
+
+C C4 vb tt 500p
+R R8 vb m 33k
+R VR_TT tt w3 1
+R VR_TB w3 n1b 1
+C C1 m n1b 22n
+R VR_BASS n1b n2b 1
+R VR_MIDT n2b wm 1
+R VR_MIDB wm 0 1
+C C6 m wm 22n
+R R59 w3 ms 220k
+R R32 ms 0 1M
+R VR_MT ms mw 1
+R VR_MB mw 0 1
+
+C C9 p5 cd 0.022u
+R R15 cd cl 470k
+R R22 cl 0 470k
+R SW_CLN_OUT cl mo 1
+R SW_BE_OUT mw mo 1e12
+R RMLOAD mo 0 1M

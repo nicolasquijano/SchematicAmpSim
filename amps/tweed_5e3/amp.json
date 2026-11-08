@@ -16,6 +16,12 @@
     "pointer": "#3a2a14"
   },
 
+  "presets": [
+   {"name": "Clean", "jack": "normal_lo", "params": {"treble": 6, "volume": 5, "volume2": 1.4}},
+   {"name": "Edge of breakup", "jack": "normal_hi", "params": {"treble": 6, "volume": 5, "volume2": 2.5}},
+   {"name": "Crunch", "jack": "bright_hi", "params": {"treble": 6, "volume": 3.4, "volume2": 5}},
+   {"name": "Lead", "jack": "bright_hi", "params": {"treble": 7, "volume": 8.1, "volume2": 5}}
+  ],
   "preamp": {
     "netlist": "preamp.net",
     "tolerance": 2e-6,

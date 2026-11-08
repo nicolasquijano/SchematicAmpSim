@@ -1,0 +1,66 @@
+* Kerry King 2203KK "Beast" input stage (drawing 2203KK-61-02): IC3a buffer, IC2a gain stage with the 47k / 3n3 shelf, the two transistor gyrators
+* (TR1, TR4: each a series-resonant shunt on the signal, R13 / C5 and R14 / C6 into an inductance made by the emitter follower), and IC2b with the
+* ASSAULT pot VR8A in its feedback (gain 1 + VR8A / 2k2, up to 10). The NJM072 run on +-15 V. The THAT4301 noise gate that follows (VCA and RMS
+* detector, VR7a threshold) is not a circuit here: the preamp applies a downward expander at the detector node `pg` (see amp.json "pre").
+* The BEAST footswitch (SW1) bypasses all of this: the preamp skips this netlist when the switch is off.
+
+V VP p15 1 15
+V VM m15 1 -15
+
+* Input: C26 / R33 / R37 and the IC3a buffer.
+I VIN gin 1
+R RGUIT gin ci 7k
+R R33 ci 0 2M2
+C C26 ci b 22n
+R R37 b 0 1M
+U IC3A b m3 o3 0 NJM072
+R RFB3 o3 m3 1
+
+* C29, R39 / C30 low-pass (68k / 470p), R38 to ground, IC2a.
+C C29 o3 e1 1u
+R R39 e1 f 68k
+R R38 e1 0 100k
+C C30 f 0 470p
+U IC2A f n2a o2a 0 NJM072
+R R40 n2a o2a 47k
+C C31 n2a o2a 3n3
+R R41 n2a g41 2k2
+C C32 g41 0 47n
+
+* C23, R26, R27 into IC2b's non-inverting input; the two gyrator notches hang on that node (j).
+C C23 o2a h 1u
+R R26 h j 10k
+R R27 j 0 150k
+R R13 j g13 3k3
+C C5 g13 gl1 22n
+C C4 gl1 bb1 22n
+R R12 gl1 em1 560
+R R10 p15 bb1 330k
+R R9 bb1 m15 470k
+Q TR1 bb1 p15 em1 MPSA06
+R R11 em1 m15 10k
+R R14 j g14 1k8
+C C6 g14 gl2 10n
+C C7 gl2 bb2 4n7
+R R15 gl2 em2 1k
+R R36 p15 bb2 330k
+R R17 bb2 m15 470k
+Q TR4 bb2 p15 em2 MPSA06
+R R16 em2 m15 10k
+
+* IC2b: the ASSAULT pot (a rheostat from the inverting input), R25 / C18 to ground, C22 across it.
+U IC2B j n2b o2b 0 NJM072
+R VR8A n2b o2b 10k
+C C22 n2b o2b 47p
+R R25 n2b g25 2k2
+C C18 g25 0 1u
+
+* To the preamp (C1 and R5 feed the detector, the VCA is the gate): C3 / R23.
+C C3 o2b bo 10u
+R R23 bo 0 100k
+* Detector tap: C1 / R5.
+C C1 o2b pg 47u
+R R5 pg 0 22k
+
+* The gate knob's resistor: it carries no signal (the knob's value is the threshold).
+R RGATE gt 0 100k

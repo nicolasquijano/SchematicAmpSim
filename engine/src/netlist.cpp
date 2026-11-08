@@ -214,10 +214,10 @@ struct Parser {
             if (n == "RECTIFIER_BRIDGE") { m = DiodeModel::rectifierBridge(); return true; }
             return false;
         };
-        auto bjtModel = [](const std::string& n, BjtModel& m) { if (n == "C1815") { m = BjtModel::c1815(); return true; } if (n == "MMBT6429") { m = BjtModel{1e-14, 500.0, 0.02585}; return true; } return false; };
+        auto bjtModel = [](const std::string& n, BjtModel& m) { if (n == "C1815") { m = BjtModel::c1815(); return true; } if (n == "MPSA06") { m = BjtModel{1e-14, 150.0, 0.02585}; return true; } if (n == "MMBT6429") { m = BjtModel{1e-14, 500.0, 0.02585}; return true; } return false; };
         auto npnModel = [](const std::string& n, NpnModel& m) { if (n == "MMBT6429") { m = NpnModel::mmbt6429(); return true; } return false; };
         auto otaModel = [](const std::string& n, OtaModel& m) { if (n == "LM13700") { m = OtaModel::lm13700(); return true; } return false; };
-        auto opampModel = [](const std::string& n, OpampModel& m) { if (n == "RC4558") { m = OpampModel::rc4558(); return true; } return false; };
+        auto opampModel = [](const std::string& n, OpampModel& m) { if (n == "RC4558") { m = OpampModel::rc4558(); return true; } if (n == "NJM072") { m = OpampModel{1e-3, 1e5, 1e7, 50.0, 13.5}; return true; } if (n == "NJM4558") { m = OpampModel{1e-3, 1e5, 3e6, 75.0, 13.0}; return true; } if (n == "JC_POWER") { m = OpampModel{1e-3, 1e5, 2e6, 0.2, 31.0}; return true; } return false; };
 
         auto unique = [&](auto& registry) {
             if (registry.count(id)) fail("duplicate element name '" + id + "'");

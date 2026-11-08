@@ -35,7 +35,8 @@ public:
 
     // Driven every sample from the power amp so the preamp feels the supply sag.
     void setRail(double volts) {
-        for (auto& s : stages_) s.solver.setSource(s.rail, volts);
+        for (auto& s : stages_)
+            if (!s.pre) s.solver.setSource(s.rail, volts);
         if (vib_) vib_->setRail(volts);
         if (rev_) rev_->setRail(volts);
     }
@@ -58,6 +59,7 @@ public:
 
     // One sample: guitar volts in, master-volume output (volts) out.
     double process(double vin) {
+        if (preOn_) vin = runPre(vin);
         const Jack& j = jacks_[jack_];
         Stage& first = stages_.front();
         if (rev_) first.solver.setSource(revSrc_, rev_->process(first.solver.voltage(revGrid_)));
@@ -67,14 +69,14 @@ public:
             first.solver.setSource(j.drive, vin);  // the unused jack is grounded by its own contact
             first.solver.process(0.0);
         }
-        for (std::size_t k = 1; k < stages_.size(); ++k) {
+        for (std::size_t k = 1; k < mainStages_; ++k) {
             Stage& s = stages_[k];
             for (const Link& l : s.links) s.solver.setSource(l.src, stages_[l.from].solver.voltage(l.node));
             if (s.input) s.solver.process(j.drivesInput ? vin : 0.0);
             else s.solver.step();
         }
         if (vib_ && ++vibCount_ >= vibEvery_) advanceVibrato();
-        return stages_.back().solver.voltage(out_);
+        return stages_[mainStages_ - 1].solver.voltage(out_);
     }
 
     std::size_t stageCount() const { return stages_.size(); }
@@ -114,10 +116,14 @@ private:
         SrcId rail{0};
         std::vector<Link> links;  // stages after the first: sources fed from earlier stages
         bool input = false;       // also driven by the guitar (a parallel channel)
+        bool pre = false;         // the circuit in front of the preamp (amp.json "pre")
     };
 
     static void potValues(const Knob& k, double value, double minOhms, double& top, double& bottom);
     void advanceVibrato();
+    // The circuit in front (Beast): one sample of it, then the gate; returns the volts for the preamp's input.
+    double runPre(double vin);
+    void updateGate();
     void set(const Refs& rs, double ohms) {
         for (const Ref& r : rs) stages_[r.stage].solver.setResistor(r.id, ohms);
     }
@@ -126,6 +132,13 @@ private:
     }
 
     std::vector<Stage> stages_;
+    std::size_t mainStages_ = 0;  // stages_ without the pre stage (which is stored last)
+    bool preOn_ = false;
+    std::size_t preSel_ = static_cast<std::size_t>(-1), gateKnob_ = static_cast<std::size_t>(-1);
+    Node preOut_ = 0, preDet_ = 0;
+    SrcId preIn_{0};
+    double fs_ = 48000.0, gateEnv_ = 0.0, gateGain_ = 1.0, gateTarget_ = 1.0, gateThrDb_ = -200.0, gateAtk_ = 0.0, gateRel_ = 0.0, gateSmooth_ = 0.0;
+    int gateCount_ = 0;
     Node out_ = 0;
     double potMinOhms_;
     double sourceOhmsMin_;
@@ -141,6 +154,7 @@ private:
     std::vector<Jack> jacks_;
     std::size_t jack_ = 0;
     std::vector<std::vector<std::vector<std::pair<Refs, double>>>> selectors_;  // [selector][position] -> resistors to set
+    std::vector<std::vector<std::vector<std::pair<std::size_t, double>>>> selectorPots_;  // [selector][position] -> (knob, total of its pot)
     std::vector<std::size_t> selectorPos_;
     std::unique_ptr<Vibrato> vib_;
     std::unique_ptr<Reverb> rev_;  // spring reverb: tapped from a node of stage 0, injected at a source of it

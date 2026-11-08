@@ -7,7 +7,7 @@
 namespace sas {
 
 namespace {
-constexpr const char* kNames[kModuleTypeCount] = {"Amp", "Cabinet", "Gate", "Compressor", "Overdrive", "NamPedal", "Phaser", "Chorus", "Vibe", "Pitch", "Eq", "Delay", "Reverb", "Splitter", "Mixer", "Tremolo", "Flanger", "Wah", "Fuzz", "Boost", "Limiter", "TapeEcho"};
+constexpr const char* kNames[kModuleTypeCount] = {"Amp", "Cabinet", "Gate", "Compressor", "Overdrive", "NamPedal", "Phaser", "Chorus", "Vibe", "Pitch", "Eq", "Delay", "Reverb", "Splitter", "Mixer", "Tremolo", "Flanger", "Wah", "Fuzz", "Boost", "Limiter", "TapeEcho", "Acoustic"};
 }
 
 const char* moduleTypeName(ModuleType t) { return kNames[std::size_t(t)]; }
@@ -20,7 +20,7 @@ std::optional<ModuleType> moduleTypeFromName(std::string_view name) {
 
 Channels moduleChannels(ModuleType type) {
     switch (type) {
-        case ModuleType::Cabinet: return Channels::MonoToStereo;
+        case ModuleType::Cabinet: return Channels::Widening;
         case ModuleType::Phaser:
         case ModuleType::Chorus:
         case ModuleType::Vibe:
@@ -28,6 +28,7 @@ Channels moduleChannels(ModuleType type) {
         case ModuleType::Flanger:
         case ModuleType::Wah:
         case ModuleType::Boost:
+        case ModuleType::Acoustic:
         case ModuleType::Limiter: return Channels::Flexible;
         case ModuleType::Eq:
         case ModuleType::Delay:
@@ -283,6 +284,11 @@ bool Rack::run(const RackOrder* order, float* l, float* r, std::size_t n, const 
                 break;
             case Channels::MonoToStereo:
                 if (stereo) downmix();
+                m->process(l, r, n);
+                stereo = true;
+                break;
+            case Channels::Widening:
+                m->setStereoInput(stereo);  // a stereo pair stays a stereo pair
                 m->process(l, r, n);
                 stereo = true;
                 break;

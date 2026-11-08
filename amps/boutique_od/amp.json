@@ -14,6 +14,12 @@
   "knob_bottom": "#120f0b",
   "pointer": "#f6e5b8"
  },
+ "presets": [
+  {"name": "Clean", "jack": "clean", "params": {"bass": 5, "master": 5, "middle": 5, "presence": 5, "reverb": 5, "treble": 5, "vib_intensity": 5, "volume": 7.1, "volume2": 5}},
+  {"name": "Edge of breakup", "jack": "od", "params": {"bass": 5, "master": 5, "middle": 5, "presence": 5, "reverb": 1, "treble": 5, "vib_intensity": 2, "volume": 5, "volume2": 4}},
+  {"name": "Crunch", "jack": "od", "params": {"bass": 5, "master": 5, "middle": 5, "presence": 5, "reverb": 1.3, "treble": 5, "vib_intensity": 5, "volume": 5, "volume2": 5}},
+  {"name": "Lead", "jack": "od", "params": {"bass": 5, "master": 5, "middle": 5, "presence": 5, "reverb": 1.5, "treble": 5, "vib_intensity": 6, "volume": 5, "volume2": 6.5}}
+ ],
  "preamp": {
   "netlist": "preamp.net",
   "tolerance": 2e-06,

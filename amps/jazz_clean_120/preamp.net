@@ -1,0 +1,115 @@
+* "American Clean 120" preamp: the input, distortion, equaliser and volume of a 1984 two-channel solid-state combo (the Roland JC-120; drawing "Circuit
+* Diagram" 70126811, Dec. 1984, supplied by the user). Signal path: the two jacks (High through R6 33k, Low through R7 100k, 12 dB apart), IC2b (gain 3.6),
+* IC2a (the distortion stage: gain 1 + R23 / (R22 + VR1), 1 when the switch is off) into two diode clippers (D9 / D11 and D8 / D10, each behind a capacitor),
+* the passive tone stack (treble VR4, bass VR6, middle VR5, with R74 / C49 / C50 / C51), the volume VR2 with the Hi-Treble network (C42 / VR3) across it, IC3a
+* (gain 13.3) and IC3b (gain 1.8). The op-amps run on +-15 V (the drawing's M5218L / NJM4558 are 4558 types).
+* Not modelled: the chorus / vibrato (BBD) and the reverb, which are rack modules; the Sub In input, the line out and the clamp diodes D5 / D6 / D13 / D14.
+
+* The preamp's rail is not used (the op-amps have their own +-15 V): a dummy source so the engine can drive it.
+V VRAIL xd 100 15
+R RDUM xd 0 1M
+
+* Guitar jacks: the High jack behind R6 (33k), with the pickup / cable networks (closed by the engine); the Low jack behind R7 (100k).
+I VIN gin 1
+R RSRC gin gh 7k
+R RPU1 gin pkb1 1e12
+.xfmr LPU1 L=2.5
+  W pkb1 gh 1 pu
+.end
+R RPU2 gin pkb2 1e12
+.xfmr LPU2 L=5
+  W pkb2 gh 1 pu
+.end
+C CPU gin gh 110p
+R RPL gin gh 1e12
+R SWK1 gh pkk1 1e12
+C CCAB1 pkk1 0 200p
+R SWK2 gh pkk2 1e12
+C CCAB2 pkk2 0 400p
+R SWK4 gh pkk4 1e12
+C CCAB4 pkk4 0 800p
+R R6 gh j 33k
+S VLOW lowsrc 1 0
+R RSRC_LOW lowsrc gl 7k
+R R7 gl j 100k
+
+* IC2b: C12, R19 (1k) / C19 (100p) on the + input, R20 1M, gain 1 + R18 / R16.
+C C12 j a1 0.082u
+R R19 a1 ip 1k
+C C19 ip 0 100p
+R R20 ip 0 1M
+O IC2B ip n2b o2b 0 NJM4558
+R R16 n2b 0 39k
+R R18 n2b o2b 100k
+C C20 n2b o2b 47p
+
+* IC2a: C23 / R31, the distortion: R22 (1k) and C18 (10u) with the DISTORTION pot VR1 (50k) to ground through the switch.
+C C23 o2b b2 0.082u
+R R31 b2 0 1M
+O IC2A b2 n2a o2a 0 NJM4558
+R R23 n2a o2a 47k
+C C24 n2a o2a 100p
+R R22 n2a g22 1k
+C C18 g22 gv 10u
+R VR1T gv gsw 25k
+R VR1B dum1 0 25k
+R SW_DIST gsw 0 1e12
+
+* Clippers: C30 / R34, R32 + D9 / D11 + C32, R43 + D8 / D10 + C33, R169 and C31 on the output. Their capacitors return through the same switch.
+C C30 o2a d0 0.082u
+R R34 d0 0 270k
+R R32 d0 n1 3.9k
+D D9 n1 x1 SIGNAL
+D D11 x1 n1 SIGNAL
+C C32 x1 bus 0.082u
+R R43 n1 n2 3.9k
+D D8 n2 x2 SIGNAL
+D D10 x2 n2 SIGNAL
+C C33 x2 bus 1u
+R R169 n2 0 1.5M
+C C31 n2 bus 0.01u
+R SW_BUS bus 0 1e12
+
+* Tone stack: treble VR4 (250k, its top through C49 150p), bass VR6 (250k rheostat) with R97 1k, middle VR5 (10k rheostat), R74 100k, C50 .082u, C51 .047u.
+C C49 n2 vt4 150p
+R R74 n2 mm 100k
+C C50 mm bt 0.082u
+R VR6 bt bb0 125k
+R R97 bb0 bb 1k
+C C51 mm bb 0.047u
+R VR5 bb 0 5k
+R VR4T vt4 w4 1
+R VR4B w4 bt 1
+R R42 w4 v2t 100k
+R VR2T v2t v2w 1
+R VR2B v2w 0 1
+C C42 w4 hts 470p
+R VR3T hts v2w 500k
+R VR3B dum3 0 500k
+
+* IC3a (gain 1 + R46 / R48), then C40, R65, R59, C41, R45 and IC3b (gain 1 + R57 / R49); C96 and the load of the next stage.
+C C37 v2w c37 0.082u
+R R47 c37 0 1M
+O IC3A c37 n3a o3a2 0 NJM4558
+R R48 n3a 0 22k
+R R46 n3a o3a2 270k
+C C38 n3a o3a2 100p
+C C40 o3a2 e40 1u
+R R65 e40 0 270k
+R R59 e40 e41 33k
+C C41 e41 c41 1u
+R R45 c41 0 270k
+O IC3B c41 n3b o3b 0 NJM4558
+R R49 n3b 0 27k
+R R57 n3b o3b 22k
+C C39 n3b o3b 47p
+C C96 o3b y 1u
+R R_Y y 0 47k
+
+* Reverb return: the recovered signal (a source driven by the reverb circuit) through C55 and R87 to the REVERB pot VR7 (10k), mixed into the signal at y.
+S VREVOUT rvsrc 1 0
+C C55 rvsrc rvc 0.082u
+R R87 rvc rvp 1k
+R VR7T rvp rvw 1
+R VR7B rvw 0 1
+R R_RMIX rvw y 10k

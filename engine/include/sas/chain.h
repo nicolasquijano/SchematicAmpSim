@@ -9,6 +9,7 @@
 #include <memory>
 #include <vector>
 
+#include "sas/graphic_eq.h"
 #include "sas/amp.h"
 #include "sas/cab.h"
 #include "sas/compressor.h"
@@ -35,6 +36,7 @@ struct ChainSettings {
     Quality quality = Quality::Normal;
     std::size_t jack = 0;
     std::vector<std::size_t> selectors;  // one position per selector of the amp (amp.json "selectors")
+    std::array<double, 8> geq{0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5};  // the amp's graphic equaliser sliders, 0..1 (0.5 flat)
     bool jackLevelMatch = true;  // apply the jack's `level_db` at the amp input
     bool vibratoOn = false;      // optical tremolo of amps that have one
     double vibratoSpeed = 0.5;
@@ -127,6 +129,7 @@ private:
     TubeScreamerFast ts1_, ts2_, ts4_;
     Oversampler os2_{1}, os4_{2};
     CabFilter cab_;
+    GraphicEq geq_;             // the amp's graphic equaliser (amp.json "graphic_eq"), at the output of the amp
     Compressor comp_;           // the compressor pedal circuit, at the host rate
     SpeakerDynamics speaker_;   // between the amp and the cabinet
     AmpNoise noise2_, noise4_;  // at the 2x and 4x rates

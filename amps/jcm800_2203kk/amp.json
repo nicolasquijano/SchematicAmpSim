@@ -1,0 +1,309 @@
+{
+ "id": "jcm800_2203kk",
+ "order": 17,
+ "name": "British 800 KK",
+ "output_db": -0.6,
+ "ui": [
+  {
+   "param": "volume",
+   "knob": "volume",
+   "label": "PREAMP"
+  },
+  {
+   "param": "bass",
+   "knob": "bass",
+   "label": "BASS"
+  },
+  {
+   "param": "middle",
+   "knob": "middle",
+   "label": "MIDDLE"
+  },
+  {
+   "param": "treble",
+   "knob": "treble",
+   "label": "TREBLE"
+  },
+  {
+   "param": "presence",
+   "label": "PRESENCE"
+  },
+  {
+   "param": "master",
+   "knob": "master",
+   "label": "MASTER"
+  },
+  {
+   "param": "volume2",
+   "knob": "assault",
+   "label": "ASSAULT"
+  },
+  {
+   "param": "reverb",
+   "knob": "gate",
+   "label": "GATE"
+  }
+ ],
+ "theme": {
+  "background": "#0d0c0a",
+  "panel": "#1c1914",
+  "edge": "#41362a",
+  "accent": "#f0b53a",
+  "label": "#a08b63",
+  "text": "#ece5d3",
+  "knob_top": "#3b352c",
+  "knob_bottom": "#14110d",
+  "pointer": "#f6e7b4"
+ },
+ "presets": [
+  {"name": "Clean", "jack": "low", "params": {"bass": 5, "master": 6, "middle": 5, "presence": 5, "treble": 6, "volume": 2.9}},
+  {"name": "Edge of breakup", "jack": "high", "params": {"bass": 5, "master": 5, "middle": 5, "presence": 5, "treble": 6, "volume": 4.3}},
+  {"name": "Crunch", "jack": "high", "params": {"bass": 5, "master": 5, "middle": 5, "presence": 5, "treble": 6, "volume": 5.7}},
+  {"name": "Lead", "jack": "high", "params": {"bass": 5, "master": 6, "middle": 6.5, "presence": 5, "treble": 6.5, "volume": 6.7}},
+  {"name": "Beast", "jack": "high", "params": {"bass": 5, "master": 5, "middle": 6, "presence": 5, "treble": 5, "volume": 4, "volume2": 5, "reverb": 4}, "selectors": {"beast": 1}},
+  {"name": "Beast, tight gate", "jack": "high", "params": {"bass": 5, "master": 5, "middle": 6, "presence": 5, "treble": 5, "volume": 5, "volume2": 7, "reverb": 6.5}, "selectors": {"beast": 1}}
+ ],
+ "preamp": {
+  "netlist": "preamp.net",
+  "pre": {"netlist": "beast.net", "input_source": "VIN", "output_node": "bo", "detect_node": "pg", "gate_knob": "gate", "selector": "beast"},
+  "selectors": [
+   {"name": "beast", "label": "BEAST", "positions": [{"label": "Off"}, {"label": "On"}]}
+  ],
+  "tolerance": 2e-06,
+  "rail_source": "VRAIL",
+  "input_source": "VIN",
+  "output_node": "y",
+  "pot_min_ohms": 100,
+  "jack_label": "INPUT JACK",
+  "knobs": [
+   {
+    "name": "volume",
+    "default": 0.6,
+    "pot": {
+     "type": "wiper",
+     "top": "VR1T",
+     "bottom": "VR1B",
+     "total": 1000000.0,
+     "taper": "log"
+    }
+   },
+   {
+    "name": "bass",
+    "default": 0.5,
+    "pot": {
+     "type": "variable",
+     "resistor": "VR5",
+     "total": 1000000.0,
+     "taper": "log"
+    }
+   },
+   {
+    "name": "middle",
+    "default": 0.5,
+    "pot": {
+     "type": "wiper",
+     "top": "VR4T",
+     "bottom": "VR4B",
+     "total": 22000.0,
+     "taper": "linear"
+    }
+   },
+   {
+    "name": "treble",
+    "default": 0.6,
+    "pot": {
+     "type": "wiper",
+     "top": "VR3T",
+     "bottom": "VR3B",
+     "total": 220000.0,
+     "taper": "linear"
+    }
+   },
+   {
+    "name": "assault",
+    "default": 0.5,
+    "pot": {"type": "variable", "resistor": "VR8A", "total": 20000.0, "taper": "linear"}
+   },
+   {
+    "name": "gate",
+    "default": 0.4,
+    "pot": {"type": "variable", "resistor": "RGATE", "total": 100000.0, "taper": "linear"}
+   },
+   {
+    "name": "master",
+    "default": 0.5,
+    "pot": {
+     "type": "wiper",
+     "top": "VR2T",
+     "bottom": "VR2B",
+     "total": 1000000.0,
+     "taper": "log"
+    }
+   }
+  ],
+  "source_ohms": {
+   "resistors": [
+    "RSRC",
+    "RSRC_LOW"
+   ],
+   "default": 7000,
+   "min": 10
+  },
+  "jacks": [
+   {
+    "name": "high",
+    "label": "High",
+    "drive": "VIN",
+    "resistors": {
+     "SW_C3": 1,
+     "SW_LOW": 1000000000000.0
+    }
+   },
+   {
+    "name": "low",
+    "label": "Low",
+    "level_db": 31.0,
+    "drive": "VLOW",
+    "resistors": {
+     "SW_C3": 1000000000000.0,
+     "SW_LOW": 1
+    }
+   }
+  ]
+ },
+ "power": {
+  "transformer_parasitics": {
+   "primary_pf": 150,
+   "core_loss_ohms": 40000
+  },
+  "tubes": [
+   {
+    "name": "KT88",
+    "model": "6550",
+    "pmax_w": 42.0,
+    "bias_scale": 1.0
+   },
+   {
+    "name": "EL34",
+    "model": "EL34",
+    "pmax_w": 25.0,
+    "bias_scale": 0.7437
+   },
+   {
+    "name": "6L6GC",
+    "model": "6L6GCDS",
+    "pmax_w": 30.0,
+    "bias_scale": 0.8571
+   },
+   {
+    "name": "6550",
+    "model": "6550DS",
+    "pmax_w": 35.0,
+    "bias_scale": 1.0474
+   }
+  ],
+  "bias": {
+   "source": "VBIAS",
+   "idle_resistors": [
+    "DCR_PT",
+    "DCR_PB"
+   ],
+   "tubes_per_half": 2
+  },
+  "netlist": "poweramp.net",
+  "tolerance": 0.0001,
+  "input_source": "VAUDIO",
+  "ht_source": "VHT",
+  "ht_node": "a",
+  "rail_node": "x",
+  "output_node": "t16",
+  "load_resistor": "RLOAD",
+  "nfb_resistor": "R22",
+  "presence": {
+   "resistor": "VR6",
+   "scale": 22000.0,
+   "min_ohms": 50,
+   "default": 0.5
+  },
+  "supply": {
+   "mains_hz": 50,
+   "vac_peak": 538,
+   "rect_source_ohms": 42,
+   "ht_dc_source": 490,
+   "rect_drop": 1.4,
+   "reservoir_farads": 0.0001,
+   "tie_ohms": 1.0,
+   "settle_seconds": 0.15
+  }
+ },
+ "lite": {
+  "base_gain_db": 28.1577,
+  "high_pass_hz": 29.33,
+  "shelf_hz": 1093.14,
+  "presence_db": [
+   0,
+   0.380661,
+   1.0684,
+   2.68743,
+   9.75752
+  ],
+  "sag_table": [
+   [
+    0,
+    0
+   ],
+   [
+    2.54648,
+    0.286998
+   ],
+   [
+    5.09296,
+    1.14074
+   ],
+   [
+    9.5493,
+    3.93382
+   ],
+   [
+    15.9155,
+    10.407
+   ],
+   [
+    22.2817,
+    18.9935
+   ],
+   [
+    28.6479,
+    28.7605
+   ],
+   [
+    35.0141,
+    38.9695
+   ],
+   [
+    44.5634,
+    53.8786
+   ],
+   [
+    57.2958,
+    65.6674
+   ],
+   [
+    82.7606,
+    67.1691
+   ],
+   [
+    127.324,
+    73.8682
+   ]
+  ],
+  "rail_x_idle": 387.204,
+  "rail_sag_fraction": 0.58,
+  "ceiling_light": 69.0315,
+  "ceiling_heavy": 52.6946,
+  "ceiling_decay": 282.446,
+  "knee": 4.39109,
+  "sag_attack_s": 0.01,
+  "sag_release_s": 0.06
+ }
+}

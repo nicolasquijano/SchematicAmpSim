@@ -14,6 +14,12 @@
   "knob_bottom": "#1a0e06",
   "pointer": "#ffd9a6"
  },
+ "presets": [
+  {"name": "Clean", "jack": "fac6", "params": {"bass": 5, "presence": 5, "treble": 5.5, "volume": 2}},
+  {"name": "Edge of breakup", "jack": "fac4", "params": {"bass": 5, "presence": 5, "treble": 5, "volume": 5.2}},
+  {"name": "Crunch", "jack": "fac2", "params": {"bass": 5, "presence": 5, "treble": 5, "volume": 5}},
+  {"name": "Lead", "jack": "fac1", "params": {"bass": 5, "presence": 5, "treble": 5.5, "volume": 6.5}}
+ ],
  "preamp": {
   "netlist": "preamp.net",
   "tolerance": 2e-06,

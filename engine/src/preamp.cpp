@@ -48,6 +48,9 @@ Preamp::Preamp(const AmpDef& def, double fs, double railVolts, bool useTables, b
     std::vector<ParsedNetlist> nets;
     nets.push_back(parseNetlist(pd.netlistText, pd.netlist));
     for (const auto& s : pd.stages) nets.push_back(parseNetlist(s.netlistText, s.netlist));
+    mainStages_ = nets.size();
+    if (pd.pre.present) nets.push_back(parseNetlist(pd.pre.netlistText, pd.pre.netlist));  // stored last, run first
+    fs_ = fs;
 
     // A resistor name finds every copy of it, in whichever stages it appears.
     auto find = [&](const std::string& name) {
@@ -105,9 +108,18 @@ Preamp::Preamp(const AmpDef& def, double fs, double railVolts, bool useTables, b
     }
     for (const auto& sd : pd.selectors) {
         selectors_.emplace_back();
+        selectorPots_.emplace_back();
         for (const auto& pos : sd.positions) {
             selectors_.back().emplace_back();
+            selectorPots_.back().emplace_back();
             for (const auto& [name, ohms] : pos.resistors) selectors_.back().back().push_back({find(name), ohms});
+            for (const auto& [knob, total] : pos.potTotals) {
+                std::size_t k = pd.knobs.size();
+                for (std::size_t q = 0; q < pd.knobs.size(); ++q)
+                    if (pd.knobs[q].name == knob) k = q;
+                if (k == pd.knobs.size()) throw std::runtime_error("amp '" + def.id + "': selector '" + sd.name + "' sets the pot of an unknown knob '" + knob + "'");
+                selectorPots_.back().back().push_back({k, total});
+            }
         }
         selectorPos_.push_back(0);  // the netlist's own values are position 0
     }
@@ -139,6 +151,13 @@ Preamp::Preamp(const AmpDef& def, double fs, double railVolts, bool useTables, b
     stages_.reserve(nets.size());
     for (std::size_t i = 0; i < nets.size(); ++i) {
         ParsedNetlist& net = nets[i];
+        if (pd.pre.present && i == mainStages_) {
+            Stage st{Solver(std::move(net.circuit), fs, useTables), SrcId{0}, {}, true, true};
+            stages_.push_back(std::move(st));
+            stages_.back().solver.tolerance = pd.tolerance;
+            stages_.back().solver.refresh();
+            continue;
+        }
         const SrcId rail = net.source(pd.railSource);
         net.circuit.setSourceDc(rail, railVolts);
         std::vector<Link> links;
@@ -160,7 +179,45 @@ Preamp::Preamp(const AmpDef& def, double fs, double railVolts, bool useTables, b
         stages_.back().solver.tolerance = pd.tolerance;
         stages_.back().solver.refresh();
     }
-    out_ = nets.back().node(pd.outputNode);
+    out_ = nets[mainStages_ - 1].node(pd.outputNode);
+    if (pd.pre.present) {
+        const ParsedNetlist& pn = nets[mainStages_];
+        preOut_ = pn.node(pd.pre.outputNode);
+        preDet_ = pn.node(pd.pre.detectNode);
+        preIn_ = pn.source(pd.pre.inputSource);
+        for (std::size_t i = 0; i < pd.selectors.size(); ++i)
+            if (pd.selectors[i].name == pd.pre.selector) preSel_ = i;
+        for (std::size_t i = 0; i < pd.knobs.size(); ++i)
+            if (pd.knobs[i].name == pd.pre.gateKnob) gateKnob_ = i;
+        if (preSel_ == static_cast<std::size_t>(-1)) throw std::runtime_error("amp '" + def.id + "': the pre stage's selector '" + pd.pre.selector + "' does not exist");
+        if (gateKnob_ == static_cast<std::size_t>(-1)) throw std::runtime_error("amp '" + def.id + "': the pre stage's gate knob '" + pd.pre.gateKnob + "' does not exist");
+        gateAtk_ = 1.0 - std::exp(-1.0 / (0.004 * fs));
+        gateRel_ = 1.0 - std::exp(-1.0 / (0.050 * fs));
+        gateSmooth_ = 1.0 - std::exp(-1.0 / (0.003 * fs));
+        updateGate();
+    }
+}
+
+// The gate is a downward expander on the level at the pre stage's detector node (the THAT4301's RMS detector and VCA, which cannot be a circuit):
+// a mean-square follower, and below the knob's threshold the gain falls as the level does (a 3:1 expander: the gain in dB is twice the distance below the threshold, down to -60 dB).
+void Preamp::updateGate() {
+    const double v = values_[gateKnob_];
+    gateThrDb_ = v < 0.02 ? -200.0 : -75.0 + 50.0 * v;  // dB re 1 V rms
+}
+
+double Preamp::runPre(double vin) {
+    Stage& p = stages_[mainStages_];
+    p.solver.process(vin);
+    const double d = p.solver.voltage(preDet_);
+    const double sq = d * d;
+    gateEnv_ += (sq > gateEnv_ ? gateAtk_ : gateRel_) * (sq - gateEnv_);
+    if (++gateCount_ >= 16) {
+        gateCount_ = 0;
+        double gdb = gateThrDb_ <= -150.0 ? 0.0 : std::min(0.0, 2.0 * (10.0 * std::log10(gateEnv_ + 1e-18) - gateThrDb_));
+        gateTarget_ = std::pow(10.0, std::max(gdb, -60.0) / 20.0);
+    }
+    gateGain_ += gateSmooth_ * (gateTarget_ - gateGain_);
+    return p.solver.voltage(preOut_) * gateGain_;
 }
 
 double potTaper(Taper t, double w) { return applyTaper(t, w); }
@@ -185,6 +242,7 @@ void Preamp::setKnobs(const std::vector<double>& values) {
         set(knobs_[i].top, top);
         if (knobs_[i].type == PotDef::Type::Wiper) set(knobs_[i].bottom, bottom);
     }
+    if (gateKnob_ != static_cast<std::size_t>(-1)) updateGate();
     refreshAll();
 }
 
@@ -229,7 +287,15 @@ void Preamp::setSelector(std::size_t i, std::size_t pos) {
     pos = std::min(pos, selectors_[i].size() - 1);
     if (pos == selectorPos_[i]) return;
     selectorPos_[i] = pos;
+    if (i == preSel_) preOn_ = pos == 1;
     for (const auto& [ref, ohms] : selectors_[i][pos]) set(ref, ohms);
+    for (const auto& [k, total] : selectorPots_[i][pos]) {  // a different pot fitted: its total changes, and the knob's position keeps its meaning
+        knobs_[k].total = total;
+        double top, bottom;
+        potValues(knobs_[k], values_[k], potMinOhms_, top, bottom);
+        set(knobs_[k].top, top);
+        if (knobs_[k].type == PotDef::Type::Wiper) set(knobs_[k].bottom, bottom);
+    }
     refreshAll();
 }
 

@@ -1,7 +1,9 @@
 #pragma once
-// A chorus with two modes in the manner of two classics, both built from short delay lines swept by a triangle LFO and mixed with the dry
+// A chorus with three modes in the manner of three classics, both built from short delay lines swept by a triangle LFO and mixed with the dry
 // signal; the delayed signal goes through a low-pass and a touch of saturation, like a bucket-brigade chip would leave it.
 //  - CE-2: one voice, Rate and Depth free. Warm, with a clear wobble.
+//  - JC: the stereo chorus of a 1980s solid-state combo (a MN3007 bucket-brigade chip, a triangle LFO of 1 to 4 Hz): two voices swept in
+//    opposite directions, one to each ear like the Juno, but with Rate and Depth free.
 //  - Juno: two voices swept in opposite directions, one to each ear (on a single channel, only the first voice), with the three fixed buttons of
 //    that synthesiser's chorus: I (slow), II (a little faster) and I+II (fast and shallow, a shimmer).
 // Works on one channel (before the amp) or a stereo pair (after it). Switching it on or off fades over 20 ms. The BBD chips are not part of
@@ -18,10 +20,12 @@ namespace sas {
 struct ChorusParams {
     bool on = false;
     bool juno = false;     // false: CE-2, true: Juno
+    bool jc = false;       // the JC mode (wins over `juno`): two voices, Rate and Depth free
     double rateHz = 1.2;   // CE-2: 0.1 .. 8
     double depth = 0.5;    // CE-2: 0 .. 1
     int junoButton = 0;    // Juno: 0 = I, 1 = II, 2 = I+II
     bool stereo = false;   // CE-2 on a stereo pair: the right channel sweeps the other way (Juno is always two voices, one to each ear)
+    double mix = 1.0;      // 0 .. 1: how much of the effect is in the output (1: the effect as it is, 0: the dry signal); applied by the rack module
 };
 
 class Chorus {
@@ -55,7 +59,12 @@ public:
         if (!active()) return;
         const double kAmount = 1.0 - std::exp(-1.0 / (0.02 * fs_));
         double rate, centreMs, excursionMs;
-        if (target_.juno) {
+        const bool two = target_.juno || target_.jc;
+        if (target_.jc) {
+            rate = target_.rateHz;
+            centreMs = 4.0;
+            excursionMs = 0.4 + 3.0 * std::clamp(target_.depth, 0.0, 1.0);
+        } else if (target_.juno) {
             static constexpr double kRates[3] = {0.513, 0.863, 9.75};
             static constexpr double kExcursion[3] = {1.25, 1.5, 0.55};
             const int b = std::clamp(target_.junoButton, 0, 2);
@@ -68,7 +77,7 @@ public:
             excursionMs = 0.4 + 3.2 * std::clamp(target_.depth, 0.0, 1.0);
         }
         const double inc = rate / fs_;
-        const float aLp = float(1.0 - std::exp(-6.283185307179586 * (target_.juno ? 9000.0 : 6000.0) / fs_));
+        const float aLp = float(1.0 - std::exp(-6.283185307179586 * (target_.jc ? 7000.0 : target_.juno ? 9000.0 : 6000.0) / fs_));
         for (std::size_t i = 0; i < n; ++i) {
             amount_ += ((target_.on ? 1.0 : 0.0) - amount_) * kAmount;
             phase_ += inc;
@@ -80,7 +89,7 @@ public:
             const double dA = (centreMs + excursionMs * tri) * 0.001 * fs_;
             const double dB = (centreMs - excursionMs * tri) * 0.001 * fs_;
             float vA, vB = 0.0f;
-            if (target_.juno) {
+            if (two) {
                 // Both voices hear the mono sum; voice A goes to the left, voice B to the right.
                 buf_[0][std::size_t(w_ & mask_)] = r ? 0.5f * (inL + inR) : inL;
                 vA = read(buf_[0], double(w_) - dA);
@@ -96,7 +105,7 @@ public:
             // The "chip": a low-pass and a little soft clipping on what was delayed.
             lp_[0] += aLp * (vA - lp_[0]);
             vA = std::tanh(1.2f * lp_[0]) / 1.2f;
-            if (target_.juno) {
+            if (two) {
                 if (r) {
                     lp_[1] += aLp * (vB - lp_[1]);
                     vB = std::tanh(1.2f * lp_[1]) / 1.2f;

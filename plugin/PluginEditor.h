@@ -144,7 +144,7 @@ public:
 private:
     int count_ = 2;
     juce::String name_;
-    float level_ = 0.0f, shown_ = 0.0f, mA_ = 0.0f;
+    float level_ = 0.0f, shown_ = 0.0f, base_ = 0.0f, mA_ = 0.0f;  // shown_ follows the current quickly; base_ is the level it has idled at lately
 };
 
 class RackPage;
@@ -253,8 +253,8 @@ private:
     std::vector<int> shown_;  // the amp indices that match the search, in list order
     juce::ComboBox quality_, jack_, cab_, pickup_, tube_, noise_, unit_;
     std::unique_ptr<AmpFace> face_;  // the amp's front, for amps that have a faceplate (replaces the generic knobs)
-    juce::ComboBox selBox_[4];  // the amp's own switches
-    juce::Label selCaption_[4];
+    juce::ComboBox selBox_[6];  // the amp's own switches
+    juce::Label selCaption_[6];
     std::unique_ptr<juce::AudioProcessorValueTreeState::ComboBoxAttachment> qualityAtt_, cabAtt_, pickupAtt_, noiseAtt_, unitAtt_;
     juce::Label ampCaption_, qualityCaption_, jackCaption_, cabCaption_, pickupCaption_, nameA_, nameB_, blendNote_, cabNote_, tubeCaption_, noiseCaption_, unitCaption_, idleLabel_, conditionNote_;
     juce::ToggleButton speakerIntense_{"Intense"};

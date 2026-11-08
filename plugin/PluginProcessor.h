@@ -44,6 +44,7 @@ inline constexpr const char* treble = "treble";
 inline constexpr const char* presence = "presence";
 inline constexpr const char* master = "master";
 inline constexpr const char* power = "power";
+inline constexpr const char* aeq[5] = {"aeq1", "aeq2", "aeq3", "aeq4", "aeq5"};  // the amp's graphic equaliser sliders, 0 .. 10, 5 is flat
 inline constexpr const char* resonance = "resonance";  // power-amp feedback shaping (amps that have it)
 inline constexpr const char* vibSpeed = "vib_speed";          // optical tremolo (amps that have one)
 inline constexpr const char* vibIntensity = "vib_intensity";
@@ -61,7 +62,7 @@ inline constexpr const char* mixInvertB = "mix_invert_b";
 inline constexpr const char* cabOn = "cab_on";  // the cabinet module is on (off: the raw amp)
 inline constexpr const char* jack = "jack";
 inline constexpr const char* levelMatch = "level_match";
-inline constexpr const char* sel[4] = {"sel1", "sel2", "sel3", "sel4"};  // the amp's own switches (amp.json "selectors"), 5 positions at most
+inline constexpr const char* sel[6] = {"sel1", "sel2", "sel3", "sel4", "sel5", "sel6"};  // the amp's own switches (amp.json "selectors"), 5 positions at most
 inline constexpr const char* tsOn = "ts_on";
 inline constexpr const char* tsDrive = "ts_drive";
 inline constexpr const char* tsTone = "ts_tone";
@@ -107,6 +108,7 @@ inline constexpr const char* speakerIntense = "speaker_intense";  // stronger sp
 inline constexpr const char* phOn = "ph_on";
 inline constexpr const char* phSpeed = "ph_speed";      // Hz
 inline constexpr const char* phIntense = "ph_intense";  // with feedback
+inline constexpr const char* phMix = "ph_mix";          // percent of the effect in the output (100 = as it is)
 inline constexpr const char* phStereo = "ph_stereo";    // 0 = mono (both channels sweep together), 1 = stereo (the right one half a cycle apart)
 inline constexpr const char* phPost = "ph_post";        // 0 = before the amp, 1 = after the amp (and the cabinet)
 // The chorus (sas/chorus.h): two modes, before the amp or after it.
@@ -115,6 +117,7 @@ inline constexpr const char* chMode = "ch_mode";    // 0 = CE-2 (one voice), 1 =
 inline constexpr const char* chRate = "ch_rate";    // Hz, CE-2
 inline constexpr const char* chDepth = "ch_depth";  // percent, CE-2
 inline constexpr const char* chJuno = "ch_juno";    // Juno button: I, II, I+II
+inline constexpr const char* chMix = "ch_mix";      // percent of the effect in the output
 inline constexpr const char* chStereo = "ch_stereo";  // 0 = mono, 1 = stereo (CE-2: the right channel sweeps the other way)
 inline constexpr const char* chPost = "ch_post";    // 0 = before the amp, 1 = after the amp (and the cabinet)
 // The vibe (sas/vibe.h): before the amp or after it.
@@ -122,6 +125,7 @@ inline constexpr const char* vbOn = "vb_on";
 inline constexpr const char* vbSpeed = "vb_speed";          // Hz
 inline constexpr const char* vbIntensity = "vb_intensity";  // percent
 inline constexpr const char* vbVibrato = "vb_vibrato";      // false: chorus mode, true: vibrato mode
+inline constexpr const char* vbMix = "vb_mix";              // percent of the effect in the output
 inline constexpr const char* vbStereo = "vb_stereo";          // 0 = mono, 1 = stereo (the right lamp half a cycle apart)
 inline constexpr const char* vbPost = "vb_post";            // 0 = before the amp, 1 = after the amp (and the cabinet)
 // The tremolo and the flanger (sas/tremolo.h, sas/flanger.h): modules of the rack only, wherever the player puts them.
@@ -151,6 +155,13 @@ inline constexpr const char* bstOn = "bst_on";
 inline constexpr const char* bstGain = "bst_gain";  // dB
 inline constexpr const char* bstTone = "bst_tone";  // 0 .. 10, 5 is flat
 inline constexpr const char* bstSoft = "bst_soft";  // soft clip
+inline constexpr const char* acOn = "ac_on";
+inline constexpr const char* acType = "ac_type";      // Dreadnought / Jumbo / Parlor / Piezo
+inline constexpr const char* acBody = "ac_body";      // 0 .. 10
+inline constexpr const char* acTop = "ac_top";        // 0 .. 10, 5 is flat
+inline constexpr const char* acAir = "ac_air";        // 0 .. 10
+inline constexpr const char* acSquash = "ac_squash";  // 0 .. 10
+inline constexpr const char* acMix = "ac_mix";        // percent
 inline constexpr const char* limOn = "lim_on";
 inline constexpr const char* limGain = "lim_gain";        // dB pushed into the limiter
 inline constexpr const char* limCeiling = "lim_ceiling";  // dB
@@ -178,6 +189,7 @@ inline constexpr const char* wahRelease = "wah_release";  // ms, envelope
 inline constexpr const char* wahDir = "wah_dir";          // envelope: up / down
 inline constexpr const char* wahRate = "wah_rate";        // Hz, LFO
 inline constexpr const char* wahStereo = "wah_stereo";    // 0 = mono, 1 = stereo
+inline constexpr const char* flMix = "fl_mix";            // percent of the effect in the output
 inline constexpr const char* flStereo = "fl_stereo";      // 0 = mono, 1 = stereo (the right channel a quarter of a cycle behind)
 // Delay and reverb at the end of the chain (see sas/delay.h and sas/plate.h).
 inline constexpr const char* dlyOn = "dly_on";
@@ -275,6 +287,12 @@ public:
     void applyWahPreset(int index, int instance = 0);
     void applyFuzzPreset(int index, int instance = 0);
     void applyTapePreset(int index, int instance = 0);
+    // The presets of the other modules (gate, compressor, overdrive, phaser, chorus, vibe, tremolo, flanger, pitch, boost, limiter): plugin/ModulePresets.h.
+    void applyModulePreset(sas::ModuleType type, int index, int instance = 0);
+    // A factory preset of the amp that the instance has selected (amp.json "presets", worked out with tools/amp_presets.cpp): knobs, channel, switches.
+    void applyAmpPreset(int index, int instance = 0);
+    // Back to the amp's own (stock) power tubes: what choosing another amp does, so a tube picked for one amp does not follow the player to the next.
+    void resetTubes(int instance = 0);
     void clearImpulseResponse(int slot = 0, int cabinet = 0);
     juce::String impulseResponseName(int slot = 0, int cabinet = 0) const;
     // Magnitude response of the loaded IR in dB (mean 0), log-spaced from 50 Hz to 10 kHz; empty when nothing is loaded.
@@ -307,8 +325,14 @@ public:
     // and returns false when the type is at its limit or the rack is full.
     // `lane` 1 puts it in lane B (needs a parallel); -1 lets it join the lane of the module before it.
     bool addModule(sas::ModuleType type, int insertAt = -1, int lane = -1);
-    bool canAdd(sas::ModuleType type) const;
+    // `lane` 1 asks for the second amp or cabinet of lane B (it needs a parallel); -1 the first one, put back after it was removed.
+    bool canAdd(sas::ModuleType type, int lane = -1) const;
+    bool inRack(sas::SlotRef slot) const { return indexInOrder(slot) >= 0; }
     bool removeModule(sas::SlotRef slot);
+    // replaceModule puts a module of another type in the place of `slot` (same position and lane; the new one starts at its defaults and on, the old
+    // one is retired). It refuses the fixed modules, the ends of a parallel, the same type and a type that is at its limit; canReplace says which.
+    bool canReplace(sas::SlotRef slot, sas::ModuleType type) const;
+    bool replaceModule(sas::SlotRef slot, sas::ModuleType type);
     bool moveModule(sas::SlotRef slot, int newIndex);
     // The parallel (docs/superpowers/specs/2026-11-03-parallel-paths-design.md): a splitter and a mixer with a second amp and cabinet in lane B.
     // addParallel puts the splitter in front of the amp (and the compressor and overdrive that sit next to it), lane B behind the cabinet, and the
@@ -381,6 +405,7 @@ private:
 
     struct IrSlot {
         juce::dsp::Convolution conv{juce::dsp::Convolution::NonUniform{512}};
+        juce::dsp::Convolution convR{juce::dsp::Convolution::NonUniform{512}};  // the same impulse for the right channel, used only while a stereo pair comes in
         std::atomic<bool> loaded{false};
         juce::MemoryBlock bytes;      // the file as loaded, kept for the project state
         juce::String name;
@@ -394,10 +419,11 @@ private:
         float widthNow = 0.0f;                       // the A / B width in force at the end of the last block
         sas::StereoDouble dbl;
         sas::NamModel* namNow = nullptr;             // the NAM cabinet this block (only the first cabinet has one)
+        sas::NamModel* namNowR = nullptr;            // its twin for the right channel of a stereo pair
         bool irActiveNow = false, aLoaded = false, bLoaded = false, wasOn = true;
     };
     CabBank cabs_[2];
-    std::vector<float> mono2_, monoR_;  // the second IR's signal, and the right channel (scratch, shared by the cabinets: they run one after another)
+    std::vector<float> mono2_, mono3_, monoR_;  // the second IR's signal (and the right channel's), and the right channel (scratch, shared by the cabinets: they run one after another)
     int firstCab_ = 0;                  // the built-in impulse a new cabinet opens with
     mutable juce::CriticalSection irLock_;  // guards the slots' bytes / name / curve (message thread vs state calls)
 
@@ -412,6 +438,8 @@ private:
     // The NAM cabinet, the same way.
     std::shared_ptr<sas::NamModel> namCab_, namCabPrev_;
     std::atomic<sas::NamModel*> namCabActive_{nullptr};
+    std::shared_ptr<sas::NamModel> namCabR_, namCabPrevR_;  // a second copy of the model for the right channel (a model remembers its past, so a pair needs two)
+    std::atomic<sas::NamModel*> namCabActiveR_{nullptr};
     juce::MemoryBlock namCabBytes_;
     juce::String namCabName_, namCabMessage_;
     double namCabRate_ = 0.0;

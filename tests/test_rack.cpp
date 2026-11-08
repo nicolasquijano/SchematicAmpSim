@@ -216,7 +216,7 @@ TEST_CASE("moduleCpu is zero for modules that do not run and positive for a busy
 
 TEST_CASE("the channels of every module type are known without building it", "[rack]") {
     CHECK(moduleChannels(ModuleType::Amp) == Channels::MonoOnly);
-    CHECK(moduleChannels(ModuleType::Cabinet) == Channels::MonoToStereo);
+    CHECK(moduleChannels(ModuleType::Cabinet) == Channels::Widening);
     CHECK(moduleChannels(ModuleType::Phaser) == Channels::Flexible);
     CHECK(moduleChannels(ModuleType::Reverb) == Channels::Stereo);
 }

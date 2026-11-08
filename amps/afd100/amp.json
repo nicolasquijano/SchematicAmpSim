@@ -34,6 +34,13 @@
     "pointer": "#ffffff"
   },
 
+  "presets": [
+   {"name": "Clean", "jack": "normal", "params": {"bass": 5, "master": 6, "middle": 5, "power": 5, "presence": 5, "treble": 6, "volume": 1}},
+   {"name": "Edge of breakup", "jack": "afd", "params": {"bass": 5, "master": 5, "middle": 5, "power": 5, "presence": 5, "treble": 6, "volume": 4.5}},
+   {"name": "Crunch", "jack": "afd", "params": {"bass": 5, "master": 5, "middle": 5, "power": 5, "presence": 5, "treble": 6, "volume": 7.8}},
+   {"name": "Lead", "jack": "afd", "params": {"bass": 5, "master": 5.5, "middle": 6, "power": 5, "presence": 5, "treble": 6, "volume": 9.7}}
+  ],
+
   "preamp": {
     "netlist": "preamp.net",
     "stages": [ { "netlist": "master.net", "link_from": "so", "link_source": "VLINK" } ],

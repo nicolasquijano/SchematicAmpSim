@@ -14,6 +14,12 @@
     "knob_bottom": "#100e0c",
     "pointer": "#fff1de"
   },
+  "presets": [
+   {"name": "Clean", "jack": "ch1_clean", "params": {"bass": 5, "master": 5, "middle": 5, "presence": 5, "treble": 5, "volume": 3.4}},
+   {"name": "Edge of breakup", "jack": "ch1_pushed", "params": {"bass": 5, "master": 5, "middle": 5, "presence": 5, "treble": 5, "volume": 6.4}},
+   {"name": "Crunch", "jack": "ch2_vintage", "params": {"bass": 5, "master": 5, "middle": 5, "presence": 5, "treble": 5, "volume": 7.3}},
+   {"name": "Lead", "jack": "ch3_modern", "params": {"bass": 5, "master": 5, "middle": 5, "presence": 5, "treble": 5, "volume": 8.9}}
+  ],
   "preamp": {
     "netlist": "preamp.net",
     "stages": [

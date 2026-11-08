@@ -3,6 +3,7 @@
 
 #include "EqPresets.h"
 #include "FxPresets.h"
+#include "ModulePresets.h"
 #include "RackState.h"
 
 using sas::ModuleType;
@@ -22,19 +23,21 @@ const std::vector<Item>& itemsFor(ModuleType t) {
                                         {Item::Knob, ids::compLevel, "LEVEL"}, {Item::Toggle, ids::compFast, "Fast"}};
     static const std::vector<Item> drive{{Item::Knob, ids::tsDrive, "DRIVE"}, {Item::Knob, ids::tsTone, "TONE"}, {Item::Knob, ids::tsLevel, "LEVEL"}};
     static const std::vector<Item> nam{{Item::Knob, ids::nmpDrive, "DRIVE dB"}, {Item::Knob, ids::nmpLevel, "LEVEL dB"}};
-    static const std::vector<Item> phaser{{Item::Knob, ids::phSpeed, "SPEED Hz"}, {Item::Toggle, ids::phIntense, "Intense"}, {Item::Combo, ids::phStereo, "CHANNELS"}};
+    static const std::vector<Item> phaser{{Item::Knob, ids::phSpeed, "SPEED Hz"}, {Item::Toggle, ids::phIntense, "Intense"}, {Item::Knob, ids::phMix, "MIX %"}, {Item::Combo, ids::phStereo, "CHANNELS"}};
     static const std::vector<Item> chorus{{Item::Combo, ids::chMode, "MODE"}, {Item::Knob, ids::chRate, "RATE Hz"}, {Item::Knob, ids::chDepth, "DEPTH %"},
-                                          {Item::Combo, ids::chJuno, "JUNO BUTTON"}, {Item::Combo, ids::chStereo, "CHANNELS"}};
-    static const std::vector<Item> vibe{{Item::Knob, ids::vbSpeed, "SPEED Hz"}, {Item::Knob, ids::vbIntensity, "INTENSITY %"}, {Item::Toggle, ids::vbVibrato, "Vibrato"}, {Item::Combo, ids::vbStereo, "CHANNELS"}};
+                                          {Item::Combo, ids::chJuno, "JUNO BUTTON"}, {Item::Knob, ids::chMix, "MIX %"}, {Item::Combo, ids::chStereo, "CHANNELS"}};
+    static const std::vector<Item> vibe{{Item::Knob, ids::vbSpeed, "SPEED Hz"}, {Item::Knob, ids::vbIntensity, "INTENSITY %"}, {Item::Toggle, ids::vbVibrato, "Vibrato"}, {Item::Knob, ids::vbMix, "MIX %"}, {Item::Combo, ids::vbStereo, "CHANNELS"}};
     static const std::vector<Item> tremolo{{Item::Knob, ids::trRate, "RATE Hz"}, {Item::Knob, ids::trDepth, "DEPTH %"}, {Item::Combo, ids::trShape, "SHAPE"},
                                            {Item::Combo, ids::trStereo, "CHANNELS"}};
     static const std::vector<Item> flanger{{Item::Knob, ids::flRate, "RATE Hz"}, {Item::Knob, ids::flDepth, "DEPTH %"}, {Item::Knob, ids::flManual, "MANUAL %"},
-                                           {Item::Knob, ids::flFeedback, "FEEDBACK %"}, {Item::Combo, ids::flStereo, "CHANNELS"}};
+                                           {Item::Knob, ids::flFeedback, "FEEDBACK %"}, {Item::Knob, ids::flMix, "MIX %"}, {Item::Combo, ids::flStereo, "CHANNELS"}};
     static const std::vector<Item> fuzz{{Item::Combo, ids::fzType, "TYPE"}, {Item::Knob, ids::fzFuzz, "FUZZ"}, {Item::Knob, ids::fzTone, "TONE"},
                                         {Item::Knob, ids::fzBias, "BIAS"}, {Item::Knob, ids::fzMix, "MIX %"}, {Item::Knob, ids::fzLevel, "LEVEL dB"}};
     static const std::vector<Item> tape{{Item::Knob, ids::tpTime, "TIME ms"}, {Item::Combo, ids::tpHeads, "HEADS"}, {Item::Knob, ids::tpIntensity, "INTENSITY %"},
                                         {Item::Knob, ids::tpMix, "MIX %"}, {Item::Knob, ids::tpTone, "TONE Hz"}, {Item::Knob, ids::tpWow, "WOW %"},
                                         {Item::Knob, ids::tpFlutter, "FLUTTER %"}, {Item::Knob, ids::tpSat, "SATURATION %"}, {Item::Combo, ids::tpStereo, "CHANNELS"}};
+    static const std::vector<Item> acoustic{{Item::Combo, ids::acType, "BODY TYPE"}, {Item::Knob, ids::acBody, "BODY"}, {Item::Knob, ids::acTop, "TOP"},
+                                            {Item::Knob, ids::acAir, "AIR"}, {Item::Knob, ids::acSquash, "SQUASH"}, {Item::Knob, ids::acMix, "MIX %"}};
     static const std::vector<Item> boost{{Item::Knob, ids::bstGain, "GAIN dB"}, {Item::Knob, ids::bstTone, "TONE"}, {Item::Toggle, ids::bstSoft, "Soft clip"}};
     static const std::vector<Item> limiter{{Item::Knob, ids::limGain, "GAIN dB"}, {Item::Knob, ids::limCeiling, "CEILING dB"}, {Item::Knob, ids::limRelease, "RELEASE ms"}};
     static const std::vector<Item> wah{{Item::Combo, ids::wahMode, "MODE"}, {Item::Knob, ids::wahPos, "PEDAL %"}, {Item::Knob, ids::wahHeel, "HEEL Hz"},
@@ -65,6 +68,7 @@ const std::vector<Item>& itemsFor(ModuleType t) {
         case ModuleType::Wah: return wah;
         case ModuleType::Fuzz: return fuzz;
         case ModuleType::Boost: return boost;
+        case ModuleType::Acoustic: return acoustic;
         case ModuleType::TapeEcho: return tape;
         case ModuleType::Limiter: return limiter;
         case ModuleType::Pitch: return pitch;
@@ -90,6 +94,7 @@ const char* nameOf(ModuleType t) {
         case ModuleType::Wah: return "WAH";
         case ModuleType::Fuzz: return "FUZZ";
         case ModuleType::Boost: return "CLEAN BOOST";
+        case ModuleType::Acoustic: return "ACOUSTIC SIM";
         case ModuleType::TapeEcho: return "TAPE ECHO";
         case ModuleType::Limiter: return "LIMITER";
         case ModuleType::Pitch: return "PITCH";
@@ -332,6 +337,20 @@ ModuleUnit::ModuleUnit(SasProcessor& processor, sas::SlotRef slot, const HostedB
     add_.setTooltip(tr("Add a module after this one"));
 
     switch (slot.type) {
+        case ModuleType::Amp:
+            // The factory presets of whichever amp this one has selected now (the list is built when the button is pressed).
+            extraB_.setButtonText(tr("Presets"));
+            extraB_.onClick = [this] {
+                const auto& amps = processor_.amps();
+                const auto& presets = amps[std::size_t(processor_.selectedAmpIndex(slot_.instance))].presets;
+                juce::PopupMenu menu;
+                if (presets.empty()) menu.addItem(1, tr("This amp has no presets"), false);
+                for (std::size_t i = 0; i < presets.size(); ++i) menu.addItem(int(i) + 1, tr(presets[i].name.c_str()));
+                menu.showMenuAsync(juce::PopupMenu::Options().withTargetComponent(&extraB_), [this](int choice) {
+                    if (choice > 0) processor_.applyAmpPreset(choice - 1, slot_.instance);
+                });
+            };
+            break;
         case ModuleType::Delay:
             extraA_.setButtonText(tr("Tap"));
             extraB_.setButtonText(tr("Presets"));
@@ -427,7 +446,20 @@ ModuleUnit::ModuleUnit(SasProcessor& processor, sas::SlotRef slot, const HostedB
                 refresh();
             };
             break;
-        default: break;
+        default:
+            // The modules with a plain table of presets (plugin/ModulePresets.h): gate, compressor, overdrive, the modulation effects, pitch, boost, limiter.
+            if (modulePresets(slot.type).count > 0) {
+                extraB_.setButtonText(tr("Presets"));
+                extraB_.onClick = [this] {
+                    const auto list = modulePresets(slot_.type);
+                    juce::PopupMenu menu;
+                    for (int i = 0; i < list.count; ++i) menu.addItem(i + 1, tr(list.items[i].name));
+                    menu.showMenuAsync(juce::PopupMenu::Options().withTargetComponent(&extraB_), [this](int choice) {
+                        if (choice > 0) processor_.applyModulePreset(slot_.type, choice - 1, slot_.instance);
+                    });
+                };
+            }
+            break;
     }
     for (auto* b : {&extraA_, &extraB_}) addChildComponent(*b);
     extraA_.setVisible(extraA_.getButtonText().isNotEmpty());

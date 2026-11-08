@@ -18,6 +18,7 @@ struct PhaserParams {
     double speedHz = 0.8;  // 0.1 .. 8
     bool intense = false;  // feedback
     bool stereo = false;   // on a stereo pair, the right channel sweeps half a cycle apart from the left (false: both together)
+    double mix = 1.0;      // 0 .. 1: how much of the effect is in the output (1: the effect as it is, 0: the dry signal); applied by the rack module
 };
 
 class Phaser {

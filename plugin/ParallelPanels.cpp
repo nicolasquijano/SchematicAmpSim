@@ -45,6 +45,7 @@ AmpPanelB::AmpPanelB(SasProcessor& p)
     caption(*this, ampCaption_, tr("AMP B"));
     fillCombo(*this, ampBox_, p, ids::amp, kInstance, ampAtt_);
     ampBox_.setComponentID("amp_b_select");
+    ampBox_.onChange = [this] { processor_.resetTubes(kInstance); };  // the new amp comes with its own tubes
     caption(*this, qualityCaption_, tr("QUALITY"));
     fillCombo(*this, quality_, p, ids::quality, kInstance, qualityAtt_);
     caption(*this, jackCaption_, tr("INPUT JACK"));
@@ -73,7 +74,7 @@ AmpPanelB::AmpPanelB(SasProcessor& p)
     fillCombo(*this, noise_, p, ids::noise, kInstance, noiseAtt_);
     caption(*this, unitCaption_, tr("UNIT"));
     fillCombo(*this, unit_, p, ids::unit, kInstance, unitAtt_);
-    for (int i = 0; i < 4; ++i) {
+    for (int i = 0; i < 6; ++i) {
         addChildComponent(selBox_[i]);
         addChildComponent(selCaption_[i]);
         caption(*this, selCaption_[i], "");
@@ -103,7 +104,7 @@ void AmpPanelB::rebuildForAmp() {
     jackCaption_.setText(tr(def.preamp.jackLabel), juce::dontSendNotification);
     jack_.setVisible(!def.preamp.jacks.empty());
     jackCaption_.setVisible(!def.preamp.jacks.empty());
-    for (int i = 0; i < 4; ++i) {
+    for (int i = 0; i < 6; ++i) {
         selBox_[i].clear(juce::dontSendNotification);
         const bool has = i < int(def.preamp.selectors.size());
         selBox_[i].setVisible(has);
@@ -129,7 +130,7 @@ void AmpPanelB::timerCallback() {
         if (now < box.getNumItems() && box.getSelectedItemIndex() != now) box.setSelectedItemIndex(now, juce::dontSendNotification);
     };
     sync(jack_, int(processor_.apvts.getRawParameterValue(pid(ids::jack, kInstance))->load() + 0.5f));
-    for (int i = 0; i < int(def.preamp.selectors.size()) && i < 4; ++i) sync(selBox_[i], int(processor_.apvts.getRawParameterValue(pid(ids::sel[i], kInstance))->load() + 0.5f));
+    for (int i = 0; i < int(def.preamp.selectors.size()) && i < 6; ++i) sync(selBox_[i], int(processor_.apvts.getRawParameterValue(pid(ids::sel[i], kInstance))->load() + 0.5f));
     sync(tube_, processor_.wantedCondition(kInstance).tube);
 }
 
@@ -156,12 +157,12 @@ void AmpPanelB::resized() {
         jack_.setBounds(left.removeFromTop(24));
         in.removeFromLeft(10);
         int selectors = 0;
-        for (int i = 0; i < 4; ++i)
+        for (int i = 0; i < 6; ++i)
             if (selBox_[i].isVisible()) ++selectors;
         if (selectors > 0) {
             auto strip = in.removeFromBottom(44);
             const int w = strip.getWidth() / selectors;
-            for (int i = 0; i < 4; ++i)
+            for (int i = 0; i < 6; ++i)
                 if (selBox_[i].isVisible()) {
                     auto cell = strip.removeFromLeft(w).reduced(6, 0);
                     selCaption_[i].setBounds(cell.removeFromTop(16));

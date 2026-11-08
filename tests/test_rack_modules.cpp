@@ -1,3 +1,4 @@
+#include <catch2/catch_approx.hpp>
 #include <catch2/catch_test_macros.hpp>
 #include <cmath>
 #include <vector>
@@ -212,4 +213,53 @@ TEST_CASE("NAM pedal module is inactive without a model and applies drive and le
     model->reset();
     run(m, b, nullptr);
     CHECK(o == b);
+}
+
+// ---------------------------------------------------------------- the Mix control of the modulation effects
+
+namespace {
+
+template <class Dsp, class Mod, class Params>
+void checkMix(const char* name) {
+    INFO(name);
+    const auto dry = guitar(0.1);
+    Params p;
+    p.on = true;
+    // What the effect alone does.
+    auto wet = dry;
+    {
+        Dsp ref;
+        ref.prepare(kFs);
+        ref.setParams(p);
+        for (std::size_t at = 0; at < wet.size(); at += kBlock) ref.process(wet.data() + at, nullptr, std::min(kBlock, wet.size() - at));
+    }
+    float differs = 0.0f;
+    for (std::size_t i = 0; i < dry.size(); ++i) differs = std::max(differs, std::fabs(wet[i] - dry[i]));
+    REQUIRE(differs > 1e-3f);  // the effect does something audible, or the checks below would prove nothing
+
+    auto render = [&](double mix) {
+        Mod m;
+        m.prepare(kFs, int(kBlock));
+        Params q = p;
+        q.mix = mix;
+        m.setParams(q);
+        auto out = dry;
+        run(m, out, nullptr);
+        return out;
+    };
+    CHECK(render(1.0) == wet);  // 100 %: the effect as it is, bit for bit
+    const auto none = render(0.0), half = render(0.5);
+    for (std::size_t i = kBlock; i < dry.size(); ++i) {  // (the first block ramps from the full effect to the setting)
+        CHECK(none[i] == Catch::Approx(dry[i]).margin(1e-6));
+        CHECK(half[i] == Catch::Approx(dry[i] + 0.5f * (wet[i] - dry[i])).margin(1e-5));
+    }
+}
+
+}  // namespace
+
+TEST_CASE("the Mix of a modulation effect: 100 % is the effect, 0 % the dry signal, in between the blend", "[rack]") {
+    checkMix<Phaser, PhaserModule, PhaserParams>("phaser");
+    checkMix<Chorus, ChorusModule, ChorusParams>("chorus");
+    checkMix<Vibe, VibeModule, VibeParams>("vibe");
+    checkMix<Flanger, FlangerModule, FlangerParams>("flanger");
 }

@@ -1,0 +1,69 @@
+* "American 5153" power amp (service drawing 0070922000, supplied by the user): C64's coupling into the long-tailed ECC83 phase inverter V8 (R148 470 on the joined cathodes,
+* R147 10k and R138 4.7k as the tail and the feedback node, R150 100k on the first grid, C63 .047u to the second), plates R133 82k / R184 100k with C71 47p across them,
+* C52 / C47 (.047u) into four 6L6GC as two parallel pairs (1.5k grid stoppers, 220k grid returns to the bias supply, 100 ohm screen resistors, the cathodes through R186 (1 ohm:
+* 80 mV across it is the bias setting), the output transformer with its 16 / 8 / 4 ohm sections (the impedance switch at 16 ohm) and the HT supply.
+* The negative feedback and the presence / resonance network are on another sheet of the drawing (the presence board): here the feedback is taken from the 8 ohm tap through
+* R_FB 33k and a presence rheostat in series (more resistance, less feedback, more presence) into the feedback node (an assumption). The resonance control is not modelled.
+
+S VAUDIO pin 50k 0
+S VHT a 1 485
+S VBIAS bias 100 -63.5
+
+C C64P pin ga 1u
+R R150 ga j 100k
+R R148 kk j 470
+T V8A ga pa kk 12AX7
+T V8B gb pb kk 12AX7
+R R147 j n1 10k
+R R138 n1 0 4.7k
+C C63 gb n1 47n
+R R151 j gb 100k
+R R133 c pa 82k
+R R184 c pb 100k
+C C71 pa pb 47p
+
+* Presence (a complementary pair: VRPS is the series rheostat, VRPD an unused dummy) and the feedback resistor into the node n1.
+R VRPD pdum 0 100k
+R VRPS t8 pp 1k
+R R_FB pp n1 33k
+
+* Grid drive: C52 / C47 (.047u) from each plate, 220k returns to the bias supply (R111 / R110), 1.5k stoppers (R143 / R144 and R145 / R146).
+C C52 pa d1 47n
+C C47 pb d2 47n
+R R111 d1 bias 220k
+R R110 d2 bias 220k
+C CBIAS bias 0 47u
+R R143_4 d1 g910 1.5k/2
+R R145_6 d2 g1112 1.5k/2
+
+* 6L6GC pairs: V9 + V10 on one phase, V11 + V12 on the other; screens through 100 ohm (R134..R137) from B, cathodes through R186 (1 ohm).
+P V9 g910 pt s910 kc 6L6GCDS 2
+P V11 g1112 pbm s1112 kc 6L6GCDS 2
+R R134_5 sb s910 100/2
+R R136_7 sb s1112 100/2
+R R186 kc 0 1
+
+* Output transformer: plate-to-plate 2.6k, 3.5 H per primary half; windings are primary halves, then the 16, 8 and 4 ohm sections of the secondary.
+R DCR_PT pt npt 40
+R DCR_PBM pbm npb 40
+.param n16 = 2*1/sqrt(2600/16)
+.xfmr OT L=3.5 SAT=4.7
+  W npt a 1 pri
+  W a npb 1 pri
+  W t16 t8 0.2929*n16 sec
+  W t8 bk 0.2071*n16 sec
+  W bk 0 0.5*n16 sec
+  K pri pri 0.9998
+  K pri sec 0.9993
+  K sec sec 0.9998
+.end
+R RLOAD t16 0 16
+
+* HT supply: reservoir A, the choke / filter, B (screens), the rail X for the preamp (R29 and C21X), C for V8's plates.
+R T3 a sb 100
+C C22 sb 0 100u
+R R29 sb x 9.1k
+C C21X x 0 47u
+R RPREAMP x 0 25k
+R R_C x c 2.2k
+C C_C c 0 22u

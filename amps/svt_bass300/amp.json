@@ -14,6 +14,16 @@
   "knob_bottom": "#131316",
   "pointer": "#ffd6cc"
  },
+ "presets": [
+  {"name": "Clean", "jack": "ch1_normal", "params": {"bass": 5, "master": 4, "middle": 5, "treble": 5, "volume": 4.1, "volume2": 3}, "selectors": {"mid_freq": 0}},
+  {"name": "Warm tube", "jack": "ch1_normal", "params": {"bass": 6, "master": 4.5, "middle": 5, "treble": 4, "volume": 4, "volume2": 3}, "selectors": {"mid_freq": 0}},
+  {"name": "Motown round", "jack": "ch1_normal", "params": {"bass": 7, "master": 4, "middle": 5, "treble": 2.5, "volume": 3.8, "volume2": 3}, "selectors": {"mid_freq": 0}},
+  {"name": "Deep Ultra Lo", "jack": "ch1_normal", "params": {"bass": 6, "master": 4.5, "middle": 4, "treble": 5, "volume": 5.8, "volume2": 3}, "selectors": {"ultra_lo": 1, "mid_freq": 0}},
+  {"name": "Slap scoop", "jack": "ch1_bright", "params": {"bass": 7, "master": 4.5, "middle": 3, "treble": 7, "volume": 3.2, "volume2": 3}, "selectors": {"ultra_hi": 1, "mid_freq": 1}},
+  {"name": "Rock grind", "jack": "ch2_normal", "params": {"bass": 5, "master": 8, "middle": 6, "treble": 6, "volume": 2, "volume2": 5.9}, "selectors": {"mid_freq": 1}},
+  {"name": "Overdriven", "jack": "ch2_normal", "params": {"bass": 5, "master": 10, "middle": 7, "treble": 5, "volume": 2, "volume2": 5.4}, "selectors": {"mid_freq": 1}},
+  {"name": "Both channels", "jack": "both_normal", "params": {"bass": 6, "master": 5, "middle": 5, "treble": 5, "volume": 3.4, "volume2": 4}, "selectors": {"mid_freq": 1}}
+ ],
  "preamp": {
   "netlist": "preamp.net",
   "tolerance": 2e-06,

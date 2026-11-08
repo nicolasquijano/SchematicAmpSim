@@ -105,9 +105,18 @@ endif()
 juce_add_binary_data(SasIcon HEADER_NAME IconData.h NAMESPACE IconData SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/icon/icon-256.png")
 set_target_properties(SasIcon PROPERTIES POSITION_INDEPENDENT_CODE ON)
 
+# The power tubes of the amp page (plugin/tubes/tube.vectorcraft): four layers of the same size, drawn one over the other with the glow in between.
+juce_add_binary_data(SasTubes HEADER_NAME TubeData.h NAMESPACE TubeData SOURCES
+  "${CMAKE_CURRENT_SOURCE_DIR}/tubes/tube_back.png"
+  "${CMAKE_CURRENT_SOURCE_DIR}/tubes/tube_heater.png"
+  "${CMAKE_CURRENT_SOURCE_DIR}/tubes/tube_plate.png"
+  "${CMAKE_CURRENT_SOURCE_DIR}/tubes/tube_front.png")
+set_target_properties(SasTubes PROPERTIES POSITION_INDEPENDENT_CODE ON)
+
 target_link_libraries(SchematicAmpSim
   PRIVATE
     SasIcon
+    SasTubes
     $<$<BOOL:${_cab_wavs}>:SasCabs>
     sas_engine
     sas_amps

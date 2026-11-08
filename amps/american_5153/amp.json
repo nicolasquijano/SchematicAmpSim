@@ -1,0 +1,425 @@
+{
+ "id": "american_5153",
+ "order": 21,
+ "name": "American 5153",
+ "output_db": 12.0,
+ "ui": [
+  {
+   "param": "volume2",
+   "knob": "gain",
+   "label": "GAIN"
+  },
+  {
+   "param": "bass",
+   "knob": "low",
+   "label": "LOW"
+  },
+  {
+   "param": "middle",
+   "knob": "mid",
+   "label": "MID"
+  },
+  {
+   "param": "treble",
+   "knob": "high",
+   "label": "HIGH"
+  },
+  {
+   "param": "volume",
+   "knob": "volume",
+   "label": "VOLUME"
+  },
+  {
+   "param": "presence",
+   "label": "PRESENCE"
+  }
+ ],
+ "theme": {
+  "background": "#0d100d",
+  "panel": "#1a1d1a",
+  "edge": "#3a4038",
+  "accent": "#9ad05a",
+  "label": "#8f9a88",
+  "text": "#e8eee2",
+  "knob_top": "#33382f",
+  "knob_bottom": "#121411",
+  "pointer": "#e0f4c8"
+ },
+ "preamp": {
+  "netlist": "preamp.net",
+  "tolerance": 2e-06,
+  "rail_source": "VRAIL",
+  "input_source": "VIN",
+  "output_node": "y",
+  "pot_min_ohms": 100,
+  "jack_label": "CHANNEL",
+  "stages": [
+   {
+    "netlist": "stage2.net",
+    "input": true
+   },
+   {
+    "netlist": "stage3.net",
+    "links": [
+     {
+      "stage": 0,
+      "from": "o12",
+      "source": "VL12"
+     },
+     {
+      "stage": 1,
+      "from": "o3",
+      "source": "VL3"
+     }
+    ]
+   }
+  ],
+  "knobs": [
+   {
+    "name": "gain",
+    "default": 0.6,
+    "pot": {
+     "type": "wiper",
+     "top": "VR1T",
+     "bottom": "VR1B",
+     "total": 250000.0,
+     "taper": "log",
+     "also": [
+      {
+       "top": "VR6T",
+       "bottom": "VR6B"
+      },
+      {
+       "top": "VR11T",
+       "bottom": "VR11B"
+      }
+     ]
+    }
+   },
+   {
+    "name": "low",
+    "default": 0.5,
+    "pot": {
+     "type": "variable",
+     "resistor": "VR2",
+     "total": 250000.0,
+     "taper": "log",
+     "also": [
+      {
+       "resistor": "VR7"
+      },
+      {
+       "resistor": "VR12"
+      }
+     ]
+    }
+   },
+   {
+    "name": "mid",
+    "default": 0.5,
+    "pot": {
+     "type": "variable",
+     "resistor": "VR3",
+     "total": 25000.0,
+     "taper": "linear",
+     "also": [
+      {
+       "resistor": "VR8"
+      },
+      {
+       "resistor": "VR13"
+      }
+     ]
+    }
+   },
+   {
+    "name": "high",
+    "default": 0.5,
+    "pot": {
+     "type": "wiper",
+     "top": "VR4T",
+     "bottom": "VR4B",
+     "total": 250000.0,
+     "taper": "linear",
+     "also": [
+      {
+       "top": "VR9T",
+       "bottom": "VR9B"
+      },
+      {
+       "top": "VR14T",
+       "bottom": "VR14B"
+      }
+     ]
+    }
+   },
+   {
+    "name": "volume",
+    "default": 0.5,
+    "pot": {
+     "type": "wiper",
+     "top": "VR5T",
+     "bottom": "VR5B",
+     "total": 1000000.0,
+     "taper": "log",
+     "also": [
+      {
+       "top": "VR10T",
+       "bottom": "VR10B"
+      },
+      {
+       "top": "VR15T",
+       "bottom": "VR15B"
+      }
+     ]
+    }
+   }
+  ],
+  "source_ohms": {
+   "resistors": [
+    "RSRC"
+   ],
+   "default": 7000,
+   "min": 10
+  },
+  "jacks": [
+   {
+    "name": "green",
+    "label": "Green",
+    "drive": "VIN",
+    "resistors": {
+     "SW_K2A_ONE": 1,
+     "SW_K2A_TWO": 1000000000000.0,
+     "SW_K2B_NO": 1000000000000.0,
+     "SW_K2B_NC": 1,
+     "SW_K3A_ONE": 1,
+     "SW_K3A_GND": 1000000000000.0,
+     "SW_K3B_NC": 1,
+     "SW_K3B_NO": 1000000000000.0,
+     "SW_K1_12": 1,
+     "SW_K1_3": 1000000000000.0
+    },
+    "level_db": 2.2
+   },
+   {
+    "name": "blue",
+    "label": "Blue",
+    "drive": "VIN",
+    "resistors": {
+     "SW_K2A_ONE": 1000000000000.0,
+     "SW_K2A_TWO": 1,
+     "SW_K2B_NO": 1,
+     "SW_K2B_NC": 1000000000000.0,
+     "SW_K3A_ONE": 1000000000000.0,
+     "SW_K3A_GND": 1,
+     "SW_K3B_NC": 1000000000000.0,
+     "SW_K3B_NO": 1,
+     "SW_K1_12": 1,
+     "SW_K1_3": 1000000000000.0
+    }
+   },
+   {
+    "name": "red",
+    "label": "Red",
+    "drive": "VIN",
+    "resistors": {
+     "SW_K2A_ONE": 1,
+     "SW_K2A_TWO": 1000000000000.0,
+     "SW_K2B_NO": 1000000000000.0,
+     "SW_K2B_NC": 1,
+     "SW_K3A_ONE": 1,
+     "SW_K3A_GND": 1000000000000.0,
+     "SW_K3B_NC": 1,
+     "SW_K3B_NO": 1000000000000.0,
+     "SW_K1_12": 1000000000000.0,
+     "SW_K1_3": 1
+    }
+   }
+  ]
+ },
+ "power": {
+  "transformer_parasitics": {
+   "primary_pf": 150,
+   "core_loss_ohms": 40000
+  },
+  "tubes": [
+   {
+    "name": "6L6GC",
+    "model": "6L6GCDS",
+    "pmax_w": 30.0,
+    "bias_scale": 1.0
+   },
+   {
+    "name": "EL34",
+    "model": "EL34",
+    "pmax_w": 25.0,
+    "bias_scale": 0.7889
+   },
+   {
+    "name": "KT88",
+    "model": "6550",
+    "pmax_w": 42.0,
+    "bias_scale": 1.1117
+   },
+   {
+    "name": "6550",
+    "model": "6550DS",
+    "pmax_w": 35.0,
+    "bias_scale": 1.1211
+   }
+  ],
+  "bias": {
+   "source": "VBIAS",
+   "idle_resistors": [
+    "DCR_PT",
+    "DCR_PBM"
+   ],
+   "tubes_per_half": 2
+  },
+  "netlist": "poweramp.net",
+  "tolerance": 0.0001,
+  "input_source": "VAUDIO",
+  "ht_source": "VHT",
+  "ht_node": "a",
+  "rail_node": "x",
+  "output_node": "t16",
+  "load_resistor": "RLOAD",
+  "presence": {
+   "resistor": "VRPD",
+   "complement": "VRPS",
+   "scale": 100000.0,
+   "min_ohms": 50,
+   "default": 0.5
+  },
+  "supply": {
+   "mains_hz": 50,
+   "vac_peak": 533,
+   "rect_source_ohms": 42,
+   "ht_dc_source": 485,
+   "rect_drop": 1.4,
+   "reservoir_farads": 0.00011,
+   "tie_ohms": 1.0,
+   "settle_seconds": 0.15
+  }
+ },
+ "lite": {
+  "base_gain_db": 15.8289,
+  "high_pass_hz": 18.6399,
+  "shelf_hz": 785.075,
+  "presence_db": [
+   0,
+   3.2923,
+   5.16576,
+   6.38272,
+   7.23528
+  ],
+  "sag_table": [
+   [
+    0,
+    0
+   ],
+   [
+    2.54648,
+    1.04909
+   ],
+   [
+    5.09296,
+    4.04949
+   ],
+   [
+    9.5493,
+    12.8496
+   ],
+   [
+    15.9155,
+    29.3478
+   ],
+   [
+    22.2817,
+    44.4904
+   ],
+   [
+    28.6479,
+    53.8128
+   ],
+   [
+    35.0141,
+    58.2627
+   ],
+   [
+    44.5634,
+    62.4887
+   ],
+   [
+    57.2958,
+    65.8762
+   ],
+   [
+    82.7606,
+    69.548
+   ],
+   [
+    127.324,
+    72.642
+   ]
+  ],
+  "rail_x_idle": 344.926,
+  "rail_sag_fraction": 0.58,
+  "ceiling_light": 69.4146,
+  "ceiling_heavy": 26.0981,
+  "ceiling_decay": 435.49,
+  "knee": 23.0994,
+  "sag_attack_s": 0.01,
+  "sag_release_s": 0.06
+ },
+ "presets": [
+  {
+   "name": "Clean",
+   "jack": "green",
+   "params": {
+    "bass": 5,
+    "presence": 5,
+    "volume": 5,
+    "middle": 5,
+    "treble": 6,
+    "volume2": 6.2
+   }
+  },
+  {
+   "name": "Edge of breakup",
+   "jack": "green",
+   "params": {
+    "bass": 5,
+    "presence": 5,
+    "volume": 5,
+    "middle": 5,
+    "treble": 6,
+    "volume2": 7.2
+   }
+  },
+  {
+   "name": "Crunch",
+   "jack": "blue",
+   "params": {
+    "bass": 5,
+    "presence": 5,
+    "volume": 5,
+    "middle": 5,
+    "treble": 6,
+    "volume2": 5.4
+   }
+  },
+  {
+   "name": "Lead",
+   "jack": "red",
+   "params": {
+    "bass": 5,
+    "presence": 5,
+    "volume": 5,
+    "middle": 6,
+    "treble": 6.5,
+    "volume2": 2.7
+   }
+  }
+ ]
+}

@@ -22,6 +22,7 @@ struct VibeParams {
     double intensity = 0.7;    // 0 .. 1
     bool vibrato = false;      // false: chorus
     bool stereo = false;       // on a stereo pair, the right channel's lamp is half a cycle apart from the left's (false: both together)
+    double mix = 1.0;      // 0 .. 1: how much of the effect is in the output (1: the effect as it is, 0: the dry signal); applied by the rack module
 };
 
 class Vibe {

@@ -1,0 +1,26 @@
+* "American Clean 120" spring reverb (Z-3F unit): the driver IC1b (C34 / R29 on the input, gain 1 + R15 / R13 = 22) behind C8 into the input coil, and the
+* recovery IC4b (C52, R81, gain 1 + R79 / R76 = 7.8) behind the output coil. The spring tank itself is behavioural (see "reverb" in amp.json): it turns the
+* voltage on `ts` into the output coil's, which drives the recovery stage through `VREV`. The recovered signal goes back to the preamp (preamp.net: C55, R87,
+* the REVERB pot VR7 and the mix into the signal).
+
+V VRAIL xr 100 15
+R RDUMR xr 0 1M
+
+S VG gv 1 0
+C C34 gv gin 0.047u
+R R29 gin 0 270k
+O IC1B gin n1b o1b 0 NJM4558
+R R15 n1b o1b 47k
+C C16 n1b o1b 47p
+R R13 n1b g13 2.2k
+C C13 g13 0 10u
+C C8 o1b ts 47u
+R R_TS ts 0 2k
+
+S VREV rv 1 0
+C C52 rv r4 0.082u
+R R81 r4 0 15k
+O IC4B r4 n4b o4b 0 NJM4558
+R R76 n4b 0 8.2k
+R R79 n4b o4b 56k
+C C46 n4b o4b 47p

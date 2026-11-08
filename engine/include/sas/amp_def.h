@@ -46,9 +46,10 @@ struct JackDef {
 struct SelectorPositionDef {
     std::string label;
     std::vector<std::pair<std::string, double>> resistors;
+    std::vector<std::pair<std::string, double>> potTotals;  // knob name -> the total resistance of its pot in this position (a different pot fitted)
 };
 struct SelectorDef {
-    static constexpr std::size_t kMax = 4;  // how many selectors an amp can have (the plugin has that many parameters)
+    static constexpr std::size_t kMax = 6;  // how many selectors an amp can have (the plugin has that many parameters)
     std::string name, label;
     std::vector<SelectorPositionDef> positions;
 };
@@ -118,7 +119,16 @@ struct ReverbDef {
     std::vector<SpringDef> springs;
 };
 
+// A circuit in front of the preamp, solved on its own and only while its selector is at position 1 (the Kerry King's "Beast" input stage). Its output
+// drives the preamp's input source; `detectNode` feeds a downward expander (the noise gate) whose threshold is the knob `gateKnob` (that knob's
+// resistor only has to exist: the gate itself is not a circuit).
+struct PreStageDef {
+    bool present = false;
+    std::string netlist, netlistText, inputSource, outputNode, detectNode, gateKnob, selector;
+};
+
 struct PreampDef {
+    PreStageDef pre;
     std::vector<PreampStageDef> stages;  // after the first netlist, in signal order
     std::string netlist;       // file name
     std::string netlistText;   // its content
@@ -243,6 +253,23 @@ struct ThemeDef {
     std::uint32_t knobTop = 0x3a322a, knobBottom = 0x16130f, pointer = 0xffffff;  // the knob cap's gradient and its pointer
 };
 
+// A factory preset of an amp (amp.json "presets"): the controls of the panel, the channel (jack) and the switches, as one setting. `params` are the
+// plugin parameter slots of "ui" (volume, volume2, bass, middle, treble, presence, master...) on the panel's 0..10 scale; a slot a preset leaves out keeps
+// its value. The jack is named as in "jacks" (empty: unchanged) and a selector is set by its name and the index of the position.
+struct AmpPresetDef {
+    std::string name, jack;
+    std::vector<std::pair<std::string, double>> params;
+    std::vector<std::pair<std::string, int>> selectors;
+};
+
+// A graphic equaliser inside the amp (amp.json "graphic_eq"): fixed bands, each +-rangeDb with a Q; the sliders are plugin parameters (aeq1..) listed in "ui".
+struct GraphicEqBand {
+    double hz = 1000.0, q = 1.0, rangeDb = 12.0;
+};
+struct GraphicEqDef {
+    std::vector<GraphicEqBand> bands;
+};
+
 struct AmpDef {
     std::string id, name;
     ThemeDef theme;
@@ -253,6 +280,8 @@ struct AmpDef {
     // (see tools/sas_match_levels). Applied by the chain, not part of the circuit.
     double outputDb = 0.0;
     std::vector<UiKnob> ui;
+    GraphicEqDef graphicEq;             // empty: the amp has none
+    std::vector<AmpPresetDef> presets;  // factory settings, in the order of the menu (may be empty)
     // A loader for Neural Amp Modeler models ("nam": true in amp.json): no circuits at all, the chain runs the model the user loaded. Its
     // knobs ("ui") are only the plugin parameters it reads (input drive and output level).
     bool nam = false;
