@@ -342,7 +342,7 @@
    "resistor": "VRPD",
    "complement": "VRPS",
    "scale": 250000.0,
-   "min_ohms": 50,
+   "min_ohms": 3000,
    "default": 0.5
   },
   "supply": {

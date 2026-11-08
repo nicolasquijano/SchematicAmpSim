@@ -89,8 +89,10 @@ TEST_CASE("wear lowers the output tube current and every worn or toleranced unit
         const double fresh = idleOf(def);
         const double worn = idleOf(applyCondition(def, {0, 10, 0}));
         INFO(id << " fresh " << fresh << " worn " << worn);
-        CHECK(worn < fresh * 0.95);
-        CHECK(worn > fresh * 0.4);
+        if (fresh > 0.0) {  // a solid-state power stage has no output tubes to wear
+            CHECK(worn < fresh * 0.95);
+            CHECK(worn > fresh * 0.4);
+        }
         for (int unit : {1, 4, 9}) {
             const auto d = applyCondition(def, {0, unit == 4 ? 10 : 0, unit});
             FullAmp amp(d, kFs * 2.0);  // builds both sections and solves their DC points

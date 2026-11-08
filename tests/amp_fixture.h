@@ -37,11 +37,24 @@ inline void withoutGuitarNetwork(std::string& text) {
     text.erase(from, (eol == std::string::npos ? text.size() : eol + 1) - from);
 }
 
+// ...and without the mod switches added later (extra nodes, and C1 split in two: stock when the switch is closed).
+inline void withoutMods(std::string& text) {
+    const auto from = text.find("* Mods (amp.json");
+    if (from == std::string::npos) return;
+    text.erase(from);
+    const auto c1 = text.find("C C1 k1 0 0.47u");
+    if (c1 != std::string::npos) text.replace(c1, 15, "C C1 k1 0 0.68u");
+    const auto nodes = text.find(" m1 m3 m6");
+    if (nodes != std::string::npos) text.erase(nodes, 9);
+}
+
 inline const sas::AmpDef& jcm800() {
     static const sas::AmpDef def = [] {
         sas::AmpDef d = sas::loadAmpDefFromFolder(std::string(SAS_AMPS_DIR) + "/jcm800_2203");
         useStockTriodes(d.preamp.netlistText);
         withoutGuitarNetwork(d.preamp.netlistText);
+        withoutMods(d.preamp.netlistText);
+        d.preamp.selectors.clear();
         for (auto& s : d.preamp.stages) useStockTriodes(s.netlistText);
         useStockTriodes(d.power.netlistText);
         withoutCoreSaturation(d.power.netlistText);

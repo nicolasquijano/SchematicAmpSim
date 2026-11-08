@@ -2909,9 +2909,9 @@ TEST_CASE("every circuit amp has factory presets (Clean, Edge of breakup, Crunch
             REQUIRE(def.presets.size() >= 6);
             CHECK(def.presets[0].name == "Clean");
         } else {
-            REQUIRE(def.presets.size() == 4);
+            REQUIRE(def.presets.size() >= 4);  // the signature amp adds its own
             CHECK(def.presets[0].name == "Clean");
-            CHECK(def.presets[1].name == "Edge of breakup");
+            CHECK(def.presets[1].name == (def.id == "jazz_clean_120" ? "Bright clean" : "Edge of breakup"));  // the solid-state clean amp has no breakup
             CHECK(def.presets[2].name == "Crunch");
             CHECK(def.presets[3].name == "Lead");
         }

@@ -1,6 +1,6 @@
 {
   "id": "nam_loader",
-  "order": 16,
+  "order": 100,
   "category": "other",
   "name": "NAM Loader",
   "nam": true,
