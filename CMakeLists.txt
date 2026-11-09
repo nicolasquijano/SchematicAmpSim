@@ -20,6 +20,9 @@ set(CMAKE_CXX_STANDARD 20)
 if(NOT MSVC)
   add_compile_options(-ffp-contract=off)
 endif()
+# The engine and the amps are static libraries that end up inside the plug-in's shared object: position-independent code (needed on Linux,
+# where the linker refuses a thread_local access from non-PIC code in a .so; harmless on Windows and macOS).
+set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 set_property(GLOBAL PROPERTY USE_FOLDERS ON)
