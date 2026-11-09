@@ -1,0 +1,36 @@
+* German Ultra preamp, stage 2 of 5: the Overdrive channel's tubes: V1b, V2b, V3a and the V3b cathode follower. Driven by stage 1's node od3 (VOD3).
+
+V VRAIL x 100 470
+R R33 x nA 10k
+C K22 nA 0 30u
+R R34 nA nB 10k
+C K21 nB 0 30u
+R R32 nB nC 6.8k
+C K20 nC 0 20u
+R Rdummy_nC nC 0 394k
+R Rdummy_nA nA 0 72.1k
+S VOD3 od3 1 0
+R R8 od3 g2 68k
+T V1B g2 p2 k2 12AX7
+R R7 nC p2 100k
+R R10 k2 0 2.4k
+C K3 k2 0 470n
+C K8 p2 d1 22n
+C K9 p2 d1 2.2n
+R R12 d1 0 470k
+R R13 d1 g3 330k
+R R14 g3 0 330k
+T V2B g3 p3 k3 12AX7
+R R15 nC p3 100k
+C K10 nC p3 1n
+R R16 k3 y3 1.5k
+C K12 k3 y3 2.2u
+R R17 y3 0 1.5k
+C K11 p3 d2 22n
+R R18 d2 0 470k
+R R19 d2 g4 470k
+T V3A g4 p4 k4 12AX7
+R R200 nB p4 100k
+R R20 k4 0 820
+T V3B p4 nB k5 12AX7
+R R21 k5 0 100k

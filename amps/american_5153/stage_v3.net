@@ -1,0 +1,16 @@
+* "American 5153" preamp, stage 3 of 7: V3A and V3B (the cathode follower that feeds both tone stacks). Driven by stage 1's node n8 (VN8).
+
+V VRAIL x 100 341
+R Rdummy_x x 0 1G
+S VN8 n8 1 0
+R R84 n8 g3a 390k
+R R57 g3a 0 180k
+T V3A g3a p3a k3a 12AX7
+R R85 x p3a 100k
+R R37 k3a 0 1.5k
+R R59 p3a g3b 430k
+R R58 g3b j3 150k
+R R60 j3 0 430k
+C C30 j3 0 0.22u
+T V3B g3b x k3b 12AX7
+R R45 k3b 0 100k

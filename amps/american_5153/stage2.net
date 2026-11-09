@@ -1,12 +1,11 @@
-* "American 5153" preamp, stage 2 of 3: channel THREE (RED), the other input stage (driven by the guitar too): V1A, the THREE GAIN pot R11, V4A, V4B, V5A, V5B, V6A
-* and V6B (a cathode follower) and its tone stack and THREE VOLUME. As the drawing (0070922000); the muting JFET Q1 / Q11 and the clamp zeners Z1 / Z2 are not modelled.
+* "American 5153" preamp, stage 2 of 7: channel THREE (RED), the other input stage (driven by the guitar too): V1A, the THREE GAIN network, V4A and V4B up to the coupling C27 (node n27).
+* The supply behind R95 carries a dummy load for the currents of stage 5 (V5A, V5B, V6A).
 
 V VRAIL x 100 341
 R R95 x w 10k
 C C36 w 0 22u
 C C40 x 0 47u
-
-* The guitar (the same source as stage 1's, with its pickup / cable networks).
+R Rdummy_w w 0 131k
 I VIN gin 1
 R RSRC gin in 7k
 R RPU1 gin pkb1 1e12
@@ -26,9 +25,6 @@ C CCAB2 pkk2 0 400p
 R SWK4 in pkk4 1e12
 C CCAB4 pkk4 0 800p
 R RIN in 0 1M
-
-* V1A: R47 10k / R49 1M / C22 39p, R48 68k on the grid; plate R82 220k, cathode R33 1.8k with C17 1u. C16 (470p) into the THREE GAIN pot R11 (1M) with C15 .001 across
-* it and R28 / R29 1M, then R61 470k and R62 10k into V4A.
 R R47 in a47 10k
 R R49 a47 0 1M
 C C22 a47 0 39p
@@ -45,8 +41,6 @@ C C15 n16 w11 1n
 R R29 w11 0 1M
 R R61 w11 q1 470k
 R R62 q1 g4a 10k
-
-* V4A, V4B (39k cathode resistor), V5A and V5B (2.2k) with their coupling networks.
 T V4A g4a p4a k4a 12AX7
 R R87 w p4a 100k
 R R39 k4a 0 1.8k
@@ -60,46 +54,3 @@ C C26 w p4b 1n
 R R65 k4b 0 39k
 C C27 p4b n27 22n
 R R66 n27 0 330k
-R R67 n27 g5a 220k
-T V5A g5a p5a k5a 12AX7
-R R86 w p5a 220k
-R R41 k5a 0 1.8k
-C C20 k5a 0 1u
-C C38 p5a n38 22n
-R R69 n38 g5b 1M
-R R68 g5b 0 100k
-T V5B g5b p5b k5b 12AX7
-R R88 w p5b 220k
-R R70 k5b 0 2.2k
-
-* V6A (R71 1M in, R72 1M + C37 .022u from its plate, R73 1M), R74 560k / R75 220k / R76 330k with C31 .22u into V6B, the cathode follower.
-C C28 p5b n28 22n
-R R71 n28 g6a 1M
-R R73 g6a 0 1M
-R R72 g6a f72 1M
-C C37 f72 p6a 22n
-T V6A g6a p6a k6a 12AX7
-R R89 w p6a 100k
-R R42 k6a 0 2.2k
-R R74 p6a g6b 560k
-R R75 g6b j6 220k
-R R76 j6 0 330k
-C C31 j6 0 0.22u
-T V6B g6b x k6b 12AX7
-R R44 k6b 0 100k
-
-* Stack THREE: R43 43k, R19 33k + C5 .01, slope R20 47k, C9 470p into R14 (250k), C3 .022u and R12 (1M rheostat), C4 .022u and R13 (25k rheostat), THREE VOLUME R15 (1M).
-R R43 k6b t3 43k
-R R19 t3 c5 33k
-C C5 c5 0 10n
-R R20 t3 sl3 47k
-C C9 t3 vt14 470p
-R VR14T vt14 w14 1
-R VR14B w14 b14 1
-C C3 sl3 b14 22n
-R VR12 b14 m14 125k
-C C4 sl3 m14 22n
-R VR13 m14 0 12.5k
-R VR15T w14 o3 1
-R VR15B o3 0 1
-R R_LOAD3 o3 0 690k

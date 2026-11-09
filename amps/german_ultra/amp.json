@@ -3,7 +3,7 @@
  "order": 23,
  "category": "highgain",
  "name": "German Ultra",
- "output_db": 7.5,
+ "output_db": -13.5,
  "ui": [
   {
    "param": "volume2",
@@ -91,8 +91,8 @@
     "clean_middle": 5,
     "clean_bass": 5,
     "clean_presence": 4,
-    "clean_volume": 8,
-    "master": 9,
+    "clean_volume": 10,
+    "master": 10,
     "presence": 5
    },
    "selectors": {
@@ -103,13 +103,13 @@
    "name": "Edge of breakup",
    "jack": "input",
    "params": {
-    "clean_gain": 6.5,
+    "clean_gain": 7,
     "clean_treble": 6,
     "clean_middle": 5,
     "clean_bass": 5,
     "clean_presence": 4,
-    "clean_volume": 8,
-    "master": 9,
+    "clean_volume": 10,
+    "master": 10,
     "presence": 5
    },
    "selectors": {
@@ -165,7 +165,7 @@
      "type": "wiper",
      "top": "VR1T",
      "bottom": "VR1B",
-     "total": 475000.0,
+     "total": 500000.0,
      "taper": "log"
     }
    },
@@ -176,7 +176,7 @@
      "type": "wiper",
      "top": "VR4T",
      "bottom": "VR4B",
-     "total": 470000.0,
+     "total": 500000.0,
      "taper": "linear"
     }
    },
@@ -195,9 +195,8 @@
     "name": "bass",
     "default": 0.5,
     "pot": {
-     "type": "wiper",
-     "top": "VR2T",
-     "bottom": "VR2B",
+     "type": "variable",
+     "resistor": "VR2",
      "total": 1000000.0,
      "taper": "log"
     }
@@ -209,7 +208,7 @@
      "type": "wiper",
      "top": "VR6T",
      "bottom": "VR6B",
-     "total": 10000.0,
+     "total": 500000.0,
      "taper": "log30"
     }
    },
@@ -220,7 +219,7 @@
      "type": "wiper",
      "top": "VR7T",
      "bottom": "VR7B",
-     "total": 390000.0,
+     "total": 1000000.0,
      "taper": "log"
     }
    },
@@ -231,7 +230,7 @@
      "type": "wiper",
      "top": "VR10T",
      "bottom": "VR10B",
-     "total": 240000.0,
+     "total": 220000.0,
      "taper": "linear"
     }
    },
@@ -241,7 +240,7 @@
     "pot": {
      "type": "variable",
      "resistor": "VR9",
-     "total": 22000.0,
+     "total": 25000.0,
      "taper": "linear"
     }
    },
@@ -251,7 +250,7 @@
     "pot": {
      "type": "variable",
      "resistor": "VR8",
-     "total": 220000.0,
+     "total": 200000.0,
      "taper": "log"
     }
    },
@@ -261,7 +260,7 @@
     "pot": {
      "type": "variable",
      "resistor": "VR11",
-     "total": 270000.0,
+     "total": 220000.0,
      "taper": "linear"
     }
    },
@@ -272,7 +271,7 @@
      "type": "wiper",
      "top": "VR12T",
      "bottom": "VR12B",
-     "total": 430000.0,
+     "total": 1000000.0,
      "taper": "log30"
     }
    },
@@ -306,7 +305,8 @@
        "SW_OC1": 1000000000000.0,
        "SW_RB_NC": 1,
        "SW_RB_NO": 1000000000000.0
-      }
+      },
+      "nfb_ohms": 1
      },
      {
       "label": "Clean",
@@ -315,7 +315,8 @@
        "SW_OC1": 1,
        "SW_RB_NC": 1000000000000.0,
        "SW_RB_NO": 1
-      }
+      },
+      "nfb_ohms": 1000000000000.0
      }
     ]
    }
@@ -326,6 +327,53 @@
     "label": "Input",
     "drive": "VIN",
     "resistors": {}
+   }
+  ],
+  "stages": [
+   {
+    "netlist": "stage_od.net",
+    "links": [
+     {
+      "stage": 0,
+      "from": "od3",
+      "source": "VOD3"
+     }
+    ]
+   },
+   {
+    "netlist": "stage_stack.net",
+    "links": [
+     {
+      "stage": 1,
+      "from": "k5",
+      "source": "VK5"
+     }
+    ]
+   },
+   {
+    "netlist": "stage_clean.net",
+    "links": [
+     {
+      "stage": 0,
+      "from": "w7",
+      "source": "VCL"
+     }
+    ]
+   },
+   {
+    "netlist": "stage_out.net",
+    "links": [
+     {
+      "stage": 2,
+      "from": "odo",
+      "source": "VODO"
+     },
+     {
+      "stage": 3,
+      "from": "cw",
+      "source": "VCW"
+     }
+    ]
    }
   ]
  },
@@ -363,41 +411,41 @@
    "tubes_per_half": 2
   },
   "netlist": "poweramp.net",
-  "tolerance": 0.0001,
   "input_source": "VAUDIO",
   "ht_source": "VHT",
   "ht_node": "a",
   "rail_node": "x",
   "output_node": "t16",
   "load_resistor": "RLOAD",
-  "nfb_resistor": "R126",
+  "nfb_resistor": "SW_NFB",
   "presence": {
    "resistor": "VR5",
-   "scale": 2200.0,
+   "scale": 2500.0,
    "min_ohms": 50,
    "default": 0.5
   },
   "supply": {
    "mains_hz": 50,
-   "vac_peak": 538,
+   "vac_peak": 570,
    "rect_source_ohms": 42,
-   "ht_dc_source": 490,
+   "ht_dc_source": 525,
    "rect_drop": 1.4,
    "reservoir_farads": 0.00047,
    "tie_ohms": 1.0,
    "settle_seconds": 0.15
-  }
+  },
+  "tolerance": 0.0001
  },
  "lite": {
-  "base_gain_db": 14.3337,
-  "high_pass_hz": 23.5811,
-  "shelf_hz": 563.829,
+  "base_gain_db": 28.254,
+  "high_pass_hz": 39.2435,
+  "shelf_hz": 208.86,
   "presence_db": [
    0,
-   0.456419,
-   0.977948,
-   1.53072,
-   1.95218
+   0.0915066,
+   0.269791,
+   0.766119,
+   4.66742
   ],
   "sag_table": [
    [
@@ -406,55 +454,55 @@
    ],
    [
     2.54648,
-    0.918463
+    0.976685
    ],
    [
     5.09296,
-    3.57375
+    3.82195
    ],
    [
     9.5493,
-    11.5842
+    12.5327
    ],
    [
     15.9155,
-    27.6389
+    30.1534
    ],
    [
     22.2817,
-    46.0073
+    49.9855
    ],
    [
     28.6479,
-    64.5173
+    68.8321
    ],
    [
     35.0141,
-    75.4037
+    80.5831
    ],
    [
     44.5634,
-    83.5629
+    83.9186
    ],
    [
     57.2958,
-    93.0773
+    87.0698
    ],
    [
     82.7606,
-    110.622
+    93.3451
    ],
    [
     127.324,
-    123.809
+    100.55
    ]
   ],
-  "rail_x_idle": 503.072,
+  "rail_x_idle": 492.604,
   "rail_sag_fraction": 0.58,
-  "ceiling_light": 64.1683,
-  "ceiling_heavy": 44.0086,
-  "ceiling_decay": 306.051,
-  "knee": 5.69569,
+  "ceiling_light": 80.8996,
+  "ceiling_heavy": 25.0424,
+  "ceiling_decay": 348.175,
+  "knee": 24.8606,
   "sag_attack_s": 0.01,
   "sag_release_s": 0.06
  }

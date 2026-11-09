@@ -1,0 +1,28 @@
+* German Ultra preamp, stage 4 of 5: the clean channel: V4b, its tone stack (TREBLE, MIDDLE), PRESENCE and the clean VOLUME. Driven by stage 1's node w7 (VCL, the grid of V4b).
+
+V VRAIL x 100 470
+R R33 x nA 10k
+C K22 nA 0 30u
+R Rdummy_nA nA 0 39.8k
+S VCL w7 1 0
+T V4B w7 p5 k6 12AX7
+R R30 nA p5 100k
+R R3 k6 0 1.5k
+C K1 k6 0 10u
+C K15 p5 e0 47n
+R R305 e0 e1 100k
+C C309 e0 etp 220p
+R VR10T etp ew 1
+R VR10B ew e2 1
+C C308 e1 e2 100n
+R R306 e2 0 220k
+C C307 e1 e3 22n
+R VR9 e3 0 1
+C C310 ew pr1 2.2n
+R VR11 pr1 pr2 1
+R R307 pr2 0 22k
+R R308 ew cl2 470k
+C C311 ew cl2 100p
+R VR12T cl2 cw 1
+R VR12B cw 0 1
+R R_LOAD_CL cw 0 1M

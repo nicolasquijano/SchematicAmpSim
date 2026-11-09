@@ -1,8 +1,9 @@
-// sas_node_trace <amp id> <input peak volts> <node> ...: for the preamp's first stage (the main netlist), a 220 Hz sine in, and for each node: the DC voltage, the AC peak and the
+// sas_node_trace <amp id> <input peak volts> <node> ...: for the preamp's first stage (the main netlist; `2:k5` is node k5 of the second stage), a 220 Hz sine in, and for each node: the DC voltage, the AC peak and the
 // harmonic distortion there (%, 2nd..8th against the fundamental). The knobs are at their defaults, the selectors at their first positions.
 #include <cmath>
 #include <cstdio>
 #include <cstdlib>
+#include <cstring>
 #include <vector>
 
 #include "sas/embedded_amps.h"
@@ -24,14 +25,26 @@ int main(int argc, char** argv) {
             if (*c == ',') ++c;
         }
     }
-    const auto net = sas::parseNetlist(def.preamp.netlistText, def.preamp.netlist);
     std::vector<sas::Node> nodes;
-    for (int a = 3; a < argc; ++a) nodes.push_back(net.node(argv[a]));
+    std::vector<std::size_t> stageOf;
+    std::vector<sas::ParsedNetlist> nets;
+    nets.push_back(sas::parseNetlist(def.preamp.netlistText, def.preamp.netlist));
+    for (const auto& st : def.preamp.stages) nets.push_back(sas::parseNetlist(st.netlistText, st.netlist));
+    for (int a = 3; a < argc; ++a) {
+        const char* name = argv[a];
+        std::size_t stage = 0;
+        if (const char* colon = std::strchr(name, ':')) {  // "2:k5": node k5 of the third stage (the main netlist is stage 0)
+            stage = std::size_t(std::atoi(name));
+            name = colon + 1;
+        }
+        stageOf.push_back(stage);
+        nodes.push_back(nets.at(stage).node(name));
+    }
     const std::size_t n = std::size_t(2.0 * kFs), from = n / 2;
     std::vector<std::vector<double>> rec(nodes.size(), std::vector<double>(n));
     for (std::size_t i = 0; i < n; ++i) {
         pre.process(peak * std::sin(2 * kPi * 220.0 * double(i) / kFs));
-        for (std::size_t k = 0; k < nodes.size(); ++k) rec[k][i] = pre.solver(0).voltage(nodes[k]);
+        for (std::size_t k = 0; k < nodes.size(); ++k) rec[k][i] = pre.solver(stageOf[k]).voltage(nodes[k]);
     }
     auto bin = [&](const std::vector<double>& x, double hz) {
         double re = 0, im = 0;

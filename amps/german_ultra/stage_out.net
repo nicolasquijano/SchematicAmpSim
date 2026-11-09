@@ -1,0 +1,28 @@
+* German Ultra preamp, stage 5 of 5: the relay that picks the channel, V5a, V5b (the effects loop in bypass) and the master. Driven by stage 3's node odo (VODO) and stage 4's node cw (VCW).
+
+V VRAIL x 100 470
+R R33 x nA 10k
+C K22 nA 0 30u
+R Rdummy_nA nA 0 55.5k
+S VODO odo 1 0
+S VCW cw 1 0
+R SW_RB_NC odo vx 1
+R SW_RB_NO cw vx 1e12
+R R102 vx 0 1M
+C C101 vx g6 100n
+T V5A g6 p6 k7 12AX7
+R R103 g6 cb 1M
+R R104 k7 cb 470
+R R100 cb 0 22k
+R R201 nA p6 22k
+C C100 p6 f1 1u
+R R101 f1 0 100k
+R R108 f1 v5g 180k
+C C133 f1 v5g 47p
+R R109 v5g 0 51k
+T V5B v5g p7 k8 12AX7
+R R106 nA p7 100k
+R R110 k8 0 1.8k
+C C102 p7 d3 100n
+R R145 d3 y 180k
+R VR13 y 0 1

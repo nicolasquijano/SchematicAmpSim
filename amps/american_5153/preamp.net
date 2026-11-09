@@ -1,16 +1,13 @@
-* "American 5153" preamp, stage 1 of 3 (a three-channel head's service drawing 0070922000, supplied by the user): the input into V1B, the two gain networks that the relay K2
-* selects (ONE: C6 / R24 / R22 / R1; TWO: C13 / R25 / R6), V2A, V2B, V3A and V3B (a cathode follower) and the two tone stacks that V3B feeds (stack ONE straight from
-* its cathode, stack TWO behind R38 43k), each with its volume. The relays K2 and K3 are the SW_ resistors (1 ohm closed, 1e12 open): channel GREEN (one) is every
-* relay released; BLUE (two) energises K2 and K3. Channel RED (three) is the other input stage (stage2.net) and the relay K1 (stage3.net).
-* Everything here is as the drawing; the three channels' controls are driven together by amp.json (one set of knobs for the channel in use).
+* "American 5153" preamp, stage 1 of 7 (a three-channel head's service drawing 0070922000, supplied by the user): the input into V1B, the two gain networks that the relay K2
+* selects, V2A and V2B, up to the coupling C25 (node n8). Channel GREEN (one) is every relay released; BLUE (two) energises K2 and K3; RED (three) is the other input stage.
+* The preamp is cut into stages at coupling points and cathode followers so each matrix is small (the DC points and the sound are those of the single netlists):
+* stage 1 here, 2: channel THREE's first tubes, 3: V3A / V3B, 4: channels ONE and TWO's tone stacks, 5: channel THREE's V5 / V6, 6: its tone stack, 7: the relay K1 and the loop.
+* n8 is loaded by R84 + R57 (570k) of the next stage.
 
-* Rails: X (341 V at idle) and W behind R95 10k.
 V VRAIL x 100 341
 R R95 x w 10k
 C C36 w 0 22u
 C C40 x 0 47u
-
-* The guitar and its pickup / cable networks; the signal goes to V1B through R50 (10k).
 I VIN gin 1
 R RSRC gin in 7k
 R RPU1 gin pkb1 1e12
@@ -31,9 +28,6 @@ R SWK4 in pkk4 1e12
 C CCAB4 pkk4 0 800p
 R RIN in 0 1M
 R R50 in g1b 10k
-
-* V1B and the two gain networks. ONE: C6 (4.7n) into R24 330k and C11 (220p) + R22 220k, R23 33k and the 250k ONE GAIN pot R1. TWO: C13 (750p), R25 180k and the
-* TWO GAIN pot R6 (250k) with R26 150k across it. K2-A picks the pot's wiper (ONE: NC, TWO: NO) behind C23 (.1u).
 T V1B g1b p1b k1b 12AX7
 R R34 w p1b 100k
 R R51 k1b 0 1.5k
@@ -55,8 +49,6 @@ R SW_K2A_TWO w6 m2 1e12
 C C23 m2 g2a 0.1u
 R R52 g2a 0 1M
 R R53 g2a 0 1M
-
-* V2A, then C35 / R80 into V2B's grid; K2-B puts R55 68k (released) or R35 330k (energised, before R80) to ground.
 T V2A g2a p2a k2a 12AX7
 R R83 w p2a 100k
 R R36 k2a 0 1.5k
@@ -72,56 +64,5 @@ T V2B g2b p2b k2b 12AX7
 R R77 w p2b 100k
 C C24 w p2b 270p
 R R54 k2b 0 1.5k
-
-* V3A (R84 390k / R57 180k on its grid, unbypassed 1.5k cathode) and V3B, the cathode follower (R59 430k, R58 150k, R60 430k with C30 .22u on its grid).
 C C25 p2b n8 3.3n
-R R84 n8 g3a 390k
-R R57 g3a 0 180k
-T V3A g3a p3a k3a 12AX7
-R R85 x p3a 100k
-R R37 k3a 0 1.5k
-R R59 p3a g3b 430k
-R R58 g3b j3 150k
-R R60 j3 0 430k
-C C30 j3 0 0.22u
-T V3B g3b x k3b 12AX7
-R R45 k3b 0 100k
-
-* Stack TWO (R38 43k in front): R17 43k + C10 .01 to ground, slope R18 47k, treble C8 470p into R9 (250k), bass C14 .1u and R7 (250k rheostat), middle C2 .022u and R8 (25k
-* rheostat), TWO VOLUME R10 (1M).
-R R38 k3b t0 43k
-R R17 t0 c10 43k
-C C10 c10 0 10n
-R R18 t0 sl2 47k
-C C8 t0 vt9 470p
-R VR9T vt9 w9 1
-R VR9B w9 b9 1
-C C14 sl2 b9 0.1u
-R VR7 b9 m9 125k
-C C2 sl2 m9 22n
-R VR8 m9 0 12.5k
-R VR10T w9 w10 1
-R VR10B w10 0 1
-
-* Stack ONE (straight from V3B's cathode): slope R16 100k, treble C7 250p into R4 (250k), bass C12 .1u and R2 (250k rheostat), middle C1 .022u and R3 (25k rheostat),
-* ONE VOLUME R5 (1M).
-R R16 k3b sl1 100k
-C C7 k3b vt4 250p
-R VR4T vt4 w4 1
-R VR4B w4 b4 1
-C C12 sl1 b4 0.1u
-R VR2 b4 m4 125k
-C C1 sl1 m4 22n
-R VR3 m4 0 12.5k
-R VR5T w4 w5 1
-R VR5B w5 0 1
-
-* K3-A (ONE VOLUME to the bus, or grounded when energised) and K3-B (the bus, or TWO VOLUME when energised) into the output node o12. R40 and R21 10M.
-R SW_K3A_ONE w5 m3 1
-R SW_K3A_GND m3 0 1e12
-R R40 m3 0 10M
-R SW_K3B_NC m3 o12 1
-R SW_K3B_NO w10 o12 1e12
-R R21 o12 0 10M
-* The next stage's input (the K1 / effects-loop network, 680k) loads this node.
-R R_LOAD12 o12 0 690k
+R R_LOAD_N8 n8 0 570k

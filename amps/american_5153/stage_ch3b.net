@@ -1,0 +1,34 @@
+* "American 5153" preamp, stage 5 of 7: channel THREE's V5A, V5B, V6A and the V6B cathode follower. Driven by stage 2's node n27 (VN27).
+* The supply behind R95 carries a dummy load for the currents of stage 2 (V1A, V4A, V4B).
+
+V VRAIL x 100 341
+R R95 x w 10k
+C C36 w 0 22u
+C C40 x 0 47u
+R Rdummy_w w 0 176k
+S VN27 n27 1 0
+R R67 n27 g5a 220k
+T V5A g5a p5a k5a 12AX7
+R R86 w p5a 220k
+R R41 k5a 0 1.8k
+C C20 k5a 0 1u
+C C38 p5a n38 22n
+R R69 n38 g5b 1M
+R R68 g5b 0 100k
+T V5B g5b p5b k5b 12AX7
+R R88 w p5b 220k
+R R70 k5b 0 2.2k
+C C28 p5b n28 22n
+R R71 n28 g6a 1M
+R R73 g6a 0 1M
+R R72 g6a f72 1M
+C C37 f72 p6a 22n
+T V6A g6a p6a k6a 12AX7
+R R89 w p6a 100k
+R R42 k6a 0 2.2k
+R R74 p6a g6b 560k
+R R75 g6b j6 220k
+R R76 j6 0 330k
+C C31 j6 0 0.22u
+T V6B g6b x k6b 12AX7
+R R44 k6b 0 100k

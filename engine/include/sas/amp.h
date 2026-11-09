@@ -24,6 +24,10 @@ public:
     AmpT(const AmpDef& def, double fs, bool eco = false, bool tablesOnly = false, bool chord = true)
         : power_(makePower(def, fs, tablesOnly)), pre_(def, fs, power_.railX(), eco || tablesOnly, !tablesOnly) {
         if (tablesOnly) setChord(chord);
+        for (const auto& sd : def.preamp.selectors) {
+            nfbOhms_.emplace_back();
+            for (const auto& pos : sd.positions) nfbOhms_.back().push_back(pos.nfbOhms);
+        }
     }
     void setChord(bool on, double keep = 0.0625) {
         pre_.setChord(on, keep);
@@ -39,7 +43,14 @@ public:
         if (!powerKnobs.empty() && powerKnobs.size() == power_.knobCount()) power_.setKnobs(powerKnobs);
     }
     void setJack(std::size_t jack) { pre_.setJack(jack); }
-    void setSelector(std::size_t i, std::size_t pos) { pre_.setSelector(i, pos); }
+    void setSelector(std::size_t i, std::size_t pos) {
+        pre_.setSelector(i, pos);
+        if constexpr (requires { power_.setNfbOhms(1.0); })  // a channel can switch the power amp's negative feedback off (the Lite power amp has none)
+            if (i < nfbOhms_.size() && pos < nfbOhms_[i].size() && nfbOhms_[i][pos] > 0.0 && nfbOhms_[i][pos] != nfbNow_) {
+                nfbNow_ = nfbOhms_[i][pos];
+                power_.setNfbOhms(nfbNow_);
+            }
+    }
     void setVibrato(bool on, double speed) { pre_.setVibrato(on, speed); }
     // Guitar ~7 kohm, a pedal's output far lower.
     void setSourceOhms(double ohms) { pre_.setSourceOhms(ohms); }
@@ -67,6 +78,8 @@ private:
     }
     Power power_;  // declared first: the preamp's initial rail comes from it
     Preamp pre_;
+    std::vector<std::vector<double>> nfbOhms_;  // per selector and position: the feedback resistor it asks for (0 = leave it)
+    double nfbNow_ = 0.0;
 };
 
 using FullAmp = AmpT<PowerAmp>;
@@ -76,7 +89,12 @@ using FullAmp = AmpT<PowerAmp>;
 // is close to Normal but not the same (docs/PLAN_CPU.md: a few tenths of a dB in the tone and more aliasing under heavy drive).
 class SplitAmp {
 public:
-    SplitAmp(const AmpDef& def, double fs) : power_(def, fs, true), pre_(def, fs * 2.0, power_.railX(), true, false), up_(23), down_(23) {}
+    SplitAmp(const AmpDef& def, double fs) : power_(def, fs, true), pre_(def, fs * 2.0, power_.railX(), true, false), up_(23), down_(23) {
+        for (const auto& sd : def.preamp.selectors) {
+            nfbOhms_.emplace_back();
+            for (const auto& pos : sd.positions) nfbOhms_.back().push_back(pos.nfbOhms);
+        }
+    }
 
     void setKnobs(const std::vector<double>& knobs, double presence, const std::vector<double>& powerKnobs = {}) {
         pre_.setKnobs(knobs);
@@ -84,7 +102,13 @@ public:
         if (!powerKnobs.empty() && powerKnobs.size() == power_.knobCount()) power_.setKnobs(powerKnobs);
     }
     void setJack(std::size_t jack) { pre_.setJack(jack); }
-    void setSelector(std::size_t i, std::size_t pos) { pre_.setSelector(i, pos); }
+    void setSelector(std::size_t i, std::size_t pos) {
+        pre_.setSelector(i, pos);
+        if (i < nfbOhms_.size() && pos < nfbOhms_[i].size() && nfbOhms_[i][pos] > 0.0 && nfbOhms_[i][pos] != nfbNow_) {
+            nfbNow_ = nfbOhms_[i][pos];
+            power_.setNfbOhms(nfbNow_);
+        }
+    }
     void setVibrato(bool on, double speed) { pre_.setVibrato(on, speed); }
     void setSourceOhms(double ohms) { pre_.setSourceOhms(ohms); }
     void setGuitar(int pickup, int cableMeters, bool pedalOn) { pre_.setGuitar(pickup, cableMeters, pedalOn); }
@@ -112,6 +136,8 @@ private:
     PowerAmp power_;  // declared first: the preamp's initial rail comes from it
     Preamp pre_;
     HalfbandStage up_, down_;
+    std::vector<std::vector<double>> nfbOhms_;
+    double nfbNow_ = 0.0;
 };
 using LiteAmp = AmpT<PowerAmpLite>;
 

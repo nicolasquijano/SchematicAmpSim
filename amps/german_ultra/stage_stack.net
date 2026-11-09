@@ -1,0 +1,19 @@
+* German Ultra preamp, stage 3 of 5: the Overdrive channel's tone stack (TREBLE, BASS, MIDDLE) and VOLUME. Driven by the V3b cathode follower of stage 2 (node k5, VK5).
+
+V VRAIL x 100 470
+R Rdummy_x x 0 1G
+S VK5 k5 1 0
+R R60 k5 jj 33k
+C C206 k5 tp 270p
+R VR4T tp wp 1
+R VR4B wp mm 1
+R R70 wp mm 270k
+C K2 jj mm 22n
+C K7 jj mm 22n
+R VR2 mm nb 1
+R VR3T nb wm 1
+R VR3B wm 0 1
+C K13 jj wm 22n
+R VR6T wp odo 1
+R VR6B odo 0 1
+R R_LOAD_OD odo 0 1M

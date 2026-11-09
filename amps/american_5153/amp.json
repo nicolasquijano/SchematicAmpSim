@@ -60,15 +60,55 @@
     "input": true
    },
    {
-    "netlist": "stage3.net",
+    "netlist": "stage_v3.net",
     "links": [
      {
       "stage": 0,
+      "from": "n8",
+      "source": "VN8"
+     }
+    ]
+   },
+   {
+    "netlist": "stage_stacks12.net",
+    "links": [
+     {
+      "stage": 2,
+      "from": "k3b",
+      "source": "VK3B"
+     }
+    ]
+   },
+   {
+    "netlist": "stage_ch3b.net",
+    "links": [
+     {
+      "stage": 1,
+      "from": "n27",
+      "source": "VN27"
+     }
+    ]
+   },
+   {
+    "netlist": "stage_stack3.net",
+    "links": [
+     {
+      "stage": 4,
+      "from": "k6b",
+      "source": "VK6B"
+     }
+    ]
+   },
+   {
+    "netlist": "stage3.net",
+    "links": [
+     {
+      "stage": 3,
       "from": "o12",
       "source": "VL12"
      },
      {
-      "stage": 1,
+      "stage": 5,
       "from": "o3",
       "source": "VL3"
      }

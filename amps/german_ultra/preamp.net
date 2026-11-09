@@ -1,21 +1,13 @@
-* German Ultra preamp: V1a shared by two channels (the optocouplers OC1 and OC2 choose), the overdrive channel (V1b, V2b, V3a,
-* V3b cathode follower, tone stack with GAIN, TREBLE, BASS, MIDDLE and VOLUME), the clean channel (V4b, tone stack with GAIN,
-* BASS, MIDDLE, TREBLE, PRESENCE and VOLUME), the relay that picks one of the two, V5a and V5b (effects loop in bypass) and the
-* master. Transcribed from a schematic of the 120 W two-channel head ("for educational purposes: may contain value errors").
-* C4 (no value on the drawing) is taken as 22n; the effects loop, the Line Out and the footswitch relays are not modelled.
-*
+* German Ultra preamp, stage 1 of 5: the guitar, V1a (shared by both channels), the optocoupler switches and the input networks of both channels
+* (the GAIN pot P1 of the Overdrive channel with its bright capacitors, and the clean channel's BASS, R302, R301 and GAIN P7). The Overdrive
+* channel continues in stage 2 from the node od3 (before the grid stopper R8), the clean channel in stage 4 from the node w7 (the grid of V4b).
+* Transcribed from a schematic of the 120 W two-channel head (see CHANGELOG). Each stage carries the supply decoupling of the whole preamp (R33 / K22,
+* R34 / K21, R32 / K20) and dummy loads for the currents the other stages draw, so the DC points are those of the single netlist.
 * Units: k M, m u n p. Node "0" is ground. See engine/include/sas/netlist.h for the format.
 
-* Rail (node X): driven from the power amp at run time; 470 V is the standalone default.
 V VRAIL x 100 470
-* The guitar (or the pedal in front of the amp) behind a variable source resistance.
 I VIN gin 1
 R RSRC gin in 7k
-* The guitar behind its source impedance. RSRC is the plain 7k source: the "Off" setting, and what a pedal in front of the amp
-* looks like. A pickup replaces it with its own impedance as seen from the open-circuit voltage (the recording): the
-* coil (winding resistance RPU + inductance) in parallel with its winding capacitance CPU and an eddy-current loss resistor
-* RPL, then the cable capacitance (200 pF per 2 m, switched in steps of 200, 400 and 800 pF). The engine sets the values:
-* single coil = coil 1 (2.5 H), humbucker and P-90 = coil 2 (5 H) with their own resistances; open = 1e12.
 R RPU1 gin pkb1 1e12
 .xfmr LPU1 L=2.5
   W pkb1 in 1 pu
@@ -32,132 +24,42 @@ R SWK2 in pkk2 1e12
 C CCAB2 pkk2 0 400p
 R SWK4 in pkk4 1e12
 C CCAB4 pkk4 0 800p
-
-* Supply decoupling: R33, R34 and R32 (10k, 10k, 6.8k) with K22, K21 (30 uF) and K20 (20 uF).
 R R33 x nA 10k
 C K22 nA 0 30u
 R R34 nA nB 10k
 C K21 nB 0 30u
 R R32 nB nC 6.8k
 C K20 nC 0 20u
-
-* Input and V1a (shared by both channels).
-R R1 in 0 100k
+R Rdummy_nC nC 0 202k
+R Rdummy_nB nB 0 99.8k
+R Rdummy_nA nA 0 72.1k
+R R1 in 0 1M
 R R2 in g1 68k
 T V1A g1 p1 k1 12AX7
 R R5 nC p1 180k
-C CX1 g1 p1 4.7p
+C C200 g1 p1 22p
 R R6 k1 0 1.8k
-C C3 k1 0 4.7u
-C CX2 p1 pc 100n
-
-* Channel switching (the optocouplers OC2 = overdrive and OC1 = clean). Position 0 of the channel selector is overdrive.
+C K6 k1 0 4.7u
+C C1 p1 pc 100n
 R SW_OC2 pc od1 1
 R SW_OC1 pc cl1 1e12
-
-* Overdrive channel: K5 and K4, GAIN (P1, 475k) with its bright capacitors, KX2 into V1b.
 C K5 od1 od2 2.2n
-C K4 od2 0 330p
+C K4 od2 0 2.2n
 R VR1T od2 w1 1
 R VR1B w1 0 1
-C C201 od2 w1 3n
-C C202 od2 w1 300p
-C KX2 w1 od3 22n
+C C201 od2 w1 1n
+C C202 od2 w1 100p
+C K24 w1 od3 22n
 R R9 od3 0 68k
-R R8 od3 g2 68k
-T V1B g2 p2 k2 12AX7
-R R7 nC p2 100k
-R R10 k2 0 2.4k
-C K3 k2 0 470n
-C KX1 p2 d1 22n
-R R12 d1 0 470k
-R R13 d1 g3 330k
-R R14 g3 0 330k
-T V2B g3 p3 k3 12AX7
-R R15 nC p3 100k
-R R16 k3 y3 1.5k
-C K12 y3 0 2.2u
-R R17 y3 0 1.5k
-C K8 p3 d2 22n
-R R18 d2 0 470k
-R R19 d2 g4 470k
-T V3A g4 p4 k4 12AX7
-R RX2 nB p4 100k
-R RX1 k4 0 1k
-T V3B p4 nB k5 12AX7
-R R21 k5 0 100k
-
-* Overdrive tone stack: R60 33k and C206 with TREBLE (P4, 470k with R70 across the lower part), C203 into BASS (P2, 1M) and
-* MIDDLE (P3, 25k), C204 from the bass wiper, VOLUME (P6, 10k).
-R R60 k5 jj 33k
-C C206 k5 tp 330p
-R VR4T tp wp 1
-R VR4B wp jj 1
-R R70 wp jj 270k
-C C203 jj o1 47n
-R VR2T o1 w2 1
-R VR2B w2 m1 1
-R VR3T m1 ov 1
-R VR3B ov 0 1
-C C204 w2 ov 22n
-R VR6T ov odo 1
-R VR6B odo 0 1
-
-* Clean channel: the input network (R303, C305, C306 and RX5 into the node Q), BASS (P8, 220k) and R302, C303, R301 and
-* C301 into GAIN (P7, 390k) and V4b, then its tone stack (CX5, R305, C309, TREBLE P10, C308, R306, C4, MIDDLE P9), the
-* PRESENCE network (C310, P11, R320), R308 / C311 and the clean VOLUME (P12, 430k).
 R R303 cl1 q 499k
-C C305 cl1 q 680p
+C C305 cl1 q 220p
 C C306 cl1 c6 3.3n
-R RX5 c6 q 499k
-R R302 q cq 340k
-C C303 cl1 cq 150p
+R R304 c6 q 499k
+R R302 q cq 499k
+C C303 cl1 cq 47p
 R VR8 q 0 1
 R R301 cq t7 100k
 C C301 cq t7 470p
 R VR7T t7 w7 1
 R VR7B w7 0 1
-C C302 t7 w7 82p
-T V4B w7 p5 k6 12AX7
-R RX6 nA p5 100k
-R R26A k6 0 1k
-C K16 k6 0 10u
-C CX5 p5 e0 47n
-R R305 e0 e1 100k
-C C309 e0 etp 330p
-R VR10T etp ew 1
-R VR10B ew e2 1
-C C308 e1 e2 100n
-R R306 e2 0 220k
-C C4 e1 e3 22n
-R VR9 e3 0 1
-C C310 ew pr1 2.2n
-R VR11 pr1 pr2 1
-R R320 pr2 0 22k
-R R308 ew cl2 360k
-C C311 ew cl2 100p
-R VR12T cl2 cw 1
-R VR12B cw 0 1
-
-* The relay RE101B: overdrive (normally closed) or clean, then V5a (R104 and R100 in its cathode, R103 returning the grid).
-R SW_RB_NC odo vx 1
-R SW_RB_NO cw vx 1e12
-R R102 vx 0 1M
-C C101 vx g6 100n
-T V5A g6 p6 k7 12AX7
-R R103 g6 cb 1M
-R R104 k7 cb 470
-R R100 cb 0 22k
-R RX3 nA p6 22k
-
-* Effects loop in bypass, V5b and the master (P13, 220k, a rheostat to ground) behind RX4.
-C C100 p6 f1 1u
-R R108 f1 v5g 180k
-C C133 f1 v5g 22p
-R R109 v5g 0 56k
-T V5B v5g p7 k8 12AX7
-R R106 nA p7 100k
-R R110 k8 0 1.8k
-C C102 p7 d3 100n
-R RX4 d3 y 180k
-R VR13 y 0 1
+C C302 t7 w7 47p

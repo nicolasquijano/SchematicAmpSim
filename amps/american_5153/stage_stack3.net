@@ -1,0 +1,19 @@
+* "American 5153" preamp, stage 6 of 7: channel THREE's tone stack and volume, up to the output node o3. Driven by V6B's cathode (node k6b, VK6B) of stage 5.
+
+V VRAIL x 100 341
+R Rdummy_x x 0 1G
+S VK6B k6b 1 0
+R R43 k6b t3 43k
+R R19 t3 c5 33k
+C C5 c5 0 10n
+R R20 t3 sl3 47k
+C C9 t3 vt14 470p
+R VR14T vt14 w14 1
+R VR14B w14 b14 1
+C C3 sl3 b14 22n
+R VR12 b14 m14 125k
+C C4 sl3 m14 22n
+R VR13 m14 0 12.5k
+R VR15T w14 o3 1
+R VR15B o3 0 1
+R R_LOAD3 o3 0 690k

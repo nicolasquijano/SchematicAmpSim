@@ -1,0 +1,35 @@
+* "American 5153" preamp, stage 4 of 7: the tone stacks of channels ONE and TWO with their volumes and the K3 relay, up to the output node o12. Driven by V3B's cathode (node k3b, VK3B) of stage 3.
+
+V VRAIL x 100 341
+R Rdummy_x x 0 1G
+S VK3B k3b 1 0
+R R38 k3b t0 43k
+R R17 t0 c10 43k
+C C10 c10 0 10n
+R R18 t0 sl2 47k
+C C8 t0 vt9 470p
+R VR9T vt9 w9 1
+R VR9B w9 b9 1
+C C14 sl2 b9 0.1u
+R VR7 b9 m9 125k
+C C2 sl2 m9 22n
+R VR8 m9 0 12.5k
+R VR10T w9 w10 1
+R VR10B w10 0 1
+R R16 k3b sl1 100k
+C C7 k3b vt4 250p
+R VR4T vt4 w4 1
+R VR4B w4 b4 1
+C C12 sl1 b4 0.1u
+R VR2 b4 m4 125k
+C C1 sl1 m4 22n
+R VR3 m4 0 12.5k
+R VR5T w4 w5 1
+R VR5B w5 0 1
+R SW_K3A_ONE w5 m3 1
+R SW_K3A_GND m3 0 1e12
+R R40 m3 0 10M
+R SW_K3B_NC m3 o12 1
+R SW_K3B_NO w10 o12 1e12
+R R21 o12 0 10M
+R R_LOAD12 o12 0 690k
