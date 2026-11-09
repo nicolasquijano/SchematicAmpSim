@@ -46,6 +46,12 @@ Layout SasProcessor::createLayout(const std::vector<sas::AmpDef>& defs) {
     l.add(knob(ids::vibIntensity, "Vibrato Intensity", 5.0f));
     l.add(knob(ids::reverb, "Reverb", 3.0f));
     l.add(knob(ids::resonance, "Resonance", 5.0f));
+    l.add(knob(ids::cleanGain, "Clean Gain", 5.0f));
+    l.add(knob(ids::cleanTreble, "Clean Treble", 5.0f));
+    l.add(knob(ids::cleanMiddle, "Clean Middle", 5.0f));
+    l.add(knob(ids::cleanBass, "Clean Bass", 5.0f));
+    l.add(knob(ids::cleanPresence, "Clean Presence", 5.0f));
+    l.add(knob(ids::cleanVolume, "Clean Volume", 5.0f));
     l.add(std::make_unique<juce::AudioParameterBool>(juce::ParameterID{ids::vibOn, kVersion}, "Vibrato", false));
     l.add(dbParam(ids::input, "Input"));
     // The amps are calibrated to a loud, full-scale speaker signal; a new instance opens 10 dB lower so it does not hit the host hot.

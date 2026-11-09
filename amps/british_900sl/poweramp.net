@@ -1,6 +1,6 @@
 * British 900 SL power amp, transcribed from the factory schematic (drawing 2100-60-34, EL34 version): long-tailed
 * ECC83 phase inverter with the negative feedback into the second grid, four EL34 as two parallel pairs, the output
-* transformer as five coupled windings and the HT supply solved together with the audio. There is no presence control.
+* transformer as five coupled windings and the HT supply solved together with the audio. The presence control is VR8 with R29 and C6 (they are drawn on the preamp board).
 
 S VAUDIO pin 50k 0
 S VHT a 1 490
@@ -14,6 +14,10 @@ R R19 kc f1 1k
 R R18 f1 f2 15k
 C C8 gb f2 0.1u
 R R6 f2 0 4.7k
+* Presence: C6 (100n) and R29 (1k) in series with the presence rheostat VR8 (22k) from the feedback node to ground (preamp board, drawing SLXa-61-02).
+C C6 f2 pq 0.1u
+R R29 pq pr 1k
+R VR8 pr 0 1
 T V4A ga pa kc 12AX7
 T V4B gb pb kc 12AX7
 R R22 x pa 82k

@@ -3,12 +3,12 @@
  "order": 22,
  "category": "highgain",
  "name": "British 900 SL",
- "output_db": 19.5,
+ "output_db": 17.5,
  "ui": [
   {
    "param": "volume2",
    "knob": "gain",
-   "label": "GAIN"
+   "label": "PREAMP"
   },
   {
    "param": "bass",
@@ -26,9 +26,13 @@
    "label": "TREBLE"
   },
   {
+   "param": "presence",
+   "label": "PRESENCE"
+  },
+  {
    "param": "volume",
    "knob": "volume",
-   "label": "VOLUME"
+   "label": "SENSITIVITY"
   },
   {
    "param": "master",
@@ -241,18 +245,24 @@
    "reservoir_farads": 0.0001,
    "tie_ohms": 1.0,
    "settle_seconds": 0.15
+  },
+  "presence": {
+   "resistor": "VR8",
+   "scale": 22000.0,
+   "min_ohms": 50,
+   "default": 0.5
   }
  },
  "lite": {
-  "base_gain_db": 19.3894,
-  "high_pass_hz": 1,
-  "shelf_hz": 150,
+  "base_gain_db": 20.2928,
+  "high_pass_hz": 13.7814,
+  "shelf_hz": 926.389,
   "presence_db": [
    0,
-   0,
-   0,
-   0,
-   0
+   0.351307,
+   0.976908,
+   2.40851,
+   8.995
   ],
   "sag_table": [
    [
@@ -261,55 +271,55 @@
    ],
    [
     2.54648,
-    0.465358
+    0.49064
    ],
    [
     5.09296,
-    1.82318
+    1.92032
    ],
    [
     9.5493,
-    6.00263
+    6.30399
    ],
    [
     15.9155,
-    14.5384
+    15.1909
    ],
    [
     22.2817,
-    24.3415
+    25.3257
    ],
    [
     28.6479,
-    34.3697
+    35.6369
    ],
    [
     35.0141,
-    44.1749
+    45.6537
    ],
    [
     44.5634,
-    57.808
+    59.2763
    ],
    [
     57.2958,
-    68.5901
+    69.3109
    ],
    [
     82.7606,
-    77.4175
+    77.8617
    ],
    [
     127.324,
-    80.6754
+    81.1331
    ]
   ],
   "rail_x_idle": 356.234,
   "rail_sag_fraction": 0.58,
-  "ceiling_light": 74.2635,
-  "ceiling_heavy": 48.8294,
-  "ceiling_decay": 125.507,
-  "knee": 15.9545,
+  "ceiling_light": 74.8955,
+  "ceiling_heavy": 48.1981,
+  "ceiling_decay": 132.124,
+  "knee": 23.2213,
   "sag_attack_s": 0.01,
   "sag_release_s": 0.06
  }

@@ -46,6 +46,13 @@ inline constexpr const char* master = "master";
 inline constexpr const char* power = "power";
 inline constexpr const char* aeq[5] = {"aeq1", "aeq2", "aeq3", "aeq4", "aeq5"};  // the amp's graphic equaliser sliders, 0 .. 10, 5 is flat
 inline constexpr const char* resonance = "resonance";  // power-amp feedback shaping (amps that have it)
+// A second set of tone controls for amps with two channels (the clean channel of the German Ultra): "clean_*" slots.
+inline constexpr const char* cleanGain = "clean_gain";
+inline constexpr const char* cleanTreble = "clean_treble";
+inline constexpr const char* cleanMiddle = "clean_middle";
+inline constexpr const char* cleanBass = "clean_bass";
+inline constexpr const char* cleanPresence = "clean_presence";
+inline constexpr const char* cleanVolume = "clean_volume";
 inline constexpr const char* vibSpeed = "vib_speed";          // optical tremolo (amps that have one)
 inline constexpr const char* vibIntensity = "vib_intensity";
 inline constexpr const char* vibOn = "vib_on";
