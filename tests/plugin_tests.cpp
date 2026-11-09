@@ -2815,6 +2815,33 @@ TEST_CASE("a stereo pair that reaches the cabinet leaves it as a stereo pair, in
     }
 }
 
+TEST_CASE("auto level: the processor remembers the highest peaks and suggests the level that brings them to the targets", "[rack]") {
+    JuceInit init;
+    CHECK(SasProcessor::autoInputDb(0.1f) == Catch::Approx(10.0f).margin(0.01f));  // -20 dBFS peaks up to -10
+    CHECK(SasProcessor::autoInputDb(0.5f) == Catch::Approx(-10.0f + 6.02f).margin(0.01f));
+    CHECK(SasProcessor::autoInputDb(0.0f) == 0.0f);       // no signal: no change
+    CHECK(SasProcessor::autoInputDb(0.001f) == 24.0f);    // within the knob's range
+    CHECK(SasProcessor::autoOutputDb(-10.0f, 0.5f) == Catch::Approx(-10.0f).margin(0.05f));  // -6 dBFS already
+    CHECK(SasProcessor::autoOutputDb(-10.0f, 0.25f) == Catch::Approx(-3.96f).margin(0.05f));
+    CHECK(SasProcessor::autoOutputDb(-7.0f, 0.0f) == -7.0f);
+
+    SasProcessor p;
+    p.prepareToPlay(48000.0, 512);
+    juce::MidiBuffer midi;
+    juce::AudioBuffer<float> buf(2, 512);
+    p.resetLevelMax();
+    CHECK(p.inputMax() == 0.0f);
+    for (int blk = 0; blk < 6; ++blk) {
+        fill(buf, 220.0, 0.1, 48000.0, blk * 512);
+        p.processBlock(buf, midi);
+    }
+    CHECK(p.inputMax() == Catch::Approx(0.1f).margin(0.002f));
+    CHECK(p.outputMax() > 0.0f);
+    p.resetLevelMax();
+    CHECK(p.inputMax() == 0.0f);
+    CHECK(p.outputMax() == 0.0f);
+}
+
 TEST_CASE("the modulation effects have a Mix parameter, 100 % by default, that fades the effect out", "[rack]") {
     JuceInit init;
     using T = sas::ModuleType;

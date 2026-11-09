@@ -189,6 +189,8 @@ public:
     float headerInputDb() const { return headIn_.levelDb(); }
     float headerOutputDb() const { return headOut_.levelDb(); }
     bool headerMetersVisible() const { return headIn_.isVisible() && headOut_.isVisible(); }
+    juce::TextButton& headerInputAuto() { return headInAuto_; }
+    juce::TextButton& headerOutputAuto() { return headOutAuto_; }
     juce::Slider& headerInputKnob() { return headInKnob_; }  // the input and output levels, in the header with the meters
     juce::Slider& headerOutputKnob() { return headOutKnob_; }
     float totalCpu() const;  // the cost of the modules of the rack, in percent of a block
@@ -245,6 +247,14 @@ private:
     juce::Slider headInKnob_{juce::Slider::RotaryVerticalDrag, juce::Slider::NoTextBox}, headOutKnob_{juce::Slider::RotaryVerticalDrag, juce::Slider::NoTextBox};
     std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> headInAtt_, headOutAtt_;
     juce::Rectangle<int> headInLabel_, headOutLabel_;
+    // The "Auto" buttons: play for a few seconds, then the level knob is set from the loudest peak heard (side 1 = input, 2 = output).
+    juce::TextButton headInAuto_{"Auto"}, headOutAuto_{"Auto"};
+    int levelSide_ = 0;
+    juce::uint32 levelStartMs_ = 0, levelNoteUntilMs_ = 0;
+    int levelNoteSide_ = 0;
+    void toggleLevelMeasure(int side);
+    void finishLevelMeasure();
+    void updateLevelButtons();
     TubeGlow tubes_;
     int tick_ = 0;
 

@@ -793,6 +793,8 @@ void SasProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::MidiBuff
             if (numCh == 1)
                 for (int i = 0; i < n; ++i) out[i] = 0.5f * (m[i] + mR[i]);  // a mono output: the two ears summed
             else
+        if (inPeak > inputMax_.load()) inputMax_.store(inPeak);
+        if (outPeak > outputMax_.load()) outputMax_.store(outPeak);
                 std::copy(ch % 2 == 0 ? m : mR, (ch % 2 == 0 ? m : mR) + n, out);
         }
     }
@@ -1907,3 +1909,13 @@ bool SasProcessor::loadPreset(const juce::File& file) {
 juce::AudioProcessorEditor* SasProcessor::createEditor() { return new SasEditor(*this); }
 
 juce::AudioProcessor* JUCE_CALLTYPE createPluginFilter() { return new SasProcessor(); }
+
+float SasProcessor::autoInputDb(float rawPeak) {
+    if (rawPeak < 1e-4f) return 0.0f;
+    return juce::jlimit(-24.0f, 24.0f, kAutoInputPeakDb - juce::Decibels::gainToDecibels(rawPeak));
+}
+
+float SasProcessor::autoOutputDb(float currentDb, float outputPeak) {
+    if (outputPeak < 1e-5f) return currentDb;
+    return juce::jlimit(-24.0f, 24.0f, currentDb + kAutoOutputPeakDb - juce::Decibels::gainToDecibels(outputPeak));
+}

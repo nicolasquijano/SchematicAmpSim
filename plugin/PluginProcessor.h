@@ -328,6 +328,17 @@ public:
     float idleMilliamps() const { return idleMa_.load(); }
     // The physical condition (tube, wear, unit) the "tube", "wear" and "unit" parameters ask for.
     sas::Condition wantedCondition(int instance = 0) const;
+    // The highest input (before any gain) and output (after the output level) peaks since the last resetLevelMax(): the editor's "Auto" level
+    // buttons play for a few seconds, then ask for the level that puts those peaks where they belong.
+    float inputMax() const { return inputMax_.load(); }
+    float outputMax() const { return outputMax_.load(); }
+    void resetLevelMax() { inputMax_.store(0.0f); outputMax_.store(0.0f); }
+    static constexpr float kAutoInputPeakDb = -10.0f;   // the loudest playing reaches -10 dBFS in front of the amp (what the amps are levelled for)
+    static constexpr float kAutoOutputPeakDb = -6.0f;   // and leaves 6 dB of headroom at the output
+    // The input level (dB) that brings a measured raw input peak (linear) to the target, within the knob's range; 0 when there was no signal.
+    static float autoInputDb(float rawPeak);
+    // The output level (dB) that brings a measured output peak (linear, measured with the output level `currentDb`) to the target.
+    static float autoOutputDb(float currentDb, float outputPeak);
 
     // The rack: the order of the modules (docs/MODULAR_RACK.md). A new instance starts with the amp and the cabinet.
     const sas::RackOrder& rackOrder() const { return rackOrder_; }
@@ -474,7 +485,7 @@ private:
     // What the cabinet module needs this block (set by processBlock).
     sas::SpectrumFeed spectrumFeed_;  // the output, for the picture of what is sounding on the EQ page
     sas::TunerFeed tuner_;
-    std::atomic<float> inputPeak_{0.0f}, outputPeak_{0.0f}, gateGain_{1.0f}, idleMa_{0.0f};
+    std::atomic<float> inputPeak_{0.0f}, outputPeak_{0.0f}, inputMax_{0.0f}, outputMax_{0.0f}, gateGain_{1.0f}, idleMa_{0.0f};
     std::vector<float> mono_;
     sas::ChainSettings settings_, settingsB_;
 

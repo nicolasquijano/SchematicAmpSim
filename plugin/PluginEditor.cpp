@@ -608,6 +608,15 @@ SasEditor::SasEditor(SasProcessor& p)
     headOutKnob_.setDoubleClickReturnValue(true, p.apvts.getParameter(ids::output)->convertFrom0to1(p.apvts.getParameter(ids::output)->getDefaultValue()));
     headInKnob_.setTooltip(tr("Input level (dB), in front of the first amp"));
     headOutKnob_.setTooltip(tr("Output level (dB)"));
+    for (auto* b : {&headInAuto_, &headOutAuto_}) {
+        addAndMakeVisible(*b);
+        b->setColour(juce::TextButton::buttonColourId, juce::Colours::transparentBlack);
+        b->setColour(juce::TextButton::textColourOffId, juce::Colour(0xffa89a7a));
+    }
+    headInAuto_.setTooltip(tr("Play your loudest for 5 seconds: sets the input level so the peaks reach -10 dBFS"));
+    headOutAuto_.setTooltip(tr("Play your loudest for 5 seconds: sets the output level so the peaks reach -6 dBFS"));
+    headInAuto_.onClick = [this] { toggleLevelMeasure(1); };
+    headOutAuto_.onClick = [this] { toggleLevelMeasure(2); };
 
     // Who lives where: the left column and the tuner stay with the editor; the amp's controls and the cabinet's go to their panels, which the
     // amp unit and the cabinet unit of the rack page host.
@@ -997,8 +1006,54 @@ void SasEditor::pollMeters() {
     }
 }
 
+void SasEditor::toggleLevelMeasure(int side) {
+    if (levelSide_ == side) {  // pressed again: cancelled
+        levelSide_ = 0;
+    } else {
+        levelSide_ = side;
+        levelStartMs_ = juce::Time::getMillisecondCounter();
+        processor_.resetLevelMax();
+    }
+    levelNoteSide_ = 0;
+    updateLevelButtons();
+}
+
+void SasEditor::finishLevelMeasure() {
+    const int side = levelSide_;
+    levelSide_ = 0;
+    auto* param = processor_.apvts.getParameter(side == 1 ? ids::input : ids::output);
+    const float peak = side == 1 ? processor_.inputMax() : processor_.outputMax();
+    if (peak < 1e-4f) {  // nothing was played: say so for a moment and leave the knob alone
+        levelNoteSide_ = side;
+        levelNoteUntilMs_ = juce::Time::getMillisecondCounter() + 2500;
+    } else {
+        const float now = param->convertFrom0to1(param->getValue());
+        const float db = side == 1 ? SasProcessor::autoInputDb(peak) : SasProcessor::autoOutputDb(now, peak);
+        param->beginChangeGesture();
+        param->setValueNotifyingHost(param->convertTo0to1(db));
+        param->endChangeGesture();
+    }
+    updateLevelButtons();
+}
+
+void SasEditor::updateLevelButtons() {
+    const auto now = juce::Time::getMillisecondCounter();
+    if (levelNoteSide_ != 0 && now > levelNoteUntilMs_) levelNoteSide_ = 0;
+    auto text = [&](int side) {
+        if (levelSide_ == side) return juce::String(juce::jmax(1, int(std::ceil((5000.0 - double(now - levelStartMs_)) / 1000.0)))) + " s";
+        if (levelNoteSide_ == side) return tr("No signal");
+        return tr("Auto");
+    };
+    headInAuto_.setButtonText(text(1));
+    headOutAuto_.setButtonText(text(2));
+    headInAuto_.setToggleState(levelSide_ == 1, juce::dontSendNotification);
+    headOutAuto_.setToggleState(levelSide_ == 2, juce::dontSendNotification);
+}
+
 void SasEditor::timerCallback() {
     pollMeters();
+    if (levelSide_ != 0 && juce::Time::getMillisecondCounter() - levelStartMs_ >= 5000) finishLevelMeasure();
+    if (tick_ % 4 == 0) updateLevelButtons();
     if (++tunerTicks_ % 3 == 0) updateTuner();
     if (tick_++ % 8 != 0) return;  // the rest at about 4 Hz
     // Follows the amp parameter when the host or a restored state changes it.
@@ -1307,6 +1362,7 @@ void SasEditor::resized() {
         headOutKnob_.setBounds(x, row - kKnob / 2, kKnob, kKnob);
         x -= 32;
         headOutLabel_ = {x, row - 8, 28, 16};
+        headOutAuto_.setBounds(x - 4, row + 10, 38, 17);
         x -= 14;
         x -= kBar + 4;
         headIn_.setBounds(x, row - 7, kBar, 14);
@@ -1314,6 +1370,7 @@ void SasEditor::resized() {
         headInKnob_.setBounds(x, row - kKnob / 2, kKnob, kKnob);
         x -= 32;
         headInLabel_ = {x, row - 8, 28, 16};
+        headInAuto_.setBounds(x - 4, row + 10, 38, 17);
         area.removeFromTop(4);
     }
     rackPage_->setVisible(page_ == 0);
