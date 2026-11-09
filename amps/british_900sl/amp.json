@@ -1,0 +1,316 @@
+{
+ "id": "british_900sl",
+ "order": 22,
+ "category": "highgain",
+ "name": "British 900 SL",
+ "output_db": 19.5,
+ "ui": [
+  {
+   "param": "volume2",
+   "knob": "gain",
+   "label": "GAIN"
+  },
+  {
+   "param": "bass",
+   "knob": "bass",
+   "label": "BASS"
+  },
+  {
+   "param": "middle",
+   "knob": "middle",
+   "label": "MIDDLE"
+  },
+  {
+   "param": "treble",
+   "knob": "treble",
+   "label": "TREBLE"
+  },
+  {
+   "param": "volume",
+   "knob": "volume",
+   "label": "VOLUME"
+  },
+  {
+   "param": "master",
+   "knob": "master",
+   "label": "MASTER"
+  }
+ ],
+ "theme": {
+  "background": "#0c0b0b",
+  "panel": "#1b1717",
+  "edge": "#40302c",
+  "accent": "#d8452c",
+  "label": "#a38b82",
+  "text": "#ece1da",
+  "knob_top": "#3a302d",
+  "knob_bottom": "#130e0d",
+  "pointer": "#f3c7b8"
+ },
+ "presets": [
+  {
+   "name": "Clean",
+   "params": {
+    "volume2": 2.5,
+    "bass": 5,
+    "middle": 5,
+    "treble": 6,
+    "volume": 5,
+    "master": 5
+   }
+  },
+  {
+   "name": "Edge of breakup",
+   "params": {
+    "volume2": 4.5,
+    "bass": 5,
+    "middle": 5,
+    "treble": 6,
+    "volume": 5,
+    "master": 5
+   }
+  },
+  {
+   "name": "Crunch",
+   "params": {
+    "volume2": 6.5,
+    "bass": 5,
+    "middle": 6,
+    "treble": 6,
+    "volume": 6,
+    "master": 5
+   }
+  },
+  {
+   "name": "Lead",
+   "params": {
+    "volume2": 8.5,
+    "bass": 5,
+    "middle": 6,
+    "treble": 6,
+    "volume": 7,
+    "master": 5
+   }
+  }
+ ],
+ "preamp": {
+  "netlist": "preamp.net",
+  "tolerance": 2e-06,
+  "rail_source": "VRAIL",
+  "input_source": "VIN",
+  "output_node": "y",
+  "pot_min_ohms": 100,
+  "jack_label": "INPUT JACK",
+  "knobs": [
+   {
+    "name": "gain",
+    "default": 0.5,
+    "pot": {
+     "type": "wiper",
+     "top": "VR1T",
+     "bottom": "VR1B",
+     "total": 1000000.0,
+     "taper": "log"
+    }
+   },
+   {
+    "name": "volume",
+    "default": 0.5,
+    "pot": {
+     "type": "wiper",
+     "top": "VR2T",
+     "bottom": "VR2B",
+     "total": 1000000.0,
+     "taper": "log"
+    }
+   },
+   {
+    "name": "bass",
+    "default": 0.5,
+    "pot": {
+     "type": "variable",
+     "resistor": "VR7",
+     "total": 220000.0,
+     "taper": "linear"
+    }
+   },
+   {
+    "name": "middle",
+    "default": 0.5,
+    "pot": {
+     "type": "wiper",
+     "top": "VR6T",
+     "bottom": "VR6B",
+     "total": 22000.0,
+     "taper": "linear"
+    }
+   },
+   {
+    "name": "treble",
+    "default": 0.6,
+    "pot": {
+     "type": "wiper",
+     "top": "VR5T",
+     "bottom": "VR5B",
+     "total": 220000.0,
+     "taper": "linear"
+    }
+   },
+   {
+    "name": "master",
+    "default": 0.5,
+    "pot": {
+     "type": "wiper",
+     "top": "VR1AT",
+     "bottom": "VR1AB",
+     "total": 10000.0,
+     "taper": "linear",
+     "also": [
+      {
+       "top": "VR1BT",
+       "bottom": "VR1BB"
+      }
+     ]
+    }
+   }
+  ],
+  "source_ohms": {
+   "resistors": [
+    "RSRC"
+   ],
+   "default": 7000,
+   "min": 10
+  },
+  "jacks": [
+   {
+    "name": "input",
+    "label": "Input",
+    "drive": "VIN",
+    "resistors": {}
+   }
+  ]
+ },
+ "power": {
+  "transformer_parasitics": {
+   "primary_pf": 150,
+   "core_loss_ohms": 40000
+  },
+  "tubes": [
+   {
+    "name": "EL34",
+    "model": "EL34",
+    "pmax_w": 25.0,
+    "bias_scale": 1.0
+   },
+   {
+    "name": "6L6GC",
+    "model": "6L6GCDS",
+    "pmax_w": 30.0,
+    "bias_scale": 1.1496
+   },
+   {
+    "name": "6550",
+    "model": "6550DS",
+    "pmax_w": 35.0,
+    "bias_scale": 1.3987
+   }
+  ],
+  "bias": {
+   "source": "VBIAS",
+   "idle_resistors": [
+    "DCR_PT",
+    "DCR_PBM"
+   ],
+   "tubes_per_half": 2
+  },
+  "netlist": "poweramp.net",
+  "tolerance": 0.0001,
+  "input_source": "VAUDIO",
+  "ht_source": "VHT",
+  "ht_node": "a",
+  "rail_node": "x",
+  "output_node": "t16",
+  "load_resistor": "RLOAD",
+  "nfb_resistor": "R17",
+  "supply": {
+   "mains_hz": 50,
+   "vac_peak": 538,
+   "rect_source_ohms": 42,
+   "ht_dc_source": 490,
+   "rect_drop": 1.4,
+   "reservoir_farads": 0.0001,
+   "tie_ohms": 1.0,
+   "settle_seconds": 0.15
+  }
+ },
+ "lite": {
+  "base_gain_db": 19.3894,
+  "high_pass_hz": 1,
+  "shelf_hz": 150,
+  "presence_db": [
+   0,
+   0,
+   0,
+   0,
+   0
+  ],
+  "sag_table": [
+   [
+    0,
+    0
+   ],
+   [
+    2.54648,
+    0.465358
+   ],
+   [
+    5.09296,
+    1.82318
+   ],
+   [
+    9.5493,
+    6.00263
+   ],
+   [
+    15.9155,
+    14.5384
+   ],
+   [
+    22.2817,
+    24.3415
+   ],
+   [
+    28.6479,
+    34.3697
+   ],
+   [
+    35.0141,
+    44.1749
+   ],
+   [
+    44.5634,
+    57.808
+   ],
+   [
+    57.2958,
+    68.5901
+   ],
+   [
+    82.7606,
+    77.4175
+   ],
+   [
+    127.324,
+    80.6754
+   ]
+  ],
+  "rail_x_idle": 356.234,
+  "rail_sag_fraction": 0.58,
+  "ceiling_light": 74.2635,
+  "ceiling_heavy": 48.8294,
+  "ceiling_decay": 125.507,
+  "knee": 15.9545,
+  "sag_attack_s": 0.01,
+  "sag_release_s": 0.06
+ }
+}

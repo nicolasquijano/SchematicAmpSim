@@ -13,7 +13,7 @@ VST3 plug-in and standalone application for Windows, built with C++20 and [JUCE]
 
 ## Screenshots
 
-Every amp has its own colours, and the amp list (on the left) is grouped by character: clean, crunch, high-gain and bass. Four of the twenty circuit amps, and then the newest four (the American 5153, the American Clean 120, the American Triple Stack and the American Bass 300):
+Every amp has its own colours, and the amp list (on the left) is grouped by character: clean, crunch, high-gain and bass. Four of the twenty-one circuit amps, and then the newest four (the American 5153, the American Clean 120, the American Triple Stack and the American Bass 300):
 
 <p align="center">
   <img src="docs/images/amps.png" alt="American Twin, British Plexi, British 800 KK and American Lead C+" width="800"><br>
@@ -65,7 +65,7 @@ still change between 0.x versions. Versioning and the steps of a release are in 
 - **Amps are data, not code.** Each amp is a folder with a netlist and an `amp.json` that maps
   knobs, input jacks, presence, supply and output level onto circuit elements. Adding an amp means
   adding files; nothing is recompiled except to embed them.
-- **Twenty amps included** (plus the NAM Loader) (display names are deliberately generic):
+- **Twenty-one amps included** (plus the NAM Loader) (display names are deliberately generic):
   | Name | Circuit |
   |---|---|
   | British 800 | Cascading-gain preamp, 100 W-class EL34 power amp, High and Low input jacks |
@@ -82,6 +82,7 @@ still change between 0.x versions. Versioning and the steps of a release are in 
   | American Lead C+ | 1980s-style three-mode lead head: Clean, Crunch and Lead modes with the shift and boost switches, Bright switches, a Master and a Lead Master wired as wiper dividers, a five-band graphic equaliser inside the amp (60 Hz to 6.6 kHz, ±12 dB), four 6L6GC. No reverb or Simul-Class switch |
   | American Clean 120 | Solid-state 120 W two-channel combo-style amp: a discrete-op-amp preamp with a distortion switch, Bright and Hi-Treble controls, the spring reverb block and a power stage modelled on one op-amp; Low and High input jacks, stereo chorus available in the rack as the JC mode |
   | American 5153 | Three-channel 120 W modern high-gain head (Green, Blue and Red channels with their own gain, low, mid, high and volume), a four-stage preamp split in three netlists, a long-tailed phase inverter and four 6L6GC. The feedback, presence and resonance board is assumed |
+  | British 900 SL | Early-90s 100 W single-channel EL34 head: three ECC83 in cascade (gain stage into a cathode follower, two gain stages, a gain stage into a cathode follower) with GAIN and VOLUME controls, the Marshall-type tone stack, a TL072 follower and a dual master around the effects loop, long-tailed ECC83 phase inverter with 27k negative feedback (no presence control), four EL34. The tone-stack pot values and R21 are the best reading of a low-resolution scan; the Direct / Record outputs, the effects loop and the power switch are not modelled |
   | British Class A | Class A 30 W combo-style amp (Top Boost reissue drawing): Normal channel straight to the phase inverter, Brilliant channel through the Treble / Bass network, Cut control, four cathode-biased EL84 with no negative feedback (no vibrato or reverb) |
   | American Tweed | 1950s-style 12 W tweed combo: two channels with interactive volume pots and a tone control, 12AY7 / 12AX7 preamp, cathodyne phase inverter, two cathode-biased 6V6GT, no negative feedback, high-impedance 5Y3GT rectifier supply |
   | American Deluxe | 1960s-style 22 W blackface combo: Normal and Vibrato channels (12AX7 preamp, Fender tone stack with a fixed middle), the reverb driver and recovery with its spring tank and the optical vibrato, a 12AT7 long-tailed phase inverter with the 820 ohm feedback, two 6V6GT on fixed bias, 5AR4 rectifier supply (reverb and vibrato are behavioural where the drawing has transformers and springs) |

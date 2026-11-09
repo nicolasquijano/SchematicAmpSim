@@ -14,7 +14,7 @@ English version: [README.md](README.md).
 
 ## Capturas
 
-Cada ampli tiene sus propios colores, y la lista de amplis (a la izquierda) está agrupada por carácter: limpios, crunch, alta ganancia y bajo. Cuatro de los veinte amplis de circuito y, después, los cuatro más nuevos (el American 5153, el American Clean 120, el American Triple Stack y el American Bass 300):
+Cada ampli tiene sus propios colores, y la lista de amplis (a la izquierda) está agrupada por carácter: limpios, crunch, alta ganancia y bajo. Cuatro de los veintiún amplis de circuito y, después, los cuatro más nuevos (el American 5153, el American Clean 120, el American Triple Stack y el American Bass 300):
 
 <p align="center">
   <img src="docs/images/amps.png" alt="American Twin, British Plexi, British 800 KK y American Lead C+" width="800"><br>
@@ -65,7 +65,7 @@ de los proyectos guardados puede cambiar entre versiones 0.x. Las versiones y lo
   6V6, 6L6, 6550), diodos, BJT, amplificadores operacionales.
 - **Los amplis son datos, no código.** Cada ampli es una carpeta con una netlist y un `amp.json` que asigna perillas, jacks de entrada, presence,
   alimentación y nivel de salida a elementos del circuito. Agregar un ampli es agregar archivos; solo se recompila para incrustarlos.
-- **Veinte amplis incluidos** (más el NAM Loader). Los nombres que se muestran son genéricos a propósito:
+- **Veintiún amplis incluidos** (más el NAM Loader). Los nombres que se muestran son genéricos a propósito:
 
   | Nombre | Circuito |
   |---|---|
@@ -83,6 +83,7 @@ de los proyectos guardados puede cambiar entre versiones 0.x. Las versiones y lo
   | American Lead C+ | Cabezal lead de tres modos estilo años 80: modos Clean, Crunch y Lead con los interruptores shift y boost, interruptores Bright, un Master y un Lead Master cableados como divisores de cursor, un ecualizador gráfico de cinco bandas dentro del ampli (60 Hz a 6,6 kHz, ±12 dB), cuatro 6L6GC. Sin reverb ni interruptor Simul-Class |
   | American Clean 120 | Ampli de estado sólido de 120 W y dos canales: preamp de operacionales discretos con un interruptor de distorsión, controles Bright y Hi-Treble, el bloque de reverb de resorte y una etapa de potencia modelada con un operacional; jacks Low y High, y chorus estéreo disponible en el rack como modo JC |
   | American 5153 | Cabezal moderno de alta ganancia de 120 W con tres canales (Green, Blue y Red, cada uno con su ganancia, graves, medios, agudos y volumen), preamp de cuatro etapas repartido en tres netlists, inversor de fase de cola larga y cuatro 6L6GC. La placa de realimentación, presencia y resonancia es supuesta |
+  | British 900 SL | Cabezal EL34 de 100 W y un canal de principios de los 90: tres ECC83 en cascada (etapa de ganancia a seguidor catódico, dos etapas de ganancia, etapa de ganancia a seguidor catódico) con controles GAIN y VOLUME, pila de tonos tipo Marshall, un seguidor TL072 y un master doble alrededor del lazo de efectos, inversor de fase ECC83 de cola larga con realimentación de 27k (sin control de presencia), cuatro EL34. Los valores de los potenciómetros de la pila y R21 son la mejor lectura de un escaneo de baja resolución; las salidas Direct / Record, el lazo de efectos y el selector de potencia no están modelados |
   | British Class A | Combo clase A de 30 W (dibujo del reissue Top Boost): canal Normal y canal Brilliant, control Cut, cuatro EL84 con bias de cátodo, sin realimentación |
   | American Tweed | Combo tweed de 12 W estilo años 50: dos canales con potenciómetros interactivos, inversor catodino, dos 6V6GT con bias de cátodo, sin realimentación, rectificador 5Y3GT |
   | American Deluxe | Combo blackface de 22 W estilo años 60: canales Normal y Vibrato, reverb con tanque de resorte, vibrato óptico, inversor 12AT7 de cola larga, dos 6V6GT, rectificador 5AR4 |

@@ -6,6 +6,7 @@ version numbers follow [Semantic Versioning](https://semver.org/) (see [docs/REL
 ## [Unreleased]
 
 ### Added
+- **"British 900 SL"** (a 100 W single-channel EL34 head of the early 90s, from the factory drawings SLXa-61-02 and 2100-60-34): three ECC83 in cascade (a gain stage into a cathode follower, two gain stages, a gain stage into a cathode follower) with two gain controls (GAIN and VOLUME), the Marshall-type tone stack (bass 220k, middle 22k, treble 220k), a TL072 follower and a dual 10k master around the effects loop; a long-tailed ECC83 phase inverter with the feedback into its second grid (27k), four EL34 on fixed bias and no presence control. The preamp has no diode clipping (it is all tubes). Read from a low-resolution scan: R21 (47k) and the values of the tone-stack pots are the best reading of the drawing; the Direct and Record outputs, the effects loop and the 50 W / 100 W switch are not modelled. Levelled by its peak with hot guitar signals.
 - **Linux build** (x86_64): VST3 and standalone application, built and tested by GitHub Actions on Ubuntu (a `linux` job in `ci.yml` and `release.yml`, `package-linux.sh`, the `release-linux` CMake preset), packaged as a `.tar.gz`. It has not been tried by ear in a Linux DAW.
 
 ## [0.4.0-beta] - 2026-11-08
