@@ -1,16 +1,11 @@
-* "American Lead C+" preamp: a dual-channel, five-stage lead amp of the late 1970s / 1980s (the Mark IIC+, from the user's drawing "Mark IIC+ Schematic FINAL.pdf",
-* RP10A / RP11A boards; the drawing's component numbers are not official). Rhythm: V1A, tone stack, volume 1, V1B, V2B, V2A, master. Lead: the same V1A / V1B / tone
-* stack, then V3B (lead drive) and V4A into V2B's grid, with the lead master after V2B. The channel, the pull switches and the treble shift are light-dependent
-* resistors on the original (LDR1A..LDR4A): here switches (selectors) that are 1 ohm (1 k for an LDR) or open (1e12).
-* Not modelled: the spring reverb (V3A, V4B, tank), the five-band graphic EQ, the C++ mods (dashed on the drawing), C27 and the 120 pF on V2A (removed on later amps).
-* Component values as drawn; where the drawing gives two (RP10A / RP11A) the RP11A (later) one.
+* American Lead C+ preamp, stage 1 of 3: the guitar and its pickup / cable networks, V1A, the tone stack, volume 1 and V1B up to its coupling capacitor and the node nr that feeds both channels.
+* Stage 2 continues from nr. Each stage carries the supply decoupling it needs (R86 / C87 on the D+ node) and dummy loads for the currents of the others, so the DC points are those of the
+* single netlist (kept as the reference of sas_split_check). Units: k M, m u n p. Node "0" is ground. See engine/include/sas/netlist.h for the format.
 
-* Rail D (node X): driven from the power amp at run time; D+ is behind R86 (1k) and C87.
 V VRAIL x 100 450
 R R86 x dp 1k
 C C87 dp 0 30u
-
-* The guitar and its pickup / cable networks (the engine closes these switches), V1A with its two cathode bypass paths.
+R Rdummy_dp dp 0 193k
 I VIN gin 1
 R RSRC gin in 7k
 R RPU1 gin pkb1 1e12
@@ -29,18 +24,14 @@ R SWK2 in pkk2 1e12
 C CCAB2 pkk2 0 400p
 R SWK4 in pkk4 1e12
 C CCAB4 pkk4 0 800p
-
 R R1 in 0 1M
 T V1A in p1 k1 12AX7
 R R4 dp p1 150k
 R R2 k1 0 1.5k
 C C1 k1 0 0.47u
-* C2 with R3 (15k); the PULL SHIFT BASS switch grounds C2 directly.
 C C2 k1 c2n 22u
 R R3 c2n 0 15k
 R SW_SHIFT c2n 0 1e12
-
-* Tone stack: 250p to the treble pot, 100k slope, .1u (bass) and .047u (middle) from the slope node. TREBLE SHIFT adds 750p (C6) across the treble feed.
 C C5 p1 t0 250p
 C C6 p1 xs 750p
 R R6 xs t0 10M
@@ -52,8 +43,6 @@ C C4 sl b1 0.1u
 R VR5 b1 m1 125k
 C C3 sl m1 0.047u
 R VR4 m1 0 5k
-
-* Volume 1 (1M) behind the optional 100k, the PULL BRIGHT 180p across it, V1B.
 R R_OPT w3 vt 100k
 R VR1T vt w 1
 R VR1B w 0 1
@@ -63,71 +52,6 @@ T V1B w p1b k1b 12AX7
 R R8 dp p1b 100k
 R R7 k1b 0 1.5k
 C C13 k1b 0 22u
-
-* V1B's plate: C7 into the node that feeds both channels (R9 to ground); the rhythm path to V2B's grid is 10p parallel 3.3M.
 C C7 p1b nr 0.1u
 R R9 nr 0 100k
-C C10 nr g2b 10p
-R R10 nr g2b 3.3M
-
-* Lead channel: C21 and the lead input switch (LDR2A), R21, LEAD DRIVE (1M) into V3B; V3B -> C25, R25 (270k) with R24 (68k) / C24 (1000p) -> V4A.
-C C21 nr li0 0.02u
-R SW_LI li0 li1 1e12
-R R21 li1 li 680k
-R VR_LDT li ld 1
-R VR_LDB ld 0 1
-T V3B ld p3b k3b 12AX7
-R R22 ld 0 475k
-C C22 ld k3b 120p
-R R23 k3b 0 1.5k
-C C23 k3b 0 2.2u
-R R26 dp p3b 82k
-C C25 p3b a25 0.022u
-R R25 a25 g4a 270k
-C C24 g4a 0 1000p
-R R24 g4a 0 68k
-T V4A g4a p4a k4a 12AX7
-R R27 dp p4a 274k
-R R30 k4a 0 3.3k
-* C29 with R29 (6.8k); the PULL BRIGHT LEAD MASTER switch grounds C29 directly.
-C C29 k4a c29 0.22u
-R R29 c29 0 6.8k
-R SW_BL c29 0 1e12
-C C30 p4a q 0.047u
-R R31 q lo 220k
-C C31 q lo 250p
-R R32 lo 0 100k
-C C32 lo 0 500p
-* The lead output switch (LDR3A) into V2B's grid.
-R SW_LO lo g2b 1e12
-
-* V2B: R11 / C11 on the grid, 1.5k unbypassed cathode, plate R13; R105 and C9 to the LEAD MASTER (250k, a divider whose bottom goes to ground through LDR4A, so it only acts in the lead channel).
-T V2B g2b p2b k2b 12AX7
-R R11 g2b 0 680k
-C C11 g2b 0 47p
-R R13 x p2b 100k
-R R16 k2b 0 1.5k
-R R105 p2b r105 47k
-C C9 r105 mt 0.047u
-R VR_LMT mt m1o 1
-R VR_LMB m1o lm1 1
-R SW_LM lm1 0 1e12
-
-* Effects loop (R102 / R101 divider, send / return jacks closed, R12) into V2A, whose cathode has 1k with .47u and 22u (R20 68k, GAIN BOOST grounds it).
-R R102 m1o mm 150k
-R R101 mm 0 4.7k
-R R12 mm g2a 2.2k
-R R103 g2a 0 47k
-T V2A g2a p2a k2a 12AX7
-R R19 x p2a 120k
-R R104 k2a 0 1k
-C C16 k2a 0 0.47u
-C C15 k2a c15 22u
-R R20 c15 0 68k
-R SW_BOOST c15 0 1e12
-
-* Output: C12, R106 (15k), then the MASTER (1M, used as a volume control: a divider with the wiper as the output). The power amp's input lives in poweramp.net.
-C C12 p2a y1 0.047u
-R R106 y1 mt2 15k
-R VR_MT mt2 y 1
-R VR_MB y 0 1
+R Rdummy_nr nr 0 3.98M

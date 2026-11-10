@@ -1,0 +1,30 @@
+* British Dual 100 preamp, stage 2 of 3: V2a, V3b and the V3a cathode follower. Driven by stage 1's node p2b (VP2B).
+
+V VRAIL x 100 450
+R R61 x n3 4.7k
+C C31 n3 0 22u
+R R19 n3 n1 10k
+C C19 n1 0 10u
+C C21 n1 0 10n
+R R24 n3 n2p 10k
+R R28 n2p n2 2.2k
+C C20 n2 0 10u
+C C22 n2 0 10n
+R Rdummy_n1 n1 0 178k
+R Rdummy_n2 n2 0 599k
+S VP2B p2b 1 0
+C C15 p2b y2 22n
+R R29 y2 g2a 470k
+R R30 g2a 0 470k
+T V2A g2a p2a k2a 12AX7
+R R32 n2p p2a 100k
+R R34 k2a 0 2.2k
+C C23 p2a w3 22n
+R R37 w3 x3 220k
+R R39 x3 g3b 100k
+R R40 g3b 0 47k
+T V3B g3b p3b k3b 12AX7
+R R1 n3 p3b 100k
+R R31 k3b 0 1k
+T V3A p3b n3 k3a 12AX7
+R R48 k3a 0 100k

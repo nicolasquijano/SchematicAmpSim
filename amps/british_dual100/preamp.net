@@ -1,0 +1,103 @@
+* British Dual 100 preamp, stage 1 of 3: the guitar, V1b, the relay that picks the Classic or the Ultra gain network, both networks, V1a (Ultra only) and V2b.
+* The Classic network's wiper (R80) and V1a's plate (R79) meet on V2b's grid; stage 2 continues from V2b's plate p2b, before the coupling capacitor C15.
+* Elements of the controls board start with Q. Each stage carries the supply decoupling of the whole preamp (R61, R19, R24, R28) and dummy loads for the
+* currents the other stages draw, so the DC points are those of the single netlist.
+* Units: k M, m u n p. Node "0" is ground. See engine/include/sas/netlist.h for the format.
+
+V VRAIL x 100 450
+I VIN gin 1
+R RSRC gin in 7k
+R RPU1 gin pkb1 1e12
+.xfmr LPU1 L=2.5
+  W pkb1 in 1 pu
+.end
+R RPU2 gin pkb2 1e12
+.xfmr LPU2 L=5
+  W pkb2 in 1 pu
+.end
+C CPU gin in 110p
+R RPL gin in 1e12
+R SWK1 in pkk1 1e12
+C CCAB1 pkk1 0 200p
+R SWK2 in pkk2 1e12
+C CCAB2 pkk2 0 400p
+R SWK4 in pkk4 1e12
+C CCAB4 pkk4 0 800p
+R R61 x n3 4.7k
+C C31 n3 0 22u
+R R19 n3 n1 10k
+C C19 n1 0 10u
+C C21 n1 0 10n
+R R24 n3 n2p 10k
+R R28 n2p n2 2.2k
+C C20 n2 0 10u
+C C22 n2 0 10n
+R Rdummy_n3 n3 0 99.7k
+R Rdummy_n2p n2p 0 364k
+R R11 in 0 1M
+C C3 in 0 47p
+R R12 in g1b 68k
+T V1B g1b p1b k1b 12AX7
+R R13 n1 p1b 220k
+C C9 p1b k1b 100p
+R R14 k1b 0 1.8k
+C C12 k1b 0 4.7u
+C C8 p1b t 22n
+R R22 n1 p1a 100k
+C C17 n1 p1a 470p
+T V1A g1a p1a k1a 12AX7
+R R16 g1a 0 10M
+R R15 k1a 0 1.8k
+C C13 k1a kx 1u
+R R21 kx 0 10k
+R SW3A kx 0 1e12
+C C16 p1a q1 4.7n
+R R27 q1 0 1M
+R R26 q1 q2 10k
+R R25 q2 q3 1k
+C C18 q3 0 470p
+R R79 q3 g2b 470k
+R R80 cw g2b 470k
+R QR13 t u 10M
+R QR11 t v 10M
+R SW_C1 t v 1
+R SW_C2 t u 1e12
+R SW_BU u 0 1
+R SW_BV v 0 1e12
+R QR6 v qi 100k
+C QC5 v qj1 220p
+R QR8 qj1 qj 82k
+C QC8 v qh1 4.7n
+R QR12 qh1 qk1 470k
+C QC7 qh1 qk1 470p
+C QC2 qi qc2 47n
+R QR2 qc2 ql 10k
+R QR9 ql 0 1M
+R SW1B ql 0 1
+R QR7 qj qi 150k
+R QR3 qi 0 1M
+R QR10 qj qp1 100k
+R SW1A_N qp1 qn 1
+R SW1A_K qp1 qk1 1e12
+R VR1T qn cw 1
+R VR1B cw 0 1
+C QC4 qn cw 100p
+C QC6 qn qp 1n
+R QR5 qp cw 10M
+R SW1C qp cw 1e12
+C QC10 u qq 4.7n
+C QC11 qq qr 4.7n
+R QR20 qr qb 47k
+R QR19 qq qb 470k
+C QC12 qb g1a 470p
+R VR3T qb g1a 1
+R VR3B g1a 0 1
+R QR21 qb sw3x 150k
+R SW3B_G sw3x 0 1
+C QC13 g1a qe 470p
+R QR22 qe 0 10M
+R SW3B_E qe 0 1e12
+R R18 g2b 0 2.2M
+T V2B g2b p2b k2b 12AX7
+R R23 n2 p2b 100k
+R R17 k2b 0 4.7k

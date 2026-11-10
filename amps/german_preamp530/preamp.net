@@ -1,0 +1,132 @@
+* German Preamp 530: a four-ECC83 rack preamp (the "Tubepreamp 530" drawing), with a Clean and two Lead modes picked by relays (RE1..RE8 on the drawing),
+* feeding the power amp of the German Ultra (the real unit has none: the outputs of the drawing are a send, a line out and a headphone amp). Signal path:
+* V1 -> the Clean tone stack (TREBLE, BASS, MIDDLE, BRIGHT) -> CLEAN gain -> V4 -> CLEAN VOL.; or V1 -> LEAD gain -> V2 (-> V3) -> V4 -> the Lead stack
+* (TREBLE, BASS, MIDDLE, POST TREB.) -> LEAD VOL. SW_ resistors are switches (1 ohm closed, 1e12 open): position 0 of each selector is the first one listed in amp.json.
+* Read from a vector drawing; the relay logic (which contact is closed in which channel) is inferred from the drawing, the supply (280 V, 2.2k + 22 uF for V1 and V2)
+* is assumed, and the output 100k with a 47k load stands for the send jack and the power amp's input. The effects loop, the line outs and the headphone amp are not modelled.
+
+V VRAIL x 100 494
+* The guitar (or the pedal in front of the amp) behind a variable source resistance.
+I VIN gin 1
+R RSRC gin in 7k
+* The guitar behind its source impedance. RSRC is the plain 7k source: the "Off" setting, and what a pedal in front of the amp
+* looks like. A pickup replaces it with its own impedance as seen from the open-circuit voltage (the recording): the
+* coil (winding resistance RPU + inductance) in parallel with its winding capacitance CPU and an eddy-current loss resistor
+* RPL, then the cable capacitance (200 pF per 2 m, switched in steps of 200, 400 and 800 pF). The engine sets the values:
+* single coil = coil 1 (2.5 H), humbucker and P-90 = coil 2 (5 H) with their own resistances; open = 1e12.
+R RPU1 gin pkb1 1e12
+.xfmr LPU1 L=2.5
+  W pkb1 in 1 pu
+.end
+R RPU2 gin pkb2 1e12
+.xfmr LPU2 L=5
+  W pkb2 in 1 pu
+.end
+C CPU gin in 110p
+R RPL gin in 1e12
+R SWK1 in pkk1 1e12
+C CCAB1 pkk1 0 200p
+R SWK2 in pkk2 1e12
+C CCAB2 pkk2 0 400p
+R SWK4 in pkk4 1e12
+C CCAB4 pkk4 0 800p
+
+* Supply: the engine sets the rail x from the power amp (about 490 V); RDROP and RSHUNT bring it to about 275 V (assumed). V3 and V4 take it as it is, V1 and V2 through R22 (2.2k) with C22 (22 uF).
+R RDROP x xr 10k
+R RSHUNT xr 0 14k
+C CXR xr 0 100u
+R R22 xr r2 2.2k
+C C22 r2 0 22u
+
+* V1: grid through RE1a with the 1M leak, plate 100k, cathode 1.5k with 22 uF, then the coupling capacitor and the 2.2M that load the node A.
+R RE1A in g1 1
+R RG1 g1 0 1M
+T V1 g1 p1 k1 12AX7
+R RP1 r2 p1 100k
+R RK1 k1 0 1.5k
+C CK1 k1 0 22u
+C CC1 p1 a 47n
+R RA a 0 2.2M
+
+* Clean tone stack: 1n and the 100k from A, the 22n and 47n of the bass and middle legs, TREBLE (250k), BASS (250k) and MIDDLE (10k) as rheostats, and the BRIGHT
+* capacitor across the 47k and the top of the CLEAN pot.
+C CT1 a tt 1n
+R RS1 a n1 100k
+C CT2 n1 tb 22n
+R VR1T tt tw 1
+R VR1B tw tb 1
+R VR2 tb m 1
+C CT3 n1 m 47n
+R VR3 m 0 1
+R RZ1 tw z 47k
+C CBR z bb 220p
+R SW_BR bb w 1e12
+R RZ2 z zt 47k
+R VR4T zt w 1
+R VR4B w 0 1
+
+* LEAD gain (1M) into V2 (plate 100k, cathode 1k with 22 uF), its 47n and 2.2M.
+R VR5T a g2 1
+R VR5B g2 0 1
+T V2 g2 p2 k2 12AX7
+R RP2 r2 p2 100k
+R RK2 k2 0 1k
+C CK2 k2 0 22u
+C CC2 p2 b 47n
+R RB b 0 2.2M
+
+* V3 (plate 330k, cathode 1k, grid leak 470k): its grid gets V2's output (220k) and the Clean channel (220k).
+R RBC b c 220k
+R RWC w c 220k
+R RC0 c 0 470k
+T V3 c p3 k3 12AX7
+R RP3 xr p3 330k
+R RK3 k3 0 1k
+C CC3 p3 p3c 47n
+
+* The relays: RE4a grounds the unused channel's node, RE4b picks the Clean wiper (w) or V2's output (b), RE2a picks that or V3's output for V4.
+R SW_4BW w s4 1
+R SW_4BB b s4 1e12
+R SW_4AB b 0 1
+R SW_4AW w 0 1e12
+R SW_2U s4 d 1
+R SW_2L p3c d 1e12
+
+* V4: 330k in the grid, 1M leak, plate 100k, cathode 1k with 22 uF, then the coupling capacitor and the 1M on the node pp.
+R RG4A d g4 330k
+R RG4 g4 0 1M
+T V4 g4 p4 k4 12AX7
+R RP4 xr p4 100k
+R RK4 k4 0 1k
+C CK4 k4 0 22u
+C CC4 p4 pp 47n
+R RPP pp 0 1M
+
+* RE3a: Clean (220k into CLEAN VOL., 50k) or Lead (the stack below).
+R SW_3C pp c1 1
+R RCV c1 ct 220k
+R VR6T ct cv 1
+R VR6B cv 0 1
+
+* Lead stack: 1n and the 100k from the input, 47n and 47n legs, TREBLE (250k), BASS (1M) and MIDDLE (20k) as rheostats, POST TREB. (1M) with 10n on the
+* treble wiper, then 220k into LEAD VOL. (50k).
+R SW_3L pp l1 1e12
+C CL1 l1 ltt 1n
+R RL1 l1 n2 100k
+C CL2 n2 ltb 47n
+R VR7T ltt ltw 1
+R VR7B ltw ltb 1
+R VR8 ltb lm 1
+C CL3 n2 lm 47n
+R VR9 lm 0 1
+R VR10 ltw pc 1
+C CL4 pc 0 10n
+R RLT ltw ltop 220k
+R VR11T ltop lv 1
+R VR11B lv 0 1
+
+* RE7b picks the volume, then the 100k of the send and a 47k load (assumed) for the power amp.
+R SW_7C cv out 1
+R SW_7L lv out 1e12
+R ROUT out y 100k
+R RLOAD y 0 47k

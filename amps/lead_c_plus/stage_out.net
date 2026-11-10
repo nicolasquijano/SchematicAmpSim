@@ -1,0 +1,15 @@
+* American Lead C+ preamp, stage 3 of 3: V2A, its cathode networks, the output coupling and the MASTER. Driven by stage 2's node g2a (VG2A), the grid of V2A.
+
+V VRAIL x 100 450
+S VG2A g2a 1 0
+T V2A g2a p2a k2a 12AX7
+R R19 x p2a 120k
+R R104 k2a 0 1k
+C C16 k2a 0 0.47u
+C C15 k2a c15 22u
+R R20 c15 0 68k
+R SW_BOOST c15 0 1e12
+C C12 p2a y1 0.047u
+R R106 y1 mt2 15k
+R VR_MT mt2 y 1
+R VR_MB y 0 1

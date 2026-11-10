@@ -1,0 +1,31 @@
+* British Dual 100 preamp, stage 3 of 3: the tone stack, both channel volumes and the mute. Driven by the V3a cathode follower of stage 2 (node k3a, VK3A).
+
+V VRAIL x 100 450
+R Rdummy_x x 0 1G
+S VK3A k3a 1 0
+C C27 k3a s 22n
+C QC20 s tt 470p
+C QC19 tt qn19 470p
+R QR34 qn19 s 10M
+R QR35 s z 33k
+R QR36 z f1 68k
+R SW4A z f1 1
+C QC21 f1 tm 22n
+C QC23 f1 f2 22n
+R QR37 f2 0 10M
+C QC22 f2 wm 22n
+R SW4C f2 wm 1
+R VR9T tt w9 1
+R VR9B w9 tm 1
+R VR7 tm tb 1
+R VR8T tb wm 1
+R VR8B wm 0 1
+R QR38 w9 rw 470k
+R VR2T rw m2 1
+R VR2B m2 0 1
+R VR4T rw m4 1
+R VR4B m4 0 1
+R SW_M2 m2 mute 1
+R SW_M4 m4 mute 1e12
+R LINKY mute y 1
+R QR25 y 0 10M

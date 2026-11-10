@@ -1,0 +1,69 @@
+* British Dual 100 power amp, from the valve board (JCM2-60-02): ECC83 long-tailed phase inverter (V4), four EL34 as two parallel pairs, the output transformer (C3070,
+* five coupled windings) and the HT supply solved together with the audio. The negative feedback (the 4 ohm tap through R19 47k from the rear board, into the
+* tail node G with the presence network VR10 B5K) is simplified: the op-amp stage IC2b between them (and its Deep switch) is not modelled. The bias supply
+* (board JCM2-64-00) is a -50 V divider as in the other amps.
+
+S VAUDIO pin 50k 0
+S VHT a 1 470
+S VBIAS nb 1 -75
+
+* Phase inverter V4: input C28 on the first grid, the second grid AC-grounded to G by C29, both returned through 1M to the tail node F (R49 470R, R55 10K to G).
+C C28 pin ga 22n
+R R53 ga f1 1M
+R R54 gb f1 1M
+C C29 gb g 100n
+R R49 kc f1 470
+T V4B ga pa kc 12AX7
+T V4A gb pb kc 12AX7
+R RPI a xp 10k
+C CPI xp 0 22u
+R R3 xp pa 82k
+R R2 xp pb 100k
+R R55 f1 g 10k
+R R56 g 0 4.7k
+
+* Presence (VR10, B5K) on the feedback node with the negative feedback from the 4 ohm tap (R19 47k).
+C CPR g pp 10u
+R VR10 pp 0 1
+C C30 bk c30 47u
+R R19 c30 g 47k
+
+* Power-tube grid drive (C6, C7 22n), grid return (R67 / R69 220k) and fixed bias.
+C C6 pa dt 22n
+C C7 pb db 22n
+R R67 dt bias 220k
+R R69 db bias 220k
+C C36 bias 0 47u
+R R29 bias bm 33k
+R R31 bm 0 7k
+R R30 bias nb 22k
+C C1 nb 0 22u
+
+* EL34s: grid stoppers 5k6 per tube, screens 1k per tube (5 W).
+R R7_66 dt g45 5.6k/2
+R R70_10 db g67 5.6k/2
+P V5 g45 pt s45 0 EL34 2
+P V7 g67 pbm s67 0 EL34 2
+R R60_65 a s45 1k/2
+R R74_76 a s67 1k/2
+
+* Output transformer (C3070): plate-to-plate 1.9k, 3.5 H per primary half; windings are primary halves, then the 16R, 8R and 4R sections of the secondary.
+R DCR_PT pt npt 40
+R DCR_PBM pbm npb 40
+.param n16 = 2*1/sqrt(1900/16)
+.xfmr OT L=3.5 SAT=4.7
+  W npt a 1 pri
+  W a npb 1 pri
+  W t16 t8 0.2929*n16 sec
+  W t8 bk 0.2071*n16 sec
+  W bk 0 0.5*n16 sec
+  K pri pri 0.9998
+  K pri sec 0.9993
+  K sec sec 0.9998
+.end
+R RLOAD t16 0 16
+
+* HT supply: 470 uF-class reservoirs and a series resistor to the preamp rail.
+R RP a x 2.7k
+C C7X x 0 50u
+R RPREAMP x 0 45k

@@ -1,0 +1,51 @@
+* American Lead C+ preamp, stage 2 of 3: the rhythm path and the lead channel (V3B, V4A), V2B with its lead master, and the effects loop's divider up to V2A's grid g2a.
+* Driven by stage 1's node nr (VNR).
+
+V VRAIL x 100 450
+R R86 x dp 1k
+C C87 dp 0 30u
+R Rdummy_dp dp 0 158.8k
+S VNR nr 1 0
+C C10 nr g2b 10p
+R R10 nr g2b 3.3M
+C C21 nr li0 0.02u
+R SW_LI li0 li1 1e12
+R R21 li1 li 680k
+R VR_LDT li ld 1
+R VR_LDB ld 0 1
+T V3B ld p3b k3b 12AX7
+R R22 ld 0 475k
+C C22 ld k3b 120p
+R R23 k3b 0 1.5k
+C C23 k3b 0 2.2u
+R R26 dp p3b 82k
+C C25 p3b a25 0.022u
+R R25 a25 g4a 270k
+C C24 g4a 0 1000p
+R R24 g4a 0 68k
+T V4A g4a p4a k4a 12AX7
+R R27 dp p4a 274k
+R R30 k4a 0 3.3k
+C C29 k4a c29 0.22u
+R R29 c29 0 6.8k
+R SW_BL c29 0 1e12
+C C30 p4a q 0.047u
+R R31 q lo 220k
+C C31 q lo 250p
+R R32 lo 0 100k
+C C32 lo 0 500p
+R SW_LO lo g2b 1e12
+T V2B g2b p2b k2b 12AX7
+R R11 g2b 0 680k
+C C11 g2b 0 47p
+R R13 x p2b 100k
+R R16 k2b 0 1.5k
+R R105 p2b r105 47k
+C C9 r105 mt 0.047u
+R VR_LMT mt m1o 1
+R VR_LMB m1o lm1 1
+R SW_LM lm1 0 1e12
+R R102 m1o mm 150k
+R R101 mm 0 4.7k
+R R12 mm g2a 2.2k
+R R103 g2a 0 47k

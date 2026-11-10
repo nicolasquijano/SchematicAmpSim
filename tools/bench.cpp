@@ -108,7 +108,7 @@ int main() {
                 preCont += normal.pre().solver(s).continuationRuns;
             }
             const auto& pws = normal.power().solver();
-            sas::LiteAmp lite(def, fs);
+            sas::LiteAmp lite(def, fs, false, true);  // as the plugin builds it: tables and LU reuse
             lite.setKnobs(knobs, def.power.presenceDefault);
             const double pl = percent([&] { for (double x : in) sink += lite.process(x); }, seconds);
             sas::LiteAmp eco(def, fs, true);  // Lite power amp + triode tables

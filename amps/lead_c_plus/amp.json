@@ -289,6 +289,28 @@
     "drive": "VIN",
     "resistors": {}
    }
+  ],
+  "stages": [
+   {
+    "netlist": "stage_lead.net",
+    "links": [
+     {
+      "stage": 0,
+      "from": "nr",
+      "source": "VNR"
+     }
+    ]
+   },
+   {
+    "netlist": "stage_out.net",
+    "links": [
+     {
+      "stage": 1,
+      "from": "g2a",
+      "source": "VG2A"
+     }
+    ]
+   }
   ]
  },
  "power": {

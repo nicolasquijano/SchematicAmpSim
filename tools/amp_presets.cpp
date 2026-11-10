@@ -51,6 +51,16 @@ const std::vector<Recipe>& recipes() {
             {"Edge of breakup", 3, "afd", "volume", {{"master", 5}}, {}},
             {"Crunch", 7, "afd", "volume", {{"master", 5}}, {}},
             {"Lead", 13, "afd", "volume", {{"master", 5.5}, {"middle", 6}}, {}}}},
+        {"british_dual100", {}, {
+            {"Clean", 0.8, "input", "volume2", {{"volume", 7}, {"bass", 5}, {"middle", 5}, {"treble", 6}}, {{"channel", 0}, {"classic_mode", 0}}},
+            {"Edge of breakup", 3, "input", "volume2", {{"volume", 7}, {"bass", 5}, {"middle", 5}, {"treble", 6}}, {{"channel", 0}, {"classic_mode", 1}}},
+            {"Crunch", 7, "input", "clean_gain", {{"clean_volume", 7}, {"bass", 5}, {"middle", 5}, {"treble", 6}}, {{"channel", 1}, {"ultra_mode", 0}}, 0.05},
+            {"Lead", 13, "input", "clean_gain", {{"clean_volume", 7}, {"bass", 5}, {"middle", 6}, {"treble", 6}}, {{"channel", 1}, {"ultra_mode", 1}}, 0.05}}},
+        {"german_preamp530", {}, {
+            {"Clean", 0.8, "input", "clean_gain", {{"clean_volume", 6}, {"clean_treble", 6}, {"clean_middle", 5}, {"clean_bass", 5}}, {{"channel", 0}}, 0.05},
+            {"Edge of breakup", 3, "input", "clean_gain", {{"clean_volume", 6}, {"clean_treble", 6}, {"clean_middle", 5}, {"clean_bass", 5}}, {{"channel", 0}}, 0.05},
+            {"Crunch", 7, "input", "volume2", {{"volume", 6}, {"treble", 6}, {"middle", 5}, {"bass", 5}, {"clean_presence", 8}}, {{"channel", 1}}, 0.05},
+            {"Lead", 13, "input", "volume2", {{"volume", 6}, {"treble", 6}, {"middle", 6}, {"bass", 5}, {"clean_presence", 8}}, {{"channel", 2}}, 0.05}}},
         {"bassman_5f6a", {}, {
             {"Clean", 0.8, "normal1", "volume2", {{"bass", 4}, {"middle", 6}, {"treble", 6}}, {}},
             {"Edge of breakup", 3, "normal1", "volume2", {{"bass", 4}, {"middle", 6}, {"treble", 6}}, {}},

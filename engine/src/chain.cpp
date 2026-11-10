@@ -15,7 +15,7 @@ Chain::Chain(const AmpDef& def, double fs)
       amp2_(def.nam ? nullptr : std::make_unique<FullAmp>(def, fs * 2.0, false, true)),
       amp4_(def.nam ? nullptr : std::make_unique<FullAmp>(def, fs * 4.0, false, true)),
       split_(def.nam ? nullptr : std::make_unique<SplitAmp>(def, fs)),
-      lite_(def.nam ? nullptr : std::make_unique<LiteAmp>(def, fs * 2.0)),
+      lite_(def.nam ? nullptr : std::make_unique<LiteAmp>(def, fs * 2.0, false, true)),  // tables and LU reuse, like Normal
       eco_(def.nam ? nullptr : std::make_unique<LiteAmp>(def, fs * 2.0, true)),
       ts1_(fs), ts2_(fs * 2.0), ts4_(fs * 4.0), cab_(float(fs)), comp_(fs) {
     ampTrim_ = float(dbToGain(def.outputDb));

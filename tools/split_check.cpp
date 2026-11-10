@@ -136,8 +136,22 @@ int main(int argc, char** argv) {
         {"mod 6 V1A bypass .47u", 0, 0.15, {}, {{5, 1}}},
         {"all mods", 0, 0.15, {}, {{0, 1}, {1, 1}, {2, 1}, {3, 1}, {4, 1}, {5, 1}}},
     };
+    // The American Lead C+ (one jack; selectors: channel Rhythm 0 / Lead 1, shift, tshift, bright1, bright_l, boost).
+    const std::vector<Case> lcCases = {
+        {"silence (hum only)", 0, 0.0, {}, {}},
+        {"rhythm clean", 0, 0.05, {}, {{0, 0}}},
+        {"rhythm crunch", 0, 0.15, {{"volume", 0.8}}, {{0, 0}}},
+        {"rhythm hot", 0, 0.3, {{"volume", 0.9}}, {{0, 0}}},
+        {"rhythm bright", 0, 0.1, {}, {{0, 0}, {3, 1}}},
+        {"lead low", 0, 0.05, {{"lead_drive", 0.3}}, {{0, 1}}},
+        {"lead mid", 0, 0.15, {{"lead_drive", 0.6}}, {{0, 1}}},
+        {"lead hot", 0, 0.3, {{"lead_drive", 0.9}, {"lead_master", 0.9}}, {{0, 1}}},
+        {"lead tone up", 0, 0.15, {{"lead_drive", 0.6}, {"bass", 0.9}, {"treble", 0.9}}, {{0, 1}}},
+        {"lead shifts+bright", 0, 0.15, {{"lead_drive", 0.6}}, {{0, 1}, {1, 1}, {2, 1}, {4, 1}}},
+        {"lead boost", 0, 0.15, {{"lead_drive", 0.6}}, {{0, 1}, {5, 1}}},
+    };
     const std::string ampId = argv[1];
-    const auto& cases = ampId == "superlead_100" ? slCases : ampId == "modbe_100" ? mbCases : ampId == "jcm800_2203" ? jcmCases : svtCases;
+    const auto& cases = ampId == "superlead_100" ? slCases : ampId == "modbe_100" ? mbCases : ampId == "jcm800_2203" ? jcmCases : ampId == "lead_c_plus" ? lcCases : svtCases;
     std::printf("%-22s %9s %9s %9s %8s\n", "case", "level d", "band max", "wave err", "fails");
     for (const auto& c : cases) {
         std::vector<std::vector<double>> out(2);
