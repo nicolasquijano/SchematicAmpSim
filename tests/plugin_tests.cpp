@@ -833,7 +833,7 @@ TEST_CASE("readme screenshots", "[.screenshots]") {
     panels("modules-drive.png", {ModuleType::Compressor, ModuleType::Overdrive, ModuleType::Klon, ModuleType::Fuzz, ModuleType::Boost});
     panels("modules-mod.png", {ModuleType::Phaser, ModuleType::Chorus, ModuleType::Vibe, ModuleType::Leslie, ModuleType::Tremolo, ModuleType::Flanger});
     panels("modules-space.png", {ModuleType::Delay, ModuleType::TapeEcho, ModuleType::Reverb, ModuleType::SpringReverb});
-    panels("modules-tone.png", {ModuleType::Eq, ModuleType::Acoustic, ModuleType::Wah, ModuleType::Limiter});
+    panels("modules-tone.png", {ModuleType::Eq, ModuleType::TenBandEq, ModuleType::Acoustic, ModuleType::Wah, ModuleType::Limiter});
 
     // The rack with a few modules in it (the open panel is the amp's).
     {
@@ -1037,6 +1037,300 @@ TEST_CASE("pitch shift: off by default with no delay, on it adds its latency and
     setParam(p, ids::pitchFine, 20.0f);  // cents alone also count
     run(p, 6);
     CHECK(p.getLatencySamples() > latencyOff + 400);
+}
+
+TEST_CASE("octaver: it can be added, off it is invisible, on it plays a note an octave below the one played", "[rack]") {
+    JuceInit init;
+    SasProcessor p;
+    p.prepareToPlay(48000.0, 512);
+    setParam(p, ids::quality, 2.0f);
+    REQUIRE(p.addModule(sas::ModuleType::Octaver));
+    CHECK(p.apvts.getParameter(ids::octOn) != nullptr);
+    CHECK(p.apvts.getRawParameterValue(ids::octOn)->load() > 0.5f);  // a module that is added comes on
+    setParam(p, ids::octOn, 0.0f);
+    // The component of the output at `hz`, over 60 blocks of a 220 Hz note (the amp makes harmonics of its own, so the octave below is the telling one).
+    auto component = [&](double hz) {
+        juce::AudioBuffer<float> buf(2, 512);
+        juce::MidiBuffer midi;
+        double re = 0, im = 0;
+        long n = 0;
+        for (int b = 0; b < 60; ++b) {
+            fill(buf, 220.0, 0.05, 48000.0, b * 512);
+            p.processBlock(buf, midi);
+            if (b < 20) continue;
+            for (int i = 0; i < 512; ++i, ++n) {
+                const float y = buf.getSample(0, i);
+                REQUIRE(std::isfinite(y));
+                const double ph = 6.283185307179586 * hz * double(n) / 48000.0;
+                re += y * std::cos(ph);
+                im += y * std::sin(ph);
+            }
+        }
+        return 2.0 * std::sqrt(re * re + im * im) / double(n);
+    };
+    const double off = component(110.0);
+    setParam(p, ids::octOn, 1.0f);
+    setParam(p, ids::octOct1, 10.0f);
+    const double on = component(110.0);
+    INFO("110 Hz: off " << off << ", octaver on " << on);
+    CHECK(on > 4.0 * off);
+}
+
+TEST_CASE("compressor models: Dyna Comp, FET and Opto squeeze a loud note more than a quiet one, and the model switch keeps the module running", "[rack]") {
+    JuceInit init;
+    // The models on their own: the level after the compressor over the level before it, at 20 mV and at 500 mV.
+    auto gainDb = [](int model, double amp) {
+        sas::PedalCompressor c;
+        c.prepare(48000.0);
+        sas::CompControls k;
+        k.sustain = 0.7;
+        k.blend = 1.0;
+        k.tone = 0.5;
+        k.level = 0.7;
+        k.model = model;
+        c.setControls(k);
+        double s = 0.0;
+        long n = 0;
+        for (int i = 0; i < 48000 * 2; ++i) {
+            const float y = c.process(float(amp * std::sin(6.283185307179586 * 220.0 * double(i) / 48000.0)));
+            REQUIRE(std::isfinite(y));
+            if (i > 48000) { s += double(y) * y; ++n; }
+        }
+        return 10.0 * std::log10(s / double(n) / (amp * amp / 2.0));
+    };
+    for (int model = 1; model <= 3; ++model) {
+        const double quiet = gainDb(model, 0.02), loud = gainDb(model, 0.5);
+        INFO("model " << model << ": 20 mV " << quiet << " dB, 500 mV " << loud << " dB");
+        CHECK(loud < quiet - 3.0);
+    }
+    // In the plugin: the compressor with each model keeps the signal finite, and only the Keeley model is the one the amp runs.
+    SasProcessor p;
+    p.prepareToPlay(48000.0, 512);
+    setParam(p, ids::quality, 2.0f);
+    REQUIRE(p.addModule(sas::ModuleType::Compressor));
+    for (int model = 0; model <= 3; ++model) {
+        setParam(p, ids::compModel, float(model));
+        for (int b = 0; b < 12; ++b) {
+            juce::AudioBuffer<float> buf(2, 512);
+            juce::MidiBuffer midi;
+            fill(buf, 220.0, 0.1, 48000.0, b * 512);
+            p.processBlock(buf, midi);
+            for (int i = 0; i < 512; ++i) REQUIRE(std::isfinite(buf.getSample(0, i)));
+        }
+    }
+}
+
+TEST_CASE("distortion: the DS-1 circuit clips a note into a near square wave and stays clean for a small one; the module runs in the plugin", "[rack]") {
+    JuceInit init;
+    auto third = [](double drive, double amp) {
+        sas::DriveCircuit c(sas::DriveModel::Ds1, 48000.0);
+        c.setControls({drive, 0.5, 0.5});
+        std::vector<float> x(48000);
+        for (std::size_t i = 0; i < x.size(); ++i) x[i] = float(amp * std::sin(6.283185307179586 * 220.0 * double(i) / 48000.0));
+        c.process(x.data(), x.size());
+        double a1r = 0, a1i = 0, a3r = 0, a3i = 0;
+        for (std::size_t i = 24000; i < x.size(); ++i) {
+            REQUIRE(std::isfinite(x[i]));
+            const double t = double(i) / 48000.0;
+            a1r += x[i] * std::cos(6.283185307179586 * 220.0 * t);
+            a1i += x[i] * std::sin(6.283185307179586 * 220.0 * t);
+            a3r += x[i] * std::cos(6.283185307179586 * 660.0 * t);
+            a3i += x[i] * std::sin(6.283185307179586 * 660.0 * t);
+        }
+        return 20.0 * std::log10(std::sqrt(a3r * a3r + a3i * a3i) / std::sqrt(a1r * a1r + a1i * a1i) + 1e-12);
+    };
+    const double hard = third(0.8, 0.1), soft = third(0.0, 0.002);
+    INFO("third harmonic re the note: DIST 8 at 100 mV " << hard << " dB, DIST 0 at 2 mV " << soft << " dB");
+    CHECK(hard > -14.0);  // a square wave has -9.5 dB
+    CHECK(soft < -35.0);
+    // In the plugin: the module is added, comes on and keeps the signal finite.
+    SasProcessor p;
+    p.prepareToPlay(48000.0, 512);
+    setParam(p, ids::quality, 2.0f);
+    REQUIRE(p.addModule(sas::ModuleType::Distortion));
+    CHECK(p.apvts.getRawParameterValue(ids::dstOn)->load() > 0.5f);
+    for (int b = 0; b < 30; ++b) {
+        juce::AudioBuffer<float> buf(2, 512);
+        juce::MidiBuffer midi;
+        fill(buf, 220.0, 0.1, 48000.0, b * 512);
+        p.processBlock(buf, midi);
+        for (int i = 0; i < 512; ++i) REQUIRE(std::isfinite(buf.getSample(0, i)));
+    }
+}
+
+TEST_CASE("layers: a pick attack leaves a layer that keeps sounding after the note has stopped, and Off leaves none", "[rack]") {
+    JuceInit init;
+    auto tailAt220 = [](bool on, bool sub) {
+        SasProcessor p;
+        p.prepareToPlay(48000.0, 512);
+        setParam(p, ids::quality, 2.0f);
+        REQUIRE(p.addModule(sas::ModuleType::Layers));
+        setParam(p, ids::lyOn, on ? 1.0f : 0.0f);
+        setParam(p, ids::lyMix, 10.0f);
+        setParam(p, ids::lyAttack, 1.0f);
+        setParam(p, ids::lyDecay, 8.0f);
+        setParam(p, ids::lyTrig, 8.0f);
+        setParam(p, ids::lySub, sub ? 1.0f : 0.0f);
+        double re = 0, im = 0;
+        long n = 0;
+        const double hz = sub ? 110.0 : 220.0;
+        for (int b = 0; b < 200; ++b) {  // 2.1 s: a note for 0.8 s, then silence
+            juce::AudioBuffer<float> buf(2, 512);
+            juce::MidiBuffer midi;
+            if (b < 75) fill(buf, 220.0, 0.1, 48000.0, b * 512);
+            else buf.clear();
+            p.processBlock(buf, midi);
+            for (int i = 0; i < 512; ++i) {
+                const float y = buf.getSample(0, i);
+                REQUIRE(std::isfinite(y));
+                if (b >= 140) {  // 1.5 s after the note stopped is gone from the dry sound
+                    const double ph = 6.283185307179586 * hz * double(n) / 48000.0;
+                    re += y * std::cos(ph);
+                    im += y * std::sin(ph);
+                    ++n;
+                }
+            }
+        }
+        return 2.0 * std::sqrt(re * re + im * im) / double(n);
+    };
+    const double with = tailAt220(true, false), without = tailAt220(false, false), sub = tailAt220(true, true);
+    INFO("tail at 220 Hz: layers " << with << ", off " << without << "; at 110 Hz with Sub oct " << sub);
+    CHECK(with > 0.01);
+    CHECK(without < 1e-4);
+    CHECK(sub > 0.003);
+}
+
+TEST_CASE("bitcrusher: it can be added, 4 bits leave at most 8 levels and a low rate holds the samples", "[rack]") {
+    JuceInit init;
+    SasProcessor p;
+    p.prepareToPlay(48000.0, 512);
+    setParam(p, ids::quality, 2.0f);
+    REQUIRE(p.addModule(sas::ModuleType::Bitcrusher));
+    CHECK(p.apvts.getRawParameterValue(ids::bcOn)->load() > 0.5f);
+    setParam(p, ids::bcBits, 3.0f);  // 2^(3-1) = 4 steps on each side: 9 levels at most
+    setParam(p, ids::bcRate, 48000.0f);
+    setParam(p, ids::bcTone, 20000.0f);
+    setParam(p, ids::bcMix, 100.0f);
+    std::vector<float> seen;
+    for (int b = 0; b < 40; ++b) {
+        juce::AudioBuffer<float> buf(2, 512);
+        juce::MidiBuffer midi;
+        fill(buf, 220.0, 0.2, 48000.0, b * 512);
+        p.processBlock(buf, midi);
+        for (int i = 0; i < 512; ++i) REQUIRE(std::isfinite(buf.getSample(0, i)));
+    }
+    // The module on its own (the chain around it filters and levels the signal): the quantiser's steps.
+    sas::Bitcrusher c;
+    c.prepare(48000.0);
+    sas::BitcrusherParams q;
+    q.on = true;
+    q.bits = 3.0;
+    q.rateHz = 48000.0;
+    q.toneHz = 20000.0;
+    std::vector<float> x(4800);
+    for (std::size_t i = 0; i < x.size(); ++i) x[i] = float(0.9 * std::sin(6.283185307179586 * 220.0 * double(i) / 48000.0));
+    // (the tone low-pass smooths the steps: check the held values before it with a very open tone and many samples, then count distinct plateaus)
+    c.setParams(q);
+    std::vector<float> y = x;
+    c.process(y.data(), nullptr, y.size());
+    // 3 bits: the steps are multiples of 0.25; the open low-pass only blurs the few samples of each change.
+    int onStep = 0;
+    for (std::size_t i = 1000; i < y.size(); ++i) {
+        const float m = std::fabs(y[i] * 4.0f - std::round(y[i] * 4.0f));
+        onStep += m < 0.05f ? 1 : 0;
+    }
+    INFO("samples on a step: " << onStep << " of " << y.size() - 1000);
+    CHECK(onStep > int(0.8 * double(y.size() - 1000)));
+    // A rate of 4.8 kHz holds each sample for 10: the output is a staircase, so most neighbours are equal.
+    q.bits = 16.0;
+    q.rateHz = 4800.0;
+    q.toneHz = 20000.0;
+    sas::Bitcrusher h;
+    h.prepare(48000.0);
+    h.setParams(q);
+    y = x;
+    h.process(y.data(), nullptr, y.size());
+    int same = 0;
+    for (std::size_t i = 1000; i < y.size(); ++i) same += std::fabs(y[i] - y[i - 1]) < 0.02f ? 1 : 0;
+    CHECK(same > int(0.6 * double(y.size() - 1000)));
+}
+
+TEST_CASE("bbd delay: it can be added, the repeat comes after the time set and each repeat is darker than the one before", "[rack]") {
+    JuceInit init;
+    SasProcessor p;
+    p.prepareToPlay(48000.0, 512);
+    setParam(p, ids::quality, 2.0f);
+    REQUIRE(p.addModule(sas::ModuleType::BbdDelay));
+    CHECK(p.apvts.getRawParameterValue(ids::bbdOn)->load() > 0.5f);
+    setParam(p, ids::bbdTime, 200.0f);
+    setParam(p, ids::bbdFeedback, 60.0f);
+    setParam(p, ids::bbdMix, 100.0f);
+    setParam(p, ids::bbdDepth, 0.0f);
+    setParam(p, ids::bbdGrit, 0.0f);
+    setParam(p, ids::bbdTone, 10000.0f);
+    // A burst of 5 kHz (a tone the dark loop must attenuate more at each pass), then silence; the energy of each 200 ms window afterwards.
+    std::vector<double> win(6, 0.0);
+    long n = 0;
+    for (int b = 0; b < 180; ++b) {
+        juce::AudioBuffer<float> buf(2, 512);
+        juce::MidiBuffer midi;
+        if (b < 4) fill(buf, 5000.0, 0.05, 48000.0, b * 512);
+        else buf.clear();
+        p.processBlock(buf, midi);
+        for (int i = 0; i < 512; ++i, ++n) {
+            const float y = buf.getSample(0, i);
+            REQUIRE(std::isfinite(y));
+            const int w = int(double(n) / 9600.0);
+            if (w < 6 && n > 4 * 512) win[std::size_t(w)] += double(y) * y;
+        }
+    }
+    INFO("windows " << win[1] << " " << win[2] << " " << win[3]);
+    CHECK(win[1] > 1e-6);          // the first repeat is there, 200 ms later
+    CHECK(win[2] < win[1] * 0.8);  // and the next one is quieter
+    CHECK(win[3] < win[2]);
+}
+
+TEST_CASE("harmonist: it can be added, it adds its delay only while it is on, and a voice an octave down appears below the note played", "[rack]") {
+    JuceInit init;
+    SasProcessor p;
+    p.prepareToPlay(48000.0, 512);
+    setParam(p, ids::quality, 2.0f);
+    REQUIRE(p.addModule(sas::ModuleType::Harmonist));
+    CHECK(p.apvts.getRawParameterValue(ids::harOn)->load() > 0.5f);  // a module that is added comes on
+    setParam(p, ids::harOn, 0.0f);
+    run(p, 6);
+    const int latencyOff = p.getLatencySamples();
+    auto component = [&](double hz) {
+        juce::AudioBuffer<float> buf(2, 512);
+        juce::MidiBuffer midi;
+        double re = 0, im = 0;
+        long n = 0;
+        for (int b = 0; b < 60; ++b) {
+            fill(buf, 220.0, 0.05, 48000.0, b * 512);
+            p.processBlock(buf, midi);
+            if (b < 20) continue;
+            for (int i = 0; i < 512; ++i, ++n) {
+                const float y = buf.getSample(0, i);
+                REQUIRE(std::isfinite(y));
+                const double ph = 6.283185307179586 * hz * double(n) / 48000.0;
+                re += y * std::cos(ph);
+                im += y * std::sin(ph);
+            }
+        }
+        return 2.0 * std::sqrt(re * re + im * im) / double(n);
+    };
+    const double off = component(110.0);
+    setParam(p, ids::harOn, 1.0f);
+    setParam(p, ids::harMode, 1.0f);  // fixed pitch: an octave down
+    setParam(p, ids::harInt1, -12.0f);
+    setParam(p, ids::harVoice1, 10.0f);
+    const double on = component(110.0);
+    INFO("110 Hz: off " << off << ", harmonist on " << on);
+    CHECK(on > 4.0 * off);
+    CHECK(p.getLatencySamples() > latencyOff + 400);  // its delay, about 22 ms at 48 kHz
+    setParam(p, ids::harOn, 0.0f);
+    run(p, 30);  // it fades out over 20 ms, then it is skipped
+    CHECK(p.getLatencySamples() == latencyOff);
 }
 
 TEST_CASE("eq: flat by default, and the post equaliser acts on the output") {
@@ -2017,8 +2311,8 @@ TEST_CASE("only the first gate cannot be removed: the amp and the cabinet can go
     using T = ModuleType;
     SasProcessor p;
     CHECK_FALSE(p.removeModule({T::Gate, 0}));
-    CHECK_FALSE(p.canAdd(T::Amp));      // there is one already
-    CHECK_FALSE(p.canAdd(T::Cabinet));
+    CHECK(p.canAdd(T::Amp));            // a second one can join the first
+    CHECK(p.canAdd(T::Cabinet));
     REQUIRE(p.removeModule({T::Cabinet, 0}));
     REQUIRE(p.removeModule({T::Amp, 0}));
     CHECK(typesOf(p.rackOrder()) == std::vector<T>{T::Gate});
@@ -2028,7 +2322,7 @@ TEST_CASE("only the first gate cannot be removed: the amp and the cabinet can go
     REQUIRE(p.addModule(T::Amp));       // put back: the amp, then the cabinet behind it
     REQUIRE(p.addModule(T::Cabinet));
     CHECK(typesOf(p.rackOrder()) == std::vector<T>{T::Gate, T::Amp, T::Cabinet});
-    CHECK_FALSE(p.addModule(T::Amp));   // only one without a parallel
+    CHECK(p.canAdd(T::Amp));            // a second one in the same line is fine (the limit is two)
     // A saved rack that lacks them loads without them (the first gate is always there).
     p.setRackOrder([] {
         sas::RackOrder o;
@@ -2046,6 +2340,70 @@ TEST_CASE("only the first gate cannot be removed: the amp and the cabinet can go
         energy += double(v) * v;
     }
     CHECK(energy > 0.0);
+}
+
+TEST_CASE("the amp can be switched off: the signal goes past it, and it comes back", "[rack]") {
+    JuceInit init;
+    using T = ModuleType;
+    CHECK(RackState::onId(T::Amp) != nullptr);
+    SasProcessor p;
+    setParam(p, ids::cabOn, 0.0f);  // the raw amp
+    const auto in = legacy::input();
+    auto energy = [](const std::vector<float>& v) {
+        double e = 0.0;
+        for (const float x : v) {
+            REQUIRE(std::isfinite(x));
+            e += double(x) * x;
+        }
+        return e;
+    };
+    const double on = energy(legacy::render(p, in));
+    setParam(p, ids::ampOn, 0.0f);
+    legacy::render(p, in);  // the fade out
+    const auto off = legacy::render(p, in);
+    // Off: the guitar goes past the amp, a small signal compared with what the amp plays at full level.
+    CHECK(energy(off) > 0.0);
+    CHECK(energy(off) < on * 0.5);
+    setParam(p, ids::ampOn, 1.0f);
+    legacy::render(p, in);  // the fade in
+    CHECK(energy(legacy::render(p, in)) == Catch::Approx(on).epsilon(0.2));
+    // The second amp has its own switch.
+    REQUIRE(p.addModule(T::Amp));
+    CHECK(p.apvts.getParameter(RackState::paramId(ids::ampOn, 1)) != nullptr);
+}
+
+TEST_CASE("two amps (and two cabinets) can share the same line, in series, without a parallel", "[rack]") {
+    JuceInit init;
+    using T = ModuleType;
+    SasProcessor p;
+    REQUIRE(p.canAdd(T::Amp));
+    REQUIRE(p.addModule(T::Amp));  // the second amp: next to the first, in front of the cabinet
+    CHECK_FALSE(p.hasParallel());
+    CHECK(typesOf(p.rackOrder()) == std::vector<T>{T::Gate, T::Amp, T::Amp, T::Cabinet});
+    CHECK(p.inRack({T::Amp, 1}));
+    CHECK_FALSE(p.canAdd(T::Amp));  // two is the limit
+    REQUIRE(p.addModule(T::Cabinet));
+    CHECK(p.inRack({T::Cabinet, 1}));
+    CHECK_FALSE(p.canAdd(T::Cabinet));
+    for (int i = 0; i < p.rackOrder().count; ++i) CHECK(p.rackOrder().lane[std::size_t(i)] == 0);
+    // It survives a save and a load, and it plays.
+    const auto order = p.rackOrder();
+    p.setRackOrder(order);
+    CHECK(typesOf(p.rackOrder()) == typesOf(order));
+    CHECK(p.inRack({T::Amp, 1}));
+    const auto out = legacy::render(p, legacy::input());
+    double energy = 0.0;
+    for (const float v : out) {
+        REQUIRE(std::isfinite(v));
+        energy += double(v) * v;
+    }
+    CHECK(energy > 0.0);
+    // And a parallel can still be added around them; taking it away keeps the series amps.
+    REQUIRE(p.addParallel());
+    REQUIRE(p.removeParallel());
+    CHECK(p.inRack({T::Amp, 1}));
+    REQUIRE(p.removeModule({T::Amp, 1}));
+    CHECK(p.canAdd(T::Amp));
 }
 
 TEST_CASE("with a parallel, the first amp and cabinet can be removed from lane A, and the second ones are put in lane B", "[rack]") {
@@ -2881,7 +3239,7 @@ TEST_CASE("every module without a table of its own has factory presets that set 
     JuceInit init;
     using T = sas::ModuleType;
     SasProcessor p;
-    const T types[] = {T::Gate, T::Compressor, T::Overdrive, T::Phaser, T::Chorus, T::Vibe, T::Tremolo, T::Flanger, T::Pitch, T::Boost, T::Limiter};
+    const T types[] = {T::Gate, T::Compressor, T::Overdrive, T::Phaser, T::Chorus, T::Vibe, T::Tremolo, T::Flanger, T::Pitch, T::Boost, T::Limiter, T::TenBandEq};
     for (const T type : types) {
         const auto list = modulePresets(type);
         INFO("module " << sas::moduleTypeName(type));

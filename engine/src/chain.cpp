@@ -43,7 +43,7 @@ Chain::Chain(const AmpDef& def, double fs)
     tsLevel_.reset(0.5, fs, 40.0);
     inputDb_.reset(0.0, fs, 20.0);
     outputDb_.reset(0.0, fs, 20.0);
-    jackCompDb_.reset(def.preamp.jacks.empty() ? 0.0 : def.preamp.jacks[0].levelDb, fs, 20.0);
+    jackCompDb_.reset(inputCompDb(0, true, {}), fs, 20.0);
     namDriveDb_.reset(0.0, fs, 20.0);
     namLevelDb_.reset(0.0, fs, 20.0);
     for (auto* s : {&namBass_, &namMid_, &namTreble_}) s->reset(0.5, fs, 40.0);
@@ -89,7 +89,18 @@ void Chain::setSettings(const ChainSettings& s) {
     noise2_.setPickup(s.pickup);
     noise4_.setPickup(s.pickup);
     target_.cableMeters = s.cableMeters;
-    jackCompDb_.setTarget(s.jackLevelMatch && !def_.preamp.jacks.empty() ? def_.preamp.jacks[target_.jack].levelDb : 0.0);
+    jackCompDb_.setTarget(inputCompDb(target_.jack, s.jackLevelMatch, s.selectors));
+}
+
+double Chain::inputCompDb(std::size_t jack, bool levelMatch, const std::vector<std::size_t>& selectors) const {
+    double db = 0.0;
+    if (levelMatch && !def_.preamp.jacks.empty()) db += def_.preamp.jacks[std::min(jack, def_.preamp.jacks.size() - 1)].levelDb;
+    const auto& defs = def_.preamp.selectors;
+    for (std::size_t i = 0; i < defs.size(); ++i) {
+        const std::size_t pos = i < selectors.size() ? selectors[i] : 0;
+        if (pos < defs[i].positions.size()) db += defs[i].positions[pos].levelDb;  // a selector's own level: not part of the jack level match
+    }
+    return db;
 }
 
 void Chain::snap(const ChainSettings& s) {
@@ -103,7 +114,7 @@ void Chain::snap(const ChainSettings& s) {
     tsLevel_.reset(std::clamp(s.tsLevel, 0.0, 1.0), fs_, 40.0);
     inputDb_.reset(s.inputDb, fs_, 20.0);
     outputDb_.reset(s.outputDb, fs_, 20.0);
-    jackCompDb_.reset(s.jackLevelMatch && !def_.preamp.jacks.empty() ? def_.preamp.jacks[std::min(s.jack, def_.preamp.jacks.size() - 1)].levelDb : 0.0, fs_, 20.0);
+    jackCompDb_.reset(inputCompDb(s.jack, s.jackLevelMatch, s.selectors), fs_, 20.0);
     namDriveDb_.reset(s.namDriveDb, fs_, 20.0);
     namLevelDb_.reset(s.namLevelDb, fs_, 20.0);
     namBass_.reset(std::clamp(s.namBass, 0.0, 1.0), fs_, 40.0);

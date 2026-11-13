@@ -1,0 +1,86 @@
+* Marshall JCM900 100 W power amp (models 2100, 2101, 4100, 4101, 4102), transcribed from drawing CD0192 issue 7 (2-7-90,
+* PCB JMP50B; drtube.com/schematics/marshall/cd0192-iss7.pdf): long-tailed ECC83 phase inverter with the NFB / presence network,
+* four EL34 with fixed bias as two parallel pairs, the output transformer (C3070) as five coupled windings, and the HT supply solved
+* together with the audio.
+*
+* Assumptions where the drawing is silent or ambiguous (change them here, not in code):
+*  - plate a (82k) drives the pair V4 / V5 and plate b (100k) the pair V6 / V7 (the two are symmetric);
+*  - C9 100p is across the 82k and C10 100p between the two plates;
+*  - the NFB (R17 27k with C6 220p across it) is taken from the 4 ohm tap into the phase inverter's tail (between R18 10k and R6 4k7);
+*    the presence network (C5 0.1u, R21 1k and the presence pot VR8 B22k, which sit on the preamp board) shunts R6 at high frequencies;
+*  - the bias supply (a heater winding through 47n and one diode) is replaced by a source and the divider R31 / R30 / PR1 sets the grids
+*    for about 35 mA per tube; the output transformer, the supply and the HT figures are copied from the JCM800 2203 (not on the drawing);
+*  - C8 (0.1u) couples the second PI grid to the NFB node y (as in the 2203: C15 to its feedback node), so the feedback enters there;
+*    the 470 ohm R19 is the self-bias of both grids' 1M leaks (R20, R21), which return to the tail above it.
+
+.nodes pin ga kc z y gb pa pb dt db bias g45 g67 s45 s67 sb pt pbm npt npb a t16 t8 bk x nb pr pr2 rv
+
+S VAUDIO pin 1k 0
+S VHT a 1 490
+S VBIAS nb 56k -90
+
+* Phase inverter V3: input on the first grid, the second coupled by C8 to the NFB node y, both grids returned through 1M to the tail's 470 ohm.
+C C7 pin ga 22n
+R R20 ga z 1M
+R R21 gb z 1M
+C C8 gb y 0.1u
+T V3A ga pa kc 12AX7
+T V3B gb pb kc 12AX7
+R R19 kc z 470
+R R18 z y 10k
+R R6 y 0 4k7
+R R22 x pa 82k
+R R23 x pb 100k
+C C9 x pa 100p
+C C10 pa pb 100p
+
+* Presence: C5 in series with R21's 1k and the presence pot, to the tail's ground leg.
+C C5 y pr 0.1u
+R R1K pr pr2 1k
+R VR8 pr2 0 5k
+
+* Coupling to the two output pairs and their grid return / bias line.
+C C11 pa dt 47n
+C C12 pb db 47n
+R R29 dt bias 220k
+R R28 bias db 220k
+R R31 bias nb 15k
+R R30 bias rv 56k
+R PR1 rv 0 11k
+C C13 nb 0 10u
+
+* EL34s: each pair shares grid stoppers (1k5 + 2k2 per tube), screen resistors (2k2 per tube) and plate load.
+R RG45 dt g45 3.7k/2
+R RG67 db g67 3.7k/2
+P V4_5 g45 pt s45 0 EL34 2
+P V6_7 g67 pbm s67 0 EL34 2
+R R33_34 sb s45 2k2/2
+R R35_36 sb s67 2k2/2
+
+* Output transformer (C3070 taken as the 2203's C2668): plate-to-plate 1.9k, 3.5 H per primary half; windings are
+* primary halves, then the 16R, 8R and 4R sections of the secondary (turns relative to a half).
+R DCR_PT pt npt 40
+R DCR_PB pbm npb 40
+.param n16 = 2*1/sqrt(1900/16)
+.xfmr OT L=3.5 SAT=4.7
+  W npt a 1 pri
+  W a npb 1 pri
+  W t16 t8 0.2929*n16 sec
+  W t8 bk 0.2071*n16 sec
+  W bk 0 0.5*n16 sec
+  K pri pri 0.9998
+  K pri sec 0.9993
+  K sec sec 0.9998
+.end
+R RLOAD t16 0 16
+
+* Negative feedback from the 4 ohm tap, 27k with 220p across it.
+R R17 bk y 27k
+C C6 bk y 220p
+
+* HT supply: R37 100 ohm to the centre tap, the reservoir, screens and the preamp rail through R32.
+R T3 a sb 100
+C C22 sb 0 100u
+R R32 sb x 10k
+C C21X x 0 33u
+R RPREAMP x 0 56k

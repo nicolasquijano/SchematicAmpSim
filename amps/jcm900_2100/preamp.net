@@ -1,0 +1,120 @@
+* Marshall JCM900 Master Volume preamp (models 2500, 2501, 2502, 2100 and 2101), transcribed from drawing CD0109 issue 9
+* (18-9-90, PCB JMP51B onwards; drtube.com/schematics/marshall/cd0109-iss9.pdf).
+*
+* Signal path: V1a gain stage -> V1b (gain pot VR1 at its grid, partly bypassed cathode) -> V2a behind the second gain pot VR2 and
+* the clipping diodes -> V2b cathode follower -> Marshall tone stack -> TL072 buffer -> effects loop -> master volume op-amps
+* -> the power amp (CD0192, poweramp.net).
+*
+* Assumptions where the drawing is silent or ambiguous (change them here, not in code):
+*  - VR1 (B220k, "Gain 0-10"): its wiper is grounded, so the top section is the shunt of the divider with R13 at V1b's grid and the
+*    bottom section is a resistor in series with C15 (0.22u) from V1b's cathode to ground: turning it up raises the shunt and
+*    shortens that resistor. VR2 (A1M, "Gain 10-20") is a plain divider between R15 || C17 and 22k.
+*  - D1 (with the 2k7 R6) in V1b's cathode is drawn pointing from ground to the cathode, so it only conducts when the cathode
+*    goes below ground: modelled as drawn.
+*  - The clipping network at V2a's grid (BR1, a W005F bridge, plus the 1N4007 D2 wired between its two DC terminals): from the grid to
+*    ground, three diodes in series each way (about +-1.8 V).
+*  - The input protection (two 9V1 zeners back to back) only matters above 9 V and is left out.
+*  - The effects loop is bypassed (send into return, unity); the TL072 buffer IC1b after the tone stack is ideal, and so is the master
+*    section (IC1a with R9 = 220k over the loop's 220k: unity; IC2 a/b, 150k input and the master pot VR3 as the feedback
+*    resistor: gain = VR3 / 150k, both halves wired to the same output).
+*  - VR3 is the A1M master pot (log), the dual-gang B half is taken as the same value.
+*  - Supply: node x is HT behind the 10k 1W R32 of the power-amp drawing; R12 10k + C11 33u feed V2, R11 10k + C10 10u feed V1.
+
+.nodes x h2 h1 in i1 g1 p1 k1 c4 n1 c15 p2 k2 d1 a5 b5 s r14 dcp dcn p3 k3 k4 t w5 m n1t n2t wm tso bf mo gin pkb1 pkb2 pkk1 pkk2 pkk4
+
+* HT (node x) is driven from the power amp at run time; 490 V is the standalone default.
+V VRAIL x 100 490
+R R12 x h2 10k
+C C11 h2 0 33u
+R R11 h2 h1 10k
+C C10 h1 0 10u
+
+* The guitar behind a variable source resistance (see the other amps): RSRC is the plain 7k source.
+I VIN gin 1
+R RSRC gin in 7k
+R RPU1 gin pkb1 1e12
+.xfmr LPU1 L=2.5
+  W pkb1 in 1 pu
+.end
+R RPU2 gin pkb2 1e12
+.xfmr LPU2 L=5
+  W pkb2 in 1 pu
+.end
+C CPU gin in 110p
+R RPL gin in 1e12
+R SWK1 in pkk1 1e12
+C CCAB1 pkk1 0 200p
+R SWK2 in pkk2 1e12
+C CCAB2 pkk2 0 400p
+R SWK4 in pkk4 1e12
+C CCAB4 pkk4 0 800p
+
+* Input: R1 10k, 22n, 1M leak and V1a (2k7 with 0.68u across it).
+R R1 in i1 10k
+C C2 i1 g1 22n
+R R2 g1 0 1M
+T V1A g1 p1 k1 12AX7
+R R4 h1 p1 100k
+R R3 k1 0 2k7
+C C3 k1 0 0.68u
+C C22P p1 g1 22p
+
+* V1a -> V1b: 10n, 100k (R13) into V1b's grid with 220p to ground and the gain pot VR1 (see the assumptions).
+C C4 p1 c4 10n
+R R13 c4 n1 100k
+C C14 n1 0 220p
+R VR1_T n1 0 1
+R VR1_B 0 c15 1
+C C15 c15 k2 0.22u
+
+* V1b: 220k plate load, 3k3 cathode, D1 + 2k7 and 10p to V2a's grid network.
+T V1B n1 p2 k2 12AX7
+R R7 h1 p2 220k
+R R5 k2 0 3k3
+R R6 k2 d1 2k7
+D D1 0 d1 SIGNAL
+C C16 k2 s 10p
+
+* V1b -> V2a: 22n, 27k || 2n2, the second gain pot VR2 with 220p across its top section, 22k to ground.
+C C5 p2 a5 22n
+R R15 a5 b5 27k
+C C17 a5 b5 2n2
+C C18 b5 s 220p
+R VR2_T b5 s 1
+R VR2_B s r14 1
+R R14 r14 0 22k
+
+* The clipping network at V2a's grid: BR1 (W005F) plus D2 between its DC terminals.
+D DB1 s dcp SIGNAL
+D DB2 0 dcp SIGNAL
+D DB3 dcn s SIGNAL
+D DB4 dcn 0 SIGNAL
+D D2 dcp dcn SIGNAL
+
+* V2a (1k5 cathode, 47p grid to cathode) with its 150k load, V2b a cathode follower with 100k.
+T V2A s p3 k3 12AX7
+R R150 h2 p3 150k
+C C6 s k3 47p
+R R8 k3 0 1k5
+T V2B p3 h2 k4 12AX7
+R R18 k4 0 100k
+
+* Tone stack (same topology as the JCM800's): 470p to the treble pot, 33k slope, the bass pot as a variable resistor, the
+* mid pot's wiper taking its own 22n.
+C C21 k4 t 470p
+R R20 k4 m 33k
+R VR5_T t w5 1
+R VR5_B w5 n1t 1
+C C23 m n1t 22n
+R VR7 n1t n2t 1
+R VR6_T n2t wm 1
+R VR6_B wm 0 1
+C C22 m wm 22n
+R R19 w5 tso 470k
+R R17 tso 0 47k
+
+* Buffer (IC1b), the effects loop (bypassed) and the master volume: the output is the buffered signal times VR3 / 150k.
+R RBUF bf 0 1k
+G GBUF bf tso 0 1m
+R VR3 mo 0 1
+G GMAS mo bf 0 6.6667u

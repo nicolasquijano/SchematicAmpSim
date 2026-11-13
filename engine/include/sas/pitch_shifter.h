@@ -21,11 +21,14 @@ public:
     static constexpr double kCorrMs = 8.0;         // how much signal is compared when aligning a grain
     static constexpr double kRatioSmoothMs = 30.0; // the ratio glides so a change of pitch does not click
 
-    void prepare(double fs) {
+    // `windowMs` stretches the grain (and the search and the comparison with it): a longer grain keeps low notes whole (a grain should hold a couple
+    // of their periods) at the price of more delay. The default is what the rack's pitch shifter has always used.
+    void prepare(double fs, double windowMs = kWindowMs) {
         fs_ = fs;
-        window_ = kWindowMs * 0.001 * fs;
-        search_ = std::max<std::size_t>(8, std::size_t(kSearchMs * 0.001 * fs));
-        corr_ = std::max<std::size_t>(16, std::size_t(kCorrMs * 0.001 * fs));
+        const double k = windowMs / kWindowMs;
+        window_ = windowMs * 0.001 * fs;
+        search_ = std::max<std::size_t>(8, std::size_t(kSearchMs * k * 0.001 * fs));
+        corr_ = std::max<std::size_t>(16, std::size_t(kCorrMs * k * 0.001 * fs));
         std::size_t size = 1;
         while (size < std::size_t(window_) + search_ + corr_ + 8) size <<= 1;
         buf_.assign(size, 0.0f);

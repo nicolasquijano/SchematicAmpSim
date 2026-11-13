@@ -88,6 +88,10 @@ target_link_libraries(sas_jc_check PRIVATE sas_engine sas_amps)
 # The Klon-style drive: level and gain behaviour of the circuit.
 add_executable(sas_klon_check klon_check.cpp)
 target_link_libraries(sas_klon_check PRIVATE sas_engine)
+add_executable(sas_drive_check drive_check.cpp)
+target_link_libraries(sas_drive_check PRIVATE sas_engine)
+add_executable(sas_amp_response amp_response.cpp)
+target_link_libraries(sas_amp_response PRIVATE sas_engine sas_amps)
 
 # The Leslie and the spring reverb modules: the sway between the channels and the tail of each tank.
 add_executable(sas_leslie_spring_check leslie_spring_check.cpp)

@@ -153,9 +153,9 @@ private:
     void design() {
         type_ = target_.type;
         const auto& m = modes(type_);
-        const double b = std::clamp(body_, 0.0, 1.0) * 1.6;
+        const double b = std::clamp(body_, 0.0, 1.0) * 2.6;  // the modes at full Body reach 2.6 times the table (it was 1.6: the effect was too mild)
         coef_[0] = highpass(type_ == 3 ? 50.0 : 70.0);
-        for (int i = 0; i < kModes; ++i) coef_[std::size_t(1 + i)] = peaking(m[std::size_t(i)].hz, m[std::size_t(i)].q, m[std::size_t(i)].db * b);
+        for (int i = 0; i < kModes; ++i) coef_[std::size_t(1 + i)] = peaking(m[std::size_t(i)].hz, m[std::size_t(i)].q * 0.75, m[std::size_t(i)].db * b);
         coef_[std::size_t(1 + kModes)] = highShelf(3500.0, (std::clamp(top_, 0.0, 1.0) - 0.5) * 16.0);
         coef_[std::size_t(2 + kModes)] = highShelf(9000.0, std::clamp(air_, 0.0, 1.0) * 8.0);
         // The average gain of the shaping filters over the guitar's range (80 Hz to 6 kHz, even on a log scale).

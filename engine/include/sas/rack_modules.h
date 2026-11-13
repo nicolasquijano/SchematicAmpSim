@@ -3,6 +3,7 @@
 // the plugin used to apply by hand in processBlock (when an effect is skipped, when a model is reset, the ramps of a gain).
 
 #include <algorithm>
+#include <array>
 #include <atomic>
 #include <cmath>
 #include <memory>
@@ -17,12 +18,20 @@
 #include "sas/chorus.h"
 #include "sas/limiter.h"
 #include "sas/tape.h"
+#include "sas/bbd.h"
+#include "sas/bitcrusher.h"
+#include "sas/layers.h"
+#include "sas/ten_band_eq.h"
+#include "sas/octaver.h"
+#include "sas/harmonist.h"
 #include "sas/fuzz.h"
 #include "sas/flanger.h"
 #include "sas/tremolo.h"
 #include "sas/wah.h"
 #include "sas/compressor.h"
+#include "sas/comp_models.h"
 #include "sas/delay.h"
+#include "sas/drive_circuit.h"
 #include "sas/eq.h"
 #include "sas/gate.h"
 #include "sas/nam_model.h"
@@ -103,6 +112,8 @@ using TremoloModule = FxModule<Tremolo, TremoloParams, Channels::Flexible>;  // 
 using FlangerModule = MixFxModule<Flanger, FlangerParams, Channels::Flexible>;
 using WahModule = FxModule<Wah, WahParams, Channels::Flexible>;
 using BoostModule = FxModule<Boost, BoostParams, Channels::Flexible>;
+using TenBandEqModule = FxModule<TenBandEq, TenBandEqParams, Channels::Flexible>;
+using OctaverModule = FxModule<Octaver, OctaverParams, Channels::MonoOnly>;  // (monophonic, like the pedal: a stereo pair is summed first)
 using AcousticModule = MixFxModule<Acoustic, AcousticParams, Channels::Flexible>;
 using LeslieModule = FxModule<Leslie, LeslieParams, Channels::MonoToStereo>;  // (it has its own Mix)
 using SpringReverbModule = FxModule<SpringReverb, SpringReverbParams, Channels::Stereo>;  // (it has its own Mix)
@@ -124,6 +135,9 @@ private:
 };
 using EqModule = FxModule<ParametricEq, EqParams, Channels::Stereo>;
 using DelayModule = FxModule<StereoDelay, DelayParams, Channels::Stereo>;
+using BitcrusherModule = MixFxModule<Bitcrusher, BitcrusherParams, Channels::Flexible>;
+using LayersModule = FxModule<Layers, LayersParams, Channels::Stereo>;
+using BbdDelayModule = FxModule<BbdDelay, BbdParams, Channels::Stereo>;
 using TapeEchoModule = FxModule<TapeEcho, TapeParams, Channels::Stereo>;
 using ReverbModule = FxModule<PlateReverb, PlateParams, Channels::Stereo>;
 
@@ -149,24 +163,38 @@ private:
 // The compressor pedal circuit at the host rate. The circuit is only touched while it is on.
 class CompressorModule final : public Module {
 public:
-    void prepare(double fs, int) override { comp_ = std::make_unique<Compressor>(fs); }
+    void prepare(double fs, int) override {
+        comp_ = std::make_unique<Compressor>(fs);
+        alt_.prepare(fs);
+    }
     void process(float* l, float*, std::size_t n) override {
-        for (std::size_t i = 0; i < n; ++i) l[i] = float(comp_->process(double(l[i])));
+        if (controls_.model == 0) {
+            for (std::size_t i = 0; i < n; ++i) l[i] = float(comp_->process(double(l[i])));
+        } else {
+            for (std::size_t i = 0; i < n; ++i) l[i] = alt_.process(l[i]);
+        }
     }
     bool active() const override { return on_ && comp_; }
     bool buffered() const override { return true; }
-    Fusion fusion() const override { return Fusion::Compressor; }
+    // Only the Keeley circuit is run by the amp (its chain has the circuit); the other models are a module of their own, like the overdrive circuits.
+    Fusion fusion() const override { return controls_.model == 0 ? Fusion::Compressor : Fusion::None; }
     Channels channels() const override { return Channels::MonoOnly; }
-    void reset() override {}
+    void reset() override { alt_.reset(); }
     const CompControls& controls() const { return controls_; }
     void setParams(bool on, const CompControls& c) {
+        const bool modelChanged = c.model != controls_.model;
         controls_ = c;
         on_ = on;
-        if (on && comp_) comp_->setControls(c);
+        if (modelChanged) alt_.reset();  // a new model starts from rest
+        if (on && comp_) {
+            if (c.model == 0) comp_->setControls(c);
+            else alt_.setControls(c);
+        }
     }
 
 private:
     std::unique_ptr<Compressor> comp_;
+    PedalCompressor alt_;
     CompControls controls_;
     bool on_ = false;
 };
@@ -210,12 +238,17 @@ private:
     Fuzz dsp_;
 };
 
-// A Tube Screamer of its own, at twice the host rate (the one the amp runs inside its oversampled loop is not this one).
+// The overdrive pedal, at twice the host rate (the one the amp runs inside its oversampled loop is not this one): a Tube Screamer (the analytic model; fused into the amp
+// when it sits right before it), or the circuits of an SD-1 style, a BD-2 style and a RAT style pedal (sas/drive_circuit.h; those run as a module of their own). All three take drive,
+// tone and level.
 class OverdriveModule final : public Module {
 public:
     void prepare(double fs, int) override {
         fs_ = fs;
         ts_ = std::make_unique<TubeScreamerFast>(fs * 2.0);
+        sd1_ = std::make_unique<DriveCircuit>(DriveModel::SuperOverdrive, fs);
+        bd2_ = std::make_unique<DriveCircuit>(DriveModel::BluesDriver, fs);
+        rat_ = std::make_unique<DriveCircuit>(DriveModel::Rat, fs);
         os_.reset();
         drive_.reset(target_.drive, fs, 40.0);
         tone_.reset(target_.tone, fs, 40.0);
@@ -223,22 +256,40 @@ public:
     }
     void process(float* l, float*, std::size_t n) override {
         constexpr std::size_t kControlEvery = 32;
-        for (std::size_t i = 0; i < n; ++i) {
-            if (i % kControlEvery == 0) {
-                const double steps = double(kControlEvery);
-                ts_->setControls({std::clamp(drive_.nextStep(steps), 0.0, 1.0), std::clamp(tone_.nextStep(steps), 0.0, 1.0),
-                                  std::clamp(level_.nextStep(steps), 0.0, 1.0)});
+        DriveCircuit* circuit = model_ == DriveModel::SuperOverdrive ? sd1_.get() : model_ == DriveModel::BluesDriver ? bd2_.get() : model_ == DriveModel::Rat ? rat_.get() : nullptr;
+        for (std::size_t i = 0; i < n; i += kControlEvery) {
+            const std::size_t m = std::min(kControlEvery, n - i);
+            const double steps = double(kControlEvery);
+            const TsControls c{std::clamp(drive_.nextStep(steps), 0.0, 1.0), std::clamp(tone_.nextStep(steps), 0.0, 1.0), std::clamp(level_.nextStep(steps), 0.0, 1.0)};
+            if (circuit) {
+                circuit->setControls(c);
+                circuit->process(l + i, m);
+            } else {
+                ts_->setControls(c);
+                for (std::size_t j = 0; j < m; ++j) l[i + j] = os_.process(l[i + j], [&](float s) { return float(ts_->process(double(s))); });
             }
-            l[i] = os_.process(l[i], [&](float s) { return float(ts_->process(double(s))); });
         }
     }
     bool active() const override { return on_ && ts_; }
     bool buffered() const override { return true; }
-    Fusion fusion() const override { return Fusion::Overdrive; }
+    // Only the Tube Screamer is run by the amp (its analytic model is in the chain's front end); the circuits are modules of their own.
+    Fusion fusion() const override { return model_ == DriveModel::TubeScreamer ? Fusion::Overdrive : Fusion::None; }
     const TsControls& controls() const { return target_; }
+    DriveModel model() const { return model_; }
     Channels channels() const override { return Channels::MonoOnly; }
     double latencySamples() const override { return double(os_.latencySamples()); }
-    void reset() override { os_.reset(); }
+    void reset() override {
+        os_.reset();
+        if (sd1_) sd1_->reset();
+        if (bd2_) bd2_->reset();
+        if (rat_) rat_->reset();
+    }
+    // The pedal model (a change starts the new one from rest).
+    void setModel(DriveModel m) {
+        if (m == model_) return;
+        model_ = m;
+        reset();
+    }
     void setParams(bool on, const TsControls& c) {
         on_ = on;
         target_ = c;
@@ -256,7 +307,63 @@ public:
 private:
     double fs_ = 48000.0;
     std::unique_ptr<TubeScreamerFast> ts_;
+    std::unique_ptr<DriveCircuit> sd1_, bd2_, rat_;
+    DriveModel model_ = DriveModel::TubeScreamer;
     Oversampler os_{1};
+    Smoother drive_, tone_, level_;
+    TsControls target_;
+    bool on_ = false;
+};
+
+// The distortion pedals of the Distortion module (the circuits of sas/drive_circuit.h from DriveModel::Ds1 on), mono, in front of the amp. Like the overdrive circuits they take drive,
+// tone and level, buffer the guitar and run at their own oversampled rate; the amp does not run them.
+class DistortionModule final : public Module {
+public:
+    void prepare(double fs, int) override {
+        fs_ = fs;
+        for (int i = 0; i < kDistortionModelCount; ++i) circuit_[std::size_t(i)] = std::make_unique<DriveCircuit>(DriveModel(int(DriveModel::Ds1) + i), fs);
+        drive_.reset(target_.drive, fs, 40.0);
+        tone_.reset(target_.tone, fs, 40.0);
+        level_.reset(target_.level, fs, 40.0);
+    }
+    void process(float* l, float*, std::size_t n) override {
+        constexpr std::size_t kControlEvery = 32;
+        DriveCircuit* c = circuit_[std::size_t(model_)].get();
+        if (!c) return;
+        for (std::size_t i = 0; i < n; i += kControlEvery) {
+            const std::size_t m = std::min(kControlEvery, n - i);
+            const double steps = double(kControlEvery);
+            c->setControls({std::clamp(drive_.nextStep(steps), 0.0, 1.0), std::clamp(tone_.nextStep(steps), 0.0, 1.0), std::clamp(level_.nextStep(steps), 0.0, 1.0)});
+            c->process(l + i, m);
+        }
+    }
+    bool active() const override { return on_ && circuit_[std::size_t(model_)]; }
+    bool buffered() const override { return true; }
+    Channels channels() const override { return Channels::MonoOnly; }
+    double latencySamples() const override { return circuit_[std::size_t(model_)] ? double(circuit_[std::size_t(model_)]->latencySamples()) : 0.0; }
+    void reset() override {
+        for (auto& c : circuit_)
+            if (c) c->reset();
+    }
+    // The pedal model (a change starts the new one from rest).
+    void setModel(int m) {
+        m = std::clamp(m, 0, kDistortionModelCount - 1);
+        if (m == model_) return;
+        model_ = m;
+        reset();
+    }
+    void setParams(bool on, const TsControls& c) {
+        on_ = on;
+        target_ = c;
+        drive_.setTarget(c.drive);
+        tone_.setTarget(c.tone);
+        level_.setTarget(c.level);
+    }
+
+private:
+    double fs_ = 48000.0;
+    std::array<std::unique_ptr<DriveCircuit>, kDistortionModelCount> circuit_;
+    int model_ = 0;
     Smoother drive_, tone_, level_;
     TsControls target_;
     bool on_ = false;
@@ -308,6 +415,21 @@ private:
     bool active_ = false;
 };
 
+// The harmonizer (sas/harmonist.h): it delays the guitar to line it up with its voices, and adds that delay only while it is on.
+class HarmonistModule final : public Module {
+public:
+    void prepare(double fs, int) override { dsp_.prepare(fs); }
+    void process(float* l, float*, std::size_t n) override { dsp_.process(l, nullptr, n); }
+    bool active() const override { return dsp_.active(); }
+    Channels channels() const override { return Channels::MonoOnly; }
+    double latencySamples() const override { return dsp_.active() ? dsp_.latencySamples() : 0.0; }
+    void reset() override { dsp_.reset(); }
+    void setParams(const HarmonistParams& p) { dsp_.setParams(p); }
+
+private:
+    Harmonist dsp_;
+};
+
 // The two ends of a parallel: the rack itself runs the lanes between them. The splitter has nothing to say; the mixer keeps the levels, the pans and
 // the phase of the two lanes.
 class SplitterModule final : public Module {
@@ -337,9 +459,14 @@ private:
 // plugin, which builds a new one off the audio thread when the amp or its condition changes and swaps it in with setChain().
 class AmpModule final : public Module {
 public:
-    void prepare(double, int) override {}
+    void prepare(double fs, int maxBlock) override {
+        step_ = float(1.0 / (0.008 * fs));  // 8 ms to fade the amp in or out
+        dry_.assign(std::size_t(std::max(1, maxBlock)), 0.0f);
+    }
     void process(float* l, float*, std::size_t n) override;
-    bool active() const override { return chain_.load() != nullptr; }
+    // The amp can be switched off: the rack then skips it (and the pedals next to it run on their own), after a short fade to the dry signal.
+    bool active() const override { return chain_.load() != nullptr && (on_.load() || gain_.load() > 0.0f); }
+    void setOn(bool on) { on_.store(on); }
     Channels channels() const override { return Channels::MonoOnly; }
     double latencySamples() const override {
         const Chain* c = chain_.load();
@@ -364,6 +491,10 @@ public:
 private:
     void compose();
     std::atomic<Chain*> chain_{nullptr};
+    std::atomic<bool> on_{true};
+    std::atomic<float> gain_{1.0f};  // how much of the amp is in the signal: 1 on, 0 off, in between while it fades
+    float step_ = 0.005f;
+    std::vector<float> dry_;
     ChainSettings base_, work_;
     Module *comp_ = nullptr, *ts_ = nullptr;
     bool pedalBefore_ = false;

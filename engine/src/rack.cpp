@@ -7,7 +7,7 @@
 namespace sas {
 
 namespace {
-constexpr const char* kNames[kModuleTypeCount] = {"Amp", "Cabinet", "Gate", "Compressor", "Overdrive", "NamPedal", "Phaser", "Chorus", "Vibe", "Pitch", "Eq", "Delay", "Reverb", "Splitter", "Mixer", "Tremolo", "Flanger", "Wah", "Fuzz", "Boost", "Limiter", "TapeEcho", "Acoustic", "Klon", "Leslie", "SpringReverb"};
+constexpr const char* kNames[kModuleTypeCount] = {"Amp", "Cabinet", "Gate", "Compressor", "Overdrive", "NamPedal", "Phaser", "Chorus", "Vibe", "Pitch", "Eq", "Delay", "Reverb", "Splitter", "Mixer", "Tremolo", "Flanger", "Wah", "Fuzz", "Boost", "Limiter", "TapeEcho", "Acoustic", "Klon", "Leslie", "SpringReverb", "TenBandEq", "Octaver", "Harmonist", "BbdDelay", "Bitcrusher", "Layers", "Distortion"};
 }
 
 const char* moduleTypeName(ModuleType t) { return kNames[std::size_t(t)]; }
@@ -29,12 +29,16 @@ Channels moduleChannels(ModuleType type) {
         case ModuleType::Wah:
         case ModuleType::Boost:
         case ModuleType::Acoustic:
+        case ModuleType::TenBandEq:
+        case ModuleType::Bitcrusher:
         case ModuleType::Limiter: return Channels::Flexible;
         case ModuleType::Leslie: return Channels::MonoToStereo;
         case ModuleType::SpringReverb:
         case ModuleType::Eq:
         case ModuleType::Delay:
         case ModuleType::TapeEcho:
+        case ModuleType::BbdDelay:
+        case ModuleType::Layers:
         case ModuleType::Reverb: return Channels::Stereo;
         default: return Channels::MonoOnly;
     }

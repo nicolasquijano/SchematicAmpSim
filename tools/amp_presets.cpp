@@ -56,11 +56,11 @@ const std::vector<Recipe>& recipes() {
             {"Edge of breakup", 3, "input", "volume2", {{"volume", 7}, {"bass", 5}, {"middle", 5}, {"treble", 6}}, {{"channel", 0}, {"classic_mode", 1}}},
             {"Crunch", 7, "input", "clean_gain", {{"clean_volume", 7}, {"bass", 5}, {"middle", 5}, {"treble", 6}}, {{"channel", 1}, {"ultra_mode", 0}}, 0.05},
             {"Lead", 13, "input", "clean_gain", {{"clean_volume", 7}, {"bass", 5}, {"middle", 6}, {"treble", 6}}, {{"channel", 1}, {"ultra_mode", 1}}, 0.05}}},
-        {"german_preamp530", {}, {
-            {"Clean", 0.8, "input", "clean_gain", {{"clean_volume", 6}, {"clean_treble", 6}, {"clean_middle", 5}, {"clean_bass", 5}}, {{"channel", 0}}, 0.05},
-            {"Edge of breakup", 3, "input", "clean_gain", {{"clean_volume", 6}, {"clean_treble", 6}, {"clean_middle", 5}, {"clean_bass", 5}}, {{"channel", 0}}, 0.05},
-            {"Crunch", 7, "input", "volume2", {{"volume", 6}, {"treble", 6}, {"middle", 5}, {"bass", 5}, {"clean_presence", 8}}, {{"channel", 1}}, 0.05},
-            {"Lead", 13, "input", "volume2", {{"volume", 6}, {"treble", 6}, {"middle", 6}, {"bass", 5}, {"clean_presence", 8}}, {{"channel", 2}}, 0.05}}},
+        {"german_ultra", {}, {
+            {"Clean", 0.8, "input", "clean_gain", {{"clean_volume", 10}, {"clean_treble", 6}, {"clean_middle", 5}, {"clean_bass", 5}, {"master", 10}}, {{"channel", 1}}, 0.05},
+            {"Edge of breakup", 3, "input", "clean_gain", {{"clean_volume", 10}, {"clean_treble", 6}, {"clean_middle", 5}, {"clean_bass", 5}, {"master", 10}}, {{"channel", 1}}, 0.05},
+            {"Crunch", 7, "input", "volume2", {{"volume", 5}, {"master", 5}, {"treble", 6}, {"middle", 5}, {"bass", 5}}, {{"channel", 0}}, 0.05},
+            {"Lead", 13, "input", "volume2", {{"volume", 5}, {"master", 5}, {"treble", 6}, {"middle", 6}, {"bass", 5}}, {{"channel", 0}}, 0.05}}},
         {"bassman_5f6a", {}, {
             {"Clean", 0.8, "normal1", "volume2", {{"bass", 4}, {"middle", 6}, {"treble", 6}}, {}},
             {"Edge of breakup", 3, "normal1", "volume2", {{"bass", 4}, {"middle", 6}, {"treble", 6}}, {}},
@@ -199,13 +199,17 @@ double compression(const sas::AmpDef& def, const State& st, double hz, double vo
         sas::FullAmp a(def, kFs, false, true);
         a.setKnobs(knobs, presence, power);
         a.setJack(def.jackIndex(st.jack));
+        double selDb = 0.0;  // the level the selected positions ask for at the input (level_db of a selector position)
         for (const auto& [name, pos] : st.sel)
             for (std::size_t i = 0; i < def.preamp.selectors.size(); ++i)
-                if (def.preamp.selectors[i].name == name) a.setSelector(i, std::size_t(pos));
+                if (def.preamp.selectors[i].name == name) {
+                    a.setSelector(i, std::size_t(pos));
+                    selDb += def.preamp.selectors[i].positions[std::size_t(pos)].levelDb;
+                }
         const std::size_t n = std::size_t(kFs * 0.45);
         std::vector<double> y(n);
         // The chain applies the jack's level compensation at the amp's input (the jacks play at a similar level).
-        const double jackGain = std::pow(10.0, def.preamp.jacks[def.jackIndex(st.jack)].levelDb / 20.0);
+        const double jackGain = std::pow(10.0, (def.preamp.jacks[def.jackIndex(st.jack)].levelDb + selDb) / 20.0);
         for (std::size_t i = 0; i < n; ++i) y[i] = a.process(jackGain * vin[v] * std::sin(2 * kPi * hz * double(i) / kFs));
         out[v] = fundamental(y, n / 2, hz);
     }

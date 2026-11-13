@@ -1,0 +1,52 @@
+* RAT-style distortion (the ProCo RAT kind), from the General Guitar Gadgets "Rodent" drawing (version 2012 January 20) of the circuit: an LM308 op-amp as a non-inverting gain stage
+* with the DISTORTION pot in its feedback, two antiparallel 1N914 diodes to ground after the output coupling, the passive FILTER (a 100k pot with 1.5k and 3.3n), and a JFET follower
+* with the VOLUME pot. 9 V supply, the bias at 4.5 V (VB: R15 / R16 10k with 47u).
+*
+* Input: R17 1M at the jack, C1 .022u, R1 1M to the bias, R2 1k and C2 .001u into the + input (about 500k of load for the guitar). Gain stage: feedback R3 (100k log, VRG, used as a variable
+* resistor) with C3 100p across it; the inverting leg is two branches to ground, R4 560 with C5 4.7u and R5 47 with C6 2.2u, so the gain runs from 1 to about 2300 (67 dB) and the
+* high frequencies are limited by the LM308's gain-bandwidth (about 1 MHz with C4 30p, which the LM308 model carries). Output: R6 1k, C7 4.7u, the diodes D1 / D2, then the FILTER: VR_F (R7, the
+* pot as a variable resistor: clockwise darker) in series with R8 1.5k and C8 3.3n to ground. Output stage: C9 .022u, R9 1M (the gate bias is taken to the 4.5 V bias here, 2.8 V on the drawing),
+* the 2N5458 JFET as an ideal follower (R10 10k), C10 1u and the VOLUME pot R11 (100k log, VR_VT and VR_VB).
+* Assumptions: the diodes are 1N914 (the drawing says so; the model is the SIGNAL diode); the LM308's slew limit is not modelled (only its gain-bandwidth); the JFET follower has unity gain
+* (about 0.95 in reality); the filter node has a 10M bleed so it has a DC path.
+
+V VB vb 1 4.5
+C CB vb 0 47u
+
+I VIN gin 1
+R R17 gin 0 1M
+C C1 gin a 0.022u
+R R1 a vb 1M
+R R2 a b 1k
+C C2 b vb 0.001u
+
+* The LM308 gain stage.
+O U1 b inv o vb LM308
+R VRG o inv 1
+C C3 o inv 100p
+R R4 inv i4 560
+C C5 i4 vb 4.7u
+R R5 inv i5 47
+C C6 i5 vb 2.2u
+
+* Clipping and filter.
+R R6 o r6 1k
+C C7 r6 d 4.7u
+D D1 d 0 SIGNAL
+D D2 0 d SIGNAL
+R RBLEED d 0 10M
+R VR_F d f1 1
+R R8 f1 t 1.5k
+C C8 t 0 3.3n
+R RBT t 0 10M
+
+* Output: the JFET follower and VOLUME.
+C C9 t g 0.022u
+R R9 g vb 1M
+O UJ g nj q vb RC4558
+R RJF q nj 1
+R R10 q vb 10k
+C C10 q c10 1u
+R VR_VT c10 y 1
+R VR_VB y 0 1
+R RLOAD y 0 1M

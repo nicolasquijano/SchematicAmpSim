@@ -101,6 +101,43 @@ TEST_CASE("overdrive module equals the pedal wired through a 2x oversampler and 
     for (float v : hot) REQUIRE(std::isfinite(v));
 }
 
+TEST_CASE("overdrive module models: the SD-1 and BD-2 circuits equal what they wrap, are not fused into the amp, and each sounds different", "[rack]") {
+    const TsControls ctl{0.6, 0.5, 0.5};
+    std::vector<std::vector<float>> outs;
+    for (DriveModel model : {DriveModel::TubeScreamer, DriveModel::SuperOverdrive, DriveModel::BluesDriver, DriveModel::Rat}) {
+        OverdriveModule m;
+        m.prepare(kFs, int(kBlock));
+        m.setModel(model);
+        m.setParams(true, ctl);
+        m.snapControls();
+        CHECK(m.model() == model);
+        CHECK((m.fusion() == Fusion::Overdrive) == (model == DriveModel::TubeScreamer));
+        auto x = guitar(0.1);
+        run(m, x, nullptr);
+        for (float v : x) REQUIRE(std::isfinite(v));
+        outs.push_back(x);
+        if (model != DriveModel::TubeScreamer) {
+            DriveCircuit c(model, kFs);
+            auto y = guitar(0.1);
+            // The module feeds the controls in blocks of 32 samples; the circuit takes the same controls from the start.
+            c.setControls(ctl);
+            c.process(y.data(), y.size());
+            double err = 0, ref = 0;
+            for (std::size_t i = kLen / 2; i < kLen; ++i) { err += double(x[i] - y[i]) * (x[i] - y[i]); ref += double(y[i]) * y[i]; }
+            CHECK(err < 1e-3 * ref);
+            auto hot = guitar(2.0);
+            run(m, hot, nullptr);
+            for (float v : hot) REQUIRE(std::isfinite(v));
+        }
+    }
+    auto rms = [](const std::vector<float>& v) { double s = 0; for (std::size_t i = v.size() / 2; i < v.size(); ++i) s += double(v[i]) * v[i]; return std::sqrt(s / double(v.size() / 2)); };
+    for (const auto& o : outs) CHECK(rms(o) > 1e-3);  // each one passes sound
+    auto diff = [&](const std::vector<float>& a, const std::vector<float>& b) { double s = 0; for (std::size_t i = a.size() / 2; i < a.size(); ++i) s += double(a[i] - b[i]) * (a[i] - b[i]); return std::sqrt(s / double(a.size() / 2)); };
+    CHECK(diff(outs[0], outs[1]) > 0.05 * rms(outs[0]));
+    CHECK(diff(outs[1], outs[2]) > 0.05 * rms(outs[1]));
+    CHECK(diff(outs[2], outs[3]) > 0.05 * rms(outs[2]));
+}
+
 TEST_CASE("modulation, eq, delay and reverb modules equal their effects", "[rack]") {
     SECTION("phaser (flexible: mono and stereo)") {
         Phaser ref;

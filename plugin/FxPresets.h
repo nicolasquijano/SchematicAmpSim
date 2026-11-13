@@ -131,6 +131,7 @@ struct WahPreset {
     bool down;                                        // envelope: the loud notes close it
     double rateHz;                                    // LFO
     bool stereo;
+    int filter = 0;                                   // 0 band-pass, 1 low-pass, 2 high-pass
 };
 
 inline constexpr WahPreset kWahPresets[] = {
@@ -155,5 +156,13 @@ inline constexpr WahPreset kWahPresets[] = {
     {"Slow sweep", true, 2, 50, 350, 1800, 3, 100, 3, 50, 8, 120, false, 0.4, false},
     // A fast swirl, a different phase in each ear.
     {"Stereo swirl", true, 2, 50, 400, 2600, 4, 100, 3, 50, 8, 120, false, 2.8, true},
+    // An envelope filter in the funk manner: a low-pass that every note throws open and that falls back dull.
+    {"Envelope low-pass", true, 1, 50, 200, 2600, 5, 100, 0, 65, 4, 160, false, 1.0, false, 1},
+    // The same on its way down: the loud notes close the low-pass, a soft "wow" at the start of each one.
+    {"Low-pass duck", true, 1, 50, 200, 2400, 4, 100, 0, 55, 3, 180, true, 1.0, false, 1},
+    // A high-pass that thins the sound as it opens: a bright, hollow auto-filter.
+    {"Envelope high-pass", true, 1, 50, 250, 3000, 3, 100, 0, 60, 4, 140, false, 1.0, false, 2},
+    // A slow sweep of a low-pass: the sound rises and falls from dull to bright on its own.
+    {"Low-pass sweep", true, 2, 50, 200, 2400, 3.5, 100, 0, 50, 8, 120, false, 0.3, false, 1},
 };
 inline constexpr int kWahPresetCount = int(sizeof(kWahPresets) / sizeof(kWahPresets[0]));

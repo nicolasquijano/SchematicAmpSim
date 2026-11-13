@@ -4,7 +4,7 @@
 // second, the heavy drum in several: the "ramp" of the real thing), and two microphones, 120 degrees apart, hear it: as the horn turns the distance to each
 // microphone changes (a Doppler shift: the delay swings by about half a millisecond) and so does how much of the sound points at it (the tremolo), so the sound
 // sways from one side to the other. Speed: Stop (the brake), Slow (chorale) or Fast (tremolo). Depth scales the Doppler and the tremolo of both. Balance sets horn
-// against rotor. Mix is how much of the speaker is in the output. Mono in (a stereo pair is summed), stereo out. Switching it on or off fades over 20 ms.
+// against rotor. Width opens the two microphones apart (the two channels then sway against each other) and narrows the horn's beam. Mix is how much of the speaker is in the output. Mono in (a stereo pair is summed), stereo out. Switching it on or off fades over 20 ms.
 
 #include <algorithm>
 #include <array>
@@ -20,6 +20,7 @@ struct LeslieParams {
     double depth = 0.7;    // 0 .. 1
     double balance = 0.5;  // 0 .. 1: 0 all rotor, 1 all horn
     double mix = 1.0;      // 0 .. 1
+    double width = 0.7;    // 0 .. 1: the stereo image: the angle between the microphones (30 to 180 degrees) and how narrow the horn's beam is
 };
 
 class Leslie {
@@ -62,11 +63,13 @@ public:
         const double depth = std::clamp(target_.depth, 0.0, 1.0);
         const double hornA = 0.00045 * depth * fs_, drumA = 0.0003 * depth * fs_;  // Doppler swing in samples
         const double hornAm = 0.65 * depth, drumAm = 0.4 * depth;                  // tremolo depth
-        const double hornGain = 2.0 * std::clamp(target_.balance, 0.0, 1.0) / (1.0 - 0.5 * hornAm);
+        const double width = std::clamp(target_.width, 0.0, 1.0);
+        const double meanLobe = 0.5 - 0.125 * width;  // the mean of the horn's beam shape u * ((1 - width) + width * u), u in 0..1
+        const double hornGain = 2.0 * std::clamp(target_.balance, 0.0, 1.0) / (1.0 - hornAm + hornAm * meanLobe);
         const double drumGain = 2.0 * (1.0 - std::clamp(target_.balance, 0.0, 1.0)) / (1.0 - 0.5 * drumAm);
         const double mix = std::clamp(target_.mix, 0.0, 1.0);
         const double centreH = 0.0012 * fs_, centreD = 0.0012 * fs_;  // rest delay, so the swing never goes negative
-        const double micOffset = kPi / 3.0;                           // the two microphones are 120 degrees apart
+        const double micOffset = kPi / 12.0 + width * (kPi / 2.0 - kPi / 12.0);  // half the angle between the microphones: 15 degrees (nearly mono) to 90 (180 apart)
         for (std::size_t i = 0; i < n; ++i) {
             amount_ += ((target_.on ? 1.0 : 0.0) - amount_) * kAmount;
             rate_[0] += (hornTarget - rate_[0]) * kHorn;
@@ -86,8 +89,9 @@ public:
             const double dL = read(buf_[1], double(w_) - (centreD + drumA * std::sin(pd + micOffset)));
             const double dR = read(buf_[1], double(w_) - (centreD + drumA * std::sin(pd - micOffset)));
             ++w_;
-            const double amHL = 1.0 - hornAm + hornAm * (0.5 + 0.5 * std::cos(ph + micOffset));
-            const double amHR = 1.0 - hornAm + hornAm * (0.5 + 0.5 * std::cos(ph - micOffset));
+            auto beam = [&](double a) { const double u = 0.5 + 0.5 * std::cos(a); return u * ((1.0 - width) + width * u); };  // the horn's beam, narrower with Width
+            const double amHL = 1.0 - hornAm + hornAm * beam(ph + micOffset);
+            const double amHR = 1.0 - hornAm + hornAm * beam(ph - micOffset);
             const double amDL = 1.0 - drumAm + drumAm * (0.5 + 0.5 * std::cos(pd + micOffset));
             const double amDR = 1.0 - drumAm + drumAm * (0.5 + 0.5 * std::cos(pd - micOffset));
             const double wl = hL * amHL * hornGain + dL * amDL * drumGain;

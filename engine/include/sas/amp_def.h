@@ -48,6 +48,7 @@ struct SelectorPositionDef {
     std::vector<std::pair<std::string, double>> resistors;
     std::vector<std::pair<std::string, double>> potTotals;  // knob name -> the total resistance of its pot in this position (a different pot fitted)
     double nfbOhms = 0.0;  // > 0: the power amp's feedback resistor (power.nfb_resistor) takes this value in this position (a channel with its feedback switched off)
+    double levelDb = 0.0;  // gain at the amp's input in this position (a channel that is far hotter or quieter than the others: it keeps its gain knob's range useful)
 };
 struct SelectorDef {
     static constexpr std::size_t kMax = 6;  // how many selectors an amp can have (the plugin has that many parameters)

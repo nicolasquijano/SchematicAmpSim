@@ -15,7 +15,7 @@ namespace {
 
 // Caps (docs/MODULAR_RACK.md, 4.1; the CPU table in section 6 holds them).
 constexpr int kCaps[sas::kModuleTypeCount] = {2 /*Amp*/, 2 /*Cabinet*/, 2 /*Gate*/, 2 /*Compressor*/, 4 /*Overdrive*/, 2 /*NamPedal*/, 2 /*Phaser*/,
-                                              2 /*Chorus*/, 2 /*Vibe*/, 2 /*Pitch*/, 2 /*Eq*/, 2 /*Delay*/, 2 /*Reverb*/, 1 /*Splitter*/, 1 /*Mixer*/, 2 /*Tremolo*/, 2 /*Flanger*/, 2 /*Wah*/, 2 /*Fuzz*/, 2 /*Boost*/, 2 /*Limiter*/, 2 /*TapeEcho*/, 2 /*Acoustic*/, 2 /*Klon*/, 2 /*Leslie*/, 2 /*SpringReverb*/};
+                                              2 /*Chorus*/, 2 /*Vibe*/, 2 /*Pitch*/, 2 /*Eq*/, 2 /*Delay*/, 2 /*Reverb*/, 1 /*Splitter*/, 1 /*Mixer*/, 2 /*Tremolo*/, 2 /*Flanger*/, 2 /*Wah*/, 2 /*Fuzz*/, 2 /*Boost*/, 2 /*Limiter*/, 2 /*TapeEcho*/, 2 /*Acoustic*/, 2 /*Klon*/, 2 /*Leslie*/, 2 /*SpringReverb*/, 2 /*TenBandEq*/, 2 /*Octaver*/, 2 /*Harmonist*/, 2 /*BbdDelay*/, 2 /*Bitcrusher*/, 2 /*Layers*/, 2 /*Distortion*/};
 
 // Mono: both channels of a stereo pair get the same modulation. Stereo: the right channel's modulation is out of step with the left's.
 std::unique_ptr<juce::AudioParameterChoice> channelMode(const juce::ParameterID& id, const juce::String& name) {
@@ -74,26 +74,39 @@ const std::vector<const char*>& paramIds(ModuleType type) {
     static const std::vector<const char*> cabinet{ids::cabOn, ids::cab, ids::irBlend, ids::irWidth, ids::doubleAmount, ids::doubleTime};
     static const std::vector<const char*> amp{ids::amp, ids::volume, ids::volume2, ids::bass, ids::middle, ids::treble, ids::presence, ids::master, ids::power, ids::resonance,
                                               ids::vibSpeed, ids::vibIntensity, ids::vibOn, ids::aeq[0], ids::aeq[1], ids::aeq[2], ids::aeq[3], ids::aeq[4], ids::input, ids::quality, ids::jack, ids::sel[0], ids::sel[1], ids::sel[2], ids::sel[3], ids::sel[4], ids::sel[5],
-                                              ids::pickup, ids::cable, ids::tube, ids::wear, ids::unit, ids::noise, ids::bias, ids::speaker, ids::speakerIntense};
+                                              ids::pickup, ids::cable, ids::tube, ids::wear, ids::unit, ids::noise, ids::bias, ids::speaker, ids::speakerIntense, ids::ampOn};
     static const std::vector<const char*> mixer{ids::mixLevelA, ids::mixLevelB, ids::mixPanA, ids::mixPanB, ids::mixInvertB};
     static const std::vector<const char*> gate{ids::gateOn, ids::gateThreshold, ids::gateRelease};
-    static const std::vector<const char*> comp{ids::compOn, ids::compSustain, ids::compBlend, ids::compTone, ids::compLevel, ids::compFast};
-    static const std::vector<const char*> drive{ids::tsOn, ids::tsDrive, ids::tsTone, ids::tsLevel};
+    static const std::vector<const char*> comp{ids::compOn, ids::compSustain, ids::compBlend, ids::compTone, ids::compLevel, ids::compFast, ids::compModel};
+    static const std::vector<const char*> drive{ids::tsOn, ids::tsDrive, ids::tsTone, ids::tsLevel, ids::tsModel};
     static const std::vector<const char*> nam{ids::nmpOn, ids::nmpDrive, ids::nmpLevel};
     static const std::vector<const char*> phaser{ids::phOn, ids::phSpeed, ids::phIntense, ids::phMix, ids::phStereo};
     static const std::vector<const char*> chorus{ids::chOn, ids::chMode, ids::chRate, ids::chDepth, ids::chJuno, ids::chMix, ids::chStereo};
     static const std::vector<const char*> vibe{ids::vbOn, ids::vbSpeed, ids::vbIntensity, ids::vbVibrato, ids::vbMix, ids::vbStereo};
     static const std::vector<const char*> tremolo{ids::trOn, ids::trRate, ids::trDepth, ids::trShape, ids::trStereo};
     static const std::vector<const char*> flanger{ids::flOn, ids::flRate, ids::flDepth, ids::flManual, ids::flFeedback, ids::flMix, ids::flStereo};
-    static const std::vector<const char*> wah{ids::wahOn, ids::wahMode, ids::wahPos, ids::wahHeel, ids::wahToe, ids::wahQ, ids::wahMix, ids::wahLevel, ids::wahSens,
+    static const std::vector<const char*> wah{ids::wahOn, ids::wahMode, ids::wahFilter, ids::wahPos, ids::wahHeel, ids::wahToe, ids::wahQ, ids::wahMix, ids::wahLevel, ids::wahSens,
                                               ids::wahAttack, ids::wahRelease, ids::wahDir, ids::wahRate, ids::wahStereo};
     static const std::vector<const char*> fuzz{ids::fzOn, ids::fzType, ids::fzFuzz, ids::fzTone, ids::fzBias, ids::fzMix, ids::fzLevel};
     static const std::vector<const char*> boost{ids::bstOn, ids::bstGain, ids::bstTone, ids::bstSoft};
     static const std::vector<const char*> acoustic{ids::acOn, ids::acType, ids::acBody, ids::acTop, ids::acAir, ids::acSquash, ids::acMix};
-    static const std::vector<const char*> leslie{ids::lesOn, ids::lesSpeed, ids::lesDepth, ids::lesBalance, ids::lesMix};
+    static const std::vector<const char*> leslie{ids::lesOn, ids::lesSpeed, ids::lesDepth, ids::lesBalance, ids::lesWidth, ids::lesMix};
     static const std::vector<const char*> spring{ids::spOn, ids::spType, ids::spTone, ids::spMix};
     static const std::vector<const char*> klon{ids::klnOn, ids::klnGain, ids::klnTreble, ids::klnLevel};
+    static const std::vector<const char*> harmonist{ids::harOn, ids::harMode, ids::harKey, ids::harScale, ids::harInt1, ids::harInt2, ids::harDetune, ids::harDirect, ids::harVoice1, ids::harVoice2};
+    static const std::vector<const char*> octaver{ids::octOn, ids::octDirect, ids::octOct1, ids::octOct2, ids::octTone};
+    static const std::vector<const char*> tenEq = [] {
+        std::vector<const char*> v{ids::tenOn};
+        for (const char* b : ids::tenBand) v.push_back(b);
+        v.push_back(ids::tenGain);
+        v.push_back(ids::tenVolume);
+        return v;
+    }();
     static const std::vector<const char*> limiter{ids::limOn, ids::limGain, ids::limCeiling, ids::limRelease};
+    static const std::vector<const char*> bbd{ids::bbdOn, ids::bbdTime, ids::bbdFeedback, ids::bbdMix, ids::bbdTone, ids::bbdRate, ids::bbdDepth, ids::bbdGrit, ids::bbdStereo};
+    static const std::vector<const char*> crusher{ids::bcOn, ids::bcBits, ids::bcRate, ids::bcAntiAlias, ids::bcTone, ids::bcDither, ids::bcJitter, ids::bcMix};
+    static const std::vector<const char*> layers{ids::lyOn, ids::lyMix, ids::lyAttack, ids::lyDecay, ids::lyTrig, ids::lyDiffusion, ids::lySingle, ids::lySub, ids::lyHold, ids::lyStereo};
+    static const std::vector<const char*> distortion{ids::dstOn, ids::dstModel, ids::dstDrive, ids::dstTone, ids::dstLevel};
     static const std::vector<const char*> tape{ids::tpOn, ids::tpTime, ids::tpHeads, ids::tpIntensity, ids::tpMix, ids::tpTone, ids::tpWow, ids::tpFlutter, ids::tpSat, ids::tpStereo};
     static const std::vector<const char*> pitch{ids::pitch, ids::pitchFine};
     static const std::vector<const char*> eq = [] {
@@ -128,7 +141,14 @@ const std::vector<const char*>& paramIds(ModuleType type) {
         case ModuleType::Leslie: return leslie;
         case ModuleType::SpringReverb: return spring;
         case ModuleType::TapeEcho: return tape;
+        case ModuleType::BbdDelay: return bbd;
+        case ModuleType::Bitcrusher: return crusher;
+        case ModuleType::Layers: return layers;
+        case ModuleType::Distortion: return distortion;
         case ModuleType::Limiter: return limiter;
+        case ModuleType::TenBandEq: return tenEq;
+        case ModuleType::Octaver: return octaver;
+        case ModuleType::Harmonist: return harmonist;
         case ModuleType::Pitch: return pitch;
         case ModuleType::Eq: return eq;
         case ModuleType::Delay: return delay;
@@ -139,6 +159,7 @@ const std::vector<const char*>& paramIds(ModuleType type) {
 
 const char* onId(ModuleType type) {
     switch (type) {
+        case ModuleType::Amp: return ids::ampOn;
         case ModuleType::Cabinet: return ids::cabOn;
         case ModuleType::Gate: return ids::gateOn;
         case ModuleType::Compressor: return ids::compOn;
@@ -157,7 +178,14 @@ const char* onId(ModuleType type) {
         case ModuleType::Leslie: return ids::lesOn;
         case ModuleType::SpringReverb: return ids::spOn;
         case ModuleType::TapeEcho: return ids::tpOn;
+        case ModuleType::BbdDelay: return ids::bbdOn;
+        case ModuleType::Bitcrusher: return ids::bcOn;
+        case ModuleType::Layers: return ids::lyOn;
+        case ModuleType::Distortion: return ids::dstOn;
         case ModuleType::Limiter: return ids::limOn;
+        case ModuleType::TenBandEq: return ids::tenOn;
+        case ModuleType::Octaver: return ids::octOn;
+        case ModuleType::Harmonist: return ids::harOn;
         case ModuleType::Eq: return ids::eqOn;
         case ModuleType::Delay: return ids::dlyOn;
         case ModuleType::Reverb: return ids::plOn;
@@ -212,12 +240,14 @@ void addParams(Layout& l, ModuleType type, int k) {
             l.add(knob(I(ids::compTone), N("Compressor tone"), 5.0f));
             l.add(knob(I(ids::compLevel), N("Compressor level"), 7.5f));
             l.add(toggle(I(ids::compFast), N("Compressor fast release"), false));
+            l.add(std::make_unique<juce::AudioParameterChoice>(id(I(ids::compModel)), N("Compressor model"), juce::StringArray{"Keeley Compressor Plus", "Dyna Comp", "FET (1176)", "Opto (LA-2A)"}, 0));
             break;
         case ModuleType::Overdrive:
             l.add(toggle(I(ids::tsOn), N("Tube Screamer"), false));
             l.add(knob(I(ids::tsDrive), N("TS Drive"), 5.0f));
             l.add(knob(I(ids::tsTone), N("TS Tone"), 5.0f));
             l.add(knob(I(ids::tsLevel), N("TS Level"), 5.0f));
+            l.add(std::make_unique<juce::AudioParameterChoice>(id(I(ids::tsModel)), N("Overdrive model"), juce::StringArray{"Tube Screamer", "SD-1", "BD-2", "RAT"}, 0));
             break;
         case ModuleType::NamPedal:
             l.add(toggle(I(ids::nmpOn), N("NAM pedal"), false));
@@ -280,11 +310,56 @@ void addParams(Layout& l, ModuleType type, int k) {
             l.add(channelMode(id(I(ids::tpStereo)), N("Tape channels")));
             break;
         }
+        case ModuleType::Distortion:
+            l.add(toggle(I(ids::dstOn), N("Distortion"), false));
+            l.add(std::make_unique<juce::AudioParameterChoice>(id(I(ids::dstModel)), N("Distortion model"), juce::StringArray{"Boss DS-1"}, 0));
+            l.add(knob(I(ids::dstDrive), N("Distortion drive"), 5.0f));
+            l.add(knob(I(ids::dstTone), N("Distortion tone"), 5.0f));
+            l.add(knob(I(ids::dstLevel), N("Distortion level"), 4.0f));
+            break;
+        case ModuleType::Layers:
+            l.add(toggle(I(ids::lyOn), N("Layers"), false));
+            l.add(knob(I(ids::lyMix), N("Layers mix"), 7.0f));
+            l.add(knob(I(ids::lyAttack), N("Layers attack"), 4.0f));
+            l.add(knob(I(ids::lyDecay), N("Layers decay"), 6.0f));
+            l.add(knob(I(ids::lyTrig), N("Layers trig"), 5.0f));
+            l.add(knob(I(ids::lyDiffusion), N("Layers diffusion"), 0.0f));
+            l.add(toggle(I(ids::lySingle), N("Layers single"), false));
+            l.add(toggle(I(ids::lySub), N("Layers sub octave"), false));
+            l.add(toggle(I(ids::lyHold), N("Layers hold"), false));
+            l.add(channelMode(id(I(ids::lyStereo)), N("Layers channels")));
+            break;
+        case ModuleType::Bitcrusher:
+            l.add(toggle(I(ids::bcOn), N("Bitcrusher"), false));
+            l.add(pct(I(ids::bcBits), N("Bitcrusher bits"), 1.0f, 16.0f, 8.0f));
+            l.add(hz(I(ids::bcRate), N("Bitcrusher rate"), 500.0f, 48000.0f, 12000.0f));
+            l.add(toggle(I(ids::bcAntiAlias), N("Bitcrusher anti-alias"), false));
+            l.add(hz(I(ids::bcTone), N("Bitcrusher tone"), 1000.0f, 20000.0f, 12000.0f));
+            l.add(pct(I(ids::bcDither), N("Bitcrusher dither"), 0.0f, 100.0f, 0.0f));
+            l.add(pct(I(ids::bcJitter), N("Bitcrusher jitter"), 0.0f, 100.0f, 0.0f));
+            l.add(pct(I(ids::bcMix), N("Bitcrusher mix"), 0.0f, 100.0f, 100.0f));
+            break;
+        case ModuleType::BbdDelay: {
+            juce::NormalisableRange<float> time(40.0f, 600.0f, 0.0f);
+            time.setSkewForCentre(250.0f);
+            l.add(toggle(I(ids::bbdOn), N("Analog delay"), false));
+            l.add(std::make_unique<juce::AudioParameterFloat>(id(I(ids::bbdTime)), N("Analog delay time"), time, 320.0f,
+                                                              juce::AudioParameterFloatAttributes().withLabel("ms").withStringFromValueFunction([](float v, int) { return juce::String(v, 0); })));
+            l.add(pct(I(ids::bbdFeedback), N("Analog delay feedback"), 0.0f, 110.0f, 40.0f));
+            l.add(pct(I(ids::bbdMix), N("Analog delay mix"), 0.0f, 100.0f, 35.0f));
+            l.add(hz(I(ids::bbdTone), N("Analog delay tone"), 1500.0f, 10000.0f, 5000.0f));
+            l.add(pct(I(ids::bbdRate), N("Analog delay mod rate"), 0.1f, 6.0f, 0.8f));
+            l.add(pct(I(ids::bbdDepth), N("Analog delay mod depth"), 0.0f, 100.0f, 25.0f));
+            l.add(pct(I(ids::bbdGrit), N("Analog delay grit"), 0.0f, 100.0f, 30.0f));
+            l.add(channelMode(id(I(ids::bbdStereo)), N("Analog delay channels")));
+            break;
+        }
         case ModuleType::Leslie:
             l.add(toggle(I(ids::lesOn), N("Leslie"), false));
             l.add(std::make_unique<juce::AudioParameterChoice>(id(I(ids::lesSpeed)), N("Leslie speed"), juce::StringArray{"Stop", "Slow", "Fast"}, 1));
             l.add(knob(I(ids::lesDepth), N("Leslie depth"), 7.0f));
             l.add(knob(I(ids::lesBalance), N("Leslie horn rotor balance"), 5.0f));
+            l.add(knob(I(ids::lesWidth), N("Leslie width"), 7.0f));
             l.add(pct(I(ids::lesMix), N("Leslie mix"), 0.0f, 100.0f, 100.0f));
             break;
         case ModuleType::SpringReverb:
@@ -315,6 +390,43 @@ void addParams(Layout& l, ModuleType type, int k) {
             l.add(knob(I(ids::bstTone), N("Boost tone"), 5.0f));
             l.add(toggle(I(ids::bstSoft), N("Boost soft clip"), false));
             break;
+        case ModuleType::TenBandEq: {
+            static const char* const kBandNames[10] = {"31 Hz", "62 Hz", "125 Hz", "250 Hz", "500 Hz", "1 kHz", "2 kHz", "4 kHz", "8 kHz", "16 kHz"};
+            auto db = [&](const char* base, const juce::String& name) {
+                return std::make_unique<juce::AudioParameterFloat>(id(I(base)), name, juce::NormalisableRange<float>(-12.0f, 12.0f, 0.0f), 0.0f,
+                                                                   juce::AudioParameterFloatAttributes().withLabel("dB").withStringFromValueFunction([](float v, int) { return juce::String(v, 1); }));
+            };
+            l.add(toggle(I(ids::tenOn), N("Ten-band EQ"), false));
+            for (int b = 0; b < 10; ++b) l.add(db(ids::tenBand[b], N("Ten-band EQ " + juce::String(kBandNames[b]))));
+            l.add(db(ids::tenGain, N("Ten-band EQ gain")));
+            l.add(db(ids::tenVolume, N("Ten-band EQ volume")));
+            break;
+        }
+        case ModuleType::Harmonist: {
+            auto steps = [&](const char* base, const juce::String& name, float def) {
+                return std::make_unique<juce::AudioParameterFloat>(id(I(base)), name, juce::NormalisableRange<float>(-12.0f, 12.0f, 1.0f), def,
+                                                                   juce::AudioParameterFloatAttributes().withStringFromValueFunction([](float v, int) { return (v > 0 ? juce::String("+") : juce::String()) + juce::String(int(std::lround(v))); }));
+            };
+            l.add(toggle(I(ids::harOn), N("Harmonist"), false));
+            l.add(std::make_unique<juce::AudioParameterChoice>(id(I(ids::harMode)), N("Harmonist mode"), juce::StringArray{"Harmony", "Pitch", "Detune"}, 0));
+            l.add(std::make_unique<juce::AudioParameterChoice>(id(I(ids::harKey)), N("Harmonist key"), juce::StringArray{"C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"}, 0));
+            l.add(std::make_unique<juce::AudioParameterChoice>(id(I(ids::harScale)), N("Harmonist scale"), juce::StringArray{"Major", "Minor", "Harmonic minor", "Dorian", "Mixolydian"}, 0));
+            l.add(steps(ids::harInt1, N("Harmonist interval 1"), 2.0f));
+            l.add(steps(ids::harInt2, N("Harmonist interval 2"), 4.0f));
+            l.add(std::make_unique<juce::AudioParameterFloat>(id(I(ids::harDetune)), N("Harmonist detune"), juce::NormalisableRange<float>(0.0f, 50.0f, 0.0f), 15.0f,
+                                                              juce::AudioParameterFloatAttributes().withLabel("cents").withStringFromValueFunction([](float v, int) { return juce::String(v, 0); })));
+            l.add(knob(I(ids::harDirect), N("Harmonist direct"), 10.0f));
+            l.add(knob(I(ids::harVoice1), N("Harmonist voice 1"), 8.0f));
+            l.add(knob(I(ids::harVoice2), N("Harmonist voice 2"), 0.0f));
+            break;
+        }
+        case ModuleType::Octaver:
+            l.add(toggle(I(ids::octOn), N("Octaver"), false));
+            l.add(knob(I(ids::octDirect), N("Octaver direct"), 10.0f));
+            l.add(knob(I(ids::octOct1), N("Octaver octave 1"), 7.0f));
+            l.add(knob(I(ids::octOct2), N("Octaver octave 2"), 0.0f));
+            l.add(knob(I(ids::octTone), N("Octaver tone"), 3.0f));
+            break;
         case ModuleType::Limiter:
             l.add(toggle(I(ids::limOn), N("Limiter"), false));
             l.add(std::make_unique<juce::AudioParameterFloat>(id(I(ids::limGain)), N("Limiter gain"), juce::NormalisableRange<float>(0.0f, 24.0f, 0.0f), 0.0f,
@@ -341,6 +453,7 @@ void addParams(Layout& l, ModuleType type, int k) {
             };
             l.add(toggle(I(ids::wahOn), N("Wah"), false));
             l.add(std::make_unique<juce::AudioParameterChoice>(id(I(ids::wahMode)), N("Wah mode"), juce::StringArray{"Pedal", "Envelope", "LFO"}, 0));
+            l.add(std::make_unique<juce::AudioParameterChoice>(id(I(ids::wahFilter)), N("Wah filter"), juce::StringArray{"Band-pass", "Low-pass", "High-pass"}, 0));
             l.add(pct(I(ids::wahPos), N("Wah pedal"), 0.0f, 100.0f, 50.0f));
             l.add(hz(I(ids::wahHeel), N("Wah heel"), 200.0f, 1000.0f, 400.0f));
             l.add(hz(I(ids::wahToe), N("Wah toe"), 1000.0f, 4000.0f, 2000.0f));
@@ -423,6 +536,7 @@ static void addAmpInstance(Layout& l, int k, const juce::StringArray& ampNames) 
     auto N = [k](const juce::String& base) { return paramName(base.toRawUTF8(), k); };
     auto id = [&](const juce::String& s) { return juce::ParameterID{s, kParamVersion}; };
     l.add(std::make_unique<juce::AudioParameterChoice>(id(I(ids::amp)), N("Amp"), ampNames, 0));
+    l.add(toggle(I(ids::ampOn), N("Amp on"), true));
     l.add(knob(I(ids::volume), N("Preamp Volume"), 6.0f));
     l.add(knob(I(ids::volume2), N("Preamp Volume II"), 5.0f));
     for (int e = 0; e < 5; ++e) l.add(knob(I(ids::aeq[e]), N("Graphic EQ " + juce::String(e + 1)), 5.0f));
@@ -459,6 +573,7 @@ static void addAmpInstance(Layout& l, int k, const juce::StringArray& ampNames) 
 }
 
 void addExtraInstances(Layout& l, const juce::StringArray& ampNames) {
+    l.add(toggle(ids::ampOn, "Amp on", true));  // the first amp's switch (the rest of its parameters are declared in SasProcessor::createLayout)
     for (int k = 1; k < maxInstances(ModuleType::Amp); ++k) addAmpInstance(l, k, ampNames);
     for (int t = 0; t < sas::kModuleTypeCount; ++t) {
         if (static_cast<ModuleType>(t) == ModuleType::Amp) continue;
@@ -569,18 +684,13 @@ sas::RackOrder fromTree(const juce::ValueTree& rack) {
         }
         --o.count;
     };
-    // A parallel is valid when it has a splitter and a mixer in order, and the second amp and cabinet (if there are any) are in lane B; anything else is
-    // not a parallel at all and loses what belongs to one (the splitter, the mixer, lane B and the second amp and cabinet).
-    bool parallel = o.valid() && o.splitterIndex() >= 0;
-    if (parallel)
-        for (const auto second : {sas::SlotRef{ModuleType::Amp, 1}, sas::SlotRef{ModuleType::Cabinet, 1}})
-            if (const int i = indexOf(second); i >= 0 && o.lane[std::size_t(i)] != 1) parallel = false;
+    // A parallel is valid when it has a splitter and a mixer in order; anything else is not a parallel at all and loses what belongs to one (the splitter,
+    // the mixer and lane B). The second amp and cabinet may also be in series, in the same line.
+    const bool parallel = o.valid() && o.splitterIndex() >= 0;
     if (!parallel)
         for (int i = o.count - 1; i >= 0; --i) {
             const auto slot = o.slots[std::size_t(i)];
-            if (slot.type == ModuleType::Splitter || slot.type == ModuleType::Mixer || o.lane[std::size_t(i)] != 0 || (slot.type == ModuleType::Amp && slot.instance > 0) ||
-                (slot.type == ModuleType::Cabinet && slot.instance > 0))
-                eraseAt(i);
+            if (slot.type == ModuleType::Splitter || slot.type == ModuleType::Mixer || o.lane[std::size_t(i)] != 0) eraseAt(i);
         }
     // The first gate is always there, first. (A rack saved without an amp or a cabinet loads without them: the player removed them.)
     auto insertSlot = [&](int at, sas::SlotRef slot) {

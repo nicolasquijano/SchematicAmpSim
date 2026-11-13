@@ -18,6 +18,7 @@ struct CompControls {
     double tone = 0.5;         // 0..1: treble of the compressed path
     double level = 0.5;        // 0..1: output level (audio taper)
     bool fastRelease = false;  // the pedal's ATTACK switch: the envelope recovers through 10k instead of 160k
+    int model = 0;             // 0 the Keeley circuit (this class), 1 Dyna Comp, 2 FET, 3 Opto (sas/comp_models.h)
     bool operator==(const CompControls&) const = default;
 };
 

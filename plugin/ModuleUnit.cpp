@@ -19,9 +19,9 @@ struct Item {
 const std::vector<Item>& itemsFor(ModuleType t) {
     static const std::vector<Item> none;
     static const std::vector<Item> gate{{Item::Knob, ids::gateThreshold, "THRESHOLD dB"}, {Item::Knob, ids::gateRelease, "RELEASE ms"}};
-    static const std::vector<Item> comp{{Item::Knob, ids::compSustain, "SUSTAIN"}, {Item::Knob, ids::compBlend, "BLEND"}, {Item::Knob, ids::compTone, "TONE"},
+    static const std::vector<Item> comp{{Item::Combo, ids::compModel, "MODEL"}, {Item::Knob, ids::compSustain, "SUSTAIN"}, {Item::Knob, ids::compBlend, "BLEND"}, {Item::Knob, ids::compTone, "TONE"},
                                         {Item::Knob, ids::compLevel, "LEVEL"}, {Item::Toggle, ids::compFast, "Fast"}};
-    static const std::vector<Item> drive{{Item::Knob, ids::tsDrive, "DRIVE"}, {Item::Knob, ids::tsTone, "TONE"}, {Item::Knob, ids::tsLevel, "LEVEL"}};
+    static const std::vector<Item> drive{{Item::Combo, ids::tsModel, "MODEL"}, {Item::Knob, ids::tsDrive, "DRIVE"}, {Item::Knob, ids::tsTone, "TONE"}, {Item::Knob, ids::tsLevel, "LEVEL"}};
     static const std::vector<Item> nam{{Item::Knob, ids::nmpDrive, "DRIVE dB"}, {Item::Knob, ids::nmpLevel, "LEVEL dB"}};
     static const std::vector<Item> phaser{{Item::Knob, ids::phSpeed, "SPEED Hz"}, {Item::Toggle, ids::phIntense, "Intense"}, {Item::Knob, ids::phMix, "MIX %"}, {Item::Combo, ids::phStereo, "CHANNELS"}};
     static const std::vector<Item> chorus{{Item::Combo, ids::chMode, "MODE"}, {Item::Knob, ids::chRate, "RATE Hz"}, {Item::Knob, ids::chDepth, "DEPTH %"},
@@ -36,14 +36,28 @@ const std::vector<Item>& itemsFor(ModuleType t) {
     static const std::vector<Item> tape{{Item::Knob, ids::tpTime, "TIME ms"}, {Item::Combo, ids::tpHeads, "HEADS"}, {Item::Knob, ids::tpIntensity, "INTENSITY %"},
                                         {Item::Knob, ids::tpMix, "MIX %"}, {Item::Knob, ids::tpTone, "TONE Hz"}, {Item::Knob, ids::tpWow, "WOW %"},
                                         {Item::Knob, ids::tpFlutter, "FLUTTER %"}, {Item::Knob, ids::tpSat, "SATURATION %"}, {Item::Combo, ids::tpStereo, "CHANNELS"}};
-    static const std::vector<Item> leslie{{Item::Combo, ids::lesSpeed, "SPEED"}, {Item::Knob, ids::lesDepth, "DEPTH"}, {Item::Knob, ids::lesBalance, "HORN / ROTOR"}, {Item::Knob, ids::lesMix, "MIX %"}};
+    static const std::vector<Item> bbd{{Item::Knob, ids::bbdTime, "TIME ms"}, {Item::Knob, ids::bbdFeedback, "FEEDBACK %"}, {Item::Knob, ids::bbdMix, "MIX %"},
+                                       {Item::Knob, ids::bbdTone, "TONE Hz"}, {Item::Knob, ids::bbdRate, "MOD RATE Hz"}, {Item::Knob, ids::bbdDepth, "MOD DEPTH %"},
+                                       {Item::Knob, ids::bbdGrit, "GRIT %"}, {Item::Combo, ids::bbdStereo, "CHANNELS"}};
+    static const std::vector<Item> crusher{{Item::Knob, ids::bcBits, "BITS"}, {Item::Knob, ids::bcRate, "RATE Hz"}, {Item::Toggle, ids::bcAntiAlias, "Anti-alias"},
+                                           {Item::Knob, ids::bcTone, "TONE Hz"}, {Item::Knob, ids::bcDither, "DITHER %"}, {Item::Knob, ids::bcJitter, "JITTER %"},
+                                           {Item::Knob, ids::bcMix, "MIX %"}};
+    static const std::vector<Item> layers{{Item::Knob, ids::lyMix, "MIX"}, {Item::Knob, ids::lyAttack, "ATTACK"}, {Item::Knob, ids::lyDecay, "DECAY"},
+                                          {Item::Knob, ids::lyTrig, "TRIG"}, {Item::Knob, ids::lyDiffusion, "DIFFUSION"}, {Item::Toggle, ids::lySingle, "Single"},
+                                          {Item::Toggle, ids::lySub, "Sub octave"}, {Item::Toggle, ids::lyHold, "Hold layer"}, {Item::Combo, ids::lyStereo, "CHANNELS"}};
+    static const std::vector<Item> distortion{{Item::Combo, ids::dstModel, "MODEL"}, {Item::Knob, ids::dstDrive, "DIST"}, {Item::Knob, ids::dstTone, "TONE"}, {Item::Knob, ids::dstLevel, "LEVEL"}};
+    static const std::vector<Item> leslie{{Item::Combo, ids::lesSpeed, "SPEED"}, {Item::Knob, ids::lesDepth, "DEPTH"}, {Item::Knob, ids::lesBalance, "HORN / ROTOR"}, {Item::Knob, ids::lesWidth, "WIDTH"}, {Item::Knob, ids::lesMix, "MIX %"}};
     static const std::vector<Item> spring{{Item::Combo, ids::spType, "TANK"}, {Item::Knob, ids::spTone, "TONE"}, {Item::Knob, ids::spMix, "MIX %"}};
     static const std::vector<Item> klon{{Item::Knob, ids::klnGain, "GAIN"}, {Item::Knob, ids::klnTreble, "TREBLE"}, {Item::Knob, ids::klnLevel, "LEVEL"}};
     static const std::vector<Item> acoustic{{Item::Combo, ids::acType, "BODY TYPE"}, {Item::Knob, ids::acBody, "BODY"}, {Item::Knob, ids::acTop, "TOP"},
                                             {Item::Knob, ids::acAir, "AIR"}, {Item::Knob, ids::acSquash, "SQUASH"}, {Item::Knob, ids::acMix, "MIX %"}};
+    static const std::vector<Item> harmonist{{Item::Combo, ids::harMode, "MODE"}, {Item::Combo, ids::harKey, "KEY"}, {Item::Combo, ids::harScale, "SCALE"},
+                                             {Item::Knob, ids::harInt1, "INTERVAL 1"}, {Item::Knob, ids::harInt2, "INTERVAL 2"}, {Item::Knob, ids::harDetune, "DETUNE cents"},
+                                             {Item::Knob, ids::harDirect, "DIRECT"}, {Item::Knob, ids::harVoice1, "VOICE 1"}, {Item::Knob, ids::harVoice2, "VOICE 2"}};
+    static const std::vector<Item> octaver{{Item::Knob, ids::octDirect, "DIRECT"}, {Item::Knob, ids::octOct1, "OCTAVE 1"}, {Item::Knob, ids::octOct2, "OCTAVE 2"}, {Item::Knob, ids::octTone, "TONE"}};
     static const std::vector<Item> boost{{Item::Knob, ids::bstGain, "GAIN dB"}, {Item::Knob, ids::bstTone, "TONE"}, {Item::Toggle, ids::bstSoft, "Soft clip"}};
     static const std::vector<Item> limiter{{Item::Knob, ids::limGain, "GAIN dB"}, {Item::Knob, ids::limCeiling, "CEILING dB"}, {Item::Knob, ids::limRelease, "RELEASE ms"}};
-    static const std::vector<Item> wah{{Item::Combo, ids::wahMode, "MODE"}, {Item::Knob, ids::wahPos, "PEDAL %"}, {Item::Knob, ids::wahHeel, "HEEL Hz"},
+    static const std::vector<Item> wah{{Item::Combo, ids::wahMode, "MODE"}, {Item::Combo, ids::wahFilter, "FILTER"}, {Item::Knob, ids::wahPos, "PEDAL %"}, {Item::Knob, ids::wahHeel, "HEEL Hz"},
                                        {Item::Knob, ids::wahToe, "TOE Hz"}, {Item::Knob, ids::wahQ, "Q"}, {Item::Knob, ids::wahMix, "MIX %"},
                                        {Item::Knob, ids::wahLevel, "LEVEL dB"}, {Item::Knob, ids::wahSens, "ENV SENS %"}, {Item::Knob, ids::wahAttack, "ENV ATTACK ms"},
                                        {Item::Knob, ids::wahRelease, "ENV RELEASE ms"}, {Item::Combo, ids::wahDir, "ENV DIRECTION"}, {Item::Knob, ids::wahRate, "LFO RATE Hz"},
@@ -71,11 +85,17 @@ const std::vector<Item>& itemsFor(ModuleType t) {
         case ModuleType::Wah: return wah;
         case ModuleType::Fuzz: return fuzz;
         case ModuleType::Boost: return boost;
+        case ModuleType::Octaver: return octaver;
+        case ModuleType::Harmonist: return harmonist;
         case ModuleType::Acoustic: return acoustic;
         case ModuleType::Klon: return klon;
         case ModuleType::Leslie: return leslie;
         case ModuleType::SpringReverb: return spring;
         case ModuleType::TapeEcho: return tape;
+        case ModuleType::BbdDelay: return bbd;
+        case ModuleType::Bitcrusher: return crusher;
+        case ModuleType::Layers: return layers;
+        case ModuleType::Distortion: return distortion;
         case ModuleType::Limiter: return limiter;
         case ModuleType::Pitch: return pitch;
         case ModuleType::Delay: return delay;
@@ -90,7 +110,7 @@ const char* nameOf(ModuleType t) {
         case ModuleType::Cabinet: return "CABINET";
         case ModuleType::Gate: return "NOISE GATE";
         case ModuleType::Compressor: return "COMPRESSOR";
-        case ModuleType::Overdrive: return "OVERDRIVE - TS808";
+        case ModuleType::Overdrive: return "OVERDRIVE";
         case ModuleType::NamPedal: return "NAM PEDAL";
         case ModuleType::Phaser: return "PHASER";
         case ModuleType::Chorus: return "CHORUS";
@@ -100,14 +120,21 @@ const char* nameOf(ModuleType t) {
         case ModuleType::Wah: return "WAH";
         case ModuleType::Fuzz: return "FUZZ";
         case ModuleType::Boost: return "CLEAN BOOST";
+        case ModuleType::Octaver: return "ANALOG OCTAVER";
+        case ModuleType::Harmonist: return "HARMONIST";
         case ModuleType::Acoustic: return "ACOUSTIC SIM";
         case ModuleType::Klon: return "KLON-STYLE DRIVE";
         case ModuleType::Leslie: return "LESLIE ROTARY";
         case ModuleType::SpringReverb: return "SPRING REVERB";
         case ModuleType::TapeEcho: return "TAPE ECHO";
+        case ModuleType::BbdDelay: return "ANALOG DELAY (BBD)";
+        case ModuleType::Bitcrusher: return "BITCRUSHER";
+        case ModuleType::Layers: return "SUSTAIN LAYERS";
+        case ModuleType::Distortion: return "DISTORTION";
         case ModuleType::Limiter: return "LIMITER";
         case ModuleType::Pitch: return "PITCH";
         case ModuleType::Eq: return "EQ";
+        case ModuleType::TenBandEq: return "TEN-BAND EQ";
         case ModuleType::Delay: return "DELAY";
         case ModuleType::Reverb: return "REVERB";
         case ModuleType::Splitter: return "SPLITTER";
@@ -276,6 +303,53 @@ private:
     juce::Label band_;
 };
 
+// The ten-band graphic EQ pedal: ten vertical sliders an octave apart (31 Hz to 16 kHz, +-12 dB, double click for flat) with the GAIN and VOLUME knobs.
+class TenBandBody final : public ModuleUnit::Body {
+public:
+    TenBandBody(SasProcessor& p, sas::SlotRef slot) {
+        static const char* const kNames[10] = {"31", "62", "125", "250", "500", "1k", "2k", "4k", "8k", "16k"};
+        for (int b = 0; b < 10; ++b) {
+            auto s = std::make_unique<juce::Slider>(juce::Slider::LinearVertical, juce::Slider::NoTextBox);
+            s->setDoubleClickReturnValue(true, 0.0);
+            s->setPopupDisplayEnabled(true, true, this);
+            addAndMakeVisible(*s);
+            atts_.push_back(std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment>(p.apvts, RackState::paramId(ids::tenBand[b], slot.instance), *s));
+            sliders_.push_back(std::move(s));
+            auto l = std::make_unique<juce::Label>();
+            l->setText(kNames[b], juce::dontSendNotification);
+            l->setJustificationType(juce::Justification::centred);
+            l->setFont(AmpLookAndFeel::font(10.5f, true, 0.05f));
+            addAndMakeVisible(*l);
+            labels_.push_back(std::move(l));
+        }
+        gain_ = std::make_unique<KnobWithLabel>(p.apvts, RackState::paramId(ids::tenGain, slot.instance).toRawUTF8(), "GAIN dB");
+        volume_ = std::make_unique<KnobWithLabel>(p.apvts, RackState::paramId(ids::tenVolume, slot.instance).toRawUTF8(), "VOLUME dB");
+        addAndMakeVisible(*gain_);
+        addAndMakeVisible(*volume_);
+    }
+
+    int height() const override { return 190; }
+
+    void resized() override {
+        auto r = getLocalBounds().reduced(6, 2);
+        auto knobs = r.removeFromRight(2 * 78);
+        gain_->setBounds(knobs.removeFromLeft(78).withHeight(100));
+        volume_->setBounds(knobs.removeFromLeft(78).withHeight(100));
+        const int w = std::min(54, r.getWidth() / 10);
+        for (int b = 0; b < 10; ++b) {
+            auto cell = r.removeFromLeft(w);
+            labels_[std::size_t(b)]->setBounds(cell.removeFromBottom(16));
+            sliders_[std::size_t(b)]->setBounds(cell.reduced(w / 4, 2));
+        }
+    }
+
+private:
+    std::vector<std::unique_ptr<juce::Slider>> sliders_;
+    std::vector<std::unique_ptr<juce::Label>> labels_;
+    std::vector<std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment>> atts_;
+    std::unique_ptr<KnobWithLabel> gain_, volume_;
+};
+
 // Amp and cabinet: their controls arrive with the unit that hosts them; until then a line says where they are.
 class NoteBody final : public ModuleUnit::Body {
 public:
@@ -319,6 +393,8 @@ ModuleUnit::ModuleUnit(SasProcessor& processor, sas::SlotRef slot, const HostedB
         body_ = std::make_unique<NoteBody>(tr("The signal splits here into lane A (above) and lane B (below), and joins again at the mixer."));
     } else if (slot.type == ModuleType::Eq) {
         body_ = std::make_unique<EqBody>(processor, slot);
+    } else if (slot.type == ModuleType::TenBandEq) {
+        body_ = std::make_unique<TenBandBody>(processor, slot);
     } else {
         body_ = std::make_unique<ParamBody>(processor, slot);
     }

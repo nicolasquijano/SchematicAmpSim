@@ -48,9 +48,30 @@ void AmpModule::compose() {
 void AmpModule::process(float* l, float*, std::size_t n) {
     Chain* c = chain_.load();
     if (!c) return;
+    const bool on = on_.load();
+    float g = gain_.load();
+    if (on && g >= 1.0f) {
+        compose();
+        c->setSettings(work_);
+        c->processAmp(l, l, n);
+        return;
+    }
+    if (!on && g <= 0.0f) return;
+    if (on && g <= 0.0f) snapChain(*c);  // coming back: the circuits start at the current knobs, with nothing of their old audio
+    const bool fade = dry_.size() >= n;
+    if (fade) std::copy(l, l + n, dry_.data());
     compose();
     c->setSettings(work_);
     c->processAmp(l, l, n);
+    if (fade) {
+        for (std::size_t i = 0; i < n; ++i) {
+            g = std::min(1.0f, std::max(0.0f, g + (on ? step_ : -step_)));
+            l[i] = dry_[i] * (1.0f - g) + l[i] * g;
+        }
+    } else {
+        g = on ? 1.0f : 0.0f;
+    }
+    gain_.store(g);
 }
 
 void AmpModule::snapChain(Chain& chain) {

@@ -66,6 +66,7 @@ inline constexpr const char* mixLevelB = "mix_level_b";
 inline constexpr const char* mixPanA = "mix_pan_a";
 inline constexpr const char* mixPanB = "mix_pan_b";
 inline constexpr const char* mixInvertB = "mix_invert_b";
+inline constexpr const char* ampOn = "amp_on";  // the amp module is on (off: the signal goes past it)
 inline constexpr const char* cabOn = "cab_on";  // the cabinet module is on (off: the raw amp)
 inline constexpr const char* jack = "jack";
 inline constexpr const char* levelMatch = "level_match";
@@ -74,6 +75,7 @@ inline constexpr const char* tsOn = "ts_on";
 inline constexpr const char* tsDrive = "ts_drive";
 inline constexpr const char* tsTone = "ts_tone";
 inline constexpr const char* tsLevel = "ts_level";
+inline constexpr const char* tsModel = "ts_model";  // Tube Screamer / SD-1 / BD-2 / RAT (an older project has no value: the Tube Screamer)
 inline constexpr const char* pickup = "pickup";  // guitar impedance: Off / single coil / humbucker / P-90
 inline constexpr const char* cable = "cable";    // cable length in metres
 inline constexpr const char* eqOn = "eq_on";  // the post equaliser: eight bands, a high-pass and a low-pass
@@ -101,6 +103,7 @@ inline constexpr const char* compLevel = "comp_level";
 inline constexpr const char* nmpOn = "nam_pedal_on";           // a NAM model of a pedal in front of the amp
 inline constexpr const char* nmpDrive = "nam_pedal_drive";     // dB into the model
 inline constexpr const char* nmpLevel = "nam_pedal_level";     // dB out of the model
+inline constexpr const char* compModel = "comp_model";      // 0 Keeley circuit, 1 Dyna Comp, 2 FET, 3 Opto
 inline constexpr const char* compFast = "comp_fast";        // the pedal's Attack switch: fast release
 inline constexpr const char* tunerOn = "tuner_on";        // the chromatic tuner listens to the input
 inline constexpr const char* tunerMute = "tuner_mute";    // and silences the output while it is on
@@ -166,6 +169,7 @@ inline constexpr const char* lesOn = "les_on";
 inline constexpr const char* lesSpeed = "les_speed";      // Stop / Slow / Fast
 inline constexpr const char* lesDepth = "les_depth";      // 0 .. 10
 inline constexpr const char* lesBalance = "les_balance";  // 0 .. 10, 5 even
+inline constexpr const char* lesWidth = "les_width";      // 0 .. 10: the stereo image (7 by default)
 inline constexpr const char* lesMix = "les_mix";          // percent
 inline constexpr const char* spOn = "sp_on";
 inline constexpr const char* spType = "sp_type";  // Short / Medium / Long
@@ -186,6 +190,60 @@ inline constexpr const char* limOn = "lim_on";
 inline constexpr const char* limGain = "lim_gain";        // dB pushed into the limiter
 inline constexpr const char* limCeiling = "lim_ceiling";  // dB
 inline constexpr const char* limRelease = "lim_release";  // ms
+// The ten-band graphic EQ pedal (sas/ten_band_eq.h): a module of the rack only.
+// The harmonizer (sas/harmonist.h): a module of the rack only.
+inline constexpr const char* harOn = "har_on";
+inline constexpr const char* harMode = "har_mode";      // Harmony / Pitch / Detune
+inline constexpr const char* harKey = "har_key";        // C .. B
+inline constexpr const char* harScale = "har_scale";    // Major / Minor / Harmonic minor / Dorian / Mixolydian
+inline constexpr const char* harInt1 = "har_int1";      // scale steps (Harmony) or semitones (Pitch)
+inline constexpr const char* harInt2 = "har_int2";
+inline constexpr const char* harDetune = "har_detune";  // cents (Detune)
+inline constexpr const char* harDirect = "har_direct";  // 0 .. 10
+inline constexpr const char* harVoice1 = "har_voice1";
+inline constexpr const char* dstOn = "dst_on";
+inline constexpr const char* dstModel = "dst_model";  // the distortion pedal: 0 = Boss DS-1
+inline constexpr const char* dstDrive = "dst_drive";  // 0 .. 10
+inline constexpr const char* dstTone = "dst_tone";
+inline constexpr const char* dstLevel = "dst_level";
+inline constexpr const char* lyOn = "ly_on";
+inline constexpr const char* lyMix = "ly_mix";              // 0 .. 10
+inline constexpr const char* lyAttack = "ly_attack";        // 0 .. 10: how long a layer takes to fade in (0.02 s to 3 s)
+inline constexpr const char* lyDecay = "ly_decay";          // 0 .. 10: how long it takes to fade out (0.3 s to 14 s)
+inline constexpr const char* lyTrig = "ly_trig";            // 0 .. 10: the sensitivity of the automatic layers (0 = none)
+inline constexpr const char* lyDiffusion = "ly_diffusion";  // 0 .. 10
+inline constexpr const char* lySingle = "ly_single";        // one layer at a time
+inline constexpr const char* lySub = "ly_sub";              // new layers an octave down
+inline constexpr const char* lyHold = "ly_hold";            // a layer held by hand (the footswitch held down)
+inline constexpr const char* lyStereo = "ly_stereo";
+inline constexpr const char* bcOn = "bc_on";
+inline constexpr const char* bcBits = "bc_bits";            // 1 .. 16
+inline constexpr const char* bcRate = "bc_rate";            // Hz, the sample-and-hold rate
+inline constexpr const char* bcAntiAlias = "bc_antialias";  // a low-pass in front of the hold
+inline constexpr const char* bcTone = "bc_tone";            // Hz, the low-pass after the crusher
+inline constexpr const char* bcDither = "bc_dither";        // percent
+inline constexpr const char* bcJitter = "bc_jitter";        // percent
+inline constexpr const char* bcMix = "bc_mix";              // percent
+inline constexpr const char* bbdOn = "bbd_on";
+inline constexpr const char* bbdTime = "bbd_time";          // ms
+inline constexpr const char* bbdFeedback = "bbd_feedback";  // percent (past 100 it builds up and saturates)
+inline constexpr const char* bbdMix = "bbd_mix";            // percent
+inline constexpr const char* bbdTone = "bbd_tone";          // Hz, the most the loop carries
+inline constexpr const char* bbdRate = "bbd_rate";          // Hz, the clock modulation
+inline constexpr const char* bbdDepth = "bbd_depth";        // percent
+inline constexpr const char* bbdGrit = "bbd_grit";          // percent, saturation and hiss
+inline constexpr const char* bbdStereo = "bbd_stereo";
+inline constexpr const char* harVoice2 = "har_voice2";
+// The analog octaver (sas/octaver.h): a module of the rack only. Knobs are 0 .. 10.
+inline constexpr const char* octOn = "oct_on";
+inline constexpr const char* octDirect = "oct_direct";  // the guitar as it is, 10 = full
+inline constexpr const char* octOct1 = "oct_oct1";      // one octave down
+inline constexpr const char* octOct2 = "oct_oct2";      // two octaves down
+inline constexpr const char* octTone = "oct_tone";      // how much of the square wave's buzz the octaves keep
+inline constexpr const char* tenOn = "ten_on";
+inline constexpr const char* tenBand[10] = {"ten_b1", "ten_b2", "ten_b3", "ten_b4", "ten_b5", "ten_b6", "ten_b7", "ten_b8", "ten_b9", "ten_b10"};  // 31.25 Hz .. 16 kHz, dB
+inline constexpr const char* tenGain = "ten_gain";      // dB, in front of the filters
+inline constexpr const char* tenVolume = "ten_volume";  // dB, at the output
 // The fuzz (sas/fuzz.h): a module of the rack only.
 inline constexpr const char* fzOn = "fz_on";
 inline constexpr const char* fzType = "fz_type";    // Face / Muff / Octave
@@ -196,6 +254,7 @@ inline constexpr const char* fzMix = "fz_mix";      // percent
 inline constexpr const char* fzLevel = "fz_level";  // dB
 // The wah (sas/wah.h): a module of the rack only.
 inline constexpr const char* wahOn = "wah_on";
+inline constexpr const char* wahFilter = "wah_filter";    // band-pass / low-pass / high-pass
 inline constexpr const char* wahMode = "wah_mode";        // pedal / envelope / LFO
 inline constexpr const char* wahPos = "wah_pos";          // percent, the pedal (automate it or map it to a controller)
 inline constexpr const char* wahHeel = "wah_heel";        // Hz, the lowest centre frequency
@@ -328,13 +387,6 @@ public:
     // Peak level (linear, 0..1+) since the last call, for the editor's meters.
     float takeInputPeak() { return inputPeak_.exchange(0.0f); }
     float takeOutputPeak() { return outputPeak_.exchange(0.0f); }
-    float gateGain() const { return gateGain_.load(); }
-    // The decimated input for the tuner (filled while the tuner is on); the editor runs the pitch detection on it.
-    const sas::TunerFeed& tunerFeed() const { return tuner_; }
-    // Average plate current of one output tube in mA (0 in the Lite / Eco modes).
-    float idleMilliamps() const { return idleMa_.load(); }
-    // The physical condition (tube, wear, unit) the "tube", "wear" and "unit" parameters ask for.
-    sas::Condition wantedCondition(int instance = 0) const;
     // The highest input (before any gain) and output (after the output level) peaks since the last resetLevelMax(): the editor's "Auto" level
     // buttons play for a few seconds, then ask for the level that puts those peaks where they belong.
     float inputMax() const { return inputMax_.load(); }
@@ -346,6 +398,13 @@ public:
     static float autoInputDb(float rawPeak);
     // The output level (dB) that brings a measured output peak (linear, measured with the output level `currentDb`) to the target.
     static float autoOutputDb(float currentDb, float outputPeak);
+    float gateGain() const { return gateGain_.load(); }
+    // The decimated input for the tuner (filled while the tuner is on); the editor runs the pitch detection on it.
+    const sas::TunerFeed& tunerFeed() const { return tuner_; }
+    // Average plate current of one output tube in mA (0 in the Lite / Eco modes).
+    float idleMilliamps() const { return idleMa_.load(); }
+    // The physical condition (tube, wear, unit) the "tube", "wear" and "unit" parameters ask for.
+    sas::Condition wantedCondition(int instance = 0) const;
 
     // The rack: the order of the modules (docs/MODULAR_RACK.md). A new instance starts with the amp and the cabinet.
     const sas::RackOrder& rackOrder() const { return rackOrder_; }

@@ -3,7 +3,7 @@
 * here (it is V5's load in part 1 and V6A's source impedance here). V5's rail draw is an equivalent
 * load on HT7.
 
-.nodes x h4 h5 h6 h7 p5 c61 v1t v1w n6a p6a k6a o6a t6 p6b k6b c90 o6b t7 r107 g7 p7a k7a k7b m ts_t ts_w3 ts_b ts_w5 ts_c ts_w4 so lnk
+.nodes x h4 h5 h6 h7 p5 c61 v1t v1w n6a p6a k6a o6a t6 p6b k6b c90 o6b t7 r107 g7 p7a k7a k7b m ts_t ts_w3 ts_b ts_c ts_w4 so lnk
 
 V VRAIL x 100 400
 R R61 x h4 10k
@@ -73,11 +73,10 @@ R R117 k7b m 33k
 C C79 k7b ts_t 470p
 R VR3_T ts_t ts_w3 1
 R VR3_B ts_w3 ts_b 1
-R VR5_T ts_b ts_w5 1
-R VR5_B ts_w5 ts_c 1
+R VR5 ts_b ts_c 1
 R VR4_T ts_c ts_w4 1
 R VR4_B ts_w4 0 1
-C C83 m ts_w5 22n
+C C83 m ts_b 22n
 C C84 m ts_w4 22n
 R R118 ts_w3 so 300k
 R R116 so 0 560k

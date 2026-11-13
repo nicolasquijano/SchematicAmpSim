@@ -1,0 +1,102 @@
+{
+  "id": "jcm900_2100",
+  "order": 24,
+  "category": "highgain",
+  "output_db": 8.8,
+  "name": "British 900",
+
+  "ui": [
+    { "param": "volume",   "knob": "gain",   "label": "GAIN 1" },
+    { "param": "volume2",  "knob": "gain2",  "label": "GAIN 2" },
+    { "param": "bass",     "knob": "bass",   "label": "BASS" },
+    { "param": "middle",   "knob": "middle", "label": "MIDDLE" },
+    { "param": "treble",   "knob": "treble", "label": "TREBLE" },
+    { "param": "presence",                    "label": "PRESENCE" },
+    { "param": "master",   "knob": "master", "label": "MASTER" }
+  ],
+
+  "theme": {
+    "background": "#0c0b0b",
+    "panel": "#1a1717",
+    "edge": "#3c3030",
+    "accent": "#d9482b",
+    "label": "#a08f86",
+    "text": "#ece3dc",
+    "knob_top": "#3a3232",
+    "knob_bottom": "#120f0f",
+    "pointer": "#f6d9c8"
+  },
+
+  "presets": [
+   {"name": "Clean", "params": {"volume": 3, "volume2": 2, "bass": 5, "master": 6, "middle": 5, "presence": 5, "treble": 5}},
+   {"name": "Edge of breakup", "params": {"volume": 5, "volume2": 3, "bass": 5, "master": 5, "middle": 5, "presence": 5, "treble": 5}},
+   {"name": "Crunch", "params": {"volume": 7, "volume2": 5, "bass": 5, "master": 5, "middle": 6, "presence": 5, "treble": 5}},
+   {"name": "Lead", "params": {"volume": 9, "volume2": 8, "bass": 5, "master": 5, "middle": 6, "presence": 5, "treble": 6}}
+  ],
+
+  "preamp": {
+    "netlist": "preamp.net",
+    "tolerance": 2e-6,
+    "rail_source": "VRAIL",
+    "input_source": "VIN",
+    "output_node": "mo",
+    "pot_min_ohms": 100,
+    "knobs": [
+      { "name": "gain",   "default": 0.5, "pot": { "type": "wiper", "top": "VR1_B", "bottom": "VR1_T", "total": 220e3, "taper": "linear" } },
+      { "name": "gain2",  "default": 0.5, "pot": { "type": "wiper", "top": "VR2_T", "bottom": "VR2_B", "total": 1e6,   "taper": "log" } },
+      { "name": "bass",   "default": 0.5, "pot": { "type": "variable", "resistor": "VR7",              "total": 1e6,   "taper": "log" } },
+      { "name": "middle", "default": 0.5, "pot": { "type": "wiper", "top": "VR6_T", "bottom": "VR6_B", "total": 22e3,  "taper": "linear" } },
+      { "name": "treble", "default": 0.5, "pot": { "type": "wiper", "top": "VR5_T", "bottom": "VR5_B", "total": 220e3, "taper": "linear" } },
+      { "name": "master", "default": 0.5, "pot": { "type": "variable", "resistor": "VR3",              "total": 1e6,   "taper": "log" } }
+    ],
+    "source_ohms": { "resistors": ["RSRC"], "default": 7000, "min": 10 },
+    "jacks": [
+      { "name": "input", "label": "Input", "drive": "VIN", "resistors": {} }
+    ]
+  },
+
+  "power": {
+    "transformer_parasitics": { "primary_pf": 150, "core_loss_ohms": 40000 },
+    "tubes": [
+      { "name": "EL34", "model": "EL34", "pmax_w": 25.0, "bias_scale": 1.0 },
+      { "name": "6L6GC", "model": "6L6GCDS", "pmax_w": 30.0, "bias_scale": 1.1748 },
+      { "name": "6550", "model": "6550DS", "pmax_w": 35.0, "bias_scale": 1.4124 }
+    ],
+    "bias": { "source": "VBIAS", "idle_resistors": ["DCR_PT", "DCR_PB"], "tubes_per_half": 2 },
+    "netlist": "poweramp.net",
+    "tolerance": 1e-4,
+    "input_source": "VAUDIO",
+    "ht_source": "VHT",
+    "ht_node": "a",
+    "rail_node": "x",
+    "output_node": "t16",
+    "load_resistor": "RLOAD",
+    "presence": { "resistor": "VR8", "scale": 22e3, "min_ohms": 50, "default": 0.5 },
+    "supply": {
+      "mains_hz": 50,
+      "vac_peak": 538,
+      "rect_source_ohms": 42,
+      "ht_dc_source": 490,
+      "rect_drop": 1.4,
+      "reservoir_farads": 100e-6,
+      "tie_ohms": 1.0,
+      "settle_seconds": 0.15
+    }
+  },
+
+  "lite": {
+  "base_gain_db": 21.2408,
+  "high_pass_hz": 13.3241,
+  "shelf_hz": 926.389,
+  "presence_db": [0, 0.368063, 1.02599, 2.54545, 9.97738],
+  "sag_table": [[0, 0], [2.54648, 0.45203], [5.09296, 1.79593], [9.5493, 6.1619], [15.9155, 16.0176], [22.2817, 28.4519], [28.6479, 41.8911], [35.0141, 55.4323], [44.5634, 70.9524], [57.2958, 72.2563], [82.7606, 81.0044], [127.324, 87.7102]],
+  "rail_x_idle": 390.037,
+  "rail_sag_fraction": 0.55,
+  "ceiling_light": 133.583,
+  "ceiling_heavy": 53.5301,
+  "ceiling_decay": 30.2394,
+  "knee": 6.48381,
+  "sag_attack_s": 0.01,
+  "sag_release_s": 0.06
+}
+}

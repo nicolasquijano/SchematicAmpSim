@@ -155,6 +155,7 @@ PreampDef parsePreamp(const json& j, const FileReader& read) {
                 if (pk.contains("resistors"))
                     for (const auto& [name, ohms] : pk.at("resistors").items()) pd.resistors.push_back({name, ohms.get<double>()});
                 if (pk.contains("nfb_ohms")) pd.nfbOhms = pk.at("nfb_ohms").get<double>();
+                if (pk.contains("level_db")) pd.levelDb = pk.at("level_db").get<double>();
                 if (pk.contains("pot_totals"))
                     for (const auto& [name, ohms] : pk.at("pot_totals").items()) {
                         if (!ohms.is_number() || ohms.get<double>() <= 0.0) bad("preamp.selectors." + sd.name + ".pot_totals." + name, "expected a resistance in ohms");

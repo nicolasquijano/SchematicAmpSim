@@ -1,0 +1,51 @@
+* SD-1-style overdrive (the Boss Super OverDrive kind), from a service-manual style drawing: an input buffer, a non-inverting op-amp gain stage with the clipping diodes in
+* its feedback, a one-pole low pass, an active tone stage, the LEVEL pot and the output buffer. Single 9 V supply, everything biased at 4.5 V (VB).
+*
+* Gain stage (U1, 4558 type): input C2 .018 into R4 100k; the inverting leg is R6 4.7k with C3 .047 (a highpass near 720 Hz), the feedback is R5 33k plus the 1M DRIVE pot
+* (VRD, used as a variable resistor) with the diodes across it: one diode (D4) for the output going down and two in series (D5, D6) for the output going up, so the clipping is
+* asymmetrical (the single diode clips first). Behind it R7 10k with C4 .018 (a low pass near 880 Hz).
+* Tone (U2): the low pass feeds its + input; the TONE pot VR3 (20k) joins that node (VRT_A), the wiper (to ground through C5 .027 and R8 470) and the - input (VRT_B), and the feedback is
+* R9 10k with C6 .01. LEVEL (VRL_T, VRL_B, 10k) follows C7 1u and R10 4.7k.
+* The input and output transistors (Q5, Q6) are emitter followers: here ideal buffers, with the input loaded like the real base (R2 470k with an assumed 1M for the transistor's gain).
+* Assumptions: the diodes are 1N4148-like (the drawing does not say which type); the op-amps are the limited element around the 4.5 V bias, 3.3 V soft limit on 9 V.
+
+V VB vb 1 4.5
+C CB vb 0 47u
+
+I VIN gin 1
+R R1 gin a 10k
+C C1 a b 0.047u
+R R2 b vb 470k
+R RQ5 b vb 1M
+O UQ5 b nq q vb RC4558
+R RFQ5 q nq 1
+
+* Gain stage.
+C C2 q g 0.018u
+R R4 g vb 100k
+O U1 g inv o1 vb RC4558
+R R6 inv i6 4.7k
+C C3 i6 vb 0.047u
+R R5 inv fb 33k
+R VRD fb o1 1
+D D4 inv o1 SIGNAL
+D D6 o1 dd SIGNAL
+D D5 dd inv SIGNAL
+
+* Low pass and tone stage.
+R R7 o1 t1 10k
+C C4 t1 vb 0.018u
+O U2 t1 inv2 o2 vb RC4558
+R R9 inv2 o2 10k
+C C6 inv2 o2 0.01u
+R VRT_A t1 w3 1
+R VRT_B w3 inv2 1
+C C5 w3 c5 0.027u
+R R8 c5 vb 470
+
+* Level and the output buffer.
+C C7 o2 c7 1u
+R R10 c7 l3 4.7k
+R VRL_T l3 y 1
+R VRL_B y 0 1
+R R17 y 0 1M

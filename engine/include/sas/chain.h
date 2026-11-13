@@ -138,6 +138,8 @@ private:
     NamTone namTone_;
     Quality active_ = Quality::Normal;
     std::vector<Smoother> knobs_, powerKnobs_;
+    // The gain at the amp's input that the jack (when the level match is on) and the selected selector positions ask for, in dB.
+    double inputCompDb(std::size_t jack, bool levelMatch, const std::vector<std::size_t>& selectors) const;
     Smoother bias_, presence_, tsDrive_, tsTone_, tsLevel_, inputDb_, outputDb_, jackCompDb_;
     std::vector<double> knobScratch_, powerScratch_;
 };

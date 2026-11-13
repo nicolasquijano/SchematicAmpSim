@@ -1,0 +1,78 @@
+* Boss DS-1 style distortion, from the Boss service drawing of the Japanese board (DS-1 BOARD ASSY 7520551007, pcb 2291032607; TA7136P op-amp).
+*
+* Signal path (read from the drawing): input R1 1k and C1 .047 into Q1 (2SC2240), an emitter follower biased by R2 470k to the 4.5 V bias; C2 .47 and the JFET switch Q6 (2SK30A,
+* a few hundred ohms when the effect is on) into C3 .047 and Q2 (2SC2240), a common-emitter booster: 470k (R7, with C4 250p) from collector to base, R6 100k to ground, R9 22 in
+* the emitter and R8 10k to the supply for its load. C5 .47 couples it into the + input of the TA7136 (R10 100k to the bias). The op-amp is non-inverting: its - input takes the DIST
+* pot's wiper through R11 100k; the pot (VR1, 100k linear) sits between the output (top) and R13 4.7k with C8 1u to ground (bottom), so the gain runs from 1 (wiper at the top)
+* to 1 + 100k / 4.7k = 22 (wiper at the bottom, DIST clockwise), and C7 250p from the output to the wiper rolls the highs off; C6 and C24 (150p each, to the op-amp's phase pin) set its bandwidth.
+* After it: R14 2.2k and C9 .47, then two 1S2473 diodes in antiparallel to the bias (D4, D5: hard clipping at about +-0.6 V) and C10 .01 (a low-pass with R14, near 7 kHz).
+* Tone (VR3, 20k): from the clipped signal a low-pass (R16 6.8k and C12 .1) to the top of the pot and a high-pass (C11 .022, R15 2.2k, then R17 6.8k to the bias) to its bottom; the
+* wiper takes a mix of the two (a scooped middle). LEVEL (VR2, 100k) sits on the wiper, then R18 10k and the JFET switch Q7 (a few hundred ohms) into C13 .047 and Q3 (2SC732), an emitter
+* follower (R19 and R20 1M to the bias, R21 10k), and R22 1k and C14 1u to the output (R23 100k).
+*
+* Variable parts (set by the engine): VR1_T / VR1_B (DIST: top-to-wiper and wiper-to-bottom), VR3_T / VR3_B (TONE), VR2_T / VR2_B (LEVEL). Supply 9 V, bias 4.5 V.
+* Assumptions where the drawing is silent (change them here, not in code):
+*  - the bias divider R24 / R25 with C15 47u is a stiff 4.5 V source (as in the other drives);
+*  - 2SC2240GR and 2SC732 (hFE 200 to 400): beta 300 and a poor reverse beta; Q2 is a full Ebers-Moll transistor (it can saturate), Q1 and Q3 are followers (forward-active only);
+*  - the TA7136's slew limit is not modelled (only its gain-bandwidth, about 300 kHz), nor R12 27k in its supply; C6 and C24 (in series) stand for a 75p load on the output;
+*  - the switching circuit (the flip-flop, Q4, Q5, Q8, the LED) is left out: the effect is always on; Q6 and Q7 are 300 ohm resistors.
+
+V VA va 1 9
+V VB vb 1 4.5
+
+I VIN gin 1
+R R1 gin b1 1k
+C C1 b1 q1b 0.047u
+R R2 q1b vb 470k
+Q Q1 q1b va q1e 2SC2240
+R R3 q1e 0 10k
+
+C C2 q1e n2 0.47u
+R R4 n2 vb 100k
+R RQ6 n2 n3 300
+C C3 n3 b2 0.047u
+
+R R6 b2 0 100k
+R R7 b2 c2 470k
+C C4 b2 c2 250p
+N Q2 b2 c2 e2 2SC2240
+R R9 e2 0 22
+R R8 va c2 10k
+
+C C5 c2 inp 0.47u
+R R10 inp vb 100k
+O U1 inp inm o vb TA7136
+R R11 inm w 100k
+R VR1_T o w 1
+R VR1_B w g13 1
+R R13 g13 c8n 4.7k
+C C8 c8n 0 1u
+C C7 o w 250p
+C CCOMP o 0 75p
+
+R R14 o x0 2.2k
+C C9 x0 x 0.47u
+D D4 x vb SIGNAL
+D D5 vb x SIGNAL
+C C10 x vb 0.01u
+
+R R16 x t8 6.8k
+C C12 t8 vb 0.1u
+R VR3_T t8 tw 1
+R VR3_B tw b7 1
+R R17 b7 vb 6.8k
+C C11 x hp1 0.022u
+R R15 hp1 b7 2.2k
+
+R VR2_T tw lw 1
+R VR2_B lw vb 1
+R R18 lw q7 10k
+R RQ7 q7 cb 300
+R R19 cb vb 1M
+C C13 cb q3b 0.047u
+R R20 q3b vb 1M
+Q Q3 q3b va q3e 2SC2240
+R R21 q3e 0 10k
+R R22 q3e o1 1k
+C C14 o1 y 1u
+R R23 y 0 100k

@@ -16,11 +16,12 @@ struct Category {
 
 const std::vector<Category>& categories() {
     static const std::vector<Category> c{
-        {"Effects", {ModuleType::Gate, ModuleType::Compressor, ModuleType::Overdrive, ModuleType::NamPedal, ModuleType::Fuzz, ModuleType::Wah, ModuleType::Boost, ModuleType::Limiter, ModuleType::Acoustic, ModuleType::Klon}},
+        {"Effects", {ModuleType::Gate, ModuleType::Compressor, ModuleType::Overdrive, ModuleType::Distortion, ModuleType::NamPedal, ModuleType::Fuzz, ModuleType::Wah, ModuleType::Boost, ModuleType::Limiter, ModuleType::Acoustic, ModuleType::Klon}},
         {"Modulation", {ModuleType::Phaser, ModuleType::Chorus, ModuleType::Vibe, ModuleType::Flanger, ModuleType::Tremolo, ModuleType::Leslie}},
-        {"Pitch", {ModuleType::Pitch}},
-        {"EQ", {ModuleType::Eq}},
-        {"Space", {ModuleType::Delay, ModuleType::TapeEcho, ModuleType::Reverb, ModuleType::SpringReverb}},
+        {"Pitch", {ModuleType::Pitch, ModuleType::Octaver, ModuleType::Harmonist}},
+        {"EQ", {ModuleType::Eq, ModuleType::TenBandEq}},
+        {"Lo-fi", {ModuleType::Bitcrusher}},
+        {"Space", {ModuleType::Delay, ModuleType::BbdDelay, ModuleType::Layers, ModuleType::TapeEcho, ModuleType::Reverb, ModuleType::SpringReverb}},
     };
     return c;
 }
@@ -39,11 +40,13 @@ juce::Colour colourOf(ModuleType t) {
     switch (t) {
         case ModuleType::Amp: return juce::Colour(0xffe0a030);
         case ModuleType::Cabinet: return juce::Colour(0xffb07a48);
+        case ModuleType::Bitcrusher: return juce::Colour(0xff9aa860);
         case ModuleType::Gate:
         case ModuleType::Boost:
         case ModuleType::Limiter:
         case ModuleType::Compressor: return juce::Colour(0xff58b878);
         case ModuleType::Overdrive:
+        case ModuleType::Distortion:
         case ModuleType::Fuzz:
         case ModuleType::Klon:
         case ModuleType::NamPedal: return juce::Colour(0xffe06a3c);
@@ -55,10 +58,15 @@ juce::Colour colourOf(ModuleType t) {
         case ModuleType::Flanger: return juce::Colour(0xffa070d8);
         case ModuleType::Acoustic:
         case ModuleType::Wah: return juce::Colour(0xffe8c040);
+        case ModuleType::Octaver:
+        case ModuleType::Harmonist:
         case ModuleType::Pitch: return juce::Colour(0xffd868a8);
+        case ModuleType::TenBandEq:
         case ModuleType::Eq: return juce::Colour(0xff48b8c8);
         case ModuleType::Delay:
         case ModuleType::TapeEcho:
+        case ModuleType::BbdDelay:
+        case ModuleType::Layers:
         case ModuleType::SpringReverb:
         case ModuleType::Reverb: return juce::Colour(0xff5890e0);
         case ModuleType::Splitter:
@@ -536,6 +544,9 @@ juce::PopupMenu RackPage::addMenu(const SasProcessor& processor, int idBase) {
     // The amp and the cabinet can be removed; this puts them back.
     if (!processor.inRack({ModuleType::Amp, 0})) menu.addItem(idBase + int(ModuleType::Amp), tr("Amp"), processor.canAdd(ModuleType::Amp));
     if (!processor.inRack({ModuleType::Cabinet, 0})) menu.addItem(idBase + int(ModuleType::Cabinet), tr("Cabinet"), processor.canAdd(ModuleType::Cabinet));
+    // A second amp (and cabinet) in the same line, in series with the first.
+    if (processor.inRack({ModuleType::Amp, 0}) && !processor.inRack({ModuleType::Amp, 1})) menu.addItem(idBase + int(ModuleType::Amp), tr("Second amp"), processor.canAdd(ModuleType::Amp));
+    if (processor.inRack({ModuleType::Cabinet, 0}) && !processor.inRack({ModuleType::Cabinet, 1})) menu.addItem(idBase + int(ModuleType::Cabinet), tr("Second cabinet"), processor.canAdd(ModuleType::Cabinet));
     menu.addSeparator();
     for (const auto& cat : categories()) {
         juce::PopupMenu sub;

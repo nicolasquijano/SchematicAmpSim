@@ -96,7 +96,14 @@ Layout SasProcessor::createLayout(const std::vector<sas::AmpDef>& defs) {
     RackState::addParams(l, sas::ModuleType::Klon, 0);
     RackState::addParams(l, sas::ModuleType::Leslie, 0);
     RackState::addParams(l, sas::ModuleType::SpringReverb, 0);
+    RackState::addParams(l, sas::ModuleType::TenBandEq, 0);
     RackState::addParams(l, sas::ModuleType::Limiter, 0);
+    RackState::addParams(l, sas::ModuleType::Octaver, 0);
+    RackState::addParams(l, sas::ModuleType::Harmonist, 0);
+    RackState::addParams(l, sas::ModuleType::BbdDelay, 0);
+    RackState::addParams(l, sas::ModuleType::Bitcrusher, 0);
+    RackState::addParams(l, sas::ModuleType::Layers, 0);
+    RackState::addParams(l, sas::ModuleType::Distortion, 0);
     RackState::addParams(l, sas::ModuleType::Compressor, 0);
     RackState::addParams(l, sas::ModuleType::NamPedal, 0);
     l.add(std::make_unique<juce::AudioParameterBool>(juce::ParameterID{ids::tunerOn, kVersion}, "Tuner", false));
@@ -198,6 +205,7 @@ void SasProcessor::swapInBuiltChain(int instance) {
     runner.activeKey = key;
     if (auto* module = ampModule(instance)) {
         module->setSettings(readSettings(anyIrLoaded(), instance));
+        module->setOn(ampValue(instance, ids::ampOn) > 0.5);
         module->snapChain(*built);
         module->setChain(built);
     } else {
@@ -443,10 +451,12 @@ void SasProcessor::applyModuleParams(const sas::RackOrder& order) {
                 c.tone = p(ids::compTone) / 10.0;
                 c.level = p(ids::compLevel) / 10.0;
                 c.fastRelease = p(ids::compFast) > 0.5;
+                c.model = std::clamp(int(p(ids::compModel) + 0.5), 0, sas::kCompModelCount - 1);
                 static_cast<sas::CompressorModule*>(m)->setParams(p(ids::compOn) > 0.5, c);
                 break;
             }
             case T::Overdrive:
+                static_cast<sas::OverdriveModule*>(m)->setModel(sas::DriveModel(std::clamp(int(p(ids::tsModel) + 0.5), 0, sas::kDriveModelCount - 1)));
                 static_cast<sas::OverdriveModule*>(m)->setParams(p(ids::tsOn) > 0.5, {p(ids::tsDrive) / 10.0, p(ids::tsTone) / 10.0, p(ids::tsLevel) / 10.0});
                 break;
             case T::NamPedal: {
@@ -511,6 +521,54 @@ void SasProcessor::applyModuleParams(const sas::RackOrder& order) {
                 static_cast<sas::FlangerModule*>(m)->setParams(q);
                 break;
             }
+            case T::Distortion: {
+                auto* d = static_cast<sas::DistortionModule*>(m);
+                d->setModel(int(p(ids::dstModel) + 0.5));
+                d->setParams(p(ids::dstOn) > 0.5, {p(ids::dstDrive) / 10.0, p(ids::dstTone) / 10.0, p(ids::dstLevel) / 10.0});
+                break;
+            }
+            case T::Layers: {
+                sas::LayersParams q;
+                q.on = p(ids::lyOn) > 0.5;
+                q.mix = p(ids::lyMix) / 10.0;
+                q.attackS = 0.02 * std::pow(150.0, p(ids::lyAttack) / 10.0);
+                q.decayS = 0.3 * std::pow(46.7, p(ids::lyDecay) / 10.0);
+                q.trig = p(ids::lyTrig) / 10.0;
+                q.diffusion = p(ids::lyDiffusion) / 10.0;
+                q.single = p(ids::lySingle) > 0.5;
+                q.subOct = p(ids::lySub) > 0.5;
+                q.hold = p(ids::lyHold) > 0.5;
+                q.stereo = p(ids::lyStereo) > 0.5;
+                static_cast<sas::LayersModule*>(m)->setParams(q);
+                break;
+            }
+            case T::Bitcrusher: {
+                sas::BitcrusherParams q;
+                q.on = p(ids::bcOn) > 0.5;
+                q.bits = p(ids::bcBits);
+                q.rateHz = p(ids::bcRate);
+                q.antiAlias = p(ids::bcAntiAlias) > 0.5;
+                q.toneHz = p(ids::bcTone);
+                q.dither = p(ids::bcDither) / 100.0;
+                q.jitter = p(ids::bcJitter) / 100.0;
+                q.mix = p(ids::bcMix) / 100.0;
+                static_cast<sas::BitcrusherModule*>(m)->setParams(q);
+                break;
+            }
+            case T::BbdDelay: {
+                sas::BbdParams q;
+                q.on = p(ids::bbdOn) > 0.5;
+                q.timeMs = p(ids::bbdTime);
+                q.feedback = p(ids::bbdFeedback) / 100.0;
+                q.mix = p(ids::bbdMix) / 100.0;
+                q.toneHz = p(ids::bbdTone);
+                q.rateHz = p(ids::bbdRate);
+                q.depth = p(ids::bbdDepth) / 100.0;
+                q.grit = p(ids::bbdGrit) / 100.0;
+                q.stereo = p(ids::bbdStereo) > 0.5;
+                static_cast<sas::BbdDelayModule*>(m)->setParams(q);
+                break;
+            }
             case T::TapeEcho: {
                 sas::TapeParams q;
                 q.on = p(ids::tpOn) > 0.5;
@@ -532,6 +590,7 @@ void SasProcessor::applyModuleParams(const sas::RackOrder& order) {
                 q.speed = int(p(ids::lesSpeed) + 0.5);
                 q.depth = p(ids::lesDepth) / 10.0;
                 q.balance = p(ids::lesBalance) / 10.0;
+                q.width = p(ids::lesWidth) / 10.0;
                 q.mix = p(ids::lesMix) / 100.0;
                 static_cast<sas::LeslieModule*>(m)->setParams(q);
                 break;
@@ -574,6 +633,40 @@ void SasProcessor::applyModuleParams(const sas::RackOrder& order) {
                 static_cast<sas::BoostModule*>(m)->setParams(q);
                 break;
             }
+            case T::Harmonist: {
+                sas::HarmonistParams q;
+                q.on = p(ids::harOn) > 0.5;
+                q.mode = int(p(ids::harMode) + 0.5);
+                q.key = int(p(ids::harKey) + 0.5);
+                q.scale = int(p(ids::harScale) + 0.5);
+                q.interval1 = p(ids::harInt1);
+                q.interval2 = p(ids::harInt2);
+                q.detuneCents = p(ids::harDetune);
+                q.direct = p(ids::harDirect) / 10.0;
+                q.voice1 = p(ids::harVoice1) / 10.0;
+                q.voice2 = p(ids::harVoice2) / 10.0;
+                static_cast<sas::HarmonistModule*>(m)->setParams(q);
+                break;
+            }
+            case T::Octaver: {
+                sas::OctaverParams q;
+                q.on = p(ids::octOn) > 0.5;
+                q.direct = p(ids::octDirect) / 10.0;
+                q.oct1 = p(ids::octOct1) / 10.0;
+                q.oct2 = p(ids::octOct2) / 10.0;
+                q.tone = p(ids::octTone) / 10.0;
+                static_cast<sas::OctaverModule*>(m)->setParams(q);
+                break;
+            }
+            case T::TenBandEq: {
+                sas::TenBandEqParams q;
+                q.on = p(ids::tenOn) > 0.5;
+                for (int b = 0; b < 10; ++b) q.bandsDb[std::size_t(b)] = p(ids::tenBand[b]);
+                q.gainDb = p(ids::tenGain);
+                q.volumeDb = p(ids::tenVolume);
+                static_cast<sas::TenBandEqModule*>(m)->setParams(q);
+                break;
+            }
             case T::Limiter: {
                 sas::LimiterParams q;
                 q.on = p(ids::limOn) > 0.5;
@@ -599,6 +692,7 @@ void SasProcessor::applyModuleParams(const sas::RackOrder& order) {
                 sas::WahParams q;
                 q.on = p(ids::wahOn) > 0.5;
                 q.mode = int(p(ids::wahMode) + 0.5);
+                q.filter = int(p(ids::wahFilter) + 0.5);
                 q.position = p(ids::wahPos) / 100.0;
                 q.heelHz = p(ids::wahHeel);
                 q.toeHz = p(ids::wahToe);
@@ -753,7 +847,10 @@ void SasProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::MidiBuff
         irActiveOf[cabinet] = irActive;
     }
     for (int instance = 0; instance < 2; ++instance)
-        if (auto* amp = ampModule(instance)) amp->setSettings(readSettings(anyIrLoaded(instance), instance));
+        if (auto* amp = ampModule(instance)) {
+            amp->setSettings(readSettings(anyIrLoaded(instance), instance));
+            amp->setOn(ampValue(instance, ids::ampOn) > 0.5);
+        }
     const sas::RackOrder order = rack_.order();
     applyModuleParams(order);
 
@@ -793,14 +890,14 @@ void SasProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::MidiBuff
         for (int i = 0; i < n; ++i) outPeak = std::max(outPeak, std::max(std::fabs(m[i]), std::fabs(mR[i])));
         if (inPeak > inputPeak_.load()) inputPeak_.store(inPeak);
         if (outPeak > outputPeak_.load()) outputPeak_.store(outPeak);
+        if (inPeak > inputMax_.load()) inputMax_.store(inPeak);
+        if (outPeak > outputMax_.load()) outputMax_.store(outPeak);
 
         for (int ch = 0; ch < numCh; ++ch) {
             float* out = buffer.getWritePointer(ch) + start;
             if (numCh == 1)
                 for (int i = 0; i < n; ++i) out[i] = 0.5f * (m[i] + mR[i]);  // a mono output: the two ears summed
             else
-        if (inPeak > inputMax_.load()) inputMax_.store(inPeak);
-        if (outPeak > outputMax_.load()) outputMax_.store(outPeak);
                 std::copy(ch % 2 == 0 ? m : mR, (ch % 2 == 0 ? m : mR) + n, out);
         }
     }
@@ -929,11 +1026,18 @@ std::unique_ptr<sas::Module> SasProcessor::makeModule(sas::ModuleType type, int 
         case T::Wah: return std::make_unique<sas::WahModule>();
         case T::Fuzz: return std::make_unique<sas::FuzzModule>();
         case T::Boost: return std::make_unique<sas::BoostModule>();
+        case T::TenBandEq: return std::make_unique<sas::TenBandEqModule>();
+        case T::Octaver: return std::make_unique<sas::OctaverModule>();
+        case T::Harmonist: return std::make_unique<sas::HarmonistModule>();
         case T::Acoustic: return std::make_unique<sas::AcousticModule>();
         case T::Klon: return std::make_unique<sas::KlonModule>();
         case T::Leslie: return std::make_unique<sas::LeslieModule>();
         case T::SpringReverb: return std::make_unique<sas::SpringReverbModule>();
         case T::TapeEcho: return std::make_unique<sas::TapeEchoModule>();
+        case T::BbdDelay: return std::make_unique<sas::BbdDelayModule>();
+        case T::Bitcrusher: return std::make_unique<sas::BitcrusherModule>();
+        case T::Layers: return std::make_unique<sas::LayersModule>();
+        case T::Distortion: return std::make_unique<sas::DistortionModule>();
         case T::Limiter: return std::make_unique<sas::LimiterModule>();
         case T::Pitch: return std::make_unique<sas::PitchModule>();
         case T::Eq: return std::make_unique<sas::EqModule>();
@@ -977,15 +1081,17 @@ bool SasProcessor::canAdd(sas::ModuleType type, int lane) const {
         if (rackOrder_.slots[std::size_t(i)].type != sas::ModuleType::Amp) ++modules;
         if (rackOrder_.slots[std::size_t(i)].type == type) ++instances;
     }
-    // The two ends of a parallel come in with the parallel itself. An amp or a cabinet is the first one (in the shared part or lane A) when there is none,
-    // or, with `lane` 1, the second one of lane B (only while there is a parallel and it has none yet).
+    // The two ends of a parallel come in with the parallel itself. An amp or a cabinet can be there twice: the first one and a second one, in the same line
+    // (in series) or, with `lane` 1, in lane B of the parallel.
     const bool ends = type == sas::ModuleType::Splitter || type == sas::ModuleType::Mixer;
     const bool pair = type == sas::ModuleType::Amp || type == sas::ModuleType::Cabinet;
     if (ends) return false;
     if (pair) {
-        const bool second = lane == 1;
-        if (second && !hasParallel()) return false;
-        if (indexInOrder({type, second ? 1 : 0}) >= 0) return false;
+        if (lane == 1) {
+            if (!hasParallel() || indexInOrder({type, 1}) >= 0) return false;
+        } else if (indexInOrder({type, 0}) >= 0 && indexInOrder({type, 1}) >= 0) {
+            return false;
+        }
         return modules < RackState::kMaxModules || type == sas::ModuleType::Amp;
     }
     return modules < RackState::kMaxModules && instances < RackState::maxInstances(type);
@@ -1023,17 +1129,8 @@ void SasProcessor::normalizeLanes() {
 }
 
 bool SasProcessor::layoutOk() const {
-    using T = sas::ModuleType;
     if (!rackOrder_.valid()) return false;
-    const int a1 = indexInOrder({T::Amp, 1}), c1 = indexInOrder({T::Cabinet, 1});
-    if (!hasParallel()) return a1 < 0 && c1 < 0;
-    // The second amp and cabinet, if they are there, are in lane B; the first ones are in the shared part or in lane A.
-    if ((a1 >= 0 && rackOrder_.lane[std::size_t(a1)] != 1) || (c1 >= 0 && rackOrder_.lane[std::size_t(c1)] != 1)) return false;
-    for (const auto first : {sas::SlotRef{T::Amp, 0}, sas::SlotRef{T::Cabinet, 0}}) {
-        const int i = indexInOrder(first);
-        if (i >= 0 && rackOrder_.lane[std::size_t(i)] != 0) return false;  // (they can be removed; if they are there they are not in lane B)
-    }
-    return true;
+    return true;  // the amps and cabinets can be anywhere: in series, or in either lane of a parallel
 }
 
 // A module that is put in the rack plays at once: its switch is on (the parameter's own default is "off" for the pedals and effects).
@@ -1051,7 +1148,7 @@ bool SasProcessor::addModule(sas::ModuleType type, int insertAt, int wantedLane)
     const bool pair = type == sas::ModuleType::Amp || type == sas::ModuleType::Cabinet;
     int instance = 0;
     if (pair) {
-        instance = wantedLane == 1 ? 1 : 0;  // the first amp or cabinet, or the second one of lane B
+        instance = (wantedLane == 1 || indexInOrder({type, 0}) >= 0) ? 1 : 0;  // the first amp or cabinet, or the second one (lane B, or in series)
     } else {
         for (; instance < RackState::maxInstances(type); ++instance)
             if (indexInOrder({type, instance}) < 0) break;
@@ -1064,7 +1161,7 @@ bool SasProcessor::addModule(sas::ModuleType type, int insertAt, int wantedLane)
         auto firstTimeEffect = [&] {
             for (int i = 0; i < rackOrder_.count; ++i) {
                 const auto t = rackOrder_.slots[std::size_t(i)].type;
-                if (t == T::Delay || t == T::TapeEcho || t == T::Reverb || t == T::SpringReverb || t == T::Limiter) return i;
+                if (t == T::Delay || t == T::TapeEcho || t == T::BbdDelay || t == T::Reverb || t == T::SpringReverb || t == T::Limiter) return i;
             }
             return rackOrder_.count;
         };
@@ -1074,7 +1171,7 @@ bool SasProcessor::addModule(sas::ModuleType type, int insertAt, int wantedLane)
                 insertAt = ampAt;
                 while (insertAt > 0 && rackOrder_.slots[std::size_t(insertAt - 1)].type == T::Overdrive) --insertAt;
                 break;
-            case T::Gate: case T::NamPedal: case T::Pitch: case T::Wah: case T::Fuzz: case T::Boost: case T::Acoustic: case T::Klon: {
+            case T::Gate: case T::NamPedal: case T::Pitch: case T::Wah: case T::Fuzz: case T::Boost: case T::Acoustic: case T::Klon: case T::TenBandEq: case T::Octaver: case T::Harmonist: case T::Distortion: {
                 // In front of the compressor and the overdrive that sit next to the amp, so the amp keeps running them as it always did.
                 insertAt = ampAt;
                 while (insertAt > 0 && (rackOrder_.slots[std::size_t(insertAt - 1)].type == T::Overdrive || rackOrder_.slots[std::size_t(insertAt - 1)].type == T::Compressor)) --insertAt;
@@ -1086,7 +1183,12 @@ bool SasProcessor::addModule(sas::ModuleType type, int insertAt, int wantedLane)
                     insertAt = cab >= 0 ? cab : firstTimeEffect();
                     break;
                 }
-                // the second amp: at the end of lane B, in front of its cabinet if it has one
+                if (wantedLane != 1) {  // the second amp in the same line: next to the first one, in front of the cabinet
+                    const int cab = indexInOrder({T::Cabinet, 0}), amp = indexInOrder({T::Amp, 0});
+                    insertAt = cab >= 0 && cab > amp ? cab : amp + 1;
+                    break;
+                }
+                // the second amp of lane B: at the end of it, in front of its cabinet if it has one
                 const int cabB = indexInOrder({T::Cabinet, 1});
                 insertAt = cabB >= 0 ? cabB : rackOrder_.mixerIndex();
                 break;
@@ -1097,8 +1199,13 @@ bool SasProcessor::addModule(sas::ModuleType type, int insertAt, int wantedLane)
                     insertAt = amp >= 0 ? amp + 1 : firstTimeEffect();
                     break;
                 }
-                // the second cabinet: behind the second amp, or at the end of lane B
+                // the second cabinet: behind the second amp, or at the end of lane B (in series: behind the first cabinet)
                 const int ampB = indexInOrder({T::Amp, 1});
+                if (wantedLane != 1) {
+                    const int cab = indexInOrder({T::Cabinet, 0});
+                    insertAt = ampB >= 0 ? ampB + 1 : cab >= 0 ? cab + 1 : firstTimeEffect();
+                    break;
+                }
                 insertAt = ampB >= 0 ? ampB + 1 : rackOrder_.mixerIndex();
                 break;
             }
@@ -1111,7 +1218,7 @@ bool SasProcessor::addModule(sas::ModuleType type, int insertAt, int wantedLane)
     int lane = (s >= 0 && insertAt > s + 1 && insertAt <= m) ? rackOrder_.lane[std::size_t(insertAt - 1)] : 0;
     if (wantedLane == 1 && !hasParallel()) return false;
     if (pair && instance == 0) lane = 0;  // the first amp and cabinet are in the shared part or lane A
-    if ((pair && instance > 0) || wantedLane == 1) {  // the second amp and cabinet are always in lane B, inside the parallel
+    if (wantedLane == 1) {  // into lane B, inside the parallel
         lane = 1;
         insertAt = juce::jlimit(s + 1, m, insertAt);
     }
@@ -1832,6 +1939,7 @@ void SasProcessor::applyWahPreset(int index, int instance) {
     set(ids::wahOn, p.on ? 1.0 : 0.0);
     if (!p.on) return;  // "Off" only switches it off, so the knobs keep what the player had set
     set(ids::wahMode, p.mode);
+    set(ids::wahFilter, p.filter);
     set(ids::wahPos, p.position);
     set(ids::wahHeel, p.heelHz);
     set(ids::wahToe, p.toeHz);

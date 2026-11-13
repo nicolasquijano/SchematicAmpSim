@@ -5,7 +5,8 @@
 //  - Envelope: the level of the playing (an auto-wah): the harder the string is hit, the further the filter opens (or the lower it goes, with Down),
 //    with its own attack and release times and a sensitivity.
 //  - LFO: a slow sine that rocks it by itself.
-// Heel and Toe set the range, Q how narrow and vocal the peak is, Mix how much of the filtered sound is blended with the dry one (below 100 % the
+// The Filter choice turns it into a dynamic filter: band-pass is the wah, low-pass is the "quack" of an envelope filter (it opens from dull to bright),
+// high-pass thins the sound as it sweeps. Heel and Toe set the range, Q how narrow and vocal the peak is, Mix how much of the filtered sound is blended with the dry one (below 100 % the
 // bass and the pick attack stay in front), Level the loudness of what comes out. Works on one channel (before the amp) or a stereo pair (after
 // it); in stereo mode the two channels follow their own envelope, and the LFO is half a cycle apart between them. Switching it on or off fades
 // over 20 ms.
@@ -32,6 +33,7 @@ struct WahParams {
     double releaseMs = 120.0; // envelope: 20 .. 1000
     bool down = false;        // envelope: the loud notes close the filter instead of opening it
     double rateHz = 1.0;      // LFO: 0.1 .. 10
+    int filter = 0;           // 0 band-pass (the wah), 1 low-pass, 2 high-pass: a dynamic filter
     bool stereo = false;      // stereo pair: each channel has its own envelope, and the LFO is half a cycle apart
 };
 
@@ -112,7 +114,9 @@ public:
                 const double v2 = ic2_[std::size_t(c)][0] + a2 * ic1_[std::size_t(c)][0] + a3 * v3;
                 ic1_[std::size_t(c)][0] = 2.0 * v1 - ic1_[std::size_t(c)][0];
                 ic2_[std::size_t(c)][0] = 2.0 * v2 - ic2_[std::size_t(c)][0];
-                const double band = k * v1 * level;
+                // The three outputs of the state-variable filter: band-pass (k scales it to unity at the peak), low-pass and high-pass.
+                const double filtered = target_.filter == 1 ? v2 : target_.filter == 2 ? in - k * v1 - v2 : k * v1;
+                const double band = filtered * level;
                 const double out = in * (1.0 - mix) + band * mix;
                 x[i] = float(in + (out - in) * wet);
             }

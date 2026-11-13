@@ -53,7 +53,7 @@
     "jack_label": "MODE",
     "knobs": [
       { "name": "volume", "default": 0.6, "pot": { "type": "wiper", "top": "VR1_T", "bottom": "VR1_B", "total": 1e6,   "taper": "log" } },
-      { "name": "bass",   "default": 0.5, "pot": { "type": "wiper", "top": "VR5_T", "bottom": "VR5_B", "total": 1e6,   "taper": "log" } },
+      { "name": "bass",   "default": 0.5, "pot": { "type": "variable", "resistor": "VR5", "total": 1e6, "taper": "log" } },
       { "name": "middle", "default": 0.5, "pot": { "type": "wiper", "top": "VR4_T", "bottom": "VR4_B", "total": 25e3,  "taper": "linear" } },
       { "name": "treble", "default": 0.6, "pot": { "type": "wiper", "top": "VR3_T", "bottom": "VR3_B", "total": 250e3, "taper": "linear" } },
       { "name": "master", "default": 0.5, "pot": { "type": "wiper", "top": "VR2_T", "bottom": "VR2_B", "total": 1e6,   "taper": "log" } }

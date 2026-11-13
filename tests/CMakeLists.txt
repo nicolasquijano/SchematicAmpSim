@@ -26,6 +26,8 @@ add_executable(sas_tests
   test_chorus.cpp
   test_vibe.cpp
   test_tremolo_flanger.cpp
+  test_ten_band_eq.cpp
+  test_leslie_width.cpp
   test_spectrum.cpp
   test_version.cpp
   test_nam.cpp

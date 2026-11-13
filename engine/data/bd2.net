@@ -1,0 +1,106 @@
+* BD-2-style overdrive (the Boss Blues Driver kind), from a hobbyist redraw of the 2001 schematic (rev 3): a JFET input buffer, two discrete gain stages (a JFET differential
+* pair into a PNP common-emitter stage, used as an op-amp) with the dual-gang GAIN pot in their feedback and a four-diode clipper between them, a passive TONE, the LEVEL pot,
+* an op-amp stage with a gyrator in its inverting leg and the output buffer. 9 V supply, the op-amp references at 4 V (VB).
+*
+* Gain stages: the BD2_STAGE op-amp (open loop gain about 700, 2.2k output resistance, 7 MHz gain-bandwidth: the pair's gm and the 2.2k loads) with the + input from the 100n / 2.2n
+* couplings (220k / 1M to 4 V) and the - input on the feedback node: 1.5k with 150n (stage 1; 2.2k with 1u in stage 2) to ground, and the feedback through 22k (33k in stage 2)
+* plus the GAIN section (250k log, VRG1 and VRG2) with 47p (100p) across it. Between the stages: 100k, 220p / 330k, 100n, 47n, 1M and 15k into the clipping node M, which has two
+* diodes in series each way to ground (D1..D4, 1N914) and the 2.2n coupling into stage 2.
+* Tone: 5.6k with 5.6n, 18n, the 10k TONE pot with 18n at its bottom, then LEVEL (100k log) and 47n into the third op-amp (M5218, 4558 type): 6.8k with 2.2n in the feedback, the two
+* diodes across its inputs, and in the inverting leg the gyrator (56n, 1.2k, a follower on 5.6n / 470k with 10k).
+* Switching (the effect on / off JFETs and the bypass buffer) is left out: the effect path is always connected. The buffers (the JFET at the input, the NPN at the output) are ideal
+* followers, the input is loaded like the real one (2.2M at the jack, 1M gate bias).
+* Assumptions: the BD2_STAGE numbers (the JFET gm and the PNP gain are not printed on the drawing); the bottom end of the GAIN pots is open; the 150n of stage 1 is read as printed;
+* the diodes across the third op-amp's inputs are both drawn pointing the same way (as read).
+
+V VB vb 1 4
+C CB vb 0 47u
+
+I VIN gin 1
+R RIN gin 0 2.2M
+C C1 gin a 47n
+R R2 a g0 10k
+R R3 g0 vb 1M
+O UJ g0 nj q vb TL072_9
+R RJF q nj 1
+R RJL q 0 10k
+
+* Into stage 1 (the effect-on JFET as a closed switch).
+C CB1 q n1 1u
+R RN1 n1 vb 1M
+R RSW n1 n2 300
+R RN2 n2 vb 1M
+C C100 n2 n3 100n
+R RN3 n3 vb 220k
+
+* Stage 1.
+O S1 n3 f1 o1 vb BD2_STAGE
+R RG1 f1 g1 1.5k
+C CG1 g1 vb 150n
+R VRG1 o1 w1 1
+R R22 w1 f1 22k
+C CF1 f1 o1 47p
+
+* The network and the clipper between the stages.
+R RP o1 p1 100k
+C CP1 p1 m 100n
+C C220 o1 c22 220p
+R R330 c22 m 330k
+C C47 p1 q1 47n
+R R1M m q1 1M
+R R15K q1 0 15k
+D D1 m d1 SIGNAL
+D D2 d1 0 SIGNAL
+D D3 0 d2 SIGNAL
+D D4 d2 m SIGNAL
+
+* Stage 2.
+C CS2 m n4 2.2n
+R RN4 n4 vb 1M
+O S2 n4 f2 o2 vb BD2_STAGE
+R RG2 f2 g2 2.2k
+C CG2 g2 vb 1u
+R VRG2 o2 w2 1
+R R33 w2 f2 33k
+C CF2 f2 o2 100p
+
+* Tone and level.
+R RT5 o2 ta 5.6k
+C CT56 o2 ta 5.6n
+C CT18 ta tb 18n
+R VRT_T tb tw 1
+R VRT_B tw tg 1
+C CT18B tg 0 18n
+R VRL_T tw lv 1
+R VRL_B lv 0 1
+C C47B lv l 47n
+R RL l vb 10M
+
+* The third op-amp: feedback 6.8k with 2.2n, the two diodes across its inputs, the gyrator in the inverting leg.
+O S3 l f3 o3 vb RC4558
+R R68 f3 o3 6.8k
+C C22N f3 o3 2.2n
+D D5 f3 l SIGNAL
+D D6 f3 l SIGNAL
+C C56N f3 gy 56n
+R R12K gy ne 1.2k
+C C56B gy gb 5.6n
+R R470K gb vb 470k
+O UG gb ng ne vb TL072_9
+R RGF ne ng 1
+R RE10 ne vb 10k
+
+* Output: 10u, the switch JFET (closed) with its 1M bias, 1u into the NPN buffer (100k bias), 10u, 10k and the 1k to the jack.
+C C10 o3 x1 10u
+R RX1 x1 vb 1M
+R RSW2 x1 x2 300
+R RX2 x2 vb 1M
+C C1B x2 x3 1u
+R RX3 x3 vb 100k
+O UB x3 nb xb vb TL072_9
+R RBF xb nb 1
+R RB10 xb vb 10k
+C C10B xb xo 10u
+R RXO xo 0 10k
+R R1K xo y 1k
+R RLOAD y 0 100k
