@@ -1,0 +1,85 @@
+* Boss MT-2 style distortion: the gain stages of the Boss drawing (VR BOARD pcb 22930117RT, 2M5218AL op-amps), read from the drawing at full resolution. The active EQ (HIGH, LOW, MIDDLE, MID FREQ)
+* and the LEVEL are not in this netlist: the plugin applies them after the circuit as filters (sas/tone_eq.h, in the ranges of the pedal's controls), so this model is APPROXIMATE as a whole.
+*
+* Signal path: R059 10k, C042 .047 and R058 1M to the bias into the JFET follower Q011 (taken as a unity buffer); C039 1u, the FET switch Q009 (300 ohm when on) and C033 .015 into the + input of
+* op-amp 3b, a non-inverting stage: R044 220k with C032 100p in its feedback, and at its - input a network of C034 .027 into a node that goes through R046 2.2k to the emitter of Q010 (an emitter
+* follower whose base takes the node after C035 .01, biased by R053 47k; its emitter has R054 10k to ground): above about 340 Hz the follower bootstraps R046 and the gain falls towards 1, below it
+* the 2.2k is a plain shunt, so the stage is a gain that rises towards the lows. R045 10k with R042 10k and C031 .047 to the bias (a low-pass near 340 Hz), C029 .033 and R040 100k into op-amp 3a, the
+* distortion stage: its - input goes to the bias through R041 1k and C030 10u, and its feedback is C028 47p and R051 1k plus the DIST pot (VR01, 250k audio taper) as a variable resistor, so the gain
+* runs from 2 to about 250 (48 dB). C027 10u and R033 2.2k into two 1SS133 diodes in antiparallel to the bias (D003, D004: hard clipping). R032 10k with R031 4.7k and C023 .015 (a treble cut) and
+* C021 1u into op-amp 4b (+ input R029 100k to the bias), a non-inverting stage with R030 3.3k and C022 47p in its feedback and, at its - input, two bootstrapped networks like the first one (C020 .22
+* with R027 470, C017 .047, R025 470k, R024 10k and Q007; C024 .015 with R034 1k, C025 .0015, R036 47k, R037 10k and Q008). Then 4a, an inverting unity stage (R028 and R026 22k, C018 10p), R014 22k and the EQ.
+*
+* Variable part (set by the engine): VRD (DIST). Supply 9 V, bias 4.5 V.
+* Assumed: the bias network is a stiff 4.5 V source; 2SC3378GR as the 2SC2240 model (beta 300); the M5218AL op-amp has a gain-bandwidth of about 2.8 MHz; the switching circuit is left out (the effect is
+* always on); the EQ's input is modelled as a 100k load.
+
+V VA va 1 9
+V VB vb 1 4.5
+
+I VIN gin 1
+R R59 gin b0 10k
+C C42 b0 g11 0.047u
+R R58 g11 vb 1M
+U UB g11 buf buf vb NJM4558
+
+C C39 buf s1a 1u
+R R52 s1a vb 100k
+R RQ9 s1a s1b 300
+C C33 s1b p1 0.015u
+R R43 p1 vb 100k
+O U3B p1 m1 o1 vb M5218AL
+R R44 o1 m1 220k
+C C32 o1 m1 100p
+C C34 m1 a1 0.027u
+R R46 a1 e10 2.2k
+R R54 e10 0 10k
+C C35 a1 b10 0.01u
+R R53 b10 vb 47k
+Q Q10 b10 va e10 2SC2240
+
+R R45 o1 s2a 10k
+R R42 s2a vb 10k
+C C31 s2a vb 0.047u
+C C29 s2a p2 0.033u
+R R40 p2 vb 100k
+O U3A p2 m2 o2 vb M5218AL
+R R41 m2 z3 1k
+C C30 z3 vb 10u
+R R51 o2 fb 1k
+R VRD fb m2 1
+C C28 o2 m2 47p
+
+C C27 o2 c27 10u
+R R33 c27 x 2.2k
+D D4 x vb SIGNAL
+D D3 vb x SIGNAL
+
+R R32 x s4a 10k
+R R31 s4a z8 4.7k
+C C23 z8 0 0.015u
+C C21 s4a p4 1u
+R R29 p4 vb 100k
+O U4B p4 m4 o4 vb M5218AL
+R R30 o4 m4 3.3k
+C C22 o4 m4 47p
+C C20 m4 d7 0.22u
+R R27 d7 e7 470
+R R24 e7 0 10k
+C C17 d7 b7 0.047u
+R R25 b7 vb 470k
+Q Q7 b7 va e7 2SC2240
+C C24 m4 f8 0.015u
+R R34 f8 e8 1k
+R R37 e8 0 10k
+C C25 f8 b8 0.0015u
+R R36 b8 vb 47k
+Q Q8 b8 va e8 2SC2240
+
+R R28 o4 m4a 22k
+O U4A vb m4a o4a vb M5218AL
+R R26 o4a m4a 22k
+C C18 o4a m4a 10p
+C C26 o4a q 1u
+R R14 q y 22k
+R RLOAD y 0 100k

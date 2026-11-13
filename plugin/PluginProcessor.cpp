@@ -524,7 +524,7 @@ void SasProcessor::applyModuleParams(const sas::RackOrder& order) {
             case T::Distortion: {
                 auto* d = static_cast<sas::DistortionModule*>(m);
                 d->setModel(int(p(ids::dstModel) + 0.5));
-                d->setParams(p(ids::dstOn) > 0.5, {p(ids::dstDrive) / 10.0, p(ids::dstTone) / 10.0, p(ids::dstLevel) / 10.0});
+                d->setParams(p(ids::dstOn) > 0.5, {p(ids::dstDrive) / 10.0, p(ids::dstTone) / 10.0, p(ids::dstLevel) / 10.0}, {p(ids::dstLow), p(ids::dstMid), p(ids::dstMidFreq), p(ids::dstHigh)});
                 break;
             }
             case T::Layers: {
