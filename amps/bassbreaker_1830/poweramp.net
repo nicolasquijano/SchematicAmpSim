@@ -1,0 +1,67 @@
+* Fender Bassbreaker 18/30 power amp, from the Fender service diagram (drawing 7706436000 rev A): V2-B (12AX7A) as a cathodyne phase inverter (56k plate and cathode loads, 1k with 22u in the cathode, 100k stopper,
+* 1M returns, C10 .01 and C11 .022 in front), 47k stoppers and 470k leaks into four 6BQ5 / EL84 as two parallel pairs on one cathode (two 150 ohm / 5 W in parallel with 47u), 220 ohm screen resistors, no negative
+* feedback, and the supply: a silicon bridge into 47u (node a, integrated by the engine), then 3.9k / 3.9k / 10k with 47u, 22u and 22u to the 310, 295 and 265 V nodes.
+*
+* Assumptions where the drawing is silent or ambiguous (change them here, not in code):
+*  - the output transformer (7706441000) has no impedance printed: 4k plate-to-plate onto the 16 ohm tap, 6 H per primary half, 40 ohm per half, coupling like the other amps (the AC30's EL84 transformer);
+*  - the screens take the same voltage as the plates (the drawing feeds them from the B+ through a MOSFET follower, Q3, which this model does not have); the 18 W mode (a lower screen voltage and the 240 ohm
+*    R35 in the cathode) is not in this model: it is the 30 W amp;
+*  - the diode in front of the 3.9k (D21, 1N4006) is a 0.7 V drop folded into the supply source; the bleeder and the preamp's draw are RPREAMP;
+*  - the plate catch diodes (D13, D14, R3000) only matter on the flyback of the output transformer and are left out.
+
+.nodes pin g10 gp gpi ppl kpi kl ga gb g1 g2 s1 s2 kc pt pbm npt npb a y z x tt t16
+
+S VAUDIO pin 40k 0
+S VHT a 20 340
+
+* Phase inverter V2-B: C10 .01 and R18 1M, C11 .022, 100k stopper, 1M return to the cathode-load node.
+C C10 pin g10 10n
+R R18 g10 0 1M
+C C11 g10 gp 22n
+R R65 gp gpi 100k
+R R19 gp kl 1M
+T V2B gpi ppl kpi 12AX7
+R R21 y ppl 56k
+R R20 kpi kl 1k
+C C12 kpi kl 22u
+R R22 kl 0 56k
+C C13 ppl ga 47n
+C C14 kl gb 47n
+
+* Grid circuits: 47k stoppers (two in parallel per side) and a 470k leak to ground.
+R R23 ga 0 470k
+R R24 gb 0 470k
+R RS_A ga g1 47k/2
+R RS_B gb g2 47k/2
+
+* EL84: V3 + V5 on one half of the primary, V4 + V6 on the other; common cathode 75 ohm (two 150 ohm) with 47u; 220 ohm screen resistors.
+P V3 g1 pt s1 kc EL84 2
+P V4 g2 pbm s2 kc EL84 2
+R RK kc 0 75
+C C15 kc 0 47u
+R RZ1 z s1 220/2
+R RZ2 z s2 220/2
+R RZ a z 20
+C CZ z 0 1u
+
+* Output transformer: primary halves around the B+ centre tap (node a), one 16 ohm secondary.
+R DCR_PT pt npt 40
+R DCR_PB pbm npb 40
+.param n16 = 2*1/sqrt(4000/16)
+.xfmr OT L=6 SAT=1.6
+  W npt a 1 pri
+  W a npb 1 pri
+  W t16 0 n16 sec
+  K pri pri 0.9998
+  K pri sec 0.9993
+.end
+R RLOAD t16 0 16
+
+* Supply after the 47u reservoir (node a): 3.9k to the 295 V node (y, 22u: the phase inverter's plate load), 10k to the 265 V node (x, 22u: the preamp); the 3.9k in front of them is folded in.
+R R47 a tt 3.9k
+C C26 tt 0 47u
+R R48 tt y 3.9k
+C C27 y 0 22u
+R R49 y x 10k
+C C28 x 0 22u
+R RPREAMP x 0 90k

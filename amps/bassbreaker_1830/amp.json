@@ -1,0 +1,318 @@
+{
+  "id": "bassbreaker_1830",
+  "order": 26,
+  "category": "crunch",
+  "output_db": 6.2,
+  "name": "American 18/30",
+  "ui": [
+    {
+      "param": "volume",
+      "knob": "volume1",
+      "label": "VOLUME 1"
+    },
+    {
+      "param": "treble",
+      "knob": "treble",
+      "label": "TREBLE"
+    },
+    {
+      "param": "middle",
+      "knob": "middle",
+      "label": "MIDDLE"
+    },
+    {
+      "param": "bass",
+      "knob": "bass",
+      "label": "BASS"
+    },
+    {
+      "param": "volume2",
+      "knob": "volume2",
+      "label": "VOLUME 2"
+    },
+    {
+      "param": "clean_treble",
+      "knob": "tone",
+      "label": "TONE (CH 2)"
+    }
+  ],
+  "theme": {
+    "background": "#0c0c0d",
+    "panel": "#1a1a1b",
+    "edge": "#3c3a36",
+    "accent": "#d2a24f",
+    "label": "#a39a89",
+    "text": "#f0ead9",
+    "knob_top": "#3a3936",
+    "knob_bottom": "#121211",
+    "pointer": "#fbeacb"
+  },
+  "presets": [
+    {
+      "name": "Clean",
+      "selectors": {
+        "channel": 0
+      },
+      "params": {
+        "volume": 3.5,
+        "treble": 6,
+        "middle": 5,
+        "bass": 5
+      }
+    },
+    {
+      "name": "Edge of breakup",
+      "selectors": {
+        "channel": 0
+      },
+      "params": {
+        "volume": 6,
+        "treble": 6,
+        "middle": 5,
+        "bass": 5
+      }
+    },
+    {
+      "name": "Crunch",
+      "selectors": {
+        "channel": 1
+      },
+      "params": {
+        "volume2": 6,
+        "clean_treble": 6
+      }
+    },
+    {
+      "name": "Lead",
+      "selectors": {
+        "channel": 1
+      },
+      "params": {
+        "volume2": 9,
+        "clean_treble": 6
+      }
+    }
+  ],
+  "preamp": {
+    "netlist": "preamp.net",
+    "tolerance": 2e-06,
+    "rail_source": "VRAIL",
+    "input_source": "VIN",
+    "output_node": "o",
+    "pot_min_ohms": 100,
+    "knobs": [
+      {
+        "name": "volume1",
+        "default": 0.5,
+        "pot": {
+          "type": "wiper",
+          "top": "VR10_T",
+          "bottom": "VR10_B",
+          "total": 1000000.0,
+          "taper": "log30"
+        }
+      },
+      {
+        "name": "volume2",
+        "default": 0.5,
+        "pot": {
+          "type": "wiper",
+          "top": "VR13_T",
+          "bottom": "VR13_B",
+          "total": 250000.0,
+          "taper": "log10"
+        }
+      },
+      {
+        "name": "bass",
+        "default": 0.5,
+        "pot": {
+          "type": "variable",
+          "resistor": "VR8",
+          "total": 250000.0,
+          "taper": "log10"
+        }
+      },
+      {
+        "name": "middle",
+        "default": 0.5,
+        "pot": {
+          "type": "variable",
+          "resistor": "VR9",
+          "total": 25000.0,
+          "taper": "linear"
+        }
+      },
+      {
+        "name": "treble",
+        "default": 0.5,
+        "pot": {
+          "type": "wiper",
+          "top": "VR7_T",
+          "bottom": "VR7_B",
+          "total": 250000.0,
+          "taper": "log30"
+        }
+      },
+      {
+        "name": "tone",
+        "default": 0.5,
+        "pot": {
+          "type": "wiper",
+          "top": "VR12_T",
+          "bottom": "VR12_B",
+          "total": 1000000.0,
+          "taper": "log30"
+        }
+      }
+    ],
+    "source_ohms": {
+      "resistors": [
+        "RSRC"
+      ],
+      "default": 7000,
+      "min": 10
+    },
+    "jacks": [
+      {
+        "name": "input",
+        "label": "Input",
+        "drive": "VIN",
+        "resistors": {}
+      }
+    ],
+    "selectors": [
+      {
+        "name": "channel",
+        "label": "CHANNEL",
+        "positions": [
+          {
+            "label": "Tone stack (30 W)",
+            "resistors": {
+              "SWCH_A": 1,
+              "SWCH_B": 1000000000000.0
+            },
+            "level_db": 0
+          },
+          {
+            "label": "Volume + tone",
+            "resistors": {
+              "SWCH_A": 1000000000000.0,
+              "SWCH_B": 1
+            },
+            "level_db": -1.5
+          }
+        ]
+      }
+    ]
+  },
+  "power": {
+    "transformer_parasitics": {
+      "primary_pf": 150,
+      "core_loss_ohms": 84000
+    },
+    "tubes": [
+      {
+        "name": "EL84",
+        "model": "EL84",
+        "pmax_w": 12.0,
+        "bias_scale": 1.0
+      }
+    ],
+    "bias": {
+      "idle_resistors": [
+        "DCR_PT",
+        "DCR_PB"
+      ],
+      "tubes_per_half": 2
+    },
+    "netlist": "poweramp.net",
+    "tolerance": 0.0001,
+    "input_source": "VAUDIO",
+    "ht_source": "VHT",
+    "ht_node": "a",
+    "rail_node": "x",
+    "output_node": "t16",
+    "load_resistor": "RLOAD",
+    "supply": {
+      "mains_hz": 60,
+      "vac_peak": 380,
+      "rect_source_ohms": 60,
+      "ht_dc_source": 340,
+      "rect_drop": 1.4,
+      "reservoir_farads": 4.7e-05,
+      "tie_ohms": 15,
+      "settle_seconds": 0.15
+    }
+  },
+  "lite": {
+    "base_gain_db": 14.2626,
+    "high_pass_hz": 47.5355,
+    "shelf_hz": 150,
+    "presence_db": [
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    "sag_table": [
+      [
+        0,
+        0
+      ],
+      [
+        2.54648,
+        0.0309431
+      ],
+      [
+        5.09296,
+        0.124553
+      ],
+      [
+        9.5493,
+        0.447007
+      ],
+      [
+        15.9155,
+        1.29079
+      ],
+      [
+        22.2817,
+        2.58471
+      ],
+      [
+        28.6479,
+        4.19676
+      ],
+      [
+        35.0141,
+        5.9401
+      ],
+      [
+        44.5634,
+        8.54252
+      ],
+      [
+        57.2958,
+        10.6273
+      ],
+      [
+        82.7606,
+        10.6273
+      ],
+      [
+        127.324,
+        10.6273
+      ]
+    ],
+    "rail_x_idle": 260.482,
+    "rail_sag_fraction": 0.58,
+    "ceiling_light": 26.7413,
+    "ceiling_heavy": 26.7413,
+    "ceiling_decay": 0.456055,
+    "knee": 2.21586,
+    "sag_attack_s": 0.01,
+    "sag_release_s": 0.06
+  }
+}

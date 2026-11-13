@@ -1,0 +1,87 @@
+* Fender Bassbreaker 18/30 preamp, from the Fender service diagram (drawing 7706436000 rev A, "Service diagram, combined", Z3036S): V1-A (12AX7A, 220k load, 1.5k / 2.2u cathode) direct coupled to
+* V1-B, a cathode follower (100k), then two channels that the relays K1 pick between: the channel with the TREBLE / MIDDLE / BASS stack (the Fender stack: 250p, 100k, 0.1u, 0.047u, treble 250k, bass 250k,
+* middle 25k) and its VOLUME (1M with a 68p bright cap), and the channel with a VOLUME (250k) and a TONE (1M, a treble bleed 500p and a cut 3.9k + 0.01u), after a 68k. V2-A (12AX7A, 10k stopper, 1M leak,
+* 100k load, 1.5k / 2.2u) follows. The phase inverter, the four EL84 and the supply are in poweramp.net.
+*
+* Assumptions where the drawing is silent or ambiguous (change them here, not in code):
+*  - the TONE pot (R12) takes the 68k's output at its wiper: its top part goes through R64 3.9k and C7 .01 to ground, its bottom part through C8 500p to the volume's wiper;
+*  - the volume pots' tapers are audio (the drawing prints 15A and 30A);
+*  - the volume pot of the stack channel (R10) hangs from the stack's output with C6 68p from its top to its wiper;
+*  - both channels always load the signal; the relays only choose which wiper goes on (SW_ resistors, set by the channel selector in amp.json);
+*  - supply: x is the 265 V node (R49 10k from the 295 V node), driven from the power amp at run time.
+
+.nodes x gin in g1 p1 k1 k2 s0 nt nb nu nm no vw2 n1 vw1 tt tb c7n o g2 k3 vo
+
+V VRAIL x 100 265
+* The guitar behind a variable source resistance, then the jack switches.
+I VIN gin 1
+R RSRC gin in 7k
+* The guitar behind its source impedance. RSRC is the plain 7k source: the "Off" setting, and what a pedal in front of the amp
+* looks like. A pickup replaces it with its own impedance as seen from the open-circuit voltage (the recording): the
+* coil (winding resistance RPU + inductance) in parallel with its winding capacitance CPU and an eddy-current loss resistor
+* RPL, then the cable capacitance (200 pF per 2 m, switched in steps of 200, 400 and 800 pF). The engine sets the values:
+* single coil = coil 1 (2.5 H), humbucker and P-90 = coil 2 (5 H) with their own resistances; open = 1e12.
+R RPU1 gin pkb1 1e12
+.xfmr LPU1 L=2.5
+  W pkb1 in 1 pu
+.end
+R RPU2 gin pkb2 1e12
+.xfmr LPU2 L=5
+  W pkb2 in 1 pu
+.end
+C CPU gin in 110p
+R RPL gin in 1e12
+R SWK1 in pkk1 1e12
+C CCAB1 pkk1 0 200p
+R SWK2 in pkk2 1e12
+C CCAB2 pkk2 0 400p
+R SWK4 in pkk4 1e12
+C CCAB4 pkk4 0 800p
+
+* Input jack: 1M at the jack and the 33k stopper into V1-A.
+R R1 in 0 1M
+R R2 in g1 33k
+
+* V1-A (220k load, 1.5k with 2.2u) and V1-B, a cathode follower on V1-A's plate (100k) and C2 .1 out.
+T V1A g1 p1 k1 12AX7
+R R3 x p1 220k
+R R4 k1 0 1.5k
+C C1 k1 0 2.2u
+T V1B p1 x k2 12AX7
+R R5 k2 0 100k
+C C2 k2 s0 0.1u
+
+* Channel with the tone stack: 250p to the treble pot, 100k slope to the bass / middle capacitors (0.1u, 0.047u), bass 250k and middle 25k as rheostats, treble wiper = output, then the 1M volume.
+C C3 s0 nt 250p
+R R6 s0 nb 100k
+C C4 nb nu 0.1u
+C C5 nb nm 0.047u
+R VR7_T nt no 1
+R VR7_B no nu 1
+R VR8 nu nm 1
+R VR9 nm 0 1
+R VR10_T no vw2 1
+R VR10_B vw2 0 1
+C C6 no vw2 68p
+
+* Channel with VOLUME and TONE: 68k, the 250k volume, the 1M tone pot (cut to ground through 3.9k and .01, bleed through 500p).
+R R11 s0 n1 68k
+R VR13_T n1 vw1 1
+R VR13_B vw1 0 1
+R VR12_T n1 tt 1
+R R64 tt c7n 3.9k
+C C7 c7n 0 0.01u
+R VR12_B n1 tb 1
+C C8 tb vw1 500p
+
+* The relays: one of the two volume wipers goes on to V2-A.
+R SWCH_A vw2 vo 1
+R SWCH_B vw1 vo 1e12
+
+* V2-A: 10k stopper, 1M leak, 100k load, 1.5k with 2.2u. Its plate is the output of the preamp.
+R R15 vo g2 10k
+R R14 g2 0 1M
+T V2A g2 o k3 12AX7
+R R16 x o 100k
+R R17 k3 0 1.5k
+C C9 k3 0 2.2u
