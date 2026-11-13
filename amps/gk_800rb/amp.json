@@ -1,0 +1,356 @@
+{
+ "id": "gk_800rb",
+ "order": 27,
+ "category": "bass",
+ "name": "Modern Bass 800",
+ "output_db": 7.5,
+ "ui": [
+  {
+   "param": "volume",
+   "knob": "volume",
+   "label": "VOLUME"
+  },
+  {
+   "param": "bass",
+   "knob": "bass",
+   "label": "BASS"
+  },
+  {
+   "param": "middle",
+   "knob": "lo_mid",
+   "label": "LO-MID"
+  },
+  {
+   "param": "treble",
+   "knob": "hi_mid",
+   "label": "HI-MID"
+  }
+ ],
+ "theme": {
+  "background": "#101214",
+  "panel": "#1c1f23",
+  "edge": "#3a3f46",
+  "accent": "#e8c14a",
+  "label": "#9aa0a8",
+  "text": "#eceef2",
+  "knob_top": "#34383f",
+  "knob_bottom": "#121316",
+  "pointer": "#fff0b8"
+ },
+ "preamp": {
+  "netlist": "preamp.net",
+  "tolerance": 2e-06,
+  "rail_source": "VRAIL",
+  "input_source": "VIN",
+  "output_node": "y",
+  "pot_min_ohms": 100,
+  "jack_label": "INPUT",
+  "selectors": [
+   {
+    "name": "lo_cut",
+    "label": "LO CUT",
+    "positions": [
+     {
+      "label": "Off",
+      "resistors": {
+       "SW_LOCUT": 1
+      }
+     },
+     {
+      "label": "On",
+      "resistors": {
+       "SW_LOCUT": 1000000000000.0
+      }
+     }
+    ]
+   },
+   {
+    "name": "hi_boost",
+    "label": "HI BOOST",
+    "positions": [
+     {
+      "label": "Off",
+      "resistors": {
+       "SW_HB": 1000000000000.0
+      }
+     },
+     {
+      "label": "On",
+      "resistors": {
+       "SW_HB": 1
+      }
+     }
+    ]
+   },
+   {
+    "name": "contour",
+    "label": "MID CONTOUR",
+    "positions": [
+     {
+      "label": "Off",
+      "resistors": {
+       "SW_C1": 1,
+       "SW_C2": 1000000000000.0
+      }
+     },
+     {
+      "label": "On",
+      "resistors": {
+       "SW_C1": 1000000000000.0,
+       "SW_C2": 1
+      }
+     }
+    ]
+   }
+  ],
+  "knobs": [
+   {
+    "name": "volume",
+    "default": 0.5,
+    "pot": {
+     "type": "wiper",
+     "top": "VR17T",
+     "bottom": "VR17B",
+     "total": 20000.0,
+     "taper": "log"
+    }
+   },
+   {
+    "name": "bass",
+    "default": 0.5,
+    "pot": {
+     "type": "wiper",
+     "top": "VR68T",
+     "bottom": "VR68B",
+     "total": 50000.0,
+     "taper": "linear",
+     "also": [
+      {
+       "top": "VR36T",
+       "bottom": "VR36B"
+      }
+     ]
+    }
+   },
+   {
+    "name": "lo_mid",
+    "default": 0.5,
+    "pot": {
+     "type": "wiper",
+     "top": "VR64T",
+     "bottom": "VR64B",
+     "total": 50000.0,
+     "taper": "linear"
+    }
+   },
+   {
+    "name": "hi_mid",
+    "default": 0.5,
+    "pot": {
+     "type": "wiper",
+     "top": "VR53T",
+     "bottom": "VR53B",
+     "total": 50000.0,
+     "taper": "linear"
+    }
+   }
+  ],
+  "source_ohms": {
+   "resistors": [
+    "RSRC"
+   ],
+   "default": 7000,
+   "min": 10
+  },
+  "jacks": [
+   {
+    "name": "input",
+    "label": "Input",
+    "drive": "VIN",
+    "resistors": {}
+   }
+  ]
+ },
+ "power": {
+  "netlist": "poweramp.net",
+  "tolerance": 0.0001,
+  "input_source": "VAUDIO",
+  "ht_source": "VHT",
+  "ht_node": "a",
+  "rail_node": "x",
+  "output_node": "t8",
+  "load_resistor": "RLOAD",
+  "supply": {
+   "mains_hz": 60,
+   "vac_peak": 95,
+   "rect_source_ohms": 2.0,
+   "ht_dc_source": 85,
+   "rect_drop": 1.4,
+   "reservoir_farads": 0.0047,
+   "tie_ohms": 1.0,
+   "settle_seconds": 0.15
+  }
+ },
+ "lite": {
+  "base_gain_db": 27.6901,
+  "high_pass_hz": 3.12341,
+  "shelf_hz": 150,
+  "presence_db": [
+   0,
+   0,
+   0,
+   0,
+   0
+  ],
+  "sag_table": [
+   [
+    0,
+    0
+   ],
+   [
+    2.54648,
+    0
+   ],
+   [
+    5.09296,
+    0
+   ],
+   [
+    9.5493,
+    0
+   ],
+   [
+    15.9155,
+    0
+   ],
+   [
+    22.2817,
+    0
+   ],
+   [
+    28.6479,
+    0
+   ],
+   [
+    35.0141,
+    0
+   ],
+   [
+    44.5634,
+    0
+   ],
+   [
+    57.2958,
+    0
+   ],
+   [
+    82.7606,
+    0
+   ],
+   [
+    127.324,
+    0
+   ]
+  ],
+  "rail_x_idle": 93.1395,
+  "rail_sag_fraction": 0.58,
+  "ceiling_light": 94.1171,
+  "ceiling_heavy": 42.646,
+  "ceiling_decay": 364.924,
+  "knee": 9.5132,
+  "sag_attack_s": 0.01,
+  "sag_release_s": 0.06
+ },
+ "presets": [
+  {
+   "name": "Clean",
+   "params": {
+    "volume": 5,
+    "bass": 5,
+    "middle": 5,
+    "treble": 5
+   },
+   "selectors": {
+    "lo_cut": 0,
+    "hi_boost": 0,
+    "contour": 0
+   },
+   "jack": "input"
+  },
+  {
+   "name": "Round and deep",
+   "params": {
+    "volume": 5.5,
+    "bass": 7,
+    "middle": 4,
+    "treble": 3.5
+   },
+   "selectors": {
+    "lo_cut": 0,
+    "hi_boost": 0,
+    "contour": 0
+   },
+   "jack": "input"
+  },
+  {
+   "name": "Slap scoop",
+   "params": {
+    "volume": 5,
+    "bass": 6,
+    "middle": 3,
+    "treble": 7
+   },
+   "selectors": {
+    "lo_cut": 0,
+    "hi_boost": 1,
+    "contour": 1
+   },
+   "jack": "input"
+  },
+  {
+   "name": "Mid push",
+   "params": {
+    "volume": 5.5,
+    "bass": 5,
+    "middle": 7,
+    "treble": 6
+   },
+   "selectors": {
+    "lo_cut": 0,
+    "hi_boost": 0,
+    "contour": 0
+   },
+   "jack": "input"
+  },
+  {
+   "name": "Tight and bright",
+   "params": {
+    "volume": 5,
+    "bass": 4,
+    "middle": 5,
+    "treble": 7
+   },
+   "selectors": {
+    "lo_cut": 1,
+    "hi_boost": 1,
+    "contour": 0
+   },
+   "jack": "input"
+  },
+  {
+   "name": "Driven",
+   "params": {
+    "volume": 8,
+    "bass": 6,
+    "middle": 6,
+    "treble": 6
+   },
+   "selectors": {
+    "lo_cut": 0,
+    "hi_boost": 0,
+    "contour": 0
+   },
+   "jack": "input"
+  }
+ ]
+}

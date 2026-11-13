@@ -1,0 +1,17 @@
+* "Modern Bass 800" power amp, simplified: the 300 W channel of the drawing (406-0044-B "100W + 300W power amps": U1 input stage, Q11 / Q12 driver, Q13 / Q14 bias spreader, two pairs of 2N-type
+* outputs per half, +-85 V rails, 41 V rms with no load) is one op-amp (model GK_POWER, the limited op-amp: gain 1 + R_F / R_G = 37, soft clip at +-72 V, 0.15 ohm output resistance) into the
+* 4 ohm load. The supply is a stiff 85 V rail node the engine can drive.
+
+S VAUDIO pin 50k 0
+S VHT a 1 85
+R RHT a 0 10k
+R RX a x 1
+C CX x 0 1u
+
+C C_IN pin pg 1u
+R R_IN pg 0 100k
+O POW pg pm po 0 GK_POWER
+R R_F po pm 36k
+R R_G pm 0 1k
+R R_OUT po t8 0.1
+R RLOAD t8 0 4
