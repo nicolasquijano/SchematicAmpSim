@@ -340,13 +340,13 @@
     "name": "6L6GC",
     "model": "6L6GCDS",
     "pmax_w": 30.0,
-    "bias_scale": 1.1496
+    "bias_scale": 1.29
    },
    {
     "name": "6550",
     "model": "6550DS",
     "pmax_w": 35.0,
-    "bias_scale": 1.3987
+    "bias_scale": 1.428
    }
   ],
   "bias": {

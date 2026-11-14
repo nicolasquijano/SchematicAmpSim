@@ -3305,7 +3305,7 @@ TEST_CASE("every circuit amp has factory presets (Clean, Edge of breakup, Crunch
             continue;
         }
         INFO("amp " << def.id);
-        if (def.id == "svt_bass300") {  // the bass amp has presets for a bass guitar
+        if (def.category == "bass") {  // the bass amps have presets for a bass guitar
             REQUIRE(def.presets.size() >= 6);
             CHECK(def.presets[0].name == "Clean");
         } else {
