@@ -5,6 +5,9 @@ version numbers follow [Semantic Versioning](https://semver.org/) (see [docs/REL
 
 ## [Unreleased]
 
+### Changed
+- **British 900 uses about half the CPU**: the clipping network at the second gain stage was five diodes (two paths of three in series sharing one) and is now two devices (each way three identical diodes in series, one diode with three times the thermal voltage: the same current at every voltage). The preamp solves with 11 device ports instead of 14 and 7,700 instead of 17,100 cycles per sample.
+
 ## [0.5.1-beta] - 2026-11-14
 
 ### Changed

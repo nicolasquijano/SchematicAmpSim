@@ -20,7 +20,7 @@
 *  - VR3 is the A1M master pot (log), the dual-gang B half is taken as the same value.
 *  - Supply: node x is HT behind the 10k 1W R32 of the power-amp drawing; R12 10k + C11 33u feed V2, R11 10k + C10 10u feed V1.
 
-.nodes x h2 h1 in i1 g1 p1 k1 c4 n1 c15 p2 k2 d1 a5 b5 s r14 dcp dcn p3 k3 k4 t w5 m n1t n2t wm tso bf mo gin pkb1 pkb2 pkk1 pkk2 pkk4
+.nodes x h2 h1 in i1 g1 p1 k1 c4 n1 c15 p2 k2 d1 a5 b5 s r14 p3 k3 k4 t w5 m n1t n2t wm tso bf mo gin pkb1 pkb2 pkk1 pkk2 pkk4
 
 * HT (node x) is driven from the power amp at run time; 490 V is the standalone default.
 V VRAIL x 100 490
@@ -85,11 +85,10 @@ R VR2_B s r14 1
 R R14 r14 0 22k
 
 * The clipping network at V2a's grid: BR1 (W005F) plus D2 between its DC terminals.
-D DB1 s dcp SIGNAL
-D DB2 0 dcp SIGNAL
-D DB3 dcn s SIGNAL
-D DB4 dcn 0 SIGNAL
-D D2 dcp dcn SIGNAL
+* Each way the grid sees three identical diodes in series (DB1, D2 and DB4 for the positive half; DB2, D2 and DB3 for the negative one), which is
+* one diode with three times the thermal voltage: two devices instead of five (and no floating bridge nodes), the same current at every voltage.
+D CLIP_P s 0 SIGNAL3
+D CLIP_N 0 s SIGNAL3
 
 * V2a (1k5 cathode, 47p grid to cathode) with its 150k load, V2b a cathode follower with 100k.
 T V2A s p3 k3 12AX7
