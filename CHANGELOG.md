@@ -5,6 +5,13 @@ version numbers follow [Semantic Versioning](https://semver.org/) (see [docs/REL
 
 ## [Unreleased]
 
+## [0.5.1-beta] - 2026-11-14
+
+### Changed
+- **Generic names for the pedal models, so no product name is shown**: the Overdrive models are now Green Overdrive, Yellow Overdrive, Blues Overdrive and Gritty Distortion; the Distortion module's presets, the Klon-style drive (now Transparent drive), the Harmonist (Harmonizer), the Leslie (Rotary speaker), the fuzz types (Vintage, Sustain, Octave), the chorus modes (Classic, Poly, Studio) and the compressor models (Studio Compressor, Fast Squeeze, FET, Opto). The parameter ids and the circuits are the same, so saved projects open as before; the parameter names a host shows (for automation) are the new ones.
+- Brand names removed from comments, netlists and documentation.
+- The macOS and Linux builds of the CI use a compiler cache.
+
 ## [0.5.0-beta] - 2026-11-13
 
 ### Fixed
@@ -215,6 +222,7 @@ The first public release: a Windows VST3 with seven circuit-level amplifiers.
 - While the compressor or the overdrive is on, the pickup and cable of the Guitar Input panel have no effect.
 - The saved-project format may still change between 0.x versions.
 
+[0.5.1-beta]: https://github.com/nicolasquijano/SchematicAmpSim/releases/tag/v0.5.1-beta
 [0.5.0-beta]: https://github.com/nicolasquijano/SchematicAmpSim/releases/tag/v0.5.0-beta
 [0.4.0-beta]: https://github.com/nicolasquijano/SchematicAmpSim/releases/tag/v0.4.0-beta
 [0.3.0-beta]: https://github.com/nicolasquijano/SchematicAmpSim/releases/tag/v0.3.0-beta
