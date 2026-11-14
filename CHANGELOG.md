@@ -5,6 +5,8 @@ version numbers follow [Semantic Versioning](https://semver.org/) (see [docs/REL
 
 ## [Unreleased]
 
+## [0.5.0-beta] - 2026-11-13
+
 ### Fixed
 - **The RAT overdrive model runs at four times the host rate** (it was twice): its hard clipping folded harmonics back as an inharmonic fizz about 45 dB under the note (about 43 dB with TONE open); it is now about 59 dB under (54 with TONE open). Costs about 8 % of a core instead of 4.5 %.
 
@@ -28,6 +30,9 @@ version numbers follow [Semantic Versioning](https://semver.org/) (see [docs/REL
 - **Linux build** (x86_64): VST3 and standalone application, built and tested by GitHub Actions on Ubuntu (a `linux` job in `ci.yml` and `release.yml`, `package-linux.sh`, the `release-linux` CMake preset), packaged as a `.tar.gz`. It has not been tried by ear in a Linux DAW.
 
 ### Changed
+- **Picking an amp loads a preset**: Clean on the clean amps, Crunch on the crunch amps and Lead on the high-gain amps.
+- **American 5153**: the output level is 7.9 dB higher (it was about 8 dB under the American 5051) and the Red channel has 6 dB more input gain.
+- **Distortion module**: only the DS-1 style pedal is left (the MT-2 style model, its EQ controls and its presets were removed).
 - **The Leslie has a WIDTH knob** (parameter `les_width`, 7 by default, in the presets): it opens the two microphones apart (15 to 90 degrees each side of the front, 30 to 180 between them; it was fixed at 120) and narrows the horn's beam, so at full width the left and right channels swell against each other (the level correlation between the channels goes from +0.8 to -0.5 or lower, `tests/test_leslie_width.cpp`) and at 0 the output is nearly mono. The level stays within a few dB. The six presets now set it (Chorale 7, Tremolo 8, Gentle 5, Deep and bright 9, Warm rotor 7, Brake 7).
 - **The Acoustic Sim shapes the sound more**: the body resonances reach 2.6 times the table at full BODY (1.6 before) and are a quarter wider, so a dreadnought now spans about 11 dB between its low-mid scoop (-6.5 dB at 500 Hz) and its upper-mid presence (+4.8 dB at 3.5 kHz) instead of 7 dB, and the piezo type lifts 3.5 kHz by 11.5 dB (6.7 before); the level is still kept (`sas_acoustic_check`). The knobs and their ranges are the same.
 - **The American Clean 120 is 10 dB louder** (`output_db` 12 -> 22): it was levelled by its peak with hot guitar signals (0.55 V), so at a normal guitar level and the default knobs it played 17 dB below the other amps at the reference input. It now sits about 7 dB below the reference at the defaults (it has more headroom than the others, so it stays quieter at the same knob position); a very hot input can now go past full scale at the output (the chain has no limiter after the amp). The `sas_amp_response` tool prints an amp's frequency response for the given knob settings.
@@ -210,6 +215,7 @@ The first public release: a Windows VST3 with seven circuit-level amplifiers.
 - While the compressor or the overdrive is on, the pickup and cable of the Guitar Input panel have no effect.
 - The saved-project format may still change between 0.x versions.
 
+[0.5.0-beta]: https://github.com/nicolasquijano/SchematicAmpSim/releases/tag/v0.5.0-beta
 [0.4.0-beta]: https://github.com/nicolasquijano/SchematicAmpSim/releases/tag/v0.4.0-beta
 [0.3.0-beta]: https://github.com/nicolasquijano/SchematicAmpSim/releases/tag/v0.3.0-beta
 [0.2.0-beta]: https://github.com/nicolasquijano/SchematicAmpSim/releases/tag/v0.2.0-beta
