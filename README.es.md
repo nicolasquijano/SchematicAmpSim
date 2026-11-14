@@ -14,11 +14,10 @@ English version: [README.md](README.md).
 
 ## Capturas
 
-Cada ampli tiene sus propios colores, y la lista de amplis (a la izquierda) está agrupada por carácter: limpios, crunch, alta ganancia y bajo. Cuatro de los veintitrés amplis de circuito y, después, los cuatro más nuevos (el American 5153, el American Clean 120, el American Triple Stack y el American Bass 300):
+Cada ampli tiene sus propios colores, y la lista de amplis (a la izquierda) está agrupada por carácter: limpios, crunch, alta ganancia y bajo. Cuatro de los veintitrés amplis de circuito:
 
 <p align="center">
-  <img src="docs/images/amps.png" alt="American Twin, British Plexi, British 800 KK y American Lead C+" width="800"><br>
-  <img src="docs/images/amps-new.png" alt="American 5153, American Clean 120, American Triple Stack y American Bass 300" width="800">
+  <img src="docs/images/amps.png" alt="American Twin, British Plexi, British 800 KK y American Lead C+" width="800">
 </p>
 
 El **Rack**: todos los módulos en orden de señal, con un **+** para agregar más; el panel del módulo elegido se abre debajo (aquí el ampli, con su condición: válvulas, bias, ruido, desgaste).
@@ -30,18 +29,10 @@ El **Rack**: todos los módulos en orden de señal, con un **+** para agregar m�
 Los módulos, cada uno con sus presets: **compresor, overdrive, drive tipo Klon**, fuzz y boost; **phaser, chorus** (con los modos Juno y JC), vibe, **Leslie rotativo**, trémolo y flanger; **delay, eco de cinta, reverb y reverb de resorte**; **EQ, simulador acústico**, wah, limitador, un **octavador analógico**, un **armonizador**, un **delay analógico BBD**, un **bitcrusher**, un pedal de **capas de sustain** y un módulo de **distorsión** (por ahora el Boss DS-1). El módulo **Cabinet** tiene dos impulsos con sus curvas, la mezcla A / B, la dinámica del parlante y los controles estéreo, y un modelo NAM de gabinete.
 
 <p align="center">
-  <img src="docs/images/modules-drive.png" alt="Compresor, overdrive, drive tipo Klon, fuzz y boost" width="800"><br>
-  <img src="docs/images/modules-mod.png" alt="Phaser, chorus, vibe, Leslie, trémolo y flanger" width="800"><br>
-  <img src="docs/images/modules-space.png" alt="Delay, eco de cinta, reverb y reverb de resorte" width="800"><br>
-  <img src="docs/images/modules-tone.png" alt="EQ, simulador acústico, wah y limitador" width="800">
+  <img src="docs/images/modules-drive.png" alt="Compresor, overdrive, drive tipo Klon, fuzz y boost" width="800">
 </p>
 
-El ampli **NAM Loader** corre un modelo de Neural Amp Modeler en lugar de los circuitos; el **Tuner** es un afinador cromático:
-
-<p align="center">
-  <img src="docs/images/nam-loader.png" alt="El ampli NAM Loader con un modelo cargado" width="800"><br>
-  <img src="docs/images/tuner.png" alt="El afinador cromático sobre un La2, afinado" width="800">
-</p>
+El ampli **NAM Loader** corre un modelo de Neural Amp Modeler en lugar de los circuitos; el **Tuner** es un afinador cromático.
 
 (Las imágenes las dibuja el propio editor: en "Estructura del repositorio" se explica cómo regenerarlas.)
 

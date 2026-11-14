@@ -13,11 +13,10 @@ VST3 plug-in and standalone application for Windows, built with C++20 and [JUCE]
 
 ## Screenshots
 
-Every amp has its own colours, and the amp list (on the left) is grouped by character: clean, crunch, high-gain and bass. Four of the twenty-three circuit amps, and then the newest four (the American 5153, the American Clean 120, the American Triple Stack and the American Bass 300):
+Every amp has its own colours, and the amp list (on the left) is grouped by character: clean, crunch, high-gain and bass. Four of the twenty-three circuit amps:
 
 <p align="center">
-  <img src="docs/images/amps.png" alt="American Twin, British Plexi, British 800 KK and American Lead C+" width="800"><br>
-  <img src="docs/images/amps-new.png" alt="American 5153, American Clean 120, American Triple Stack and American Bass 300" width="800">
+  <img src="docs/images/amps.png" alt="American Twin, British Plexi, British 800 KK and American Lead C+" width="800">
 </p>
 
 The **Rack**: every module in signal order, with a **+** to add more; the panel of the selected module opens below (here the amp, with its condition: tubes, bias, noise, wear).
@@ -29,18 +28,10 @@ The **Rack**: every module in signal order, with a **+** to add more; the panel 
 The modules, each with its own presets: **compressor, overdrive, Klon-style drive** and fuzz and boost; **phaser, chorus** (with the Juno and JC modes), vibe, **Leslie rotary**, tremolo and flanger; **delay, tape echo, reverb and spring reverb**; **EQ, acoustic simulator**, wah, limiter, an **analog octaver**, a **harmonizer**, a **BBD analog delay**, a **bitcrusher**, a **sustain-layers** pedal and a **distortion** module (Boss DS-1 so far). The **Cabinet** module has two impulse responses with their curves, the A / B blend, the speaker dynamics and the stereo controls, and a NAM cabinet model.
 
 <p align="center">
-  <img src="docs/images/modules-drive.png" alt="Compressor, overdrive, Klon-style drive, fuzz and boost" width="800"><br>
-  <img src="docs/images/modules-mod.png" alt="Phaser, chorus, vibe, Leslie, tremolo and flanger" width="800"><br>
-  <img src="docs/images/modules-space.png" alt="Delay, tape echo, reverb and spring reverb" width="800"><br>
-  <img src="docs/images/modules-tone.png" alt="EQ, acoustic simulator, wah and limiter" width="800">
+  <img src="docs/images/modules-drive.png" alt="Compressor, overdrive, Klon-style drive, fuzz and boost" width="800">
 </p>
 
-The **NAM Loader** amp runs a Neural Amp Modeler model in place of the circuits; the **Tuner** is a chromatic tuner:
-
-<p align="center">
-  <img src="docs/images/nam-loader.png" alt="The NAM Loader amp with a model loaded" width="800"><br>
-  <img src="docs/images/tuner.png" alt="The chromatic tuner on an A2, in tune" width="800">
-</p>
+The **NAM Loader** amp runs a Neural Amp Modeler model in place of the circuits; the **Tuner** is a chromatic tuner.
 
 (The pictures are rendered by the editor itself: see "Repository layout" for how to regenerate them.)
 
