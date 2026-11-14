@@ -1158,61 +1158,6 @@ TEST_CASE("distortion: the DS-1 circuit clips a note into a near square wave and
     }
 }
 
-TEST_CASE("distortion: the MT-2 style model clips, its EQ boosts and cuts where the knobs say, and the module switches between models", "[rack]") {
-    JuceInit init;
-    // The EQ on its own: the gain at a frequency with the knob at one end, in dB.
-    auto eqDb = [](double low, double mid, double midFreq, double high, double hz) {
-        sas::ToneEq eq;
-        eq.prepare(48000.0);
-        eq.setKnobs(low, mid, midFreq, high);
-        double s = 0, s0 = 0;
-        for (int i = 0; i < 48000; ++i) {
-            const float x = float(0.1 * std::sin(6.283185307179586 * hz * double(i) / 48000.0));
-            const float y = eq.process(x);
-            if (i > 24000) s += double(y) * y, s0 += double(x) * x;
-        }
-        return 10.0 * std::log10(s / s0);
-    };
-    CHECK(eqDb(10, 5, 5, 5, 100.0) > 11.0);   // LOW up: about +14 dB at 100 Hz
-    CHECK(eqDb(0, 5, 5, 5, 100.0) < -11.0);
-    CHECK(eqDb(5, 5, 5, 10, 10000.0) > 11.0);  // HIGH up
-    CHECK(eqDb(5, 0, 5, 5, 1000.0) < -8.0);    // MIDDLE down at MID FREQ noon (about 1 kHz)
-    CHECK(std::fabs(eqDb(5, 5, 5, 5, 1000.0)) < 0.5);  // flat
-    // The gain stages: a note is clipped into a near square wave.
-    sas::DriveCircuit c(sas::DriveModel::Mt2, 48000.0);
-    c.setControls({0.8, 0.5, 0.5});
-    std::vector<float> x(48000);
-    for (std::size_t i = 0; i < x.size(); ++i) x[i] = float(0.1 * std::sin(6.283185307179586 * 220.0 * double(i) / 48000.0));
-    c.process(x.data(), x.size());
-    double a1r = 0, a1i = 0, a3r = 0, a3i = 0;
-    for (std::size_t i = 24000; i < x.size(); ++i) {
-        REQUIRE(std::isfinite(x[i]));
-        const double t = double(i) / 48000.0;
-        a1r += x[i] * std::cos(6.283185307179586 * 220.0 * t);
-        a1i += x[i] * std::sin(6.283185307179586 * 220.0 * t);
-        a3r += x[i] * std::cos(6.283185307179586 * 660.0 * t);
-        a3i += x[i] * std::sin(6.283185307179586 * 660.0 * t);
-    }
-    const double h3 = 20.0 * std::log10(std::sqrt(a3r * a3r + a3i * a3i) / std::sqrt(a1r * a1r + a1i * a1i) + 1e-12);
-    INFO("MT-2 third harmonic re the note: " << h3 << " dB");
-    CHECK(h3 > -24.0);  // a sine has under -60 dB
-    // In the plugin: both models run and switching between them keeps the signal finite.
-    SasProcessor p;
-    p.prepareToPlay(48000.0, 512);
-    setParam(p, ids::quality, 2.0f);
-    REQUIRE(p.addModule(sas::ModuleType::Distortion));
-    for (int model : {0, 1, 0, 1}) {
-        setParam(p, ids::dstModel, float(model));
-        for (int b = 0; b < 10; ++b) {
-            juce::AudioBuffer<float> buf(2, 512);
-            juce::MidiBuffer midi;
-            fill(buf, 220.0, 0.1, 48000.0, b * 512);
-            p.processBlock(buf, midi);
-            for (int i = 0; i < 512; ++i) REQUIRE(std::isfinite(buf.getSample(0, i)));
-        }
-    }
-}
-
 TEST_CASE("layers: a pick attack leaves a layer that keeps sounding after the note has stopped, and Off leaves none", "[rack]") {
     JuceInit init;
     auto tailAt220 = [](bool on, bool sub) {

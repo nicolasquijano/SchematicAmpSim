@@ -45,8 +45,7 @@ const std::vector<Item>& itemsFor(ModuleType t) {
     static const std::vector<Item> layers{{Item::Knob, ids::lyMix, "MIX"}, {Item::Knob, ids::lyAttack, "ATTACK"}, {Item::Knob, ids::lyDecay, "DECAY"},
                                           {Item::Knob, ids::lyTrig, "TRIG"}, {Item::Knob, ids::lyDiffusion, "DIFFUSION"}, {Item::Toggle, ids::lySingle, "Single"},
                                           {Item::Toggle, ids::lySub, "Sub octave"}, {Item::Toggle, ids::lyHold, "Hold layer"}, {Item::Combo, ids::lyStereo, "CHANNELS"}};
-    static const std::vector<Item> distortion{{Item::Combo, ids::dstModel, "MODEL"}, {Item::Knob, ids::dstDrive, "DIST"}, {Item::Knob, ids::dstTone, "TONE (DS-1)"}, {Item::Knob, ids::dstLevel, "LEVEL"},
-                                           {Item::Knob, ids::dstLow, "LOW (MT-2)"}, {Item::Knob, ids::dstMid, "MIDDLE (MT-2)"}, {Item::Knob, ids::dstMidFreq, "MID FREQ (MT-2)"}, {Item::Knob, ids::dstHigh, "HIGH (MT-2)"}};
+    static const std::vector<Item> distortion{{Item::Knob, ids::dstDrive, "DIST"}, {Item::Knob, ids::dstTone, "TONE"}, {Item::Knob, ids::dstLevel, "LEVEL"}};
     static const std::vector<Item> leslie{{Item::Combo, ids::lesSpeed, "SPEED"}, {Item::Knob, ids::lesDepth, "DEPTH"}, {Item::Knob, ids::lesBalance, "HORN / ROTOR"}, {Item::Knob, ids::lesWidth, "WIDTH"}, {Item::Knob, ids::lesMix, "MIX %"}};
     static const std::vector<Item> spring{{Item::Combo, ids::spType, "TANK"}, {Item::Knob, ids::spTone, "TONE"}, {Item::Knob, ids::spMix, "MIX %"}};
     static const std::vector<Item> klon{{Item::Knob, ids::klnGain, "GAIN"}, {Item::Knob, ids::klnTreble, "TREBLE"}, {Item::Knob, ids::klnLevel, "LEVEL"}};

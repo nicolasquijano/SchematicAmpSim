@@ -106,7 +106,7 @@ const std::vector<const char*>& paramIds(ModuleType type) {
     static const std::vector<const char*> bbd{ids::bbdOn, ids::bbdTime, ids::bbdFeedback, ids::bbdMix, ids::bbdTone, ids::bbdRate, ids::bbdDepth, ids::bbdGrit, ids::bbdStereo};
     static const std::vector<const char*> crusher{ids::bcOn, ids::bcBits, ids::bcRate, ids::bcAntiAlias, ids::bcTone, ids::bcDither, ids::bcJitter, ids::bcMix};
     static const std::vector<const char*> layers{ids::lyOn, ids::lyMix, ids::lyAttack, ids::lyDecay, ids::lyTrig, ids::lyDiffusion, ids::lySingle, ids::lySub, ids::lyHold, ids::lyStereo};
-    static const std::vector<const char*> distortion{ids::dstOn, ids::dstModel, ids::dstDrive, ids::dstTone, ids::dstLevel, ids::dstLow, ids::dstMid, ids::dstMidFreq, ids::dstHigh};
+    static const std::vector<const char*> distortion{ids::dstOn, ids::dstDrive, ids::dstTone, ids::dstLevel};
     static const std::vector<const char*> tape{ids::tpOn, ids::tpTime, ids::tpHeads, ids::tpIntensity, ids::tpMix, ids::tpTone, ids::tpWow, ids::tpFlutter, ids::tpSat, ids::tpStereo};
     static const std::vector<const char*> pitch{ids::pitch, ids::pitchFine};
     static const std::vector<const char*> eq = [] {
@@ -312,14 +312,9 @@ void addParams(Layout& l, ModuleType type, int k) {
         }
         case ModuleType::Distortion:
             l.add(toggle(I(ids::dstOn), N("Distortion"), false));
-            l.add(std::make_unique<juce::AudioParameterChoice>(id(I(ids::dstModel)), N("Distortion model"), juce::StringArray{"Boss DS-1", "Boss MT-2 (approx.)"}, 0));
             l.add(knob(I(ids::dstDrive), N("Distortion drive"), 5.0f));
             l.add(knob(I(ids::dstTone), N("Distortion tone"), 5.0f));
             l.add(knob(I(ids::dstLevel), N("Distortion level"), 4.0f));
-            l.add(knob(I(ids::dstLow), N("Distortion low"), 5.0f));
-            l.add(knob(I(ids::dstMid), N("Distortion middle"), 5.0f));
-            l.add(knob(I(ids::dstMidFreq), N("Distortion mid frequency"), 5.0f));
-            l.add(knob(I(ids::dstHigh), N("Distortion high"), 5.0f));
             break;
         case ModuleType::Layers:
             l.add(toggle(I(ids::lyOn), N("Layers"), false));

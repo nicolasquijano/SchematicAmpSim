@@ -202,14 +202,9 @@ inline constexpr const char* harDetune = "har_detune";  // cents (Detune)
 inline constexpr const char* harDirect = "har_direct";  // 0 .. 10
 inline constexpr const char* harVoice1 = "har_voice1";
 inline constexpr const char* dstOn = "dst_on";
-inline constexpr const char* dstModel = "dst_model";  // the distortion pedal: 0 = Boss DS-1, 1 = Boss MT-2 style
 inline constexpr const char* dstDrive = "dst_drive";  // 0 .. 10
 inline constexpr const char* dstTone = "dst_tone";
 inline constexpr const char* dstLevel = "dst_level";
-inline constexpr const char* dstLow = "dst_low";            // the MT-2 style EQ, 0 .. 10 (5 is flat)
-inline constexpr const char* dstMid = "dst_mid";
-inline constexpr const char* dstMidFreq = "dst_midfreq";
-inline constexpr const char* dstHigh = "dst_high";
 inline constexpr const char* lyOn = "ly_on";
 inline constexpr const char* lyMix = "ly_mix";              // 0 .. 10
 inline constexpr const char* lyAttack = "ly_attack";        // 0 .. 10: how long a layer takes to fade in (0.02 s to 3 s)
@@ -374,6 +369,8 @@ public:
     void applyModulePreset(sas::ModuleType type, int index, int instance = 0);
     // A factory preset of the amp that the instance has selected (amp.json "presets", worked out with tools/amp_presets.cpp): knobs, channel, switches.
     void applyAmpPreset(int index, int instance = 0);
+    // The preset an amp comes up with when it is picked: Clean for the clean amps, Crunch for the crunch amps, Lead (the solo) for the high-gain amps; nothing for the others.
+    void applyDefaultAmpPreset(int instance = 0);
     // Back to the amp's own (stock) power tubes: what choosing another amp does, so a tube picked for one amp does not follow the player to the next.
     void resetTubes(int instance = 0);
     void clearImpulseResponse(int slot = 0, int cabinet = 0);

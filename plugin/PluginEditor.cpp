@@ -746,6 +746,7 @@ void SasEditor::selectedRowsChanged(int lastRow) {
         param->endChangeGesture();
     }
     processor_.resetTubes(0);  // the new amp comes with its own tubes
+    processor_.applyDefaultAmpPreset(0);
 }
 
 void SasEditor::styleCombo(juce::ComboBox& box, const char* paramId,

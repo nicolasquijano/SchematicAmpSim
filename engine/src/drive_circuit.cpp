@@ -10,27 +10,26 @@ namespace sas {
 namespace {
 constexpr double kMinOhms = 50.0;
 // The RAT and the DS-1 clip hard (a square wave whose harmonics fall only as 1/k), so it runs at four times the host rate: at twice, the folded harmonics were about 45 dB under the note, an inharmonic fizz.
-double oversampleFactor(DriveModel m) { return m == DriveModel::Rat || m == DriveModel::Ds1 || m == DriveModel::Mt2 ? 4.0 : 2.0; }
+double oversampleFactor(DriveModel m) { return m == DriveModel::Rat || m == DriveModel::Ds1 ? 4.0 : 2.0; }
 }
 
 struct DriveCircuit::Built {
     ParsedNetlist net;
-    bool bd2 = false, rat = false, ds1 = false, mt2 = false;
+    bool bd2 = false, rat = false, ds1 = false;
 };
 
 DriveCircuit::Built DriveCircuit::build(DriveModel model) {
     if (model == DriveModel::BluesDriver) return Built{parseNetlist(bd2NetlistText(), "bd2.net"), true, false};
     if (model == DriveModel::Rat) return Built{parseNetlist(ratNetlistText(), "rat.net"), false, true};
-    if (model == DriveModel::Mt2) return Built{parseNetlist(mt2NetlistText(), "mt2.net"), false, false, false, true};
     if (model == DriveModel::Ds1) return Built{parseNetlist(ds1NetlistText(), "ds1.net"), false, false, true};
     return Built{parseNetlist(sd1NetlistText(), "sd1.net"), false, false};
 }
 
 DriveCircuit::DriveCircuit(Built&& b, DriveModel model, double fs)
-    : model_(model), solver_(std::move(b.net.circuit), oversampleFactor(model) * fs), os_(model == DriveModel::Rat || model == DriveModel::Ds1 || model == DriveModel::Mt2 ? 2 : 1), out_(b.net.node("y")),
+    : model_(model), solver_(std::move(b.net.circuit), oversampleFactor(model) * fs), os_(model == DriveModel::Rat || model == DriveModel::Ds1 ? 2 : 1), out_(b.net.node("y")),
       drive1_(b.net.resistor(b.bd2 ? "VRG1" : b.rat ? "VRG" : b.ds1 ? "VR1_T" : "VRD")), drive2_(b.bd2 ? b.net.resistor("VRG2") : b.ds1 ? b.net.resistor("VR1_B") : drive1_),
-      toneA_(b.mt2 ? drive1_ : b.net.resistor(b.bd2 ? "VRT_T" : b.rat ? "VR_F" : b.ds1 ? "VR3_T" : "VRT_A")), toneB_(b.rat || b.mt2 ? toneA_ : b.net.resistor(b.ds1 ? "VR3_B" : "VRT_B")),
-      levelT_(b.mt2 ? drive1_ : b.net.resistor(b.rat ? "VR_VT" : b.ds1 ? "VR2_T" : "VRL_T")), levelB_(b.mt2 ? drive1_ : b.net.resistor(b.rat ? "VR_VB" : b.ds1 ? "VR2_B" : "VRL_B")) {
+      toneA_(b.net.resistor(b.bd2 ? "VRT_T" : b.rat ? "VR_F" : b.ds1 ? "VR3_T" : "VRT_A")), toneB_(b.rat ? toneA_ : b.net.resistor(b.ds1 ? "VR3_B" : "VRT_B")),
+      levelT_(b.net.resistor(b.rat ? "VR_VT" : b.ds1 ? "VR2_T" : "VRL_T")), levelB_(b.net.resistor(b.rat ? "VR_VB" : b.ds1 ? "VR2_B" : "VRL_B")) {
     if (!solver_.dcConverged) throw std::runtime_error("overdrive DC operating point did not converge");
     solver_.tolerance = 2e-6;
     solver_.chord = true;
@@ -45,10 +44,7 @@ void DriveCircuit::setControls(const TsControls& c) {
     controls_ = c;
     auto clamp01 = [](double v) { return std::clamp(v, 0.0, 1.0); };
     const double drive = clamp01(c.drive), tone = clamp01(c.tone), level = clamp01(c.level);
-    if (model_ == DriveModel::Mt2) {
-        // DIST: 250k audio taper as the variable resistor in the feedback of the distortion stage (the tone and the level are applied by the module).
-        solver_.setResistor(drive1_, std::max(250e3 * potTaper(Taper::Log, drive), kMinOhms));
-    } else if (model_ == DriveModel::Ds1) {
+    if (model_ == DriveModel::Ds1) {
         // DIST: 100k linear, the wiper moves from the top (gain 1) to the bottom (gain 22) as the knob goes clockwise. TONE: 20k linear, the wiper goes from the low-pass end (counter-clockwise)
         // to the high-pass end. LEVEL: 100k linear, the wiper goes up with the knob.
         solver_.setResistor(drive1_, std::max(100e3 * drive, kMinOhms));

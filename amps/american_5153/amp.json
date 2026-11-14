@@ -3,7 +3,7 @@
  "order": 21,
  "category": "highgain",
  "name": "American 5153",
- "output_db": 4.0,
+ "output_db": 11.9,
  "ui": [
   {
    "param": "volume2",
@@ -274,7 +274,8 @@
      "SW_K3B_NO": 1000000000000.0,
      "SW_K1_12": 1000000000000.0,
      "SW_K1_3": 1
-    }
+    },
+    "level_db": 6.0
    }
   ]
  },

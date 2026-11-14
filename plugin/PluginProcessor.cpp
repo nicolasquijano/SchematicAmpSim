@@ -523,8 +523,7 @@ void SasProcessor::applyModuleParams(const sas::RackOrder& order) {
             }
             case T::Distortion: {
                 auto* d = static_cast<sas::DistortionModule*>(m);
-                d->setModel(int(p(ids::dstModel) + 0.5));
-                d->setParams(p(ids::dstOn) > 0.5, {p(ids::dstDrive) / 10.0, p(ids::dstTone) / 10.0, p(ids::dstLevel) / 10.0}, {p(ids::dstLow), p(ids::dstMid), p(ids::dstMidFreq), p(ids::dstHigh)});
+                d->setParams(p(ids::dstOn) > 0.5, {p(ids::dstDrive) / 10.0, p(ids::dstTone) / 10.0, p(ids::dstLevel) / 10.0});
                 break;
             }
             case T::Layers: {
@@ -1924,6 +1923,17 @@ void SasProcessor::applyAmpPreset(int index, int instance) {
     for (const auto& [name, position] : preset.selectors)
         for (std::size_t i = 0; i < def.preamp.selectors.size() && i < 6; ++i)
             if (def.preamp.selectors[i].name == name) set(ids::sel[i], double(position));
+}
+
+void SasProcessor::applyDefaultAmpPreset(int instance) {
+    const auto& def = defs_[std::size_t(selectedAmpIndex(instance))];
+    const char* wanted = def.category == "clean" ? "Clean" : def.category == "crunch" ? "Crunch" : def.category == "highgain" ? "Lead" : nullptr;
+    if (wanted == nullptr) return;
+    for (std::size_t i = 0; i < def.presets.size(); ++i)
+        if (def.presets[i].name == wanted) {
+            applyAmpPreset(int(i), instance);
+            return;
+        }
 }
 
 void SasProcessor::applyWahPreset(int index, int instance) {

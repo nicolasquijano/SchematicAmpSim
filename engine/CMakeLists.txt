@@ -43,7 +43,7 @@ const char* klonNetlistText() {
 ")
 
 # The SD-1, BD-2, RAT and DS-1 style drives' netlists, the same way (data/sd1.net, data/bd2.net, data/rat.net -> generated sources).
-foreach(_drv sd1 bd2 rat ds1 mt2)
+foreach(_drv sd1 bd2 rat ds1)
   set(_drv_net "${CMAKE_CURRENT_SOURCE_DIR}/data/${_drv}.net")
   set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS "${_drv_net}")
   file(READ "${_drv_net}" _drv_text)
@@ -95,7 +95,6 @@ add_library(sas_engine STATIC
   ${_drv_gen_bd2}
   ${_drv_gen_rat}
   ${_drv_gen_ds1}
-  ${_drv_gen_mt2}
   src/drive_circuit.cpp
   src/nam_model.cpp
   src/chain.cpp

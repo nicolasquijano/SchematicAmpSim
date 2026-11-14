@@ -30,7 +30,6 @@
 #include "sas/wah.h"
 #include "sas/compressor.h"
 #include "sas/comp_models.h"
-#include "sas/tone_eq.h"
 #include "sas/delay.h"
 #include "sas/drive_circuit.h"
 #include "sas/eq.h"
@@ -316,82 +315,44 @@ private:
     bool on_ = false;
 };
 
-// The distortion pedals of the Distortion module (the circuits of sas/drive_circuit.h from DriveModel::Ds1 on), mono, in front of the amp. Like the overdrive circuits they take drive,
-// tone and level, buffer the guitar and run at their own oversampled rate; the amp does not run them.
+// The distortion pedal of the Distortion module (the DS-1 style circuit of sas/drive_circuit.h), mono, in front of the amp. Like the overdrive circuits it takes drive, tone and level, buffers
+// the guitar and runs at its own oversampled rate; the amp does not run it.
 class DistortionModule final : public Module {
 public:
-    // The extra controls of the MT-2 style model (0..10; 5 is flat): its EQ.
-    struct Eq {
-        double low = 5.0, mid = 5.0, midFreq = 5.0, high = 5.0;
-    };
     void prepare(double fs, int) override {
-        fs_ = fs;
-        for (int i = 0; i < kDistortionModelCount; ++i) circuit_[std::size_t(i)] = std::make_unique<DriveCircuit>(DriveModel(int(DriveModel::Ds1) + i), fs);
+        circuit_ = std::make_unique<DriveCircuit>(DriveModel::Ds1, fs);
         drive_.reset(target_.drive, fs, 40.0);
         tone_.reset(target_.tone, fs, 40.0);
         level_.reset(target_.level, fs, 40.0);
-        low_.reset(eq_.low, fs, 40.0);
-        mid_.reset(eq_.mid, fs, 40.0);
-        midFreq_.reset(eq_.midFreq, fs, 40.0);
-        high_.reset(eq_.high, fs, 40.0);
-        toneEq_.prepare(fs);
     }
     void process(float* l, float*, std::size_t n) override {
         constexpr std::size_t kControlEvery = 32;
-        DriveCircuit* c = circuit_[std::size_t(model_)].get();
-        if (!c) return;
-        const bool mt2 = model_ == 1;
+        if (!circuit_) return;
         for (std::size_t i = 0; i < n; i += kControlEvery) {
             const std::size_t m = std::min(kControlEvery, n - i);
             const double steps = double(kControlEvery);
-            const double level = std::clamp(level_.nextStep(steps), 0.0, 1.0);
-            c->setControls({std::clamp(drive_.nextStep(steps), 0.0, 1.0), std::clamp(tone_.nextStep(steps), 0.0, 1.0), mt2 ? 0.5 : level});
-            c->process(l + i, m);
-            if (mt2) {  // the EQ and the level come after the distortion stages
-                toneEq_.setKnobs(low_.nextStep(steps), mid_.nextStep(steps), midFreq_.nextStep(steps), high_.nextStep(steps));
-                const float g = float(std::pow(10.0, (kMt2LevelDb * (1.0 - level) + kMt2MakeupDb) / 20.0));
-                for (std::size_t j = 0; j < m; ++j) l[i + j] = toneEq_.process(l[i + j]) * g;
-            }
+            circuit_->setControls({std::clamp(drive_.nextStep(steps), 0.0, 1.0), std::clamp(tone_.nextStep(steps), 0.0, 1.0), std::clamp(level_.nextStep(steps), 0.0, 1.0)});
+            circuit_->process(l + i, m);
         }
     }
-    static constexpr double kMt2LevelDb = -40.0;  // the LEVEL knob: 0 dB at the top, this much down at the bottom
-    static constexpr double kMt2MakeupDb = 9.0;  // so that LEVEL at noon sounds as loud as the DS-1 at noon
-    bool active() const override { return on_ && circuit_[std::size_t(model_)]; }
+    bool active() const override { return on_ && circuit_; }
     bool buffered() const override { return true; }
     Channels channels() const override { return Channels::MonoOnly; }
-    double latencySamples() const override { return circuit_[std::size_t(model_)] ? double(circuit_[std::size_t(model_)]->latencySamples()) : 0.0; }
+    double latencySamples() const override { return circuit_ ? double(circuit_->latencySamples()) : 0.0; }
     void reset() override {
-        for (auto& c : circuit_)
-            if (c) c->reset();
-        toneEq_.reset();
+        if (circuit_) circuit_->reset();
     }
-    // The pedal model (a change starts the new one from rest).
-    void setModel(int m) {
-        m = std::clamp(m, 0, kDistortionModelCount - 1);
-        if (m == model_) return;
-        model_ = m;
-        reset();
-    }
-    void setParams(bool on, const TsControls& c, const Eq& eq = {}) {
+    void setParams(bool on, const TsControls& c) {
         on_ = on;
         target_ = c;
-        eq_ = eq;
         drive_.setTarget(c.drive);
         tone_.setTarget(c.tone);
         level_.setTarget(c.level);
-        low_.setTarget(eq.low);
-        mid_.setTarget(eq.mid);
-        midFreq_.setTarget(eq.midFreq);
-        high_.setTarget(eq.high);
     }
 
 private:
-    double fs_ = 48000.0;
-    std::array<std::unique_ptr<DriveCircuit>, kDistortionModelCount> circuit_;
-    int model_ = 0;
-    Smoother drive_, tone_, level_, low_, mid_, midFreq_, high_;
-    ToneEq toneEq_;
-    Eq eq_;
+    std::unique_ptr<DriveCircuit> circuit_;
+    Smoother drive_, tone_, level_;
     TsControls target_;
     bool on_ = false;
 };

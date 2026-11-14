@@ -450,24 +450,19 @@ inline constexpr ModulePreset kLayersPresets[] = {
     {"Manual hold", true, {{ids::lyMix, 8}, {ids::lyAttack, 3}, {ids::lyDecay, 6}, {ids::lyTrig, 0}, {ids::lyDiffusion, 2}, {ids::lySingle, 0}, {ids::lySub, 0}, {ids::lyHold, 0}, {ids::lyStereo, 0}}},
 };
 
-// The distortion pedals: drive, tone, level, and the MT-2 style EQ (low, middle, mid frequency, high) on the 0..10 scale, and the model (0 Boss DS-1, 1 Boss MT-2 style).
+// The distortion pedal (DS-1 style): drive, tone and level on the 0..10 scale.
 inline constexpr ModulePreset kDistortionPresets[] = {
     {"Off", false, {}},
     // The pedal turned down: a crunch that still follows the pick.
-    {"DS-1 crunch", true, {{ids::dstModel, 0}, {ids::dstDrive, 3}, {ids::dstTone, 5}, {ids::dstLevel, 4}}},
+    {"DS-1 crunch", true, {{ids::dstDrive, 3}, {ids::dstTone, 5}, {ids::dstLevel, 4}}},
     // The classic rock sound of the 1980s.
-    {"DS-1 classic", true, {{ids::dstModel, 0}, {ids::dstDrive, 6}, {ids::dstTone, 5.5}, {ids::dstLevel, 4}}},
+    {"DS-1 classic", true, {{ids::dstDrive, 6}, {ids::dstTone, 5.5}, {ids::dstLevel, 4}}},
     // A lot of gain and a little more treble for solos.
-    {"DS-1 lead", true, {{ids::dstModel, 0}, {ids::dstDrive, 8.5}, {ids::dstTone, 6}, {ids::dstLevel, 3.5}}},
+    {"DS-1 lead", true, {{ids::dstDrive, 8.5}, {ids::dstTone, 6}, {ids::dstLevel, 3.5}}},
     // Darker, for rhythm guitar with chords.
-    {"DS-1 dark rhythm", true, {{ids::dstModel, 0}, {ids::dstDrive, 5}, {ids::dstTone, 3}, {ids::dstLevel, 4}}},
+    {"DS-1 dark rhythm", true, {{ids::dstDrive, 5}, {ids::dstTone, 3}, {ids::dstLevel, 4}}},
     // The tone open: bright and cutting.
-    {"DS-1 bright", true, {{ids::dstModel, 0}, {ids::dstDrive, 4}, {ids::dstTone, 8}, {ids::dstLevel, 3.5}}},
-    // The MT-2 style: the scooped metal sound, the middle low and sweeping up.
-    {"MT-2 metal rhythm", true, {{ids::dstModel, 1}, {ids::dstDrive, 6}, {ids::dstTone, 5}, {ids::dstLevel, 5}, {ids::dstLow, 6.5}, {ids::dstMid, 3}, {ids::dstMidFreq, 4}, {ids::dstHigh, 6}}},
-    {"MT-2 scooped", true, {{ids::dstModel, 1}, {ids::dstDrive, 8}, {ids::dstTone, 5}, {ids::dstLevel, 4.5}, {ids::dstLow, 7}, {ids::dstMid, 1.5}, {ids::dstMidFreq, 5}, {ids::dstHigh, 7}}},
-    {"MT-2 mid lead", true, {{ids::dstModel, 1}, {ids::dstDrive, 7}, {ids::dstTone, 5}, {ids::dstLevel, 5}, {ids::dstLow, 5}, {ids::dstMid, 7}, {ids::dstMidFreq, 5.5}, {ids::dstHigh, 5}}},
-    {"MT-2 tight", true, {{ids::dstModel, 1}, {ids::dstDrive, 5}, {ids::dstTone, 5}, {ids::dstLevel, 5}, {ids::dstLow, 4}, {ids::dstMid, 5.5}, {ids::dstMidFreq, 4.5}, {ids::dstHigh, 5.5}}},
+    {"DS-1 bright", true, {{ids::dstDrive, 4}, {ids::dstTone, 8}, {ids::dstLevel, 3.5}}},
 };
 
 // The presets of a module type (count 0 when it has none of this kind).

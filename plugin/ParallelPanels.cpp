@@ -45,7 +45,7 @@ AmpPanelB::AmpPanelB(SasProcessor& p)
     caption(*this, ampCaption_, tr("AMP B"));
     fillCombo(*this, ampBox_, p, ids::amp, kInstance, ampAtt_);
     ampBox_.setComponentID("amp_b_select");
-    ampBox_.onChange = [this] { processor_.resetTubes(kInstance); };  // the new amp comes with its own tubes
+    ampBox_.onChange = [this] { processor_.resetTubes(kInstance); processor_.applyDefaultAmpPreset(kInstance); };  // the new amp comes with its own tubes
     caption(*this, qualityCaption_, tr("QUALITY"));
     fillCombo(*this, quality_, p, ids::quality, kInstance, qualityAtt_);
     caption(*this, jackCaption_, tr("INPUT JACK"));
