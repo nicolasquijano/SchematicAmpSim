@@ -1,5 +1,5 @@
 #pragma once
-// An analog octaver in the manner of the Boss OC-2: the guitar goes through a low-pass filter that keeps the fundamental, a Schmitt comparator
+// An analog octaver in the manner of the classic analog octave pedals: the guitar goes through a low-pass filter that keeps the fundamental, a Schmitt comparator
 // squares it, two flip-flops divide the square wave by 2 and by 4 (one and two octaves down), and each divided square wave is given the
 // loudness of the playing (an envelope follower, so it answers the pick) and rounded by a low-pass filter. The result is mixed with the direct
 // signal. It is monophonic like the pedal: it tracks one note at a time, and chords or the highest notes (above about 1 kHz) make it

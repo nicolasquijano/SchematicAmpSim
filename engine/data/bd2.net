@@ -1,4 +1,4 @@
-* BD-2-style overdrive (the Boss Blues Driver kind), from a hobbyist redraw of the 2001 schematic (rev 3): a JFET input buffer, two discrete gain stages (a JFET differential
+* BD-2-style overdrive (the classic blue-pedal kind), from a hobbyist redraw of the 2001 schematic (rev 3): a JFET input buffer, two discrete gain stages (a JFET differential
 * pair into a PNP common-emitter stage, used as an op-amp) with the dual-gang GAIN pot in their feedback and a four-diode clipper between them, a passive TONE, the LEVEL pot,
 * an op-amp stage with a gyrator in its inverting leg and the output buffer. 9 V supply, the op-amp references at 4 V (VB).
 *

@@ -1,4 +1,4 @@
-* SD-1-style overdrive (the Boss Super OverDrive kind), from a service-manual style drawing: an input buffer, a non-inverting op-amp gain stage with the clipping diodes in
+* SD-1-style overdrive (the classic yellow-pedal kind), from a service-manual style drawing: an input buffer, a non-inverting op-amp gain stage with the clipping diodes in
 * its feedback, a one-pole low pass, an active tone stage, the LEVEL pot and the output buffer. Single 9 V supply, everything biased at 4.5 V (VB).
 *
 * Gain stage (U1, 4558 type): input C2 .018 into R4 100k; the inverting leg is R6 4.7k with C3 .047 (a highpass near 720 Hz), the feedback is R5 33k plus the 1M DRIVE pot

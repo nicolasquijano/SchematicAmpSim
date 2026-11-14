@@ -240,14 +240,14 @@ void addParams(Layout& l, ModuleType type, int k) {
             l.add(knob(I(ids::compTone), N("Compressor tone"), 5.0f));
             l.add(knob(I(ids::compLevel), N("Compressor level"), 7.5f));
             l.add(toggle(I(ids::compFast), N("Compressor fast release"), false));
-            l.add(std::make_unique<juce::AudioParameterChoice>(id(I(ids::compModel)), N("Compressor model"), juce::StringArray{"Keeley Compressor Plus", "Dyna Comp", "FET (1176)", "Opto (LA-2A)"}, 0));
+            l.add(std::make_unique<juce::AudioParameterChoice>(id(I(ids::compModel)), N("Compressor model"), juce::StringArray{"Studio Compressor", "Fast Squeeze", "FET", "Opto"}, 0));
             break;
         case ModuleType::Overdrive:
-            l.add(toggle(I(ids::tsOn), N("Tube Screamer"), false));
+            l.add(toggle(I(ids::tsOn), N("Green Overdrive"), false));
             l.add(knob(I(ids::tsDrive), N("TS Drive"), 5.0f));
             l.add(knob(I(ids::tsTone), N("TS Tone"), 5.0f));
             l.add(knob(I(ids::tsLevel), N("TS Level"), 5.0f));
-            l.add(std::make_unique<juce::AudioParameterChoice>(id(I(ids::tsModel)), N("Overdrive model"), juce::StringArray{"Tube Screamer", "SD-1", "BD-2", "RAT"}, 0));
+            l.add(std::make_unique<juce::AudioParameterChoice>(id(I(ids::tsModel)), N("Overdrive model"), juce::StringArray{"Green Overdrive", "Yellow Overdrive", "Blues Overdrive", "Gritty Distortion"}, 0));
             break;
         case ModuleType::NamPedal:
             l.add(toggle(I(ids::nmpOn), N("NAM pedal"), false));
@@ -263,10 +263,10 @@ void addParams(Layout& l, ModuleType type, int k) {
             break;
         case ModuleType::Chorus:
             l.add(toggle(I(ids::chOn), N("Chorus"), false));
-            l.add(std::make_unique<juce::AudioParameterChoice>(id(I(ids::chMode)), N("Chorus mode"), juce::StringArray{"CE-2", "Juno", "JC"}, 0));
+            l.add(std::make_unique<juce::AudioParameterChoice>(id(I(ids::chMode)), N("Chorus mode"), juce::StringArray{"Classic", "Poly", "Studio"}, 0));
             l.add(rate(I(ids::chRate), N("Chorus rate"), 0.1f, 8.0f, 1.4f, 1.2f, "Hz"));
             l.add(pct(I(ids::chDepth), N("Chorus depth"), 0.0f, 100.0f, 50.0f));
-            l.add(std::make_unique<juce::AudioParameterChoice>(id(I(ids::chJuno)), N("Chorus Juno button"), juce::StringArray{"I", "II", "I+II"}, 0));
+            l.add(std::make_unique<juce::AudioParameterChoice>(id(I(ids::chJuno)), N("Chorus poly button"), juce::StringArray{"I", "II", "I+II"}, 0));
             l.add(pct(I(ids::chMix), N("Chorus mix"), 0.0f, 100.0f, 100.0f));
             l.add(channelMode(id(I(ids::chStereo)), N("Chorus channels")));
             break;
@@ -354,12 +354,12 @@ void addParams(Layout& l, ModuleType type, int k) {
             break;
         }
         case ModuleType::Leslie:
-            l.add(toggle(I(ids::lesOn), N("Leslie"), false));
-            l.add(std::make_unique<juce::AudioParameterChoice>(id(I(ids::lesSpeed)), N("Leslie speed"), juce::StringArray{"Stop", "Slow", "Fast"}, 1));
-            l.add(knob(I(ids::lesDepth), N("Leslie depth"), 7.0f));
-            l.add(knob(I(ids::lesBalance), N("Leslie horn rotor balance"), 5.0f));
-            l.add(knob(I(ids::lesWidth), N("Leslie width"), 7.0f));
-            l.add(pct(I(ids::lesMix), N("Leslie mix"), 0.0f, 100.0f, 100.0f));
+            l.add(toggle(I(ids::lesOn), N("Rotary"), false));
+            l.add(std::make_unique<juce::AudioParameterChoice>(id(I(ids::lesSpeed)), N("Rotary speed"), juce::StringArray{"Stop", "Slow", "Fast"}, 1));
+            l.add(knob(I(ids::lesDepth), N("Rotary depth"), 7.0f));
+            l.add(knob(I(ids::lesBalance), N("Rotary horn rotor balance"), 5.0f));
+            l.add(knob(I(ids::lesWidth), N("Rotary width"), 7.0f));
+            l.add(pct(I(ids::lesMix), N("Rotary mix"), 0.0f, 100.0f, 100.0f));
             break;
         case ModuleType::SpringReverb:
             l.add(toggle(I(ids::spOn), N("Spring reverb"), false));
@@ -368,10 +368,10 @@ void addParams(Layout& l, ModuleType type, int k) {
             l.add(pct(I(ids::spMix), N("Spring reverb mix"), 0.0f, 100.0f, 30.0f));
             break;
         case ModuleType::Klon:
-            l.add(toggle(I(ids::klnOn), N("Klon"), false));
-            l.add(knob(I(ids::klnGain), N("Klon gain"), 5.0f));
-            l.add(knob(I(ids::klnTreble), N("Klon treble"), 5.0f));
-            l.add(knob(I(ids::klnLevel), N("Klon level"), 5.0f));
+            l.add(toggle(I(ids::klnOn), N("Transparent drive"), false));
+            l.add(knob(I(ids::klnGain), N("Transparent drive gain"), 5.0f));
+            l.add(knob(I(ids::klnTreble), N("Transparent drive treble"), 5.0f));
+            l.add(knob(I(ids::klnLevel), N("Transparent drive level"), 5.0f));
             break;
         case ModuleType::Acoustic:
             l.add(toggle(I(ids::acOn), N("Acoustic"), false));
@@ -406,17 +406,17 @@ void addParams(Layout& l, ModuleType type, int k) {
                 return std::make_unique<juce::AudioParameterFloat>(id(I(base)), name, juce::NormalisableRange<float>(-12.0f, 12.0f, 1.0f), def,
                                                                    juce::AudioParameterFloatAttributes().withStringFromValueFunction([](float v, int) { return (v > 0 ? juce::String("+") : juce::String()) + juce::String(int(std::lround(v))); }));
             };
-            l.add(toggle(I(ids::harOn), N("Harmonist"), false));
-            l.add(std::make_unique<juce::AudioParameterChoice>(id(I(ids::harMode)), N("Harmonist mode"), juce::StringArray{"Harmony", "Pitch", "Detune"}, 0));
-            l.add(std::make_unique<juce::AudioParameterChoice>(id(I(ids::harKey)), N("Harmonist key"), juce::StringArray{"C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"}, 0));
-            l.add(std::make_unique<juce::AudioParameterChoice>(id(I(ids::harScale)), N("Harmonist scale"), juce::StringArray{"Major", "Minor", "Harmonic minor", "Dorian", "Mixolydian"}, 0));
-            l.add(steps(ids::harInt1, N("Harmonist interval 1"), 2.0f));
-            l.add(steps(ids::harInt2, N("Harmonist interval 2"), 4.0f));
-            l.add(std::make_unique<juce::AudioParameterFloat>(id(I(ids::harDetune)), N("Harmonist detune"), juce::NormalisableRange<float>(0.0f, 50.0f, 0.0f), 15.0f,
+            l.add(toggle(I(ids::harOn), N("Harmonizer"), false));
+            l.add(std::make_unique<juce::AudioParameterChoice>(id(I(ids::harMode)), N("Harmonizer mode"), juce::StringArray{"Harmony", "Pitch", "Detune"}, 0));
+            l.add(std::make_unique<juce::AudioParameterChoice>(id(I(ids::harKey)), N("Harmonizer key"), juce::StringArray{"C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"}, 0));
+            l.add(std::make_unique<juce::AudioParameterChoice>(id(I(ids::harScale)), N("Harmonizer scale"), juce::StringArray{"Major", "Minor", "Harmonic minor", "Dorian", "Mixolydian"}, 0));
+            l.add(steps(ids::harInt1, N("Harmonizer interval 1"), 2.0f));
+            l.add(steps(ids::harInt2, N("Harmonizer interval 2"), 4.0f));
+            l.add(std::make_unique<juce::AudioParameterFloat>(id(I(ids::harDetune)), N("Harmonizer detune"), juce::NormalisableRange<float>(0.0f, 50.0f, 0.0f), 15.0f,
                                                               juce::AudioParameterFloatAttributes().withLabel("cents").withStringFromValueFunction([](float v, int) { return juce::String(v, 0); })));
-            l.add(knob(I(ids::harDirect), N("Harmonist direct"), 10.0f));
-            l.add(knob(I(ids::harVoice1), N("Harmonist voice 1"), 8.0f));
-            l.add(knob(I(ids::harVoice2), N("Harmonist voice 2"), 0.0f));
+            l.add(knob(I(ids::harDirect), N("Harmonizer direct"), 10.0f));
+            l.add(knob(I(ids::harVoice1), N("Harmonizer voice 1"), 8.0f));
+            l.add(knob(I(ids::harVoice2), N("Harmonizer voice 2"), 0.0f));
             break;
         }
         case ModuleType::Octaver:
@@ -436,7 +436,7 @@ void addParams(Layout& l, ModuleType type, int k) {
             break;
         case ModuleType::Fuzz:
             l.add(toggle(I(ids::fzOn), N("Fuzz"), false));
-            l.add(std::make_unique<juce::AudioParameterChoice>(id(I(ids::fzType)), N("Fuzz type"), juce::StringArray{"Face", "Muff", "Octave"}, 0));
+            l.add(std::make_unique<juce::AudioParameterChoice>(id(I(ids::fzType)), N("Fuzz type"), juce::StringArray{"Vintage", "Sustain", "Octave"}, 0));
             l.add(knob(I(ids::fzFuzz), N("Fuzz amount"), 6.0f));
             l.add(knob(I(ids::fzTone), N("Fuzz tone"), 5.0f));
             l.add(knob(I(ids::fzBias), N("Fuzz bias"), 7.0f));

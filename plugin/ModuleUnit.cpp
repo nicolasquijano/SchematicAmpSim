@@ -121,10 +121,10 @@ const char* nameOf(ModuleType t) {
         case ModuleType::Fuzz: return "FUZZ";
         case ModuleType::Boost: return "CLEAN BOOST";
         case ModuleType::Octaver: return "ANALOG OCTAVER";
-        case ModuleType::Harmonist: return "HARMONIST";
+        case ModuleType::Harmonist: return "HARMONIZER";
         case ModuleType::Acoustic: return "ACOUSTIC SIM";
-        case ModuleType::Klon: return "KLON-STYLE DRIVE";
-        case ModuleType::Leslie: return "LESLIE ROTARY";
+        case ModuleType::Klon: return "TRANSPARENT DRIVE";
+        case ModuleType::Leslie: return "ROTARY SPEAKER";
         case ModuleType::SpringReverb: return "SPRING REVERB";
         case ModuleType::TapeEcho: return "TAPE ECHO";
         case ModuleType::BbdDelay: return "ANALOG DELAY (BBD)";

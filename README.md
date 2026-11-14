@@ -22,13 +22,13 @@ Every amp has its own colours, and the amp list (on the left) is grouped by char
 The **Rack**: every module in signal order, with a **+** to add more; the panel of the selected module opens below (here the amp, with its condition: tubes, bias, noise, wear).
 
 <p align="center">
-  <img src="docs/images/rack.png" alt="The rack: noise gate, Klon-style drive, fuzz, amp, cabinet, Leslie, delay and spring reverb" width="800">
+  <img src="docs/images/rack.png" alt="The rack: noise gate, transparent drive, fuzz, amp, cabinet, rotary speaker, delay and spring reverb" width="800">
 </p>
 
-The modules, each with its own presets: **compressor, overdrive, Klon-style drive** and fuzz and boost; **phaser, chorus** (with the Juno and JC modes), vibe, **Leslie rotary**, tremolo and flanger; **delay, tape echo, reverb and spring reverb**; **EQ, acoustic simulator**, wah, limiter, an **analog octaver**, a **harmonizer**, a **BBD analog delay**, a **bitcrusher**, a **sustain-layers** pedal and a **distortion** module (Boss DS-1 so far). The **Cabinet** module has two impulse responses with their curves, the A / B blend, the speaker dynamics and the stereo controls, and a NAM cabinet model.
+The modules, each with its own presets: **compressor, overdrive, transparent drive** and fuzz and boost; **phaser, chorus** (with the Classic, Poly and Studio modes), vibe, **rotary speaker**, tremolo and flanger; **delay, tape echo, reverb and spring reverb**; **EQ, acoustic simulator**, wah, limiter, an **analog octaver**, a **harmonizer**, a **BBD analog delay**, a **bitcrusher**, a **sustain-layers** pedal and a **distortion** module (a DS-1 style circuit so far). The **Cabinet** module has two impulse responses with their curves, the A / B blend, the speaker dynamics and the stereo controls, and a NAM cabinet model.
 
 <p align="center">
-  <img src="docs/images/modules-drive.png" alt="Compressor, overdrive, Klon-style drive, fuzz and boost" width="800">
+  <img src="docs/images/modules-drive.png" alt="Compressor, overdrive, transparent drive, fuzz and boost" width="800">
 </p>
 
 The **NAM Loader** amp runs a Neural Amp Modeler model in place of the circuits; the **Tuner** is a chromatic tuner.
@@ -89,7 +89,7 @@ still change between 0.x versions. Versioning and the steps of a release are in 
   machine with them. They run at the host rate: a model trained at another rate is flagged.
 - **Delay and reverb** (Space page): a delay of up to 1.5 s (feedback, tone, ping-pong, an analog mode, tempo sync and a tap button) and a plate or hall reverb with
   decay, pre-delay, tone, low cut, modulation and **shimmer** (the tail shifted up an octave or a fifth and fed back), each with its own factory presets.
-- **Phaser, chorus and vibe** (Mod page), each in front of the amp or after the cabinet: a four-stage phaser, a chorus with a CE-2 mode and a Juno mode, and a
+- **Phaser, chorus and vibe** (Mod page), each in front of the amp or after the cabinet: a four-stage phaser, a chorus with a Classic mode and a Poly mode, and a
   lamp-and-photocell vibe with Chorus and Vibrato modes.
 - **Pitch shift** (Pitch tab): -12 to +12 semitones and fine tuning in cents, for dropped tunings, octaves or tuning the recording. A granular two-head shifter that works on chords; it adds about 12 ms of delay only while a shift is set.
 - **Post equaliser** (EQ tab): five bands (low shelf, three bells, high shelf), a high-pass and a low-pass, with a draggable response curve and ten guitar presets (clean, blues, tight rhythm, lead, de-fizz, metal, jazz, country, classic rock, mix-ready); it works on the final stereo signal, after the cabinet, so it shapes the result without changing how the amp distorts.
@@ -112,7 +112,7 @@ still change between 0.x versions. Versioning and the steps of a release are in 
   `engine/src/condition.cpp`). `tools/sas_bias_cal` computes the `bias_scale` of each alternative tube.
 - **Cabinet page:** off, a simple filter, or two impulse responses (A and B, each with its response curve) mixed with an equal-power blend; both are stored inside the project. Speaker dynamics sit between the amp and the cabinet: cone excursion (the motor force falls and the suspension stiffens as the cone is pushed), voice-coil heating and cone break-up, with an Intense mode. The values are typical figures, tuned by ear. **Stereo** (the amp is mono inside): the Width knob puts impulse A in the left ear and B in the right one (two microphones, one on each side; 0 blends both into both ears), and Double adds automatic double tracking, a second take with a different, slowly modulated delay in each ear (8 to 30 ms), which also works with the cabinet filter or a single impulse. Both are off by default, which leaves the same signal in both ears. A mono track can feed the stereo output.
 - **Tube-screamer style pedal** in front of the amp (drive, tone, level).
-- **Compressor pedal** (Effects page, in front of everything else), solved as a circuit from a transcription of the Keeley Compressor Plus schematic (AionFX trace v1.0, `engine/data/compressor.net`): an LM13700 OTA gain cell, a transistor full-wave envelope detector and the feedback that closes the loop, with Sustain, Blend, Tone, Level and the Attack switch (which in the circuit selects fast or slow release). It needed two new devices in the engine: an Ebers-Moll NPN that saturates and the OTA. It costs about 9 % of a core while on. The transistor, OTA and diode values are typical figures; the drawing prints none.
+- **Compressor pedal** (Effects page, in front of everything else), solved as a circuit from a transcription of a classic compressor-pedal schematic (AionFX trace v1.0, `engine/data/compressor.net`): an LM13700 OTA gain cell, a transistor full-wave envelope detector and the feedback that closes the loop, with Sustain, Blend, Tone, Level and the Attack switch (which in the circuit selects fast or slow release). It needed two new devices in the engine: an Ebers-Moll NPN that saturates and the OTA. It costs about 9 % of a core while on. The transistor, OTA and diode values are typical figures; the drawing prints none.
 - **Chromatic tuner** (Tuner page): McLeod pitch detection on the raw input (60 Hz to 1.4 kHz, within a cent on clean notes, without octave errors on a weak fundamental), a needle meter, a reference pitch of 430 to 450 Hz and an option to mute the output while tuning.
 - **Level matching** across amps, jacks and modes, so switching does not jump in volume.
 - **Unit and wear**: the Unit selector picks an individual amp (component tolerances, repeatable) and Wear ages the tubes and capacitors.

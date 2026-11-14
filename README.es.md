@@ -23,13 +23,13 @@ Cada ampli tiene sus propios colores, y la lista de amplis (a la izquierda) est�
 El **Rack**: todos los módulos en orden de señal, con un **+** para agregar más; el panel del módulo elegido se abre debajo (aquí el ampli, con su condición: válvulas, bias, ruido, desgaste).
 
 <p align="center">
-  <img src="docs/images/rack.png" alt="El rack: noise gate, drive tipo Klon, fuzz, ampli, gabinete, Leslie, delay y reverb de resorte" width="800">
+  <img src="docs/images/rack.png" alt="El rack: noise gate, drive transparente, fuzz, ampli, gabinete, altavoz rotativo, delay y reverb de resorte" width="800">
 </p>
 
-Los módulos, cada uno con sus presets: **compresor, overdrive, drive tipo Klon**, fuzz y boost; **phaser, chorus** (con los modos Juno y JC), vibe, **Leslie rotativo**, trémolo y flanger; **delay, eco de cinta, reverb y reverb de resorte**; **EQ, simulador acústico**, wah, limitador, un **octavador analógico**, un **armonizador**, un **delay analógico BBD**, un **bitcrusher**, un pedal de **capas de sustain** y un módulo de **distorsión** (por ahora el Boss DS-1). El módulo **Cabinet** tiene dos impulsos con sus curvas, la mezcla A / B, la dinámica del parlante y los controles estéreo, y un modelo NAM de gabinete.
+Los módulos, cada uno con sus presets: **compresor, overdrive, drive transparente**, fuzz y boost; **phaser, chorus** (con los modos Classic, Poly y Studio), vibe, **altavoz rotativo**, trémolo y flanger; **delay, eco de cinta, reverb y reverb de resorte**; **EQ, simulador acústico**, wah, limitador, un **octavador analógico**, un **armonizador**, un **delay analógico BBD**, un **bitcrusher**, un pedal de **capas de sustain** y un módulo de **distorsión** (por ahora un circuito tipo DS-1). El módulo **Cabinet** tiene dos impulsos con sus curvas, la mezcla A / B, la dinámica del parlante y los controles estéreo, y un modelo NAM de gabinete.
 
 <p align="center">
-  <img src="docs/images/modules-drive.png" alt="Compresor, overdrive, drive tipo Klon, fuzz y boost" width="800">
+  <img src="docs/images/modules-drive.png" alt="Compresor, overdrive, drive transparente, fuzz y boost" width="800">
 </p>
 
 El ampli **NAM Loader** corre un modelo de Neural Amp Modeler en lugar de los circuitos; el **Tuner** es un afinador cromático.
@@ -92,7 +92,7 @@ de los proyectos guardados puede cambiar entre versiones 0.x. Las versiones y lo
   máquina con ellos. Corren a la frecuencia del host: un modelo entrenado a otra frecuencia se marca.
 - **Delay y reverb** (página Space): un delay de hasta 1,5 s (feedback, tono, ping-pong, modo analógico, sincronía con el tempo y botón Tap) y un reverb de placa o
   de sala con decaimiento, pre-delay, tono, corte de graves, modulación y **shimmer** (la cola subida una octava o una quinta y realimentada), cada uno con sus presets.
-- **Phaser, chorus y vibe** (página Mod), cada uno delante del ampli o después del gabinete: un phaser de cuatro etapas, un chorus con modo CE-2 y modo Juno, y un
+- **Phaser, chorus y vibe** (página Mod), cada uno delante del ampli o después del gabinete: un phaser de cuatro etapas, un chorus con modo Classic y modo Poly, y un
   vibe de lámpara y fotocelda con modos Chorus y Vibrato.
 - **Pitch shift** (página Pitch): de -12 a +12 semitonos y ajuste fino en cents, para afinaciones graves, octavas o afinar la grabación. Un shifter granular de dos
   cabezales que funciona con acordes; agrega unos 12 ms de retardo solo mientras hay un corrimiento.
@@ -116,7 +116,7 @@ de los proyectos guardados puede cambiar entre versiones 0.x. Las versiones y lo
 - **Página Cabinet:** apagado, un filtro simple, dos respuestas al impulso (A y B, cada una con su curva) con mezcla de potencia igual, o un modelo NAM. Las respuestas se guardan dentro
   del proyecto. La dinámica del parlante (excursión del cono, calentamiento de la bobina, ruptura del cono) va entre el ampli y el gabinete. **Estéreo**: Width pone el impulso A en el oído
   izquierdo y B en el derecho, y Double agrega doble tracking automático. Una pista mono puede alimentar la salida estéreo.
-- **Pedal de overdrive** delante del ampli con cuatro modelos a elegir (estilo Tube Screamer, estilo SD-1, estilo BD-2 y estilo RAT; drive, tono, nivel) y **pedal compresor** resuelto como circuito (Sustain, Blend, Tone, Level y el interruptor Attack). También un **pedal de EQ gráfico de 10 bandas** (estilo MXR, ±12 dB por banda, con GAIN y VOLUME).
+- **Pedal de overdrive** delante del ampli con cuatro modelos a elegir (verde, amarillo, blues y distorsión sucia; drive, tono, nivel) y **pedal compresor** resuelto como circuito (Sustain, Blend, Tone, Level y el interruptor Attack). También un **pedal de EQ gráfico de 10 bandas** (estilo MXR, ±12 dB por banda, con GAIN y VOLUME).
 - **Afinador cromático** (página Tuner): detección McLeod sobre la entrada cruda (60 Hz a 1,4 kHz, a un cent en notas limpias), aguja, referencia de 430 a 450 Hz y opción de silenciar la salida al afinar.
 - **Igualación de nivel** entre amplis, jacks y modos, para que el cambio no salte de volumen.
 - Suavizado rápido de parámetros, sin reservas de memoria en el hilo de audio; al cambiar de ampli, los circuitos nuevos se construyen en un hilo aparte y se intercambian sin cortar el audio.

@@ -71,7 +71,7 @@ inline constexpr ModulePreset kCompressorPresets[] = {
     {"Opto leveler", true, {{ids::compSustain, 7}, {ids::compBlend, 10}, {ids::compTone, 4.5}, {ids::compLevel, 6.5}, {ids::compFast, 0}, {ids::compModel, 3}}},
 };
 
-// The overdrive (Tube Screamer, SD-1 or BD-2, by the model index): drive, tone and level on the 0..10 scale.
+// The overdrive (green, yellow, blues or gritty, by the model index): drive, tone and level on the 0..10 scale.
 inline constexpr ModulePreset kOverdrivePresets[] = {
     {"Off", false, {}},
     // Nearly clean: it only pushes the front of the amp.
@@ -91,17 +91,17 @@ inline constexpr ModulePreset kOverdrivePresets[] = {
     // Everything up: a thick, compressed wall.
     {"Max drive", true, {{ids::tsDrive, 9.5}, {ids::tsTone, 5}, {ids::tsLevel, 4.5}, {ids::tsModel, 0}}},
     // The SD-1 kind: a tighter, more compressed drive with asymmetrical clipping and its own tone.
-    {"SD-1 push", true, {{ids::tsDrive, 3}, {ids::tsTone, 5}, {ids::tsLevel, 5}, {ids::tsModel, 1}}},
-    {"SD-1 crunch", true, {{ids::tsDrive, 6}, {ids::tsTone, 5.5}, {ids::tsLevel, 4.5}, {ids::tsModel, 1}}},
-    {"SD-1 lead", true, {{ids::tsDrive, 8.5}, {ids::tsTone, 6}, {ids::tsLevel, 4}, {ids::tsModel, 1}}},
+    {"Yellow push", true, {{ids::tsDrive, 3}, {ids::tsTone, 5}, {ids::tsLevel, 5}, {ids::tsModel, 1}}},
+    {"Yellow crunch", true, {{ids::tsDrive, 6}, {ids::tsTone, 5.5}, {ids::tsLevel, 4.5}, {ids::tsModel, 1}}},
+    {"Yellow lead", true, {{ids::tsDrive, 8.5}, {ids::tsTone, 6}, {ids::tsLevel, 4}, {ids::tsModel, 1}}},
     // The BD-2 kind: open and dynamic, bright, with a mid dip in the gain stages.
-    {"BD-2 clean boost", true, {{ids::tsDrive, 2}, {ids::tsTone, 5}, {ids::tsLevel, 5}, {ids::tsModel, 2}}},
-    {"BD-2 blues", true, {{ids::tsDrive, 5}, {ids::tsTone, 5}, {ids::tsLevel, 4.5}, {ids::tsModel, 2}}},
-    {"BD-2 hot", true, {{ids::tsDrive, 8.5}, {ids::tsTone, 4.5}, {ids::tsLevel, 4}, {ids::tsModel, 2}}},
+    {"Blues clean boost", true, {{ids::tsDrive, 2}, {ids::tsTone, 5}, {ids::tsLevel, 5}, {ids::tsModel, 2}}},
+    {"Blues blues", true, {{ids::tsDrive, 5}, {ids::tsTone, 5}, {ids::tsLevel, 4.5}, {ids::tsModel, 2}}},
+    {"Blues hot", true, {{ids::tsDrive, 8.5}, {ids::tsTone, 4.5}, {ids::tsLevel, 4}, {ids::tsModel, 2}}},
     // The RAT kind: gritty, hard-clipped and mid-forward; DRIVE is the distortion, TONE is the opposite of the pedal's FILTER (clockwise is brighter).
-    {"RAT light", true, {{ids::tsDrive, 3}, {ids::tsTone, 6}, {ids::tsLevel, 4}, {ids::tsModel, 3}}},
-    {"RAT rhythm", true, {{ids::tsDrive, 6}, {ids::tsTone, 5}, {ids::tsLevel, 3.5}, {ids::tsModel, 3}}},
-    {"RAT lead", true, {{ids::tsDrive, 8.5}, {ids::tsTone, 4.5}, {ids::tsLevel, 3}, {ids::tsModel, 3}}},
+    {"Gritty light", true, {{ids::tsDrive, 3}, {ids::tsTone, 6}, {ids::tsLevel, 4}, {ids::tsModel, 3}}},
+    {"Gritty rhythm", true, {{ids::tsDrive, 6}, {ids::tsTone, 5}, {ids::tsLevel, 3.5}, {ids::tsModel, 3}}},
+    {"Gritty lead", true, {{ids::tsDrive, 8.5}, {ids::tsTone, 4.5}, {ids::tsLevel, 3}, {ids::tsModel, 3}}},
 };
 
 // The phaser: speed in Hz, intense (feedback), mix in percent, channels (0 mono, 1 stereo).
@@ -129,7 +129,7 @@ inline constexpr ModulePreset kPhaserPresets[] = {
 inline constexpr ModulePreset kChorusPresets[] = {
     {"Off", false, {}},
     // The single-voice pedal chorus, as it comes.
-    {"CE-2 classic", true, {{ids::chMode, 0}, {ids::chRate, 1.2}, {ids::chDepth, 50}, {ids::chJuno, 0}, {ids::chMix, 100}, {ids::chStereo, 0}}},
+    {"Classic chorus", true, {{ids::chMode, 0}, {ids::chRate, 1.2}, {ids::chDepth, 50}, {ids::chJuno, 0}, {ids::chMix, 100}, {ids::chStereo, 0}}},
     // A shallow, slow shimmer, a little behind the dry sound.
     {"Shimmer", true, {{ids::chMode, 0}, {ids::chRate, 0.6}, {ids::chDepth, 35}, {ids::chJuno, 0}, {ids::chMix, 70}, {ids::chStereo, 1}}},
     // Barely there: it only thickens the note, like a double.
@@ -454,15 +454,15 @@ inline constexpr ModulePreset kLayersPresets[] = {
 inline constexpr ModulePreset kDistortionPresets[] = {
     {"Off", false, {}},
     // The pedal turned down: a crunch that still follows the pick.
-    {"DS-1 crunch", true, {{ids::dstDrive, 3}, {ids::dstTone, 5}, {ids::dstLevel, 4}}},
+    {"Distortion crunch", true, {{ids::dstDrive, 3}, {ids::dstTone, 5}, {ids::dstLevel, 4}}},
     // The classic rock sound of the 1980s.
-    {"DS-1 classic", true, {{ids::dstDrive, 6}, {ids::dstTone, 5.5}, {ids::dstLevel, 4}}},
+    {"Distortion classic", true, {{ids::dstDrive, 6}, {ids::dstTone, 5.5}, {ids::dstLevel, 4}}},
     // A lot of gain and a little more treble for solos.
-    {"DS-1 lead", true, {{ids::dstDrive, 8.5}, {ids::dstTone, 6}, {ids::dstLevel, 3.5}}},
+    {"Distortion lead", true, {{ids::dstDrive, 8.5}, {ids::dstTone, 6}, {ids::dstLevel, 3.5}}},
     // Darker, for rhythm guitar with chords.
-    {"DS-1 dark rhythm", true, {{ids::dstDrive, 5}, {ids::dstTone, 3}, {ids::dstLevel, 4}}},
+    {"Distortion dark rhythm", true, {{ids::dstDrive, 5}, {ids::dstTone, 3}, {ids::dstLevel, 4}}},
     // The tone open: bright and cutting.
-    {"DS-1 bright", true, {{ids::dstDrive, 4}, {ids::dstTone, 8}, {ids::dstLevel, 3.5}}},
+    {"Distortion bright", true, {{ids::dstDrive, 4}, {ids::dstTone, 8}, {ids::dstLevel, 3.5}}},
 };
 
 // The presets of a module type (count 0 when it has none of this kind).

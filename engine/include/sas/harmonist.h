@@ -1,5 +1,5 @@
 #pragma once
-// A harmonizer in the manner of the Boss PS-6 Harmonist: two voices shifted from the note being played, mixed with the guitar.
+// A harmonizer in the manner of the classic harmonizer pedals: two voices shifted from the note being played, mixed with the guitar.
 //   Harmony  each voice is an interval counted in steps of a musical scale in the chosen key (+2 is a third above, +4 a fifth above, -2 a third
 //            below...), so the harmony stays in key: a third above is a major or minor third depending on the note played. The note is found by a
 //            pitch detector (YIN on a decimated copy of the signal), so this mode is monophonic: one note at a time.

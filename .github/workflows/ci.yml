@@ -54,6 +54,11 @@ jobs:
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
+      # Compiler cache: only the files that changed are rebuilt (JUCE is most of the build time).
+      - uses: hendrikmuhs/ccache-action@v1.2
+        with:
+          key: ccache-macos
+          max-size: 500M
 
       - uses: actions/cache@v4
         with:
@@ -65,7 +70,7 @@ jobs:
 
       - name: Build
         run: |
-          cmake --preset release-macos
+          cmake --preset release-macos -DCMAKE_C_COMPILER_LAUNCHER=ccache -DCMAKE_CXX_COMPILER_LAUNCHER=ccache
           cmake --build --preset release-macos
 
       - name: Test
@@ -84,6 +89,11 @@ jobs:
     runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v4
+      # Compiler cache: only the files that changed are rebuilt (JUCE is most of the build time).
+      - uses: hendrikmuhs/ccache-action@v1.2
+        with:
+          key: ccache-linux
+          max-size: 500M
 
       - uses: actions/cache@v4
         with:
@@ -97,7 +107,7 @@ jobs:
 
       - name: Build
         run: |
-          cmake --preset release-linux
+          cmake --preset release-linux -DCMAKE_C_COMPILER_LAUNCHER=ccache -DCMAKE_CXX_COMPILER_LAUNCHER=ccache
           cmake --build --preset release-linux
 
       - name: Test

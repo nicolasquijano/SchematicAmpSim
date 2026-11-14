@@ -3,7 +3,7 @@
 //   SD1: a Super OverDrive style pedal (engine/data/sd1.net): an op-amp gain stage with asymmetrical diodes (one against two) in its feedback, a low pass and an active tone stage.
 //   BD2: a Blues Driver style pedal (engine/data/bd2.net): two discrete gain stages with the dual GAIN pot, a four-diode clipper between them, a passive tone, LEVEL and an
 //        op-amp stage with a gyrator.
-//   Ds1: a Boss DS-1 style distortion (engine/data/ds1.net): a transistor booster, a TA7136 gain stage, hard diode clipping and the passive tone; the first model of the Distortion module.
+//   Ds1: a DS-1 style distortion (engine/data/ds1.net): a transistor booster, a TA7136 gain stage, hard diode clipping and the passive tone; the first model of the Distortion module.
 //   Rat: a RAT style distortion (engine/data/rat.net): an LM308 gain stage with the DISTORTION pot in its feedback, hard diode clipping, the FILTER low pass and a JFET buffer.
 // Each runs at twice the host rate, the RAT at four times (the diodes alias otherwise) in front of the amp, and takes the same three controls as the Tube Screamer: drive (gain), tone and level, 0..1.
 

@@ -1,5 +1,5 @@
 #pragma once
-// An analog delay built on a bucket-brigade chip (BBD), in the manner of the Boss DM-2, the Electro-Harmonix Memory Man and the MXR Carbon Copy.
+// An analog delay built on a bucket-brigade chip (BBD), in the manner of the classic analog delay pedals.
 // A BBD is a chain of capacitors that pass their charge on at each tick of a clock: the delay is stages / (2 x clock), so a slower clock gives a
 // longer and darker delay. What makes it sound like one:
 //  - the chip can only carry what the clock can sample, so the signal goes through a low-pass before it (to stop aliasing) and another after it

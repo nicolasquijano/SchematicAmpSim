@@ -1,4 +1,4 @@
-* Boss DS-1 style distortion, from the Boss service drawing of the Japanese board (DS-1 BOARD ASSY 7520551007, pcb 2291032607; TA7136P op-amp).
+* DS-1 style distortion, from the service drawing of the Japanese board (DS-1 BOARD ASSY 7520551007, pcb 2291032607; TA7136P op-amp).
 *
 * Signal path (read from the drawing): input R1 1k and C1 .047 into Q1 (2SC2240), an emitter follower biased by R2 470k to the 4.5 V bias; C2 .47 and the JFET switch Q6 (2SK30A,
 * a few hundred ohms when the effect is on) into C3 .047 and Q2 (2SC2240), a common-emitter booster: 470k (R7, with C4 250p) from collector to base, R6 100k to ground, R9 22 in
