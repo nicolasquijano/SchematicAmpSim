@@ -1,0 +1,456 @@
+#include "I18n.h"
+#include "PluginEditor.h"
+#include "IconData.h"
+#include "TubeData.h"
+#include "ParallelPanels.h"
+#include "RackPage.h"
+#include "RackState.h"
+#include "EqPresets.h"
+#include "FxPresets.h"
+
+#include <cmath>
+
+#include "sas/version.h"
+
+// ------------------------------------------------------------------ look
+
+juce::FontOptions AmpLookAndFeel::font(float size, bool bold, float tracking) {
+    auto f = juce::FontOptions(size, bold ? juce::Font::bold : juce::Font::plain);
+    return tracking != 0.0f ? f.withKerningFactor(tracking) : f;
+}
+
+AmpLookAndFeel::AmpLookAndFeel() : theme_(EditorTheme::from(sas::ThemeDef{})) {
+#if JUCE_WINDOWS
+    setDefaultSansSerifTypefaceName("Segoe UI");
+#elif JUCE_MAC
+    setDefaultSansSerifTypefaceName("Helvetica Neue");
+#endif
+    setTheme(theme_);
+}
+
+void AmpLookAndFeel::setTheme(const EditorTheme& t) {
+    theme_ = t;
+    const auto body = t.panel.brighter(0.12f);
+    setColour(juce::ResizableWindow::backgroundColourId, t.background);
+    setColour(juce::Label::textColourId, t.text);
+    setColour(juce::Slider::textBoxTextColourId, t.text.withAlpha(0.85f));
+    setColour(juce::Slider::textBoxOutlineColourId, juce::Colours::transparentBlack);
+    setColour(juce::Slider::textBoxBackgroundColourId, juce::Colours::transparentBlack);
+    setColour(juce::Slider::textBoxHighlightColourId, t.accent.withAlpha(0.4f));
+    setColour(juce::ComboBox::backgroundColourId, body);
+    setColour(juce::ComboBox::outlineColourId, t.edge);
+    setColour(juce::ComboBox::textColourId, t.text);
+    setColour(juce::ComboBox::arrowColourId, t.accent);
+    setColour(juce::PopupMenu::backgroundColourId, body);
+    setColour(juce::PopupMenu::textColourId, t.text);
+    setColour(juce::PopupMenu::highlightedBackgroundColourId, t.accent.withAlpha(0.35f));
+    setColour(juce::PopupMenu::highlightedTextColourId, t.text);
+    setColour(juce::TextButton::buttonColourId, body);
+    setColour(juce::TextButton::buttonOnColourId, t.accent.withAlpha(0.25f));
+    setColour(juce::TextButton::textColourOffId, t.text.withAlpha(0.75f));
+    setColour(juce::TextButton::textColourOnId, t.accent);
+    setColour(juce::ToggleButton::textColourId, t.text.withAlpha(0.85f));
+    setColour(juce::ToggleButton::tickColourId, t.accent);
+    setColour(juce::ListBox::backgroundColourId, t.panel);
+    setColour(juce::ListBox::outlineColourId, t.edge);
+    setColour(juce::Slider::thumbColourId, t.accent);
+    setColour(juce::Slider::trackColourId, t.accent.withAlpha(0.45f));
+    setColour(juce::Slider::backgroundColourId, t.edge);
+    setColour(juce::TextEditor::backgroundColourId, body);
+    setColour(juce::TextEditor::outlineColourId, t.edge);
+    setColour(juce::TextEditor::focusedOutlineColourId, t.accent);
+    setColour(juce::TextEditor::textColourId, t.text);
+    setColour(juce::TextEditor::highlightColourId, t.accent.withAlpha(0.4f));
+    setColour(juce::TextEditor::highlightedTextColourId, t.text);
+    setColour(juce::CaretComponent::caretColourId, t.accent);
+}
+
+void AmpLookAndFeel::drawRotarySlider(juce::Graphics& g, int x, int y, int w, int h, float pos, float startAngle,
+                                      float endAngle, juce::Slider&) {
+    const auto bounds = juce::Rectangle<float>(float(x), float(y), float(w), float(h)).reduced(3.0f);
+    const float radius = std::min(bounds.getWidth(), bounds.getHeight()) * 0.5f;
+    const auto c = bounds.getCentre();
+    const float a = startAngle + (endAngle - startAngle) * pos;
+    const auto& t = theme_;
+
+    // Tick marks 0..10 around the knob (the ends and the middle longer).
+    constexpr int ticks = 11;
+    for (int i = 0; i < ticks; ++i) {
+        const float ta = startAngle + (endAngle - startAngle) * float(i) / float(ticks - 1);
+        const bool major = i == 0 || i == ticks - 1 || i == ticks / 2;
+        const juce::Point<float> d(std::sin(ta), -std::cos(ta));
+        const float r0 = radius - (major ? 5.0f : 3.0f);
+        g.setColour(t.label.withAlpha(major ? 0.9f : 0.55f));
+        g.drawLine({c + d * r0, c + d * radius}, major ? 1.6f : 1.0f);
+    }
+
+    // Value arc just inside the ticks, with a soft glow.
+    const float arcR = radius - 8.5f;
+    juce::Path track, value;
+    track.addCentredArc(c.x, c.y, arcR, arcR, 0.0f, startAngle, endAngle, true);
+    value.addCentredArc(c.x, c.y, arcR, arcR, 0.0f, startAngle, a, true);
+    g.setColour(t.edge.withAlpha(0.8f));
+    g.strokePath(track, juce::PathStrokeType(2.5f, juce::PathStrokeType::curved, juce::PathStrokeType::rounded));
+    g.setColour(t.accent.withAlpha(0.22f));
+    g.strokePath(value, juce::PathStrokeType(6.0f, juce::PathStrokeType::curved, juce::PathStrokeType::rounded));
+    g.setColour(t.accent);
+    g.strokePath(value, juce::PathStrokeType(2.5f, juce::PathStrokeType::curved, juce::PathStrokeType::rounded));
+
+    // Body: a shadow, a dark skirt and a domed cap.
+    const float skirtR = (arcR - 3.5f);
+    const float capR = skirtR * 0.80f;
+    juce::Path skirt;
+    skirt.addEllipse(c.x - skirtR, c.y - skirtR, skirtR * 2, skirtR * 2);
+    juce::DropShadow(juce::Colours::black.withAlpha(0.7f), 7, {0, 2}).drawForPath(g, skirt);
+    g.setGradientFill(juce::ColourGradient(t.knobBottom.brighter(0.15f), c.x, c.y - skirtR, t.knobBottom.darker(0.6f), c.x, c.y + skirtR, false));
+    g.fillPath(skirt);
+    g.setColour(t.edge.withAlpha(0.9f));
+    g.drawEllipse(c.x - skirtR, c.y - skirtR, skirtR * 2, skirtR * 2, 1.0f);
+
+    g.setGradientFill(juce::ColourGradient(t.knobTop, c.x - capR * 0.5f, c.y - capR * 0.9f, t.knobBottom, c.x + capR * 0.4f, c.y + capR, false));
+    g.fillEllipse(c.x - capR, c.y - capR, capR * 2, capR * 2);
+    g.setColour(juce::Colours::black.withAlpha(0.45f));
+    g.drawEllipse(c.x - capR, c.y - capR, capR * 2, capR * 2, 1.0f);
+    // A faint highlight along the upper left rim of the cap.
+    juce::Path hl;
+    hl.addCentredArc(c.x, c.y, capR - 1.5f, capR - 1.5f, 0.0f, juce::degreesToRadians(-70.0f), juce::degreesToRadians(15.0f), true);
+    g.setColour(juce::Colours::white.withAlpha(0.18f));
+    g.strokePath(hl, juce::PathStrokeType(1.4f, juce::PathStrokeType::curved, juce::PathStrokeType::rounded));
+
+    // Pointer.
+    const juce::Point<float> d(std::sin(a), -std::cos(a));
+    g.setColour(juce::Colours::black.withAlpha(0.35f));
+    g.drawLine({c + d * (capR * 0.18f) + juce::Point<float>(0.0f, 1.0f), c + d * (capR - 2.5f) + juce::Point<float>(0.0f, 1.0f)}, 3.2f);
+    g.setColour(t.pointer);
+    g.drawLine({c + d * (capR * 0.18f), c + d * (capR - 2.5f)}, 2.4f);
+}
+
+void AmpLookAndFeel::drawToggleButton(juce::Graphics& g, juce::ToggleButton& b, bool highlighted, bool) {
+    const auto r = b.getLocalBounds().toFloat();
+    const float h = std::min(14.0f, r.getHeight() - 2.0f), w = h * 1.9f;
+    const auto track = juce::Rectangle<float>(r.getX() + 1.0f, r.getCentreY() - h * 0.5f, w, h);
+    const bool on = b.getToggleState();
+    const auto& t = theme_;
+    g.setColour(on ? t.accent.withAlpha(0.30f) : juce::Colours::black.withAlpha(0.45f));
+    g.fillRoundedRectangle(track, h * 0.5f);
+    g.setColour(on ? t.accent : t.edge.brighter(highlighted ? 0.4f : 0.0f));
+    g.drawRoundedRectangle(track.reduced(0.5f), h * 0.5f, 1.0f);
+    const float kr = h * 0.5f - 2.0f;
+    const float kx = on ? track.getRight() - h * 0.5f : track.getX() + h * 0.5f;
+    if (on) {
+        g.setColour(t.accent.withAlpha(0.35f));
+        g.fillEllipse(kx - kr - 2.0f, track.getCentreY() - kr - 2.0f, (kr + 2.0f) * 2, (kr + 2.0f) * 2);
+    }
+    g.setColour(on ? t.accent.brighter(0.3f) : t.label);
+    g.fillEllipse(kx - kr, track.getCentreY() - kr, kr * 2, kr * 2);
+    g.setColour(b.findColour(juce::ToggleButton::textColourId));
+    g.setFont(font(12.0f));
+    g.drawText(b.getButtonText(), juce::Rectangle<float>(track.getRight() + 6.0f, r.getY(), r.getRight() - track.getRight() - 6.0f, r.getHeight()),
+               juce::Justification::centredLeft);
+}
+
+// ------------------------------------------------------------------ knob
+
+KnobWithLabel::KnobWithLabel(juce::AudioProcessorValueTreeState& apvts, const char* paramId, const juce::String& caption)
+    : attachment_(apvts, paramId, slider_) {
+    slider_.setRotaryParameters(juce::degreesToRadians(225.0f), juce::degreesToRadians(495.0f), true);
+    slider_.setTextBoxStyle(juce::Slider::TextBoxBelow, false, 56, 14);
+    slider_.setDoubleClickReturnValue(true, apvts.getParameter(paramId)->convertFrom0to1(apvts.getParameter(paramId)->getDefaultValue()));
+    slider_.setMouseDragSensitivity(160);
+    slider_.setColour(juce::Slider::textBoxBackgroundColourId, juce::Colours::transparentBlack);
+    slider_.setColour(juce::Slider::textBoxOutlineColourId, juce::Colours::transparentBlack);
+    addAndMakeVisible(slider_);
+    caption_.setText(tr(caption), juce::dontSendNotification);
+    caption_.setJustificationType(juce::Justification::centred);
+    caption_.setFont(AmpLookAndFeel::font(10.5f, true, 0.1f));
+    addAndMakeVisible(caption_);
+}
+
+void KnobWithLabel::lookAndFeelChanged() {
+    caption_.setColour(juce::Label::textColourId, findColour(juce::Label::textColourId));
+}
+
+void KnobWithLabel::resized() {
+    auto r = getLocalBounds();
+    caption_.setBounds(r.removeFromTop(16));
+    slider_.setBounds(r);
+}
+
+// ------------------------------------------------------------------ level bar
+
+void LevelBar::setLevel(float peak) {
+    const float now = 20.0f * std::log10(std::max(peak, 1e-5f));
+    db_ = now > db_ ? now : std::max(now, db_ - 1.6f);
+    if (peak >= 0.999f) clip_ = 40;
+    else if (clip_ > 0) --clip_;
+    repaint();
+}
+
+void LevelBar::paint(juce::Graphics& g) {
+    const auto b = getLocalBounds().toFloat();
+    g.setColour(juce::Colour::fromRGB(14, 12, 10));
+    g.fillRoundedRectangle(b, 2.0f);
+    const float f = juce::jlimit(0.0f, 1.0f, (db_ + 60.0f) / 60.0f);
+    if (getWidth() > getHeight()) {  // horizontal: -60 dBFS on the left, 0 on the right
+        const float x0 = b.getX() + 1.0f, w = b.getWidth() - 2.0f, fx = x0 + w * f;
+        auto xAt = [&](float db) { return x0 + w * (db + 60.0f) / 60.0f; };
+        auto band = [&](float xl, float xr, juce::Colour col) {
+            const float r = std::min(xr, fx);
+            if (r > xl) { g.setColour(col); g.fillRect(xl, b.getY() + 1.0f, r - xl, b.getHeight() - 2.0f); }
+        };
+        band(x0, xAt(-18.0f), juce::Colour::fromRGB(80, 200, 100));
+        band(xAt(-18.0f), xAt(-6.0f), juce::Colour::fromRGB(240, 160, 40));
+        band(xAt(-6.0f), x0 + w, juce::Colour::fromRGB(230, 70, 50));
+        g.setColour(juce::Colours::black.withAlpha(0.6f));
+        g.drawVerticalLine(int(xAt(-18.0f)), b.getY(), b.getBottom());
+        g.drawVerticalLine(int(xAt(-6.0f)), b.getY(), b.getBottom());
+        if (clip_ > 0) {
+            g.setColour(juce::Colour::fromRGB(230, 70, 50));
+            g.fillRect(b.getRight() - 4.0f, b.getY() + 1.0f, 3.0f, b.getHeight() - 2.0f);
+        }
+        return;
+    }
+    const float h = (b.getHeight() - 2.0f) * f;
+    const float top = b.getBottom() - 1.0f - h;
+    auto colourAt = [](float db) {
+        return db > -6.0f ? juce::Colour::fromRGB(230, 70, 50) : db > -18.0f ? juce::Colour::fromRGB(240, 160, 40) : juce::Colour::fromRGB(80, 200, 100);
+    };
+    // Drawn in three bands so the colour follows the level.
+    const float y18 = b.getBottom() - 1.0f - (b.getHeight() - 2.0f) * (42.0f / 60.0f);
+    const float y6 = b.getBottom() - 1.0f - (b.getHeight() - 2.0f) * (54.0f / 60.0f);
+    auto band = [&](float yTop, float yBot, juce::Colour col) {
+        const float t = std::max(yTop, top);
+        if (t < yBot) { g.setColour(col); g.fillRect(b.getX() + 1.0f, t, b.getWidth() - 2.0f, yBot - t); }
+    };
+    band(y18, b.getBottom() - 1.0f, colourAt(-30.0f));
+    band(y6, y18, colourAt(-12.0f));
+    band(b.getY() + 1.0f, y6, colourAt(-3.0f));
+    g.setColour(juce::Colours::black.withAlpha(0.6f));
+    g.drawHorizontalLine(int(y18), b.getX(), b.getRight());
+    g.drawHorizontalLine(int(y6), b.getX(), b.getRight());
+    if (clip_ > 0) {
+        g.setColour(juce::Colour::fromRGB(230, 70, 50));
+        g.fillRect(b.getX() + 1.0f, b.getY() + 1.0f, b.getWidth() - 2.0f, 3.0f);
+    }
+}
+
+// ------------------------------------------------------------------ IR curve
+
+void IrCurve::paint(juce::Graphics& g) {
+    auto b = getLocalBounds().toFloat();
+    auto* look = dynamic_cast<AmpLookAndFeel*>(&getLookAndFeel());
+    const auto accent = look ? look->accent() : juce::Colours::orange;
+    const auto label = look ? look->label() : juce::Colours::grey;
+    g.setColour(juce::Colours::black.withAlpha(0.35f));
+    g.fillRoundedRectangle(b, 4.0f);
+    const auto plot = b.reduced(6.0f, 6.0f).withTrimmedBottom(10.0f);
+    // Grid: 100 Hz, 1 kHz, 10 kHz and 0 dB, +-10 dB.
+    g.setFont(AmpLookAndFeel::font(9.0f));
+    for (double f : {100.0, 1000.0, 10000.0}) {
+        const float x = plot.getX() + plot.getWidth() * float(std::log(f / 50.0) / std::log(200.0));
+        g.setColour(label.withAlpha(0.25f));
+        g.drawVerticalLine(int(x), plot.getY(), plot.getBottom());
+        g.setColour(label.withAlpha(0.8f));
+        g.drawText(f >= 1000.0 ? juce::String(int(f / 1000.0)) + "k" : juce::String(int(f)), int(x) - 14, int(plot.getBottom()) + 1, 28, 10, juce::Justification::centred);
+    }
+    for (float db : {-10.0f, 0.0f, 10.0f}) {
+        const float y = plot.getCentreY() - db / 15.0f * plot.getHeight() * 0.5f;
+        g.setColour(label.withAlpha(db == 0.0f ? 0.35f : 0.18f));
+        g.drawHorizontalLine(int(y), plot.getX(), plot.getRight());
+    }
+    if (curve_.size() < 2) {
+        g.setColour(label);
+        g.setFont(AmpLookAndFeel::font(11.0f));
+        g.drawText(tr("no impulse loaded"), b, juce::Justification::centred);
+        return;
+    }
+    juce::Path path;
+    for (std::size_t i = 0; i < curve_.size(); ++i) {
+        const float x = plot.getX() + plot.getWidth() * float(i) / float(curve_.size() - 1);
+        const float y = plot.getCentreY() - juce::jlimit(-15.0f, 15.0f, curve_[i]) / 15.0f * plot.getHeight() * 0.5f;
+        if (i == 0) path.startNewSubPath(x, y); else path.lineTo(x, y);
+    }
+    g.setColour(accent.withAlpha(0.25f));
+    g.strokePath(path, juce::PathStrokeType(4.0f, juce::PathStrokeType::curved, juce::PathStrokeType::rounded));
+    g.setColour(accent);
+    g.strokePath(path, juce::PathStrokeType(1.6f, juce::PathStrokeType::curved, juce::PathStrokeType::rounded));
+}
+
+// ------------------------------------------------------------------ tuner display
+
+void TunerDisplay::setReading(bool valid, bool active, double hz, double referenceA) {
+    valid_ = valid;
+    active_ = active;
+    hz_ = hz;
+    if (valid) {
+        note_ = sas::noteFor(hz, referenceA);
+        // The needle glides, so a trembling string does not make it jitter.
+        needle_ += 0.45f * (float(note_.cents) - needle_);
+    }
+    repaint();
+}
+
+void TunerDisplay::paint(juce::Graphics& g) {
+    auto b = getLocalBounds().toFloat();
+    auto* look = dynamic_cast<AmpLookAndFeel*>(&getLookAndFeel());
+    const auto accent = look ? look->accent() : juce::Colours::orange;
+    const auto label = look ? look->label() : juce::Colours::grey;
+    const auto text = look ? look->text() : juce::Colours::white;
+    g.setColour(juce::Colours::black.withAlpha(0.35f));
+    g.fillRoundedRectangle(b, 6.0f);
+
+    if (!active_ || !valid_) {
+        g.setColour(label);
+        g.setFont(AmpLookAndFeel::font(15.0f));
+        g.drawText(active_ ? tr("play a note") : tr("press  Tuner on  to start"), b.withTrimmedBottom(40.0f), juce::Justification::centred);
+        if (active_) {
+            g.setFont(AmpLookAndFeel::font(80.0f, true));
+            g.setColour(label.withAlpha(0.25f));
+            g.drawText("-", b.withTrimmedBottom(40.0f).translated(0.0f, -20.0f), juce::Justification::centred);
+        }
+    }
+
+    const bool inTune = valid_ && std::abs(needle_) < 3.0f;
+    const auto lit = inTune ? juce::Colour::fromRGB(90, 210, 110) : accent;
+
+    // The note, big, with its octave.
+    if (active_ && valid_) {
+        auto top = b.withTrimmedBottom(b.getHeight() * 0.42f);
+        g.setColour(lit);
+        g.setFont(AmpLookAndFeel::font(std::min(110.0f, top.getHeight() * 0.95f), true));
+        const juce::String name(note_.name);
+        g.drawText(name, top.translated(-18.0f, 0.0f), juce::Justification::centred);
+        g.setColour(text.withAlpha(0.7f));
+        g.setFont(AmpLookAndFeel::font(24.0f, true));
+        g.drawText(juce::String(note_.octave), top.translated(top.getWidth() * 0.18f + (name.length() > 1 ? 24.0f : 4.0f), top.getHeight() * 0.22f), juce::Justification::centred);
+    }
+
+    // The needle meter: +-50 cents, ticks every 10, the centre mark taller.
+    auto meter = b.withTrimmedTop(b.getHeight() * 0.60f).reduced(24.0f, 0.0f).withHeight(34.0f).withY(b.getY() + b.getHeight() * 0.60f);
+    const float cx = meter.getCentreX(), half = meter.getWidth() * 0.5f;
+    for (int c = -50; c <= 50; c += 10) {
+        const float x = cx + half * float(c) / 50.0f;
+        const bool centre = c == 0;
+        g.setColour((centre ? lit : label).withAlpha(centre ? 0.95f : 0.6f));
+        g.drawLine(x, meter.getY() + (centre ? 0.0f : 8.0f), x, meter.getBottom(), centre ? 2.0f : 1.2f);
+    }
+    g.setColour(label.withAlpha(0.5f));
+    g.drawLine(meter.getX(), meter.getBottom(), meter.getRight(), meter.getBottom(), 1.0f);
+    g.setFont(AmpLookAndFeel::font(11.0f, true, 0.1f));
+    g.setColour(label);
+    g.drawText(tr("FLAT"), juce::Rectangle<float>(meter.getX(), meter.getBottom() + 4.0f, 60.0f, 14.0f), juce::Justification::centredLeft);
+    g.drawText(tr("SHARP"), juce::Rectangle<float>(meter.getRight() - 60.0f, meter.getBottom() + 4.0f, 60.0f, 14.0f), juce::Justification::centredRight);
+    if (active_ && valid_) {
+        const float x = cx + half * juce::jlimit(-50.0f, 50.0f, needle_) / 50.0f;
+        juce::Path needle;
+        needle.addTriangle(x - 8.0f, meter.getY() - 10.0f, x + 8.0f, meter.getY() - 10.0f, x, meter.getY() + 8.0f);
+        g.setColour(lit.withAlpha(0.3f));
+        g.fillEllipse(x - 14.0f, meter.getY() - 12.0f, 28.0f, 28.0f);
+        g.setColour(lit);
+        g.fillPath(needle);
+        g.setFont(AmpLookAndFeel::font(15.0f, true));
+        g.setColour(text);
+        const int cents = int(std::lround(note_.cents));
+        g.drawText(juce::String(cents > 0 ? "+" : "") + juce::String(cents) + " cents   -   " + juce::String(hz_, 1) + " Hz",
+                   juce::Rectangle<float>(b.getX(), meter.getBottom() + 22.0f, b.getWidth(), 20.0f), juce::Justification::centred);
+    }
+}
+
+// ------------------------------------------------------------------ tube glow
+
+void TubeGlow::setTubes(int count, const juce::String& name) {
+    if (count == count_ && name == name_) return;
+    count_ = std::max(1, count);
+    name_ = name;
+    repaint();
+}
+
+void TubeGlow::setGlow(float level, float mA) {
+    level_ = level;
+    mA_ = mA;
+    shown_ += 0.30f * (level_ - shown_);  // the glow follows the current with a little inertia, like a hot plate
+    base_ += 0.012f * (level_ - base_);   // and what it has idled at lately: a change from that is what the picture exaggerates
+    repaint();
+}
+
+// The tubes are four pictures of the same size (plugin/tubes/tube.vectorcraft), drawn one over the other: the glass, the plates, the base and the pins;
+// the heater, always lit; the plate, whose glow follows the current; and the reflections of the glass on top.
+void TubeGlow::paint(juce::Graphics& g) {
+    static const juce::Image back = juce::ImageCache::getFromMemory(TubeData::tube_back_png, TubeData::tube_back_pngSize);
+    static const juce::Image heater = juce::ImageCache::getFromMemory(TubeData::tube_heater_png, TubeData::tube_heater_pngSize);
+    static const juce::Image plate = juce::ImageCache::getFromMemory(TubeData::tube_plate_png, TubeData::tube_plate_pngSize);
+    static const juce::Image front = juce::ImageCache::getFromMemory(TubeData::tube_front_png, TubeData::tube_front_pngSize);
+    constexpr float kAspect = 160.0f / 480.0f;  // the pictures' width over their height
+
+    auto r = getLocalBounds().toFloat();
+    auto text = r.removeFromBottom(16.0f);
+    const float cell = r.getWidth() / float(count_);
+    float h = std::max(10.0f, r.getHeight() - 2.0f), w = h * kAspect;
+    if (w > cell - 4.0f) w = std::max(8.0f, cell - 4.0f), h = w / kAspect;
+    // The glow is the current, and a change of the current is shown three times as strong: when the amp is pushed (the plates draw more) the tubes
+    // flare up well past where they idle, and they settle back as it eases. It goes a little above 1 for the flare.
+    const float glow = juce::jlimit(0.0f, 1.4f, shown_ * 1.1f + 3.0f * (shown_ - base_));
+    const float plateAlpha = std::pow(juce::jlimit(0.0f, 1.0f, glow), 1.6f);  // a plate that carries a typical idle current is only warm; it is orange when pushed
+    g.setImageResamplingQuality(juce::Graphics::highResamplingQuality);
+    for (int i = 0; i < count_; ++i) {
+        const float cx = r.getX() + cell * (float(i) + 0.5f);
+        const auto dest = juce::Rectangle<float>(cx - w * 0.5f, r.getBottom() - h, w, h);
+        const juce::Point<float> centre(cx, dest.getY() + h * 0.40f);
+        {
+            // The halo: warm light spilling out of the glass over the panel behind it. It grows and brightens with the glow, taller than wide.
+            const float reach = w * (0.7f + 0.85f * glow);
+            const auto warm = juce::Colour::fromRGB(255, 104, 28);
+            juce::ColourGradient halo(warm.withAlpha(std::min(0.7f, 0.14f + 0.48f * glow)), centre, warm.withAlpha(0.0f), centre.translated(reach, 0.0f), true);
+            halo.addColour(0.45, warm.withAlpha(std::min(0.4f, 0.06f + 0.25f * glow)));
+            juce::FillType fill(halo);
+            fill.transform = juce::AffineTransform::scale(1.0f, 1.9f, centre.x, centre.y);
+            g.setFillType(fill);
+            g.fillRect(juce::Rectangle<float>(centre.x - reach, centre.y - reach * 1.9f, reach * 2.0f, reach * 3.8f));
+        }
+        g.setOpacity(1.0f);
+        g.drawImage(back, dest);
+        g.setOpacity(0.9f);
+        g.drawImage(heater, dest);
+        g.setOpacity(plateAlpha);
+        g.drawImage(plate, dest);
+        g.setOpacity(1.0f);
+        g.drawImage(front, dest);
+        if (glow > 0.75f) {
+            // Overexposed: the plate burns white-hot in the middle when the tube flares.
+            const float bloom = std::min(0.7f, (glow - 0.75f) * 1.4f);
+            const auto hot = juce::Colour::fromRGB(255, 226, 170);
+            const juce::Point<float> plateCentre(cx, dest.getY() + h * 0.43f);
+            juce::ColourGradient flare(hot.withAlpha(bloom), plateCentre, hot.withAlpha(0.0f), plateCentre.translated(w * 0.42f, 0.0f), true);
+            juce::FillType fill(flare);
+            fill.transform = juce::AffineTransform::scale(1.0f, 2.6f, plateCentre.x, plateCentre.y);
+            g.setFillType(fill);
+            g.fillRect(juce::Rectangle<float>(plateCentre.x - w * 0.42f, plateCentre.y - w * 1.1f, w * 0.84f, w * 2.2f));
+        }
+    }
+    g.setColour(getLookAndFeel().findColour(juce::Label::textColourId).withAlpha(0.75f));
+    g.setFont(AmpLookAndFeel::font(11.0f));
+    g.drawText(name_ + (mA_ > 0.5f ? juce::String(" - ") + juce::String(juce::roundToInt(mA_)) + " mA" : juce::String("")), text, juce::Justification::centred);
+}
+
+// ------------------------------------------------------------------ panels
+
+void paintPanelBoxes(juce::Graphics& g, const AmpLookAndFeel& look, const std::vector<PanelBox>& panels) {
+    for (const auto& p : panels) {
+        const auto b = p.bounds.toFloat();
+        const auto top = look.panel().brighter(0.10f);
+        g.setGradientFill(juce::ColourGradient(top, 0.0f, b.getY(), look.panel().darker(0.15f), 0.0f, b.getBottom(), false));
+        g.fillRoundedRectangle(b, 7.0f);
+        g.setColour(juce::Colours::white.withAlpha(0.05f));
+        g.drawHorizontalLine(int(b.getY()) + 1, b.getX() + 8.0f, b.getRight() - 8.0f);
+        g.setColour(look.panelEdge());
+        g.drawRoundedRectangle(b.reduced(0.5f), 7.0f, 1.0f);
+        if (p.caption.isNotEmpty()) {
+            g.setColour(look.accent());
+            g.fillRoundedRectangle(b.getX() + 10.0f, b.getY() + 9.0f, 3.0f, 9.0f, 1.5f);
+            g.setColour(look.label());
+            g.setFont(AmpLookAndFeel::font(10.0f, true, 0.07f));
+            g.drawText(tr(p.caption), p.bounds.getX() + 18, p.bounds.getY() + 4, p.bounds.getWidth() - 28, 18, juce::Justification::centredLeft);
+        }
+    }
+}
+

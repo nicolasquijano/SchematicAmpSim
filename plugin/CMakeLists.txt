@@ -36,6 +36,8 @@ target_sources(SchematicAmpSim PRIVATE
   AmpFace.cpp
   AmpFace.h
   PluginEditor.cpp
+  EditorWidgets.cpp
+  EqCurve.cpp
   PluginEditor.h
   CabinetModule.h
   I18n.cpp
