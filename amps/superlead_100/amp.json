@@ -25,7 +25,7 @@
   "netlist": "preamp.net",
   "tolerance": 2e-06,
   "stages": [
-   {"netlist": "stage2.net", "links": [{"stage": 0, "from": "aa", "source": "VL1"}]},
+   {"netlist": "stage2.net", "jacks": ["lead"], "links": [{"stage": 0, "from": "aa", "source": "VL1"}]},
    {"netlist": "stage3.net", "links": [
      {"stage": 0, "from": "p1a", "source": "VL2"},
      {"stage": 1, "from": "p2b", "source": "VL3"}]},

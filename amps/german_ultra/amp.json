@@ -333,6 +333,7 @@
   "stages": [
    {
     "netlist": "stage_od.net",
+    "when_selector": {"channel": [0]},
     "links": [
      {
       "stage": 0,
@@ -343,6 +344,7 @@
    },
    {
     "netlist": "stage_stack.net",
+    "when_selector": {"channel": [0]},
     "links": [
      {
       "stage": 1,
@@ -353,6 +355,7 @@
    },
    {
     "netlist": "stage_clean.net",
+    "when_selector": {"channel": [1]},
     "links": [
      {
       "stage": 0,

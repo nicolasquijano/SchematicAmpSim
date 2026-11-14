@@ -60,11 +60,23 @@ Taper taper(const json& j, const std::string& path) {
     bad(path + ".taper", "expected 'log', 'log10', 'log30', 'revlog' or 'linear', got '" + t + "'");
 }
 
+std::vector<std::pair<std::string, std::vector<int>>> parseWhenSelector(const json& j, const char* key) {
+    std::vector<std::pair<std::string, std::vector<int>>> out;
+    if (j.contains(key))
+        for (const auto& [name, positions] : j.at(key).items()) {
+            std::vector<int> v;
+            for (const auto& x : positions) v.push_back(x.get<int>());
+            out.emplace_back(name, std::move(v));
+        }
+    return out;
+}
+
 PreampDef parsePreamp(const json& j, const FileReader& read) {
     PreampDef p;
     p.netlist = str(j, "netlist", "preamp");
     p.netlistText = read(p.netlist);
     p.tolerance = num(j, "tolerance", "preamp");
+    p.mainWhenSelector = parseWhenSelector(j, "main_when_selector");
     if (j.contains("main_jacks"))
         for (const auto& n : j.at("main_jacks")) p.mainJacks.push_back(n.get<std::string>());
     if (j.contains("stages"))
@@ -85,6 +97,7 @@ PreampDef parsePreamp(const json& j, const FileReader& read) {
                     sd.links.push_back(std::move(ld));
                 }
             sd.input = s.contains("input") && s.at("input").is_boolean() && s.at("input").get<bool>();
+            sd.whenSelector = parseWhenSelector(s, "when_selector");
             if (s.contains("jacks"))
                 for (const auto& n : s.at("jacks")) sd.jacks.push_back(n.get<std::string>());
             if (sd.linkFrom.empty() && sd.links.empty() && !sd.input)

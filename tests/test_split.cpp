@@ -137,29 +137,47 @@ TEST_CASE("AFD100 Eco preamp (three parts, tables) matches the monolithic circui
     CHECK(worstLarge < 1.0);
 }
 
-// A preamp stage that belongs to some jacks only (a channel's own tubes) is not solved for the others: the sound is the same as with
-// every stage solved, and the output is the same sample for sample down to the isolation of the relay (1e12 ohm).
+// A preamp stage that belongs to some jacks or selector positions only (a channel's own tubes) is not solved for the others: the sound is
+// the same as with every stage solved, sample for sample down to the isolation of the relays (1e12 ohm).
 TEST_CASE("preamp: stages of the channels that are not heard are skipped without changing the sound", "[preamp]") {
-    const AmpDef skipping = loadEmbeddedAmp("american_5153");
-    AmpDef all = skipping;
-    all.preamp.mainJacks.clear();
-    for (auto& s : all.preamp.stages) s.jacks.clear();
-    bool anySkipped = !skipping.preamp.mainJacks.empty();
-    for (const auto& s : skipping.preamp.stages) anySkipped = anySkipped || !s.jacks.empty();
-    REQUIRE(anySkipped);
-    for (std::size_t jack = 0; jack < skipping.preamp.jacks.size(); ++jack) {
-        Preamp a(skipping, kFs, kRail), b(all, kFs, kRail);
-        a.setJack(jack);
-        b.setJack(jack);
-        double worst = 0.0, level = 0.0;
-        for (int n = 0; n < 9600; ++n) {
-            const double x = 0.05 * std::sin(2.0 * kPi * 220.0 * n / kFs);
-            const double ya = a.process(x), yb = b.process(x);
-            worst = std::max(worst, std::abs(ya - yb));
-            level = std::max(level, std::abs(yb));
-        }
-        INFO("jack " << skipping.preamp.jacks[jack].name << ": worst difference " << worst << " V of a " << level << " V output");
-        CHECK(level > 0.01);
-        CHECK(worst < 1e-3 * level);
+    for (const char* id : {"american_5153", "german_ultra", "superlead_100", "modbe_100", "svt_bass300"}) {
+        const AmpDef skipping = loadEmbeddedAmp(id);
+        AmpDef all = skipping;
+        all.preamp.mainJacks.clear();
+        all.preamp.mainWhenSelector.clear();
+        bool anySkipped = !skipping.preamp.mainJacks.empty();
+        for (auto& s : all.preamp.stages) { s.jacks.clear(); s.whenSelector.clear(); }
+        for (const auto& s : skipping.preamp.stages) anySkipped = anySkipped || !s.jacks.empty() || !s.whenSelector.empty();
+        INFO(id);
+        REQUIRE(anySkipped);
+        const auto& pd = skipping.preamp;
+        std::vector<std::size_t> sizes;
+        for (const auto& s : pd.selectors) sizes.push_back(s.positions.size());
+        std::size_t combos = 1;
+        for (auto n : sizes) combos *= n;
+        for (std::size_t jack = 0; jack < pd.jacks.size(); ++jack)
+            for (std::size_t c = 0; c < combos; ++c) {
+                Preamp a(skipping, kFs, kRail), b(all, kFs, kRail);
+                a.setJack(jack);
+                b.setJack(jack);
+                std::string tag = pd.jacks[jack].name;
+                std::size_t cc = c;
+                for (std::size_t q = 0; q < sizes.size(); ++q) {
+                    const std::size_t pos = cc % sizes[q];
+                    cc /= sizes[q];
+                    a.setSelector(q, pos);
+                    b.setSelector(q, pos);
+                    tag += "/" + pd.selectors[q].name + "=" + std::to_string(pos);
+                }
+                double worst = 0.0, level = 0.0;
+                for (int n = 0; n < 4800; ++n) {
+                    const double x = 0.05 * std::sin(2.0 * kPi * 220.0 * n / kFs);
+                    const double ya = a.process(x), yb = b.process(x);
+                    worst = std::max(worst, std::abs(ya - yb));
+                    level = std::max(level, std::abs(yb));
+                }
+                INFO(id << " " << tag << ": worst difference " << worst << " V of a " << level << " V output");
+                CHECK(worst <= 1e-3 * std::max(level, 1e-6));
+            }
     }
 }

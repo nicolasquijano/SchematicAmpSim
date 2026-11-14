@@ -63,7 +63,7 @@ public:
         const Jack& j = jacks_[jack_];
         Stage& first = stages_.front();
         if (rev_) first.solver.setSource(revSrc_, rev_->process(first.solver.voltage(revGrid_)));
-        if (first.activeFor.empty() || first.activeFor[jack_]) {
+        if (first.active) {
             if (j.drivesInput) {
                 first.solver.process(vin);
             } else {
@@ -73,7 +73,7 @@ public:
         }
         for (std::size_t k = 1; k < mainStages_; ++k) {
             Stage& s = stages_[k];
-            if (!s.activeFor.empty() && !s.activeFor[jack_]) continue;  // another channel's tubes: not solved while it is not heard
+            if (!s.active) continue;  // another channel's tubes: not solved while it is not heard
             for (const Link& l : s.links) s.solver.setSource(l.src, stages_[l.from].solver.voltage(l.node));
             if (s.input) s.solver.process(j.drivesInput ? vin : 0.0);
             else s.solver.step();
@@ -83,6 +83,8 @@ public:
     }
 
     std::size_t stageCount() const { return stages_.size(); }
+    // Diagnostic: leave stage `i` out of the solve altogether (to see what a mode needs).
+    void forceSkipStage(std::size_t i, bool skip) { stages_.at(i).forceSkip = skip; updateActive(); }
     void setChord(bool on, double keep = 0.0625) { for (auto& s : stages_) { s.solver.chord = on; s.solver.luKeepRatio = keep; } }
     Solver& solver(std::size_t stage = 0) { return stages_[stage].solver; }
     const Solver& solver(std::size_t stage = 0) const { return stages_[stage].solver; }
@@ -121,10 +123,14 @@ private:
         bool input = false;       // also driven by the guitar (a parallel channel)
         bool pre = false;         // the circuit in front of the preamp (amp.json "pre")
         std::vector<bool> activeFor;  // per jack: is the stage solved? (empty = always: the usual case)
+        std::vector<std::pair<std::size_t, std::vector<bool>>> whenSelector;  // (selector, per position) that must also allow it
+        bool active = true;           // the result of the two above for the jack and selectors now selected
+        bool forceSkip = false;       // diagnostic: never solved (tests find the stages a mode does not need with it)
     };
 
     static void potValues(const Knob& k, double value, double minOhms, double& top, double& bottom);
     void advanceVibrato();
+    void updateActive();
     // The circuit in front (Beast): one sample of it, then the gate; returns the volts for the preamp's input.
     double runPre(double vin);
     void updateGate();

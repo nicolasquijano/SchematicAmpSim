@@ -181,18 +181,30 @@ Preamp::Preamp(const AmpDef& def, double fs, double railVolts, bool useTables, b
     }
     // Stages that belong to some jacks only (a channel of its own) are skipped for the others.
     {
-        auto setActive = [&](Stage& st, const std::vector<std::string>& names) {
-            if (names.empty()) return;
-            st.activeFor.assign(pd.jacks.size(), false);
-            for (const auto& n : names) {
-                bool found = false;
-                for (std::size_t j = 0; j < pd.jacks.size(); ++j)
-                    if (pd.jacks[j].name == n) { st.activeFor[j] = true; found = true; }
-                if (!found) throw std::runtime_error("amp '" + def.id + "': a preamp stage names the unknown jack '" + n + "'");
+        auto setActive = [&](Stage& st, const std::vector<std::string>& names, const std::vector<std::pair<std::string, std::vector<int>>>& when) {
+            if (!names.empty()) {
+                st.activeFor.assign(pd.jacks.size(), false);
+                for (const auto& n : names) {
+                    bool found = false;
+                    for (std::size_t j = 0; j < pd.jacks.size(); ++j)
+                        if (pd.jacks[j].name == n) { st.activeFor[j] = true; found = true; }
+                    if (!found) throw std::runtime_error("amp '" + def.id + "': a preamp stage names the unknown jack '" + n + "'");
+                }
+            }
+            for (const auto& [sel, positions] : when) {
+                std::size_t si = pd.selectors.size();
+                for (std::size_t q = 0; q < pd.selectors.size(); ++q)
+                    if (pd.selectors[q].name == sel) si = q;
+                if (si == pd.selectors.size()) throw std::runtime_error("amp '" + def.id + "': a preamp stage names the unknown selector '" + sel + "'");
+                std::vector<bool> ok(pd.selectors[si].positions.size(), false);
+                for (int p : positions)
+                    if (p >= 0 && std::size_t(p) < ok.size()) ok[std::size_t(p)] = true;
+                st.whenSelector.emplace_back(si, std::move(ok));
             }
         };
-        setActive(stages_[0], pd.mainJacks);
-        for (std::size_t i = 0; i < pd.stages.size(); ++i) setActive(stages_[i + 1], pd.stages[i].jacks);
+        setActive(stages_[0], pd.mainJacks, pd.mainWhenSelector);
+        for (std::size_t i = 0; i < pd.stages.size(); ++i) setActive(stages_[i + 1], pd.stages[i].jacks, pd.stages[i].whenSelector);
+        updateActive();
     }
     out_ = nets[mainStages_ - 1].node(pd.outputNode);
     if (pd.pre.present) {
@@ -236,6 +248,14 @@ double Preamp::runPre(double vin) {
 }
 
 double potTaper(Taper t, double w) { return applyTaper(t, w); }
+
+void Preamp::updateActive() {
+    for (auto& s : stages_) {
+        bool on = !s.forceSkip && (s.activeFor.empty() || s.activeFor[jack_]);
+        for (const auto& [sel, ok] : s.whenSelector) on = on && ok[selectorPos_[sel]];
+        s.active = on;
+    }
+}
 
 void Preamp::advanceVibrato() {
     vibCount_ = 0;
@@ -303,6 +323,7 @@ void Preamp::setSelector(std::size_t i, std::size_t pos) {
     if (pos == selectorPos_[i]) return;
     selectorPos_[i] = pos;
     if (i == preSel_) preOn_ = pos == 1;
+    updateActive();
     for (const auto& [ref, ohms] : selectors_[i][pos]) set(ref, ohms);
     for (const auto& [k, total] : selectorPots_[i][pos]) {  // a different pot fitted: its total changes, and the knob's position keeps its meaning
         knobs_[k].total = total;
@@ -317,6 +338,7 @@ void Preamp::setSelector(std::size_t i, std::size_t pos) {
 void Preamp::setJack(std::size_t jack) {
     if (jack == jack_) return;
     jack_ = jack;
+    updateActive();
     for (const auto& [ref, ohms] : jacks_.at(jack).resistors) set(ref, ohms);
     refreshAll();
 }

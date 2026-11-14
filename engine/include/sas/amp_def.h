@@ -74,6 +74,8 @@ struct PreampStageDef {
     bool input = false;
     // Only these jacks use the stage (a channel's own tubes): it is not solved while another jack is selected. Empty = always.
     std::vector<std::string> jacks;
+    // Likewise for selector positions (a channel switch): the stage runs only when every listed selector is at one of its listed positions.
+    std::vector<std::pair<std::string, std::vector<int>>> whenSelector;
 };
 
 // Optical tremolo (the Fender "vibrato"): a small oscillator circuit of its own, solved at a low rate
@@ -135,6 +137,7 @@ struct PreampDef {
     PreStageDef pre;
     std::vector<PreampStageDef> stages;  // after the first netlist, in signal order
     std::vector<std::string> mainJacks;  // like PreampStageDef::jacks, for the first netlist ("main_jacks"); empty = always
+    std::vector<std::pair<std::string, std::vector<int>>> mainWhenSelector;  // "main_when_selector"
     std::string netlist;       // file name
     std::string netlistText;   // its content
     double tolerance = 2e-6;
