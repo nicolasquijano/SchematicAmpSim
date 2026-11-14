@@ -6,6 +6,7 @@ version numbers follow [Semantic Versioning](https://semver.org/) (see [docs/REL
 ## [Unreleased]
 
 ### Changed
+- **American 5153 solves only the channel you hear**: the tubes of the other channels (the Red channel's input and V5 / V6 stages when Green or Blue is selected; the Green / Blue stages when Red is) are skipped, a new amp.json option (`jacks` on a preamp stage, `main_jacks` for the first netlist). The sound is the same sample for sample (a test checks it); Green and Blue go from about 42 % to 27 % of a core in Normal and from 30 % to 14 % in Lite.
 - **British 900 uses about half the CPU**: the clipping network at the second gain stage was five diodes (two paths of three in series sharing one) and is now two devices (each way three identical diodes in series, one diode with three times the thermal voltage: the same current at every voltage). The preamp solves with 11 device ports instead of 14 and 7,700 instead of 17,100 cycles per sample.
 
 ## [0.5.1-beta] - 2026-11-14

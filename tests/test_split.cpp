@@ -136,3 +136,30 @@ TEST_CASE("AFD100 Eco preamp (three parts, tables) matches the monolithic circui
     CHECK(worstSmall < 0.7);
     CHECK(worstLarge < 1.0);
 }
+
+// A preamp stage that belongs to some jacks only (a channel's own tubes) is not solved for the others: the sound is the same as with
+// every stage solved, and the output is the same sample for sample down to the isolation of the relay (1e12 ohm).
+TEST_CASE("preamp: stages of the channels that are not heard are skipped without changing the sound", "[preamp]") {
+    const AmpDef skipping = loadEmbeddedAmp("american_5153");
+    AmpDef all = skipping;
+    all.preamp.mainJacks.clear();
+    for (auto& s : all.preamp.stages) s.jacks.clear();
+    bool anySkipped = !skipping.preamp.mainJacks.empty();
+    for (const auto& s : skipping.preamp.stages) anySkipped = anySkipped || !s.jacks.empty();
+    REQUIRE(anySkipped);
+    for (std::size_t jack = 0; jack < skipping.preamp.jacks.size(); ++jack) {
+        Preamp a(skipping, kFs, kRail), b(all, kFs, kRail);
+        a.setJack(jack);
+        b.setJack(jack);
+        double worst = 0.0, level = 0.0;
+        for (int n = 0; n < 9600; ++n) {
+            const double x = 0.05 * std::sin(2.0 * kPi * 220.0 * n / kFs);
+            const double ya = a.process(x), yb = b.process(x);
+            worst = std::max(worst, std::abs(ya - yb));
+            level = std::max(level, std::abs(yb));
+        }
+        INFO("jack " << skipping.preamp.jacks[jack].name << ": worst difference " << worst << " V of a " << level << " V output");
+        CHECK(level > 0.01);
+        CHECK(worst < 1e-3 * level);
+    }
+}

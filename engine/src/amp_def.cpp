@@ -65,6 +65,8 @@ PreampDef parsePreamp(const json& j, const FileReader& read) {
     p.netlist = str(j, "netlist", "preamp");
     p.netlistText = read(p.netlist);
     p.tolerance = num(j, "tolerance", "preamp");
+    if (j.contains("main_jacks"))
+        for (const auto& n : j.at("main_jacks")) p.mainJacks.push_back(n.get<std::string>());
     if (j.contains("stages"))
         for (const auto& s : j.at("stages")) {
             PreampStageDef sd;
@@ -83,6 +85,8 @@ PreampDef parsePreamp(const json& j, const FileReader& read) {
                     sd.links.push_back(std::move(ld));
                 }
             sd.input = s.contains("input") && s.at("input").is_boolean() && s.at("input").get<bool>();
+            if (s.contains("jacks"))
+                for (const auto& n : s.at("jacks")) sd.jacks.push_back(n.get<std::string>());
             if (sd.linkFrom.empty() && sd.links.empty() && !sd.input)
                 bad("preamp.stages." + sd.netlist, "a stage needs a link from an earlier stage or \"input\": true");
             p.stages.push_back(std::move(sd));

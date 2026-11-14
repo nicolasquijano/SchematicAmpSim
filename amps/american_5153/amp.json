@@ -48,6 +48,7 @@
  },
  "preamp": {
   "netlist": "preamp.net",
+  "main_jacks": ["green", "blue"],
   "tolerance": 2e-06,
   "rail_source": "VRAIL",
   "input_source": "VIN",
@@ -57,10 +58,12 @@
   "stages": [
    {
     "netlist": "stage2.net",
+    "jacks": ["red"],
     "input": true
    },
    {
     "netlist": "stage_v3.net",
+    "jacks": ["green", "blue"],
     "links": [
      {
       "stage": 0,
@@ -71,6 +74,7 @@
    },
    {
     "netlist": "stage_stacks12.net",
+    "jacks": ["green", "blue"],
     "links": [
      {
       "stage": 2,
@@ -81,6 +85,7 @@
    },
    {
     "netlist": "stage_ch3b.net",
+    "jacks": ["red"],
     "links": [
      {
       "stage": 1,
@@ -91,6 +96,7 @@
    },
    {
     "netlist": "stage_stack3.net",
+    "jacks": ["red"],
     "links": [
      {
       "stage": 4,

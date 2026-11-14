@@ -179,6 +179,21 @@ Preamp::Preamp(const AmpDef& def, double fs, double railVolts, bool useTables, b
         stages_.back().solver.tolerance = pd.tolerance;
         stages_.back().solver.refresh();
     }
+    // Stages that belong to some jacks only (a channel of its own) are skipped for the others.
+    {
+        auto setActive = [&](Stage& st, const std::vector<std::string>& names) {
+            if (names.empty()) return;
+            st.activeFor.assign(pd.jacks.size(), false);
+            for (const auto& n : names) {
+                bool found = false;
+                for (std::size_t j = 0; j < pd.jacks.size(); ++j)
+                    if (pd.jacks[j].name == n) { st.activeFor[j] = true; found = true; }
+                if (!found) throw std::runtime_error("amp '" + def.id + "': a preamp stage names the unknown jack '" + n + "'");
+            }
+        };
+        setActive(stages_[0], pd.mainJacks);
+        for (std::size_t i = 0; i < pd.stages.size(); ++i) setActive(stages_[i + 1], pd.stages[i].jacks);
+    }
     out_ = nets[mainStages_ - 1].node(pd.outputNode);
     if (pd.pre.present) {
         const ParsedNetlist& pn = nets[mainStages_];

@@ -63,14 +63,17 @@ public:
         const Jack& j = jacks_[jack_];
         Stage& first = stages_.front();
         if (rev_) first.solver.setSource(revSrc_, rev_->process(first.solver.voltage(revGrid_)));
-        if (j.drivesInput) {
-            first.solver.process(vin);
-        } else {
-            first.solver.setSource(j.drive, vin);  // the unused jack is grounded by its own contact
-            first.solver.process(0.0);
+        if (first.activeFor.empty() || first.activeFor[jack_]) {
+            if (j.drivesInput) {
+                first.solver.process(vin);
+            } else {
+                first.solver.setSource(j.drive, vin);  // the unused jack is grounded by its own contact
+                first.solver.process(0.0);
+            }
         }
         for (std::size_t k = 1; k < mainStages_; ++k) {
             Stage& s = stages_[k];
+            if (!s.activeFor.empty() && !s.activeFor[jack_]) continue;  // another channel's tubes: not solved while it is not heard
             for (const Link& l : s.links) s.solver.setSource(l.src, stages_[l.from].solver.voltage(l.node));
             if (s.input) s.solver.process(j.drivesInput ? vin : 0.0);
             else s.solver.step();
@@ -117,6 +120,7 @@ private:
         std::vector<Link> links;  // stages after the first: sources fed from earlier stages
         bool input = false;       // also driven by the guitar (a parallel channel)
         bool pre = false;         // the circuit in front of the preamp (amp.json "pre")
+        std::vector<bool> activeFor;  // per jack: is the stage solved? (empty = always: the usual case)
     };
 
     static void potValues(const Knob& k, double value, double minOhms, double& top, double& bottom);
