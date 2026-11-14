@@ -27,6 +27,11 @@ juce_add_plugin(SchematicAmpSim
 
 target_sources(SchematicAmpSim PRIVATE
   PluginProcessor.cpp
+  ProcessorParams.cpp
+  ProcessorRack.cpp
+  ProcessorIrNam.cpp
+  ProcessorState.cpp
+  ProcessorCommon.h
   PluginProcessor.h
   AmpFace.cpp
   AmpFace.h
