@@ -41,7 +41,7 @@ public:
     explicit CabinetPanelB(SasProcessor& processor);
     ~CabinetPanelB() override { stopTimer(); }
 
-    int preferredHeight() const { return 300; }
+    int preferredHeight() const { return 334; }
     void resized() override;
     void paint(juce::Graphics& g) override {
         if (const auto* look = dynamic_cast<const AmpLookAndFeel*>(&getLookAndFeel())) paintPanelBoxes(g, *look, panels_);

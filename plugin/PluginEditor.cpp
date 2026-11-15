@@ -804,7 +804,7 @@ void SasEditor::resized() {
 
 int SasEditor::ampPanelHeight() const { return (face_ ? 300 : 170) + 8 + 136; }
 
-int SasEditor::cabPanelHeight() const { return 190 + 8 + 130; }
+int SasEditor::cabPanelHeight() const { return 190 + 8 + 164; }  // the blend panel also holds the "in phase" switch and its note
 
 // The amp unit: the amp's front (or its knobs), then the guitar, the tubes and the levels, then the state of the amp itself (docs/MODULAR_RACK.md:
 // the condition goes with the amp) and the speaker.
