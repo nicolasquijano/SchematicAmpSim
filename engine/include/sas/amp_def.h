@@ -211,6 +211,8 @@ struct TransformerParasiticsDef {
 struct PowerDef {
     std::vector<PowerKnobDef> knobs;
     std::vector<PowerTubeDef> tubes;
+    // An amp with no power tubes has a transistor output stage: how many output transistors the editor draws in place of the tubes ("output_transistors").
+    int outputTransistors = 2;
     BiasDef bias;
     std::string netlist, netlistText;
     double tolerance = 1e-4;

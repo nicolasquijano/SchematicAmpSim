@@ -416,9 +416,13 @@ void SasEditor::pollMeters() {
         const int idx = def.power.tubes.empty() ? 0 : std::min(processor_.wantedCondition().tube, int(def.power.tubes.size()) - 1);
         const double pmax = def.power.tubes.empty() ? 25.0 : def.power.tubes[std::size_t(idx)].pmaxW;
         const juce::String name = def.power.tubes.empty() ? juce::String("tubes") : juce::String(def.power.tubes[std::size_t(idx)].name);
-        tubes_.setTubes(int(def.power.bias.tubesPerHalf * 2.0 + 0.5), name);
-        const float ma = processor_.idleMilliamps();
-        tubes_.setGlow(float(ma / (pmax / 0.42)), ma);  // dissipation ~ current x about 420 V of plate voltage
+        if (def.power.tubes.empty()) {
+            tubes_.setTransistors(def.power.outputTransistors, tr("Output transistors"));  // a transistor output stage: no tubes to show
+        } else {
+            tubes_.setTubes(int(def.power.bias.tubesPerHalf * 2.0 + 0.5), name);
+            const float ma = processor_.idleMilliamps();
+            tubes_.setGlow(float(ma / (pmax / 0.42)), ma);  // dissipation ~ current x about 420 V of plate voltage
+        }
     }
 }
 
@@ -922,7 +926,8 @@ void SasEditor::layoutAmpPanel() {
     if (!namAmp) {
         auto tubesPanel = mid.removeFromLeft(std::clamp(mid.getWidth() * 28 / 100, 200, 290));
         mid.removeFromLeft(gap);
-        panels.push_back({tubesPanel, tr("POWER TUBES")});
+        const bool transistors = shownAmp_ >= 0 && shownAmp_ < int(processor_.amps().size()) && processor_.amps()[std::size_t(shownAmp_)].power.tubes.empty();
+        panels.push_back({tubesPanel, transistors ? tr("POWER TRANSISTORS") : tr("POWER TUBES")});
         tubes_.setBounds(tubesPanel.reduced(8, 4).withTrimmedTop(18));
     }
     tubes_.setVisible(!namAmp);

@@ -3750,3 +3750,31 @@ TEST_CASE("multi loader: a picture of the panel", "[.multishot]") {
     juce::PNGImageFormat().writeImageToStream(img, o);
     std::printf("wrote %s\n", out.getFullPathName().toRawUTF8());
 }
+
+TEST_CASE("amp page: a picture of an amp with a transistor output stage", "[.transshot]") {
+    JuceInit init;
+    const char* dir = std::getenv("SAS_SCREENSHOT_DIR");
+    for (const char* id : {"gk_800rb", "jazz_clean_120", "jcm800_2203"}) {
+        SasProcessor p;
+        for (std::size_t i = 0; i < p.amps().size(); ++i)
+            if (p.amps()[i].id == id) setParam(p, "amp", float(i));
+        p.prepareToPlay(48000.0, 512);
+        std::unique_ptr<juce::AudioProcessorEditor> ed(p.createEditor());
+        ed->setSize(1000, 600);
+        auto* editor = dynamic_cast<SasEditor*>(ed.get());
+        editor->showModule({sas::ModuleType::Amp, 0});
+        juce::AudioBuffer<float> buf(2, 512);
+        juce::MidiBuffer midi;
+        for (int b = 0; b < 30; ++b) {
+            fill(buf, 98.0, 0.1, 48000.0, b * 512);
+            p.processBlock(buf, midi);
+        }
+        editor->pollMeters();
+        const auto img = ed->createComponentSnapshot(ed->getLocalBounds(), true, 1.0f);
+        juce::File out = juce::File(dir ? dir : juce::File::getSpecialLocation(juce::File::tempDirectory).getFullPathName()).getChildFile(juce::String("amp-") + id + ".png");
+        juce::FileOutputStream o(out);
+        o.setPosition(0);
+        o.truncate();
+        juce::PNGImageFormat().writeImageToStream(img, o);
+    }
+}

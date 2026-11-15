@@ -137,12 +137,15 @@ private:
 class TubeGlow final : public juce::Component {
 public:
     void setTubes(int count, const juce::String& name);
+    // The amps with a transistor output stage show power transistors instead of tubes: no glow, they only sit there.
+    void setTransistors(int count, const juce::String& name);
     // `level`: plate dissipation as a fraction of the rating (about 0.7 at a typical idle, above 1 when overdriven); `mA` for the text.
     void setGlow(float level, float mA);
     void paint(juce::Graphics&) override;
 
 private:
     int count_ = 2;
+    bool transistors_ = false;
     juce::String name_;
     float level_ = 0.0f, shown_ = 0.0f, base_ = 0.0f, mA_ = 0.0f;  // shown_ follows the current quickly; base_ is the level it has idled at lately
 };

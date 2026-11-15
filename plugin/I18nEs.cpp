@@ -315,6 +315,8 @@ const std::unordered_map<std::string, std::string>& spanishTable() {
     {"SPEED Hz", "VELOC. Hz"},
     {"Intense", "Intenso"},
     {"In phase", "En fase"},
+    {"Output transistors", "Transistores de salida"},
+    {"POWER TRANSISTORS", "TRANSISTORES DE POTENCIA"},
     {"in phase", "en fase"},
     {"Polarity of this impulse: Auto (the biggest swing is made positive), + as it is, - upside down", "Polaridad de este impulso: Auto (el mayor movimiento se hace positivo), + tal cual, - al revés"},
     {"Remove this impulse", "Quitar este impulso"},

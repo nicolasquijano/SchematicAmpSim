@@ -254,6 +254,7 @@ PowerDef parsePower(const json& j, const FileReader& read) {
     p.netlist = str(j, "netlist", "power");
     p.netlistText = read(p.netlist);
     p.tolerance = num(j, "tolerance", "power");
+    if (j.contains("output_transistors")) p.outputTransistors = int(num(j, "output_transistors", "power"));
     p.inputSource = str(j, "input_source", "power");
     p.htSource = str(j, "ht_source", "power");
     p.htNode = str(j, "ht_node", "power");

@@ -172,6 +172,7 @@
   ]
  },
  "power": {
+  "output_transistors": 4,
   "netlist": "poweramp.net",
   "tolerance": 0.0001,
   "input_source": "VAUDIO",

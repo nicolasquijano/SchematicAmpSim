@@ -359,9 +359,19 @@ void TunerDisplay::paint(juce::Graphics& g) {
 // ------------------------------------------------------------------ tube glow
 
 void TubeGlow::setTubes(int count, const juce::String& name) {
-    if (count == count_ && name == name_) return;
+    if (count == count_ && name == name_ && !transistors_) return;
     count_ = std::max(1, count);
     name_ = name;
+    transistors_ = false;
+    repaint();
+}
+
+void TubeGlow::setTransistors(int count, const juce::String& name) {
+    if (count == count_ && name == name_ && transistors_) return;
+    count_ = std::max(1, count);
+    name_ = name;
+    transistors_ = true;
+    mA_ = 0.0f;
     repaint();
 }
 
@@ -380,6 +390,7 @@ void TubeGlow::paint(juce::Graphics& g) {
     static const juce::Image heater = juce::ImageCache::getFromMemory(TubeData::tube_heater_png, TubeData::tube_heater_pngSize);
     static const juce::Image plate = juce::ImageCache::getFromMemory(TubeData::tube_plate_png, TubeData::tube_plate_pngSize);
     static const juce::Image front = juce::ImageCache::getFromMemory(TubeData::tube_front_png, TubeData::tube_front_pngSize);
+    static const juce::Image transistor = juce::ImageCache::getFromMemory(TubeData::transistor_png, TubeData::transistor_pngSize);
     constexpr float kAspect = 160.0f / 480.0f;  // the pictures' width over their height
 
     auto r = getLocalBounds().toFloat();
@@ -387,6 +398,19 @@ void TubeGlow::paint(juce::Graphics& g) {
     const float cell = r.getWidth() / float(count_);
     float h = std::max(10.0f, r.getHeight() - 2.0f), w = h * kAspect;
     if (w > cell - 4.0f) w = std::max(8.0f, cell - 4.0f), h = w / kAspect;
+    if (transistors_) {
+        // Power transistors (plugin/tubes/transistor.vectorcraft): the same picture for each, side by side where the tubes would stand.
+        g.setImageResamplingQuality(juce::Graphics::highResamplingQuality);
+        g.setOpacity(1.0f);
+        for (int i = 0; i < count_; ++i) {
+            const float cx = r.getX() + cell * (float(i) + 0.5f);
+            g.drawImage(transistor, juce::Rectangle<float>(cx - w * 0.5f, r.getBottom() - h, w, h));
+        }
+        g.setColour(getLookAndFeel().findColour(juce::Label::textColourId).withAlpha(0.75f));
+        g.setFont(AmpLookAndFeel::font(11.0f));
+        g.drawText(name_, text, juce::Justification::centred);
+        return;
+    }
     // The glow is the current, and a change of the current is shown three times as strong: when the amp is pushed (the plates draw more) the tubes
     // flare up well past where they idle, and they settle back as it eases. It goes a little above 1 for the flare.
     const float glow = juce::jlimit(0.0f, 1.4f, shown_ * 1.1f + 3.0f * (shown_ - base_));
