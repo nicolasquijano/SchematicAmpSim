@@ -333,7 +333,7 @@ const std::unordered_map<std::string, std::string>& spanishTable() {
     {"High-pass filter of this impulse (20 Hz = off)", "Filtro pasa-altos de este impulso (20 Hz = apagado)"},
     {"Low-pass filter of this impulse (20 kHz = off)", "Filtro pasa-bajos de este impulso (20 kHz = apagado)"},
     {"Hear only the soloed impulses", "Escuchar solo los impulsos en solo"},
-    {"Drag the ring to mix the impulses; drag a point to move that impulse; double click a point to put it back", "Arrastra el anillo para mezclar los impulsos; arrastra un punto para mover ese impulso; doble clic en un punto para devolverlo"},
+    {"Drag the ring to mix the impulses; click a point to choose its impulse; drag a point to move it; double click a point to put it back", "Arrastra el anillo para mezclar los impulsos; haz clic en un punto para elegir su impulso; arrástralo para moverlo; doble clic para devolverlo a su sitio"},
     {"Lines all the impulses up with the first: flips the ones that are upside down and delays the early ones, so they do not cancel each other", "Alinea todos los impulsos con el primero: invierte los que están al revés y retrasa los que llegan antes, para que no se anulen"},
     {"B flipped", "B invertido"},
     {"already in phase", "ya en fase"},

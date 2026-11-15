@@ -11,7 +11,7 @@ juce::Colour slotColour(int k) { return juce::Colour::fromHSV(float(k) / float(S
 // ------------------------------------------------------------------ the plane
 
 MultiPad::MultiPad(SasProcessor& p) : processor_(p) {
-    setTooltip(tr("Drag the ring to mix the impulses; drag a point to move that impulse; double click a point to put it back"));
+    setTooltip(tr("Drag the ring to mix the impulses; click a point to choose its impulse; drag a point to move it; double click a point to put it back"));
     startTimerHz(30);
 }
 
@@ -47,6 +47,7 @@ int MultiPad::nodeAt(juce::Point<float> p) const {
 }
 
 void MultiPad::mouseDown(const juce::MouseEvent& e) {
+    moved_ = false;
     dragNode_ = nodeAt(e.position);
     dragCursor_ = dragNode_ < 0;
     if (dragCursor_) {
@@ -60,6 +61,10 @@ void MultiPad::mouseDown(const juce::MouseEvent& e) {
 }
 
 void MultiPad::mouseDrag(const juce::MouseEvent& e) {
+    if (dragNode_ >= 0 && !moved_) {
+        if (e.getDistanceFromDragStart() < 4) return;  // still a click: the point stays where it is until the mouse really moves
+        moved_ = true;
+    }
     const auto r = plane();
     const float x = (e.position.x - r.getX()) / r.getWidth(), y = (e.position.y - r.getY()) / r.getHeight();
     if (dragCursor_) {
@@ -79,8 +84,15 @@ void MultiPad::mouseUp(const juce::MouseEvent&) {
         gesture(ids::multiId(ids::mcX, dragNode_), false);
         gesture(ids::multiId(ids::mcY, dragNode_), false);
     }
+    const int clicked = dragNode_ >= 0 && !moved_ ? dragNode_ : -1;
     dragNode_ = -1;
     dragCursor_ = false;
+    if (clicked >= 0 && onNodeClicked) {
+        const float x = processor_.apvts.getRawParameterValue(ids::multiId(ids::mcX, clicked))->load();
+        const float y = processor_.apvts.getRawParameterValue(ids::multiId(ids::mcY, clicked))->load();
+        const auto c = toPixel(x, y);
+        onNodeClicked(clicked, localAreaToGlobal(juce::Rectangle<int>(int(c.x) - 8, int(c.y) - 8, 16, 16)));
+    }
 }
 
 void MultiPad::mouseDoubleClick(const juce::MouseEvent& e) {
@@ -142,6 +154,9 @@ void MultiPad::paint(juce::Graphics& g) {
 
 MultiPanel::MultiPanel(SasProcessor& p) : processor_(p), pad_(p) {
     addAndMakeVisible(pad_);
+    pad_.onNodeClicked = [this](int slot, juce::Rectangle<int> screenArea) {
+        showLoadMenu(slot, juce::PopupMenu::Options().withTargetScreenArea(screenArea));
+    };
     for (int k = 0; k < SasProcessor::kMultiSlots; ++k) {
         auto& s = strips_[k];
         s.name.setFont(AmpLookAndFeel::font(10.5f));
@@ -149,7 +164,7 @@ MultiPanel::MultiPanel(SasProcessor& p) : processor_(p), pad_(p) {
         s.note.setFont(AmpLookAndFeel::font(9.5f));
         s.note.setJustificationType(juce::Justification::centredLeft);
         for (juce::Button* b : std::initializer_list<juce::Button*>{&s.load, &s.clear, &s.solo}) b->setButtonText(tr(b->getButtonText()));
-        s.load.onClick = [this, k] { showLoadMenu(k, strips_[k].load); };
+        s.load.onClick = [this, k] { showLoadMenu(k, juce::PopupMenu::Options().withTargetComponent(&strips_[k].load)); };
         s.clear.onClick = [this, k] { processor_.clearMultiImpulse(k); };
         s.solo.setClickingTogglesState(true);
         s.polarity.onClick = [this, k] { cyclePolarity(k); };
@@ -297,12 +312,12 @@ void MultiPanel::cyclePolarity(int slot) {
     timerCallback();
 }
 
-void MultiPanel::showLoadMenu(int slot, juce::Component& anchor) {
+void MultiPanel::showLoadMenu(int slot, const juce::PopupMenu::Options& where) {
     juce::PopupMenu menu;
     for (int i = 0; i < SasProcessor::builtInImpulseResponseCount(); ++i) menu.addItem(100 + i, SasProcessor::builtInImpulseResponseName(i));
     menu.addSeparator();
     menu.addItem(1, tr("From file..."));
-    menu.showMenuAsync(juce::PopupMenu::Options().withTargetComponent(&anchor), [this, slot](int choice) {
+    menu.showMenuAsync(where, [this, slot](int choice) {
         if (choice == 1) chooseFile(slot);
         else if (choice >= 100) processor_.loadBuiltInMultiImpulse(choice - 100, slot);
     });

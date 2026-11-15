@@ -1,6 +1,7 @@
 #pragma once
 // The multi impulse loader's panel (cabinet mode MULTI): a plane where a cursor mixes eight impulses, and a strip for each impulse.
 
+#include <functional>
 #include <memory>
 
 #include "PluginEditor.h"
@@ -10,6 +11,8 @@
 class MultiPad final : public juce::Component, public juce::SettableTooltipClient, private juce::Timer {
 public:
     explicit MultiPad(SasProcessor& p);
+    // A click on a point (pressed and released without moving it) asks for that impulse to be chosen: the slot and the point on screen.
+    std::function<void(int, juce::Rectangle<int>)> onNodeClicked;
     void paint(juce::Graphics& g) override;
     void mouseDown(const juce::MouseEvent& e) override;
     void mouseDrag(const juce::MouseEvent& e) override;
@@ -26,6 +29,7 @@ private:
 
     SasProcessor& processor_;
     int dragNode_ = -1;
+    bool moved_ = false;
     bool dragCursor_ = false;
 };
 
@@ -49,7 +53,7 @@ private:
     };
 
     void timerCallback() override;
-    void showLoadMenu(int slot, juce::Component& anchor);
+    void showLoadMenu(int slot, const juce::PopupMenu::Options& where);
     void cyclePolarity(int slot);
     void chooseFile(int slot);
     void styleBar(juce::Slider& s);
