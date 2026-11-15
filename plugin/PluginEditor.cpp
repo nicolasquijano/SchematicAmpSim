@@ -103,6 +103,12 @@ SasEditor::SasEditor(SasProcessor& p)
     tunerOnAtt_ = std::make_unique<juce::AudioProcessorValueTreeState::ButtonAttachment>(p.apvts, ids::tunerOn, tunerOn_);
     addAndMakeVisible(tunerMute_);
     tunerMuteAtt_ = std::make_unique<juce::AudioProcessorValueTreeState::ButtonAttachment>(p.apvts, ids::tunerMute, tunerMute_);
+    addAndMakeVisible(alignOn_);
+    alignOn_.setTooltip(tr("Puts impulses A and B in phase: delays the earlier one and flips B if it is upside down, so the two do not cancel each other"));
+    alignAtt_ = std::make_unique<juce::AudioProcessorValueTreeState::ButtonAttachment>(p.apvts, ids::irAlign, alignOn_);
+    alignNote_.setFont(AmpLookAndFeel::font(9.5f));
+    alignNote_.setJustificationType(juce::Justification::centred);
+    addAndMakeVisible(alignNote_);
     addAndMakeVisible(speakerIntense_);
     speakerIntense_.setTooltip(tr("Stronger cone, heating and break-up effects"));
     speakerIntenseAtt_ = std::make_unique<juce::AudioProcessorValueTreeState::ButtonAttachment>(p.apvts, ids::speakerIntense, speakerIntense_);
@@ -118,7 +124,7 @@ SasEditor::SasEditor(SasProcessor& p)
     blendNote_.setText("A  <  >  B", juce::dontSendNotification);
     addAndMakeVisible(blendNote_);
     cabNote_.setFont(AmpLookAndFeel::font(10.5f));
-    for (juce::Button* b : std::initializer_list<juce::Button*>{&presets_, &speakerIntense_, &tunerOn_, &tunerMute_, &vibrato_, &rackTab_, &tunerTab_, &loadA_, &clearA_, &loadB_, &clearB_,
+    for (juce::Button* b : std::initializer_list<juce::Button*>{&presets_, &alignOn_, &speakerIntense_, &tunerOn_, &tunerMute_, &vibrato_, &rackTab_, &tunerTab_, &loadA_, &clearA_, &loadB_, &clearB_,
                                                            &namLoad_, &namClear_, &namCabLoad_, &namCabClear_})
         b->setButtonText(tr(b->getButtonText()));  // the texts these were built with are English
     cabNote_.setText(tr("IR plays the impulses above, mixed by the blend. Filter is a simple cabinet curve; Off is the raw amp."), juce::dontSendNotification);
@@ -182,7 +188,7 @@ SasEditor::SasEditor(SasProcessor& p)
                                                            &tube_, &tubeCaption_, &noise_, &noiseCaption_, &unit_, &unitCaption_, &idleLabel_, &conditionNote_, &namLoad_, &namClear_,
                                                            &namName_, &namNote_, &selBox_[0], &selBox_[1], &selBox_[2], &selBox_[3], &selBox_[4], &selBox_[5], &selCaption_[0], &selCaption_[1], &selCaption_[2], &selCaption_[3], &selCaption_[4], &selCaption_[5]})
         ampPanel_.addChildComponent(*c);
-    for (auto* c : std::initializer_list<juce::Component*>{&cab_, &cabCaption_, &blend_, &blendNote_, &loadA_, &clearA_, &loadB_, &clearB_, &nameA_, &nameB_, &curveA_, &curveB_, &cabNote_,
+    for (auto* c : std::initializer_list<juce::Component*>{&cab_, &cabCaption_, &blend_, &blendNote_, &alignOn_, &alignNote_, &loadA_, &clearA_, &loadB_, &clearB_, &nameA_, &nameB_, &curveA_, &curveB_, &cabNote_,
                                                            &stereoWidth_, &doubleAmount_, &doubleTime_, &namCabLoad_, &namCabClear_, &namCabName_, &speaker_, &speakerIntense_})
         cabPanel_.addAndMakeVisible(*c);
     for (auto* c : std::initializer_list<juce::Component*>{&cable_, &bias_, &wear_, &tubes_, &pickup_, &pickupCaption_,
@@ -509,6 +515,7 @@ void SasEditor::updateImpulseStatus() {
         (slot == 0 ? nameA_ : nameB_).setText(name.isEmpty() ? juce::String(tr("empty")) : name, juce::dontSendNotification);
         (slot == 0 ? curveA_ : curveB_).setCurve(processor_.impulseResponseCurve(slot));
     }
+    alignNote_.setText(irAlignText(processor_.irAlignInfo(0)), juce::dontSendNotification);
 }
 
 // The Presets button: save the current state, load a file, or pick one of the presets saved in the presets folder.
@@ -959,6 +966,8 @@ void SasEditor::layoutCabPanel() {
     {
         auto in = blendPanel.reduced(6, 4);
         in.removeFromTop(16);
+        alignNote_.setBounds(in.removeFromBottom(14));
+        alignOn_.setBounds(in.removeFromBottom(20).withSizeKeepingCentre(84, 20));
         blendNote_.setBounds(in.removeFromBottom(14));
         blend_.setBounds(in);
     }

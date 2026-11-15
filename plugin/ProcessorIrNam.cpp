@@ -1,5 +1,7 @@
 #include "ProcessorCommon.h"
 
+#include "sas/ir_align.h"
+
 // ------------------------------------------------------------------ impulse response
 
 // Magnitude response in dB (mean 0) at 96 log-spaced frequencies from 50 Hz to 10 kHz, each the average power in a 1/6 octave band.
@@ -60,19 +62,111 @@ bool SasProcessor::loadImpulseResponseFromMemory(const void* data, std::size_t s
     auto curve = responseCurve(mono, reader->sampleRate, bandPower);
     const double gain = bandPower > 0.0 ? 1.0 / std::sqrt(bandPower) : 1.0 / std::sqrt(energy);
     mono.applyGain(float(gain));
-    juce::AudioBuffer<float> monoR(mono);  // the right channel's convolution gets the same impulse
-    cb.ir[slot].conv.loadImpulseResponse(std::move(mono), reader->sampleRate, juce::dsp::Convolution::Stereo::no, juce::dsp::Convolution::Trim::yes,
-                                       juce::dsp::Convolution::Normalise::no);
-    cb.ir[slot].convR.loadImpulseResponse(std::move(monoR), reader->sampleRate, juce::dsp::Convolution::Stereo::no, juce::dsp::Convolution::Trim::yes,
-                                        juce::dsp::Convolution::Normalise::no);
     {
         const juce::ScopedLock lock(irLock_);
         cb.ir[slot].bytes = juce::MemoryBlock(data, size);
         cb.ir[slot].name = name;
         cb.ir[slot].curve = std::move(curve);
+        cb.ir[slot].mono = std::move(mono);
+        cb.ir[slot].rate = reader->sampleRate;
     }
     cb.ir[slot].loaded = true;
+    applyImpulseResponses(cabinet);
     return true;
+}
+
+// The convolutions of a cabinet. With "in phase" off every impulse is loaded as it is (JUCE trims the silence around it). With it on and both
+// impulses there, the cross-correlation of their direct sound gives the offset and the polarity that make them add up: the earlier one is
+// delayed, B is flipped when it is upside down, and the silence they share in front (and what is left behind) is trimmed here, because
+// the trimming of JUCE would take the delay away again.
+void SasProcessor::applyImpulseResponses(int cabinet) {
+    auto& cb = cabs_[cabinet];
+    const bool align = cabValue(cabinet, ids::irAlign) > 0.5 && cb.ir[0].loaded && cb.ir[1].loaded && cb.ir[0].rate == cb.ir[1].rate &&
+                       cb.ir[0].mono.getNumSamples() > 0 && cb.ir[1].mono.getNumSamples() > 0;
+    IrAlignInfo info;
+    auto loadInto = [](IrSlot& s, juce::AudioBuffer<float> buffer, double rate, juce::dsp::Convolution::Trim trim) {
+        juce::AudioBuffer<float> twin(buffer);  // the right channel's convolution gets the same impulse
+        s.conv.loadImpulseResponse(std::move(buffer), rate, juce::dsp::Convolution::Stereo::no, trim, juce::dsp::Convolution::Normalise::no);
+        s.convR.loadImpulseResponse(std::move(twin), rate, juce::dsp::Convolution::Stereo::no, trim, juce::dsp::Convolution::Normalise::no);
+    };
+    if (!align) {
+        for (int s = 0; s < kIrSlots; ++s) {
+            if (!cb.ir[s].loaded) continue;
+            juce::AudioBuffer<float> copy;
+            double rate;
+            {
+                const juce::ScopedLock lock(irLock_);
+                copy.makeCopyOf(cb.ir[s].mono);
+                rate = cb.ir[s].rate;
+            }
+            loadInto(cb.ir[s], std::move(copy), rate, juce::dsp::Convolution::Trim::yes);
+        }
+    } else {
+        juce::AudioBuffer<float> a, b;
+        double rate;
+        {
+            const juce::ScopedLock lock(irLock_);
+            a.makeCopyOf(cb.ir[0].mono);
+            b.makeCopyOf(cb.ir[1].mono);
+            rate = cb.ir[0].rate;
+        }
+        const auto r = sas::alignImpulses(a.getReadPointer(0), std::size_t(a.getNumSamples()), b.getReadPointer(0), std::size_t(b.getNumSamples()),
+                                          int(rate * 0.003), std::size_t(rate * 0.05));
+        auto shifted = [](const juce::AudioBuffer<float>& src, int delay, bool invert) {
+            juce::AudioBuffer<float> out(1, src.getNumSamples() + delay);
+            out.clear();
+            const float g = invert ? -1.0f : 1.0f;
+            for (int i = 0; i < src.getNumSamples(); ++i) out.setSample(0, i + delay, g * src.getSample(0, i));
+            return out;
+        };
+        auto fa = shifted(a, r.delayA, false);
+        auto fb = shifted(b, r.delayB, r.invertB);
+        constexpr float kSilence = 1.0e-4f;  // -80 dB, the threshold JUCE uses
+        auto firstLoud = [&](const juce::AudioBuffer<float>& x) {
+            for (int i = 0; i < x.getNumSamples(); ++i)
+                if (std::abs(x.getSample(0, i)) > kSilence) return i;
+            return x.getNumSamples();
+        };
+        auto lastLoud = [&](const juce::AudioBuffer<float>& x) {
+            for (int i = x.getNumSamples() - 1; i >= 0; --i)
+                if (std::abs(x.getSample(0, i)) > kSilence) return i + 1;
+            return 0;
+        };
+        const int lead = std::min(firstLoud(fa), firstLoud(fb));
+        auto cut = [&](const juce::AudioBuffer<float>& x) {
+            const int end = std::max(lead + 1, lastLoud(x));
+            juce::AudioBuffer<float> out(1, std::max(1, end - lead));
+            out.clear();
+            for (int i = lead; i < end && i < x.getNumSamples(); ++i) out.setSample(0, i - lead, x.getSample(0, i));
+            return out;
+        };
+        loadInto(cb.ir[0], cut(fa), rate, juce::dsp::Convolution::Trim::no);
+        loadInto(cb.ir[1], cut(fb), rate, juce::dsp::Convolution::Trim::no);
+        info.valid = true;
+        info.invertB = r.invertB;
+        info.delayAms = 1000.0 * r.delayA / rate;
+        info.delayBms = 1000.0 * r.delayB / rate;
+        info.correlation = r.correlation;
+    }
+    const juce::ScopedLock lock(irLock_);
+    cb.alignInfo = info;
+}
+
+SasProcessor::IrAlignInfo SasProcessor::irAlignInfo(int cabinet) const {
+    const juce::ScopedLock lock(irLock_);
+    return cabs_[juce::jlimit(0, 1, cabinet)].alignInfo;
+}
+
+// "In phase" switched (by the panel, by an automation lane or by a restored project): the impulses are loaded again on the message thread.
+void SasProcessor::parameterChanged(const juce::String& id, float) {
+    for (int c = 0; c < 2; ++c)
+        if (id == RackState::paramId(ids::irAlign, c)) alignDirty_[c] = true;
+    triggerAsyncUpdate();
+}
+
+void SasProcessor::handleAsyncUpdate() {
+    for (int c = 0; c < 2; ++c)
+        if (alignDirty_[c].exchange(false)) applyImpulseResponses(c);
 }
 
 // ------------------------------------------------------------------ NAM model
@@ -293,10 +387,14 @@ void SasProcessor::clearImpulseResponse(int slot, int cabinet) {
     auto& cb = cabs_[cabinet];
     if (slot < 0 || slot >= kIrSlots) return;
     cb.ir[slot].loaded = false;
-    const juce::ScopedLock lock(irLock_);
-    cb.ir[slot].bytes.reset();
-    cb.ir[slot].name.clear();
-    cb.ir[slot].curve.clear();
+    {
+        const juce::ScopedLock lock(irLock_);
+        cb.ir[slot].bytes.reset();
+        cb.ir[slot].name.clear();
+        cb.ir[slot].curve.clear();
+        cb.ir[slot].mono.setSize(0, 0);
+    }
+    applyImpulseResponses(cabinet);  // the one that is left is no longer lined up with anything
 }
 
 juce::String SasProcessor::impulseResponseName(int slot, int cabinet) const {

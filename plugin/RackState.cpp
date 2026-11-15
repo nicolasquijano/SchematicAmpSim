@@ -71,7 +71,7 @@ std::unique_ptr<juce::AudioParameterFloat> dbParam(const juce::String& id, const
 
 const std::vector<const char*>& paramIds(ModuleType type) {
     static const std::vector<const char*> none;
-    static const std::vector<const char*> cabinet{ids::cabOn, ids::cab, ids::irBlend, ids::irWidth, ids::doubleAmount, ids::doubleTime};
+    static const std::vector<const char*> cabinet{ids::cabOn, ids::cab, ids::irBlend, ids::irWidth, ids::doubleAmount, ids::doubleTime, ids::irAlign};
     static const std::vector<const char*> amp{ids::amp, ids::volume, ids::volume2, ids::bass, ids::middle, ids::treble, ids::presence, ids::master, ids::power, ids::resonance,
                                               ids::vibSpeed, ids::vibIntensity, ids::vibOn, ids::aeq[0], ids::aeq[1], ids::aeq[2], ids::aeq[3], ids::aeq[4], ids::input, ids::quality, ids::jack, ids::sel[0], ids::sel[1], ids::sel[2], ids::sel[3], ids::sel[4], ids::sel[5],
                                               ids::pickup, ids::cable, ids::tube, ids::wear, ids::unit, ids::noise, ids::bias, ids::speaker, ids::speakerIntense, ids::ampOn};
@@ -206,6 +206,7 @@ void addParams(Layout& l, ModuleType type, int k) {
                 l.add(knob(I(ids::doubleAmount), N("Double tracking"), 0.0f));
                 l.add(knob(I(ids::doubleTime), N("Double tracking time"), 5.0f));
                 l.add(knob(I(ids::irBlend), N("IR blend"), 5.0f));
+                l.add(toggle(I(ids::irAlign), N("IR phase align"), false));
             }
             break;
         case ModuleType::Mixer: {

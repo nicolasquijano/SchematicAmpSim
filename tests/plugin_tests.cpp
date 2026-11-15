@@ -3426,3 +3426,57 @@ TEST_CASE("choosing another amp puts the amp's own power tubes back", "[rack]") 
         CHECK(p.apvts.getRawParameterValue(ids::tube)->load() == 0.0f);
     }
 }
+
+TEST_CASE("cabinet: 'in phase' puts an upside-down, late impulse B back in phase with A so they stop cancelling", "[cabinet]") {
+    JuceInit init;
+    // A: a damped burst. B: the same burst upside down and 7 samples late. Mixed 50/50 as they are, they cancel a good part of each other.
+    auto writeIr = [](const char* name, bool flippedAndLate) {
+        auto file = juce::File::getSpecialLocation(juce::File::tempDirectory).getChildFile(name);
+        file.deleteFile();
+        juce::WavAudioFormat wav;
+        std::unique_ptr<juce::AudioFormatWriter> w(wav.createWriterFor(new juce::FileOutputStream(file), 48000.0, 1, 24, {}, 0));
+        juce::AudioBuffer<float> ir(1, 2048);
+        ir.clear();
+        const int late = flippedAndLate ? 7 : 0;
+        for (int i = 0; i < 600; ++i)
+            ir.setSample(0, i + late, float((flippedAndLate ? -1.0 : 1.0) * std::exp(-i / 90.0) * (std::sin(2.0 * 3.14159265358979 * i / 48.0) + 0.5 * std::sin(2.0 * 3.14159265358979 * i / 13.0))));
+        w->writeFromAudioSampleBuffer(ir, 0, ir.getNumSamples());
+        return file;
+    };
+    const auto fileA = writeIr("sas_align_a.wav", false), fileB = writeIr("sas_align_b.wav", true);
+
+    auto energy = [&](bool align) {
+        SasProcessor p;
+        setParam(p, ids::quality, 2.0f);
+        setParam(p, ids::cab, 2.0f);
+        setParam(p, ids::irBlend, 5.0f);
+        setParam(p, ids::irAlign, align ? 1.0f : 0.0f);
+        p.prepareToPlay(48000.0, 256);
+        REQUIRE(p.loadImpulseResponse(fileA, 0));
+        REQUIRE(p.loadImpulseResponse(fileB, 1));
+        juce::Thread::sleep(500);  // the convolution engine is built in the background
+        juce::AudioBuffer<float> buf(2, 256);
+        juce::MidiBuffer midi;
+        double e = 0.0;
+        for (int b = 0; b < 100; ++b) {
+            fill(buf, 196.0, 0.08, 48000.0, b * 256);
+            p.processBlock(buf, midi);
+            if (b >= 50)
+                for (int i = 0; i < 256; ++i) e += double(buf.getSample(0, i)) * buf.getSample(0, i);
+        }
+        if (align) {
+            const auto info = p.irAlignInfo(0);
+            CHECK(info.valid);
+            CHECK(info.invertB);
+            CHECK(info.delayAms == Catch::Approx(1000.0 * 7.0 / 48000.0).margin(0.01));
+        } else {
+            CHECK_FALSE(p.irAlignInfo(0).valid);
+        }
+        return e;
+    };
+    const double off = energy(false), on = energy(true);
+    INFO("energy off " << off << ", on " << on);
+    CHECK(on > 2.0 * off);
+    fileA.deleteFile();
+    fileB.deleteFile();
+}

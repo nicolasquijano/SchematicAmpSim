@@ -434,6 +434,15 @@ void TubeGlow::paint(juce::Graphics& g) {
 
 // ------------------------------------------------------------------ panels
 
+juce::String irAlignText(const SasProcessor::IrAlignInfo& info) {
+    if (!info.valid) return {};
+    juce::StringArray parts;
+    if (info.invertB) parts.add(tr("B flipped"));
+    const double ms = std::max(info.delayAms, info.delayBms);
+    if (ms >= 0.005) parts.add(juce::String(info.delayAms > 0.0 ? "A" : "B") + " +" + juce::String(ms, 2) + " ms");
+    return parts.isEmpty() ? juce::String(tr("already in phase")) : parts.joinIntoString(", ");
+}
+
 void paintPanelBoxes(juce::Graphics& g, const AmpLookAndFeel& look, const std::vector<PanelBox>& panels) {
     for (const auto& p : panels) {
         const auto b = p.bounds.toFloat();

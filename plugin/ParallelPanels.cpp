@@ -213,7 +213,7 @@ CabinetPanelB::CabinetPanelB(SasProcessor& p)
     : processor_(p), blend_(p.apvts, pid(ids::irBlend, kInstance).toRawUTF8(), "BLEND"), width_(p.apvts, pid(ids::irWidth, kInstance).toRawUTF8(), "WIDTH"),
       doubleAmount_(p.apvts, pid(ids::doubleAmount, kInstance).toRawUTF8(), "DOUBLE"), doubleTime_(p.apvts, pid(ids::doubleTime, kInstance).toRawUTF8(), "TIME"),
       speaker_(p.apvts, pid(ids::speaker, kInstance).toRawUTF8(), "DYNAMICS") {
-    for (juce::Button* b : std::initializer_list<juce::Button*>{&loadA_, &clearA_, &loadB_, &clearB_, &intense_}) b->setButtonText(tr(b->getButtonText()));
+    for (juce::Button* b : std::initializer_list<juce::Button*>{&loadA_, &clearA_, &loadB_, &clearB_, &intense_, &alignOn_}) b->setButtonText(tr(b->getButtonText()));
     caption(*this, cabCaption_, tr("SOURCE"));
     fillCombo(*this, cab_, p, ids::cab, kInstance, cabAtt_);
     cab_.setComponentID("cabinet_b_source");
@@ -226,6 +226,12 @@ CabinetPanelB::CabinetPanelB(SasProcessor& p)
     addAndMakeVisible(curveB_);
     for (auto* k : {&blend_, &width_, &doubleAmount_, &doubleTime_, &speaker_}) addAndMakeVisible(*k);
     speaker_.setComponentID("cabinet_b_speaker");
+    addAndMakeVisible(alignOn_);
+    alignOn_.setTooltip(tr("Puts impulses A and B in phase: delays the earlier one and flips B if it is upside down, so the two do not cancel each other"));
+    alignAtt_ = std::make_unique<juce::AudioProcessorValueTreeState::ButtonAttachment>(p.apvts, pid(ids::irAlign, kInstance), alignOn_);
+    alignNote_.setFont(AmpLookAndFeel::font(9.5f));
+    alignNote_.setJustificationType(juce::Justification::centred);
+    addAndMakeVisible(alignNote_);
     addAndMakeVisible(intense_);
     intense_.setTooltip(tr("Stronger cone, heating and break-up effects"));
     intenseAtt_ = std::make_unique<juce::AudioProcessorValueTreeState::ButtonAttachment>(p.apvts, pid(ids::speakerIntense, kInstance), intense_);
@@ -246,6 +252,7 @@ void CabinetPanelB::timerCallback() {
         (slot == 0 ? nameA_ : nameB_).setText(name.isEmpty() ? juce::String(tr("empty")) : name, juce::dontSendNotification);
         (slot == 0 ? curveA_ : curveB_).setCurve(processor_.impulseResponseCurve(slot, kInstance));
     }
+    alignNote_.setText(irAlignText(processor_.irAlignInfo(kInstance)), juce::dontSendNotification);
 }
 
 void CabinetPanelB::showImpulseMenu(int slot, juce::Component& anchor) {
@@ -312,7 +319,12 @@ void CabinetPanelB::resized() {
         note_.setBounds(in);
     }
     panels_.push_back({blendPanel, tr("A / B BLEND")});
-    blend_.setBounds(blendPanel.reduced(6, 4).withTrimmedTop(16));
+    {
+        auto in = blendPanel.reduced(6, 4).withTrimmedTop(16);
+        alignNote_.setBounds(in.removeFromBottom(14));
+        alignOn_.setBounds(in.removeFromBottom(20).withSizeKeepingCentre(84, 20));
+        blend_.setBounds(in);
+    }
     panels_.push_back({speakerPanel, tr("SPEAKER")});
     {
         auto in = speakerPanel.reduced(6, 4);

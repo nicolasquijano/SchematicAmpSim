@@ -5,6 +5,9 @@ version numbers follow [Semantic Versioning](https://semver.org/) (see [docs/REL
 
 ## [Unreleased]
 
+### Added
+- **"In phase" for the cabinet's two impulses** (a switch in the A / B blend panel of each cabinet, parameter `ir_align`, off by default so old projects sound the same): two impulses recorded with different microphones arrive at different moments, and one of them may be upside down, so mixed they cancel part of each other. With the switch on, the cross-correlation of their direct sound gives the offset and the polarity that make them add up; the earlier one is delayed, B is flipped when needed, and the panel shows what it did (for example "B flipped, A +0.15 ms").
+
 ### Changed
 - **American 5153 solves only the channel you hear**: the tubes of the other channels (the Red channel's input and V5 / V6 stages when Green or Blue is selected; the Green / Blue stages when Red is) are skipped, a new amp.json option (`jacks` on a preamp stage, `main_jacks` for the first netlist). The sound is the same sample for sample (a test checks it); Green and Blue go from about 42 % to 27 % of a core in Normal and from 30 % to 14 % in Lite.
 - **German Ultra, British Super Lead, Modern BE and the SVT also skip the tubes of the channel that is not heard** (the same option, now also by selector position: `when_selector`). A test goes through every jack and selector combination of the five amps and checks the sound is the same as with every stage solved. In the clean channel of the German Ultra the preamp does about 45 % of its work, in the clean channels of the Super Lead and Modern BE about 75 %.

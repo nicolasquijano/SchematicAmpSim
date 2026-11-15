@@ -112,6 +112,7 @@ inline constexpr const char* irWidth = "ir_width";        // 0 = A and B blended
 inline constexpr const char* doubleAmount = "double_amount";  // automatic double tracking: how much of the second take
 inline constexpr const char* doubleTime = "double_time";      // its delay, 8..30 ms
 inline constexpr const char* irBlend = "ir_blend";  // 0 = impulse response A only, 10 = B only
+inline constexpr const char* irAlign = "ir_align";  // put impulses A and B in phase (delay and polarity from their cross-correlation)
 inline constexpr const char* speaker = "speaker";               // speaker dynamics amount, 0..10
 inline constexpr const char* speakerIntense = "speaker_intense";  // stronger speaker dynamics
 // The phaser (sas/phaser.h): in front of the amp or after it.
@@ -295,7 +296,7 @@ inline constexpr const char* plShimmerInt = "pl_shimint";  // 0 = octave, 1 = oc
 // Cabinet source. Order is saved in projects: append only.
 enum class CabMode { Off = 0, Filter = 1, Ir = 2, Nam = 3 };
 
-class SasProcessor final : public juce::AudioProcessor {
+class SasProcessor final : public juce::AudioProcessor, private juce::AudioProcessorValueTreeState::Listener, private juce::AsyncUpdater {
 public:
     SasProcessor();
     ~SasProcessor() override;
@@ -375,6 +376,12 @@ public:
     void resetTubes(int instance = 0);
     void clearImpulseResponse(int slot = 0, int cabinet = 0);
     juce::String impulseResponseName(int slot = 0, int cabinet = 0) const;
+    // What the "in phase" option did to the two impulses of a cabinet: valid when it is on and both are loaded.
+    struct IrAlignInfo {
+        bool valid = false, invertB = false;
+        double delayAms = 0.0, delayBms = 0.0, correlation = 0.0;
+    };
+    IrAlignInfo irAlignInfo(int cabinet = 0) const;
     // Magnitude response of the loaded IR in dB (mean 0), log-spaced from 50 Hz to 10 kHz; empty when nothing is loaded.
     std::vector<float> impulseResponseCurve(int slot = 0, int cabinet = 0) const;
 
@@ -494,6 +501,12 @@ private:
     double sampleRate_ = 0.0;
     int latencyReported_ = -1;
 
+    // Loads the impulses of a cabinet into their convolutions: as they are, or lined up with each other when "in phase" is on. Message thread.
+    void applyImpulseResponses(int cabinet);
+    void parameterChanged(const juce::String& id, float) override;
+    void handleAsyncUpdate() override;
+    std::atomic<bool> alignDirty_[2]{false, false};
+
     struct IrSlot {
         juce::dsp::Convolution conv{juce::dsp::Convolution::NonUniform{512}};
         juce::dsp::Convolution convR{juce::dsp::Convolution::NonUniform{512}};  // the same impulse for the right channel, used only while a stereo pair comes in
@@ -501,6 +514,8 @@ private:
         juce::MemoryBlock bytes;      // the file as loaded, kept for the project state
         juce::String name;
         std::vector<float> curve;     // magnitude response for the editor
+        juce::AudioBuffer<float> mono;  // the impulse as decoded and levelled (one channel), kept to line it up with the other one
+        double rate = 0.0;
     };
     // What one cabinet owns: its two impulse slots, the blend state and the double tracking, and what processBlock tells its module each block.
     struct CabBank {
@@ -508,6 +523,7 @@ private:
         bool irWasActive = false;
         float blendGainA = 1.0f, blendGainB = 0.0f;  // the gains in force at the end of the last block (ramped to the new ones)
         float widthNow = 0.0f;                       // the A / B width in force at the end of the last block
+        IrAlignInfo alignInfo;                       // guarded by irLock_
         sas::StereoDouble dbl;
         sas::NamModel* namNow = nullptr;             // the NAM cabinet this block (only the first cabinet has one)
         sas::NamModel* namNowR = nullptr;            // its twin for the right channel of a stereo pair

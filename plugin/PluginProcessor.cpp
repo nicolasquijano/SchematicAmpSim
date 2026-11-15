@@ -87,6 +87,7 @@ Layout SasProcessor::createLayout(const std::vector<sas::AmpDef>& defs) {
     l.add(knob(ids::doubleAmount, "Double tracking", 0.0f));
     l.add(knob(ids::doubleTime, "Double tracking time", 5.0f));
     l.add(knob(ids::irBlend, "IR blend", 5.0f));
+    l.add(std::make_unique<juce::AudioParameterBool>(juce::ParameterID{ids::irAlign, kVersion}, "IR phase align", false));
     l.add(knob(ids::speaker, "Speaker dynamics", 0.0f));
     l.add(std::make_unique<juce::AudioParameterBool>(juce::ParameterID{ids::speakerIntense, kVersion}, "Speaker dynamics intense", false));
     l.add(knob(ids::bias, "Bias", 5.0f));
@@ -244,9 +245,12 @@ SasProcessor::SasProcessor()
                 modParams_[std::size_t(t)][std::size_t(k)].push_back(apvts.getRawParameterValue(RackState::paramId(base, k)));
     rackOrder_ = RackState::defaultOrder();
     syncRack(sas::Transition::Immediate);
+    for (int c = 0; c < 2; ++c) apvts.addParameterListener(RackState::paramId(ids::irAlign, c), this);
 }
 
 SasProcessor::~SasProcessor() {
+    for (int c = 0; c < 2; ++c) apvts.removeParameterListener(RackState::paramId(ids::irAlign, c), this);
+    cancelPendingUpdate();
     for (auto& runner : amps_) runner.builder.reset();  // joins the thread before the chains it may own go away
     for (auto& runner : amps_) {
         delete runner.ready.exchange(nullptr);

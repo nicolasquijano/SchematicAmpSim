@@ -59,7 +59,9 @@ private:
     IrCurve curveA_, curveB_;
     KnobWithLabel blend_, width_, doubleAmount_, doubleTime_, speaker_;  // the speaker's dynamics belong to the second amp, and are with its cabinet
     juce::ToggleButton intense_{"Intense"};
+    juce::ToggleButton alignOn_{"In phase"};
+    juce::Label alignNote_;
     std::unique_ptr<juce::AudioProcessorValueTreeState::ComboBoxAttachment> cabAtt_;
-    std::unique_ptr<juce::AudioProcessorValueTreeState::ButtonAttachment> intenseAtt_;
+    std::unique_ptr<juce::AudioProcessorValueTreeState::ButtonAttachment> intenseAtt_, alignAtt_;
     std::unique_ptr<juce::FileChooser> chooser_;
 };

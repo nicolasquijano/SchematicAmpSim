@@ -157,6 +157,8 @@ struct PanelBox {
     juce::String caption;
 };
 void paintPanelBoxes(juce::Graphics&, const AmpLookAndFeel&, const std::vector<PanelBox>&);
+// What "in phase" did to the impulses of a cabinet, as a few words for the panel (empty when it did nothing).
+juce::String irAlignText(const SasProcessor::IrAlignInfo& info);
 
 // A container for the controls of one big unit (the amp, the cabinet). The editor owns it and lays the controls out; a unit of the rack page
 // hosts it while it is on show.
@@ -268,9 +270,11 @@ private:
     std::unique_ptr<juce::AudioProcessorValueTreeState::ComboBoxAttachment> qualityAtt_, cabAtt_, pickupAtt_, noiseAtt_, unitAtt_;
     juce::Label ampCaption_, qualityCaption_, jackCaption_, cabCaption_, pickupCaption_, nameA_, nameB_, blendNote_, cabNote_, tubeCaption_, noiseCaption_, unitCaption_, idleLabel_, conditionNote_;
     juce::ToggleButton speakerIntense_{"Intense"};
+    juce::ToggleButton alignOn_{"In phase"};  // the cabinet's impulses A and B put in phase
+    juce::Label alignNote_;
     juce::ToggleButton tunerOn_{"Tuner on"}, tunerMute_{"Mute output"};
     juce::ToggleButton vibrato_{"Vibrato"};  // shown only for amps that have an optical tremolo
-    std::unique_ptr<juce::AudioProcessorValueTreeState::ButtonAttachment> speakerIntenseAtt_, tunerOnAtt_, tunerMuteAtt_, vibratoAtt_;
+    std::unique_ptr<juce::AudioProcessorValueTreeState::ButtonAttachment> alignAtt_, speakerIntenseAtt_, tunerOnAtt_, tunerMuteAtt_, vibratoAtt_;
     juce::TextButton rackTab_{"Rack"}, tunerTab_{"Tuner"};
     juce::TextButton loadA_{"Load..."}, clearA_{"Clear"}, loadB_{"Load..."}, clearB_{"Clear"};
     IrCurve curveA_, curveB_;
