@@ -247,15 +247,18 @@ void MultiPanel::resized() {
     constexpr int gap = 6;
     boxes_.clear();
     auto area = getLocalBounds();
-    auto padArea = area.removeFromLeft(std::min(area.getWidth() / 4, kHeight - 2));
+    // The plane takes about 40% of the width (at most as much as the height allows); the strips are two rows of four beside it.
+    auto padArea = area.removeFromLeft(std::min(int(area.getWidth() * 0.42f), area.getHeight()));
     area.removeFromLeft(gap);
     boxes_.push_back({padArea, tr("MULTI MIXER")});
     pad_.setBounds(padArea.reduced(4, 4).withTrimmedTop(16));
+    constexpr int cols = 4, rows = 2;
     const int n = SasProcessor::kMultiSlots;
-    const int w = (area.getWidth() - gap * (n - 1)) / n;
+    const int w = (area.getWidth() - gap * (cols - 1)) / cols;
+    const int h = (area.getHeight() - gap * (rows - 1)) / rows;
     for (int k = 0; k < n; ++k) {
-        auto r = area.removeFromLeft(w);
-        area.removeFromLeft(gap);
+        const int col = k % cols, row0 = k / cols;
+        const juce::Rectangle<int> r(area.getX() + col * (w + gap), area.getY() + row0 * (h + gap), w, h);
         auto& s = strips_[k];
         s.bounds = r;
         boxes_.push_back({r, juce::String()});

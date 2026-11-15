@@ -3730,7 +3730,7 @@ TEST_CASE("multi loader: a picture of the panel", "[.multishot]") {
     setParam(p, ids::mcCursorX, 0.62f);
     setParam(p, ids::mcCursorY, 0.4f);
     std::unique_ptr<juce::AudioProcessorEditor> ed(p.createEditor());
-    ed->setSize(1100, 760);
+    ed->setSize(1100, 1010);
     auto* editor = dynamic_cast<SasEditor*>(ed.get());
     editor->showModule({sas::ModuleType::Cabinet, 0});
     juce::Thread::sleep(500);

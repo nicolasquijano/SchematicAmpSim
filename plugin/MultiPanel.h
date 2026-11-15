@@ -21,7 +21,11 @@ public:
 
 private:
     void timerCallback() override { repaint(); }
-    juce::Rectangle<float> plane() const { return getLocalBounds().toFloat().reduced(8.0f); }
+    juce::Rectangle<float> plane() const {  // a square, as big as the pad allows
+        const auto b = getLocalBounds().toFloat().reduced(8.0f);
+        const float side = std::min(b.getWidth(), b.getHeight());
+        return b.withSizeKeepingCentre(side, side);
+    }
     juce::Point<float> toPixel(float x, float y) const;
     void setParam(const juce::String& id, float value);
     void gesture(const juce::String& id, bool begin);
@@ -37,7 +41,7 @@ class MultiPanel final : public juce::Component, private juce::Timer {
 public:
     explicit MultiPanel(SasProcessor& p);
     ~MultiPanel() override;
-    static constexpr int kHeight = 250;
+    static constexpr int kHeight = 452;  // the plane on the left as big as the panel, the strips in two rows of four on the right
     void resized() override;
     void paint(juce::Graphics& g) override;
     void lookAndFeelChanged() override;
