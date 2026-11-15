@@ -504,6 +504,7 @@ private:
     // Loads the impulses of a cabinet into their convolutions: as they are, or lined up with each other when "in phase" is on. Message thread.
     void applyImpulseResponses(int cabinet);
     void parameterChanged(const juce::String& id, float) override;
+    int convBlock_ = 1024;  // the largest block the convolutions were prepared for (the host's, as a power of two)
     void handleAsyncUpdate() override;
     std::atomic<bool> alignDirty_[2]{false, false};
 

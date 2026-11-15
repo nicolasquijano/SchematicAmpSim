@@ -3480,3 +3480,48 @@ TEST_CASE("cabinet: 'in phase' puts an upside-down, late impulse B back in phase
     fileA.deleteFile();
     fileB.deleteFile();
 }
+
+TEST_CASE("cabinet: a block bigger than the one announced to prepareToPlay does not break the convolution", "[cabinet]") {
+    JuceInit init;
+    auto file = juce::File::getSpecialLocation(juce::File::tempDirectory).getChildFile("sas_big_block_ir.wav");
+    file.deleteFile();
+    {
+        juce::WavAudioFormat wav;
+        std::unique_ptr<juce::AudioFormatWriter> w(wav.createWriterFor(new juce::FileOutputStream(file), 48000.0, 1, 24, {}, 0));
+        juce::AudioBuffer<float> ir(1, 4096);
+        ir.clear();
+        ir.setSample(0, 0, 1.0f);
+        ir.setSample(0, 150, 0.5f);
+        w->writeFromAudioSampleBuffer(ir, 0, ir.getNumSamples());
+    }
+    // The same signal in blocks of 256 and in one block of 3000 (the host announced 256): the same output.
+    auto run = [&](int blockSize, int blocks) {
+        SasProcessor p;
+        setParam(p, ids::quality, 2.0f);
+        setParam(p, ids::cab, 2.0f);
+        p.prepareToPlay(48000.0, 256);
+        REQUIRE(p.loadImpulseResponse(file));
+        juce::Thread::sleep(500);
+        std::vector<float> out;
+        juce::AudioBuffer<float> buf(2, blockSize);
+        juce::MidiBuffer midi;
+        for (int b = 0; b < blocks; ++b) {
+            fill(buf, 196.0, 0.08, 48000.0, b * blockSize);
+            p.processBlock(buf, midi);
+            for (int i = 0; i < blockSize; ++i) out.push_back(buf.getSample(0, i));
+        }
+        return out;
+    };
+    const auto small = run(250, 36), big = run(3000, 3);  // 9000 samples each
+    REQUIRE(small.size() == big.size());
+    double worst = 0.0, level = 0.0;
+    for (std::size_t i = 4000; i < small.size(); ++i) {
+        REQUIRE(std::isfinite(big[i]));
+        worst = std::max(worst, double(std::abs(small[i] - big[i])));
+        level = std::max(level, double(std::abs(small[i])));
+    }
+    INFO("worst difference " << worst << " of a " << level << " output");
+    CHECK(level > 0.01);
+    CHECK(worst < 0.02 * level);
+    file.deleteFile();
+}

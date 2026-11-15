@@ -320,10 +320,11 @@ void SasProcessor::prepareToPlay(double sampleRate, int samplesPerBlock) {
             loadNamFromMemory(bytes.getData(), bytes.getSize(), name);
         }
     }
-    // The convolution is told the largest block it can ever get: processBlock hands it chunks of up to kMaxChunk whatever block size the host
-    // announced here (some hosts send bigger ones), and a block above the announced maximum crashes it.
-    juce::dsp::ProcessSpec spec{sampleRate, static_cast<juce::uint32>(kMaxChunk), 1};
-    (void)samplesPerBlock;
+    // The convolution is told the largest block it will get: the one the host announces, as a power of two. Telling it kMaxChunk (4096) made it
+    // work in much bigger FFTs than the host's blocks need and cost about nine times more. processCabinet cuts what it hands over into pieces
+    // of at most that size (some hosts send bigger blocks than they announced, and a block above the announced maximum crashes it).
+    convBlock_ = samplesPerBlock > 0 ? juce::jlimit(128, int(kMaxChunk), juce::nextPowerOfTwo(samplesPerBlock)) : 1024;
+    juce::dsp::ProcessSpec spec{sampleRate, static_cast<juce::uint32>(convBlock_), 1};
     for (auto& bank : cabs_) {
         for (auto& slot : bank.ir) {
             slot.conv.prepare(spec);
@@ -544,10 +545,13 @@ void SasProcessor::processCabinet(CabinetModule& cab, float* m, float* mR, std::
     bool haveR = pair;
     if (cb.irActiveNow) {
         const bool aLoaded = cb.aLoaded, bLoaded = cb.bLoaded;
-        auto convolve = [n](juce::dsp::Convolution& conv, float* data) {
-            float* chans[1] = {data};
-            juce::dsp::AudioBlock<float> block(chans, 1, std::size_t(n));
-            conv.process(juce::dsp::ProcessContextReplacing<float>(block));
+        const int piece = convBlock_;
+        auto convolve = [n, piece](juce::dsp::Convolution& conv, float* data) {
+            for (int from = 0; from < n; from += piece) {
+                float* chans[1] = {data + from};
+                juce::dsp::AudioBlock<float> block(chans, 1, std::size_t(std::min(piece, n - from)));
+                conv.process(juce::dsp::ProcessContextReplacing<float>(block));
+            }
         };
         if (pair) {
             // Each channel goes through the cabinet. With two impulses the blend applies to both channels; the A / B width, which makes a pair out of
