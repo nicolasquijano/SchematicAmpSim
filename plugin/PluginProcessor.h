@@ -33,6 +33,8 @@
 #include "sas/vibe.h"
 #include "sas/tuner.h"
 
+#include "sas/multi_ir.h"
+
 namespace ids {
 inline constexpr const char* amp = "amp";
 // Knob slots: each amp's amp.json "ui" block says which slot drives which of its knobs.
@@ -112,6 +114,21 @@ inline constexpr const char* irWidth = "ir_width";        // 0 = A and B blended
 inline constexpr const char* doubleAmount = "double_amount";  // automatic double tracking: how much of the second take
 inline constexpr const char* doubleTime = "double_time";      // its delay, 8..30 ms
 inline constexpr const char* irBlend = "ir_blend";  // 0 = impulse response A only, 10 = B only
+// The multi impulse loader (cabinet mode MULTI, first cabinet): eight impulses mixed with a cursor on a plane. Each parameter has the slot's number
+// (1 to 8) after an underscore: multiId(mcLevel, 2) is "mc_lvl_3".
+inline constexpr const char* mcLevel = "mc_lvl";   // dB, the impulse's own level
+inline constexpr const char* mcSolo = "mc_solo";
+inline constexpr const char* mcPolarity = "mc_pol";  // Auto / Normal / Inverted
+inline constexpr const char* mcDelay = "mc_dly";   // ms, 0 .. 3
+inline constexpr const char* mcHp = "mc_hp";       // Hz, 20 = off
+inline constexpr const char* mcLp = "mc_lp";       // Hz, 20000 = off
+inline constexpr const char* mcX = "mc_x";         // where the impulse sits on the plane, 0 .. 1
+inline constexpr const char* mcY = "mc_y";
+inline constexpr const char* mcCursorX = "mc_cx";  // the cursor
+inline constexpr const char* mcCursorY = "mc_cy";
+inline constexpr const char* mcSpread = "mc_spread";  // how far a point reaches, 0 .. 10
+inline constexpr const char* mcAlign = "mc_align";    // line all the impulses up in phase with the first
+inline juce::String multiId(const char* base, int slot) { return juce::String(base) + "_" + juce::String(slot + 1); }
 inline constexpr const char* irAlign = "ir_align";  // put impulses A and B in phase (delay and polarity from their cross-correlation)
 inline constexpr const char* speaker = "speaker";               // speaker dynamics amount, 0..10
 inline constexpr const char* speakerIntense = "speaker_intense";  // stronger speaker dynamics
@@ -294,7 +311,7 @@ inline constexpr const char* plShimmerInt = "pl_shimint";  // 0 = octave, 1 = oc
 }  // namespace ids
 
 // Cabinet source. Order is saved in projects: append only.
-enum class CabMode { Off = 0, Filter = 1, Ir = 2, Nam = 3 };
+enum class CabMode { Off = 0, Filter = 1, Ir = 2, Nam = 3, Multi = 4 };
 
 class SasProcessor final : public juce::AudioProcessor, private juce::AudioProcessorValueTreeState::Listener, private juce::AsyncUpdater {
 public:
@@ -384,6 +401,24 @@ public:
     IrAlignInfo irAlignInfo(int cabinet = 0) const;
     // Magnitude response of the loaded IR in dB (mean 0), log-spaced from 50 Hz to 10 kHz; empty when nothing is loaded.
     std::vector<float> impulseResponseCurve(int slot = 0, int cabinet = 0) const;
+
+    // The multi impulse loader (cabinet mode MULTI of the first cabinet): eight slots, each an impulse with its own parameters (ids::multiId).
+    static constexpr int kMultiSlots = sas::kMultiIrSlots;
+    bool loadMultiImpulse(const juce::File& file, int slot);
+    bool loadMultiImpulseFromMemory(const void* data, std::size_t size, const juce::String& name, int slot);
+    void clearMultiImpulse(int slot);
+    bool loadBuiltInMultiImpulse(int index, int slot);
+    bool multiImpulseLoaded(int slot) const { return slot >= 0 && slot < kMultiSlots && multi_[slot].loaded.load(); }
+    juce::String multiImpulseName(int slot) const;
+    std::vector<float> multiImpulseCurve(int slot) const;
+    // How much of each slot is heard now (0 .. 1), for the editor's plane; updated every block.
+    // What "in phase" did to a slot (valid when it is on and at least two impulses are loaded).
+    struct MultiAlignInfo {
+        bool valid = false, flipped = false;
+        double delayMs = 0.0;
+    };
+    MultiAlignInfo multiAlignInfo(int slot) const;
+    float multiWeightShown(int slot) const { return slot >= 0 && slot < kMultiSlots ? multiShown_[slot].load() : 0.0f; }
 
     // Amps available in this build (sorted by id) and the one the "amp" parameter selects.
     const std::vector<sas::AmpDef>& amps() const { return defs_; }
@@ -507,6 +542,7 @@ private:
     int convBlock_ = 1024;  // the largest block the convolutions were prepared for (the host's, as a power of two)
     void handleAsyncUpdate() override;
     std::atomic<bool> alignDirty_[2]{false, false};
+    std::atomic<unsigned> multiDirty_{0};  // slots whose polarity, delay or filters changed: baked again on the message thread
 
     struct IrSlot {
         juce::dsp::Convolution conv{juce::dsp::Convolution::NonUniform{512}};
@@ -531,6 +567,34 @@ private:
         bool irActiveNow = false, aLoaded = false, bLoaded = false, wasOn = true;
     };
     CabBank cabs_[2];
+    // The multi impulse loader's slots and what the audio thread keeps between blocks.
+    IrSlot multi_[kMultiSlots];
+    // The multi loader's parameters, found once (the audio thread reads them by pointer).
+    std::atomic<float>* mcLevelP_[kMultiSlots] = {};
+    std::atomic<float>* mcSoloP_[kMultiSlots] = {};
+    std::atomic<float>* mcPolP_[kMultiSlots] = {};
+    std::atomic<float>* mcDelayP_[kMultiSlots] = {};
+    std::atomic<float>* mcHpP_[kMultiSlots] = {};
+    std::atomic<float>* mcLpP_[kMultiSlots] = {};
+    std::atomic<float>* mcXP_[kMultiSlots] = {};
+    std::atomic<float>* mcYP_[kMultiSlots] = {};
+    std::atomic<float>*mcCursorXP_ = nullptr, *mcCursorYP_ = nullptr, *mcSpreadP_ = nullptr, *mcAlignP_ = nullptr;
+    int multiExtra_[kMultiSlots] = {};      // what "in phase" adds to each slot (message thread): samples of delay and polarity
+    bool multiFlip_[kMultiSlots] = {};
+    int multiCommonLead_ = 0;  // with "in phase": the silence in front that all the impulses share, taken off every one
+    MultiAlignInfo multiAlignShown_[kMultiSlots];  // guarded by irLock_
+    std::atomic<bool> multiAlignDirty_{false};
+    void refreshMulti(int slot);  // bakes one slot, or all of them when "in phase" is on (or slot is -1)
+    void recomputeMultiAlign();
+    float multiGainNow_[kMultiSlots] = {};
+    bool multiRunning_[kMultiSlots] = {};
+    std::atomic<float> multiShown_[kMultiSlots];
+    bool multiActiveNow_ = false;
+    bool multiWasActive_ = false;
+    std::vector<float> multiAcc_, multiAccR_;
+    void bakeMulti(int slot);
+    bool anyMultiLoaded() const;
+    void processMulti(float* m, float* mR, bool pair, std::size_t n);
     std::vector<float> mono2_, mono3_, monoR_;  // the second IR's signal (and the right channel's), and the right channel (scratch, shared by the cabinets: they run one after another)
     int firstCab_ = 0;                  // the built-in impulse a new cabinet opens with
     mutable juce::CriticalSection irLock_;  // guards the slots' bytes / name / curve (message thread vs state calls)

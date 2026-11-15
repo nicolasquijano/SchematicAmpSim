@@ -1737,8 +1737,9 @@ TEST_CASE("NAM cabinet: a model loaded as the cabinet plays after any amp, repla
     proc.prepareToPlay(48000.0, 512);
     auto* cab = dynamic_cast<juce::AudioParameterChoice*>(proc.apvts.getParameter(ids::cab));
     REQUIRE(cab != nullptr);
-    CHECK(cab->choices.size() == 4);
+    CHECK(cab->choices.size() == 5);  // Off, Filter, IR, NAM and Multi: new choices are only ever appended
     CHECK(cab->choices[3] == "NAM");
+    CHECK(cab->choices[4] == "Multi");
     CHECK(!proc.namCabLoaded());
     CHECK(!proc.loadNamCab(juce::File(SAS_NAM_EXAMPLES_DIR "/../README.md")));
     CHECK(proc.namCabMessage().isNotEmpty());
@@ -3524,4 +3525,228 @@ TEST_CASE("cabinet: a block bigger than the one announced to prepareToPlay does 
     CHECK(level > 0.01);
     CHECK(worst < 0.02 * level);
     file.deleteFile();
+}
+
+TEST_CASE("multi loader: the cursor chooses the impulse, solo and clear work, the project keeps the slots", "[multi]") {
+    JuceInit init;
+    // Three different impulses (damped noise with different colours), each its own file.
+    auto writeIr = [](const char* name, int seed, double decay, int smooth) {
+        auto file = juce::File::getSpecialLocation(juce::File::tempDirectory).getChildFile(name);
+        file.deleteFile();
+        juce::WavAudioFormat wav;
+        std::unique_ptr<juce::AudioFormatWriter> w(wav.createWriterFor(new juce::FileOutputStream(file), 48000.0, 1, 24, {}, 0));
+        juce::AudioBuffer<float> ir(1, 4000);
+        juce::Random rnd(seed);
+        float prev = 0.0f;
+        for (int i = 0; i < 4000; ++i) {
+            const float noise = rnd.nextFloat() * 2.0f - 1.0f;
+            prev += (noise - prev) / float(smooth);  // a one-pole low-pass: a darker impulse for a bigger `smooth`
+            ir.setSample(0, i, prev * float(std::exp(-i / decay)));
+        }
+        ir.setSample(0, 0, 1.0f);
+        w->writeFromAudioSampleBuffer(ir, 0, ir.getNumSamples());
+        return file;
+    };
+    const auto f0 = writeIr("sas_multi_0.wav", 11, 400.0, 1), f1 = writeIr("sas_multi_1.wav", 22, 700.0, 4), f2 = writeIr("sas_multi_2.wav", 33, 300.0, 8);
+    auto param = [](SasProcessor& p, const juce::String& id, float v) { setParam(p, id.toRawUTF8(), v); };
+
+    auto capture = [](SasProcessor& p) {
+        std::vector<float> out;
+        juce::AudioBuffer<float> buf(2, 256);
+        juce::MidiBuffer midi;
+        for (int b = 0; b < 120; ++b) {
+            fill(buf, 196.0, 0.08, 48000.0, b * 256);
+            p.processBlock(buf, midi);
+            if (b >= 60)
+                for (int i = 0; i < 256; ++i) out.push_back(buf.getSample(0, i));
+        }
+        return out;
+    };
+    auto similarity = [](const std::vector<float>& a, const std::vector<float>& b) {
+        double ab = 0, aa = 0, bb = 0;
+        for (std::size_t i = 0; i < a.size(); ++i) {
+            ab += double(a[i]) * b[i];
+            aa += double(a[i]) * a[i];
+            bb += double(b[i]) * b[i];
+        }
+        return ab / std::sqrt(aa * bb + 1e-30);
+    };
+    auto atPoint = [&](SasProcessor& p, int slot) {
+        float x, y;
+        sas::multiIrDefaultPosition(slot, x, y);
+        param(p, ids::mcCursorX, x);
+        param(p, ids::mcCursorY, y);
+    };
+    auto setUp = [&](SasProcessor& p, bool multi) {
+        setParam(p, ids::quality, 2.0f);
+        setParam(p, ids::cab, multi ? 4.0f : 2.0f);
+        param(p, ids::mcSpread, 0.0f);  // narrow: on a point only that impulse is heard
+        p.prepareToPlay(48000.0, 256);
+    };
+
+    // The reference: the same impulse in the ordinary IR mode.
+    SasProcessor single;
+    setUp(single, false);
+    REQUIRE(single.loadImpulseResponse(f0, 0));
+    juce::Thread::sleep(600);
+    const auto ref = capture(single);
+
+    SasProcessor multi;
+    setUp(multi, true);
+    REQUIRE(multi.loadMultiImpulse(f0, 0));
+    REQUIRE(multi.loadMultiImpulse(f1, 1));
+    REQUIRE(multi.loadMultiImpulse(f2, 2));
+    CHECK(multi.multiImpulseName(1) == "sas_multi_1.wav");
+    CHECK_FALSE(multi.multiImpulseLoaded(3));
+    juce::Thread::sleep(600);
+
+    atPoint(multi, 0);
+    const auto on0 = capture(multi);
+    CHECK(similarity(ref, on0) > 0.99);  // the cursor on the first point: that impulse, as the IR mode plays it
+    CHECK(multi.multiWeightShown(0) > 0.99f);
+    CHECK(multi.multiWeightShown(1) == 0.0f);
+
+    atPoint(multi, 1);
+    const auto on1 = capture(multi);
+    CHECK(multi.multiWeightShown(1) > 0.99f);
+    CHECK(similarity(on0, on1) < 0.95);  // another impulse: another sound
+
+    // Halfway between the first two both are heard.
+    float x0, y0, x1, y1;
+    sas::multiIrDefaultPosition(0, x0, y0);
+    sas::multiIrDefaultPosition(1, x1, y1);
+    param(multi, ids::mcCursorX, 0.5f * (x0 + x1));
+    param(multi, ids::mcCursorY, 0.5f * (y0 + y1));
+    param(multi, ids::mcSpread, 4.0f);
+    capture(multi);
+    CHECK(multi.multiWeightShown(0) > 0.3f);
+    CHECK(multi.multiWeightShown(1) > 0.3f);
+
+    // Solo on the third: only that one is heard wherever the cursor is.
+    param(multi, ids::multiId(ids::mcSolo, 2), 1.0f);
+    capture(multi);
+    CHECK(multi.multiWeightShown(2) > 0.99f);
+    CHECK(multi.multiWeightShown(0) == 0.0f);
+    param(multi, ids::multiId(ids::mcSolo, 2), 0.0f);
+
+    // The slots travel with the project, and so do their parameters.
+    param(multi, ids::multiId(ids::mcLevel, 1), -6.0f);
+    juce::MemoryBlock state;
+    multi.getStateInformation(state);
+    SasProcessor restored;
+    restored.setStateInformation(state.getData(), int(state.getSize()));
+    CHECK(restored.multiImpulseName(0) == "sas_multi_0.wav");
+    CHECK(restored.multiImpulseName(2) == "sas_multi_2.wav");
+    CHECK_FALSE(restored.multiImpulseLoaded(3));
+    CHECK(restored.apvts.getRawParameterValue(ids::multiId(ids::mcLevel, 1))->load() == Catch::Approx(-6.0f));
+
+    multi.clearMultiImpulse(1);
+    CHECK_FALSE(multi.multiImpulseLoaded(1));
+    CHECK(multi.multiImpulseName(1).isEmpty());
+
+    // Polarity set before the impulse is loaded is baked into it: inverted is the same sound upside down.
+    SasProcessor flipped;
+    setUp(flipped, true);
+    param(flipped, ids::multiId(ids::mcPolarity, 0), 2.0f);  // Inverted
+    REQUIRE(flipped.loadMultiImpulse(f0, 0));
+    juce::Thread::sleep(600);
+    atPoint(flipped, 0);
+    const auto up = capture(flipped);
+    CHECK(similarity(on0, up) < -0.99);
+
+    for (const auto& f : {f0, f1, f2}) f.deleteFile();
+}
+
+TEST_CASE("multi loader: 'in phase' lines the impulses up so that mixed they stop cancelling", "[multi]") {
+    JuceInit init;
+    // A: a damped burst. B: the same burst upside down and 40 samples later. Mixed as they are they cancel a good part of each other.
+    auto writeIr = [](const char* name, bool flippedAndLate) {
+        auto file = juce::File::getSpecialLocation(juce::File::tempDirectory).getChildFile(name);
+        file.deleteFile();
+        juce::WavAudioFormat wav;
+        std::unique_ptr<juce::AudioFormatWriter> w(wav.createWriterFor(new juce::FileOutputStream(file), 48000.0, 1, 24, {}, 0));
+        juce::AudioBuffer<float> ir(1, 2048);
+        ir.clear();
+        const int late = flippedAndLate ? 40 : 0;
+        for (int i = 0; i < 600; ++i)
+            ir.setSample(0, i + late, float((flippedAndLate ? -1.0 : 1.0) * std::exp(-i / 90.0) * (std::sin(2.0 * 3.14159265358979 * i / 48.0) + 0.5 * std::sin(2.0 * 3.14159265358979 * i / 13.0))));
+        w->writeFromAudioSampleBuffer(ir, 0, ir.getNumSamples());
+        return file;
+    };
+    const auto fileA = writeIr("sas_malign_a.wav", false), fileB = writeIr("sas_malign_b.wav", true);
+    auto energy = [&](bool align, SasProcessor::MultiAlignInfo* a = nullptr, SasProcessor::MultiAlignInfo* b = nullptr) {
+        SasProcessor p;
+        setParam(p, ids::quality, 2.0f);
+        setParam(p, ids::cab, 4.0f);
+        setParam(p, ids::mcAlign, align ? 1.0f : 0.0f);
+        setParam(p, ids::mcSpread, 10.0f);
+        // The cursor halfway between the two: both are heard, equally.
+        float x0, y0, x1, y1;
+        sas::multiIrDefaultPosition(0, x0, y0);
+        sas::multiIrDefaultPosition(1, x1, y1);
+        setParam(p, ids::mcCursorX, 0.5f * (x0 + x1));
+        setParam(p, ids::mcCursorY, 0.5f * (y0 + y1));
+        // "Normal" polarity: the point of the test is the alignment, not the automatic polarity.
+        setParam(p, ids::multiId(ids::mcPolarity, 0).toRawUTF8(), 1.0f);
+        setParam(p, ids::multiId(ids::mcPolarity, 1).toRawUTF8(), 1.0f);
+        p.prepareToPlay(48000.0, 256);
+        REQUIRE(p.loadMultiImpulse(fileA, 0));
+        REQUIRE(p.loadMultiImpulse(fileB, 1));
+        juce::Thread::sleep(600);
+        juce::AudioBuffer<float> buf(2, 256);
+        juce::MidiBuffer midi;
+        double e = 0.0;
+        for (int blk = 0; blk < 100; ++blk) {
+            fill(buf, 196.0, 0.08, 48000.0, blk * 256);
+            p.processBlock(buf, midi);
+            if (blk >= 50)
+                for (int i = 0; i < 256; ++i) e += double(buf.getSample(0, i)) * buf.getSample(0, i);
+        }
+        if (a) *a = p.multiAlignInfo(0);
+        if (b) *b = p.multiAlignInfo(1);
+        return e;
+    };
+    SasProcessor::MultiAlignInfo a, b;
+    const double off = energy(false), on = energy(true, &a, &b);
+    INFO("energy off " << off << ", on " << on);
+    CHECK(a.valid);
+    CHECK(b.valid);
+    CHECK_FALSE(a.flipped);
+    CHECK(b.flipped);                                             // B is upside down relative to the first
+    CHECK(a.delayMs == Catch::Approx(1000.0 * 40.0 / 48000.0).margin(0.02));  // the first is held back to meet the late one
+    CHECK(b.delayMs == Catch::Approx(0.0).margin(0.001));
+    CHECK(on > 1.5 * off);
+    fileA.deleteFile();
+    fileB.deleteFile();
+}
+
+TEST_CASE("multi loader: a picture of the panel", "[.multishot]") {
+    JuceInit init;
+    SasProcessor p;
+    p.prepareToPlay(48000.0, 512);
+    setParam(p, ids::cab, 4.0f);
+    for (int k = 0; k < 5; ++k) REQUIRE(p.loadBuiltInMultiImpulse(k, k));
+    setParam(p, ids::mcAlign, 1.0f);
+    setParam(p, ids::mcCursorX, 0.62f);
+    setParam(p, ids::mcCursorY, 0.4f);
+    std::unique_ptr<juce::AudioProcessorEditor> ed(p.createEditor());
+    ed->setSize(1100, 760);
+    auto* editor = dynamic_cast<SasEditor*>(ed.get());
+    editor->showModule({sas::ModuleType::Cabinet, 0});
+    juce::Thread::sleep(500);
+    juce::AudioBuffer<float> buf(2, 512);
+    juce::MidiBuffer midi;
+    for (int b = 0; b < 20; ++b) {
+        fill(buf, 196.0, 0.1, 48000.0, b * 512);
+        p.processBlock(buf, midi);
+    }
+    editor->updateImpulseStatus();
+    const auto img = ed->createComponentSnapshot(ed->getLocalBounds(), true, 1.0f);
+    const char* dir = std::getenv("SAS_SCREENSHOT_DIR");
+    juce::File out = juce::File(dir ? dir : juce::File::getSpecialLocation(juce::File::tempDirectory).getFullPathName()).getChildFile("multi-panel.png");
+    juce::FileOutputStream o(out);
+    o.setPosition(0);
+    o.truncate();
+    juce::PNGImageFormat().writeImageToStream(img, o);
+    std::printf("wrote %s\n", out.getFullPathName().toRawUTF8());
 }

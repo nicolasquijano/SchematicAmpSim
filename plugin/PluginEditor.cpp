@@ -2,6 +2,7 @@
 #include "PluginEditor.h"
 #include "IconData.h"
 #include "TubeData.h"
+#include "MultiPanel.h"
 #include "ParallelPanels.h"
 #include "RackPage.h"
 #include "RackState.h"
@@ -109,6 +110,12 @@ SasEditor::SasEditor(SasProcessor& p)
     alignNote_.setFont(AmpLookAndFeel::font(9.5f));
     alignNote_.setJustificationType(juce::Justification::centred);
     addAndMakeVisible(alignNote_);
+    multiPanel_ = std::make_unique<MultiPanel>(p);
+    multiSpread_ = std::make_unique<KnobWithLabel>(p.apvts, ids::mcSpread, tr("SPREAD"));
+    multiAlign_.setTooltip(tr("Lines all the impulses up with the first: flips the ones that are upside down and delays the early ones, so they do not cancel each other"));
+    multiAlignAtt_ = std::make_unique<juce::AudioProcessorValueTreeState::ButtonAttachment>(p.apvts, ids::mcAlign, multiAlign_);
+    multiAlignNote_.setFont(AmpLookAndFeel::font(9.5f));
+    multiAlignNote_.setJustificationType(juce::Justification::centred);
     addAndMakeVisible(speakerIntense_);
     speakerIntense_.setTooltip(tr("Stronger cone, heating and break-up effects"));
     speakerIntenseAtt_ = std::make_unique<juce::AudioProcessorValueTreeState::ButtonAttachment>(p.apvts, ids::speakerIntense, speakerIntense_);
@@ -124,7 +131,7 @@ SasEditor::SasEditor(SasProcessor& p)
     blendNote_.setText("A  <  >  B", juce::dontSendNotification);
     addAndMakeVisible(blendNote_);
     cabNote_.setFont(AmpLookAndFeel::font(10.5f));
-    for (juce::Button* b : std::initializer_list<juce::Button*>{&presets_, &alignOn_, &speakerIntense_, &tunerOn_, &tunerMute_, &vibrato_, &rackTab_, &tunerTab_, &loadA_, &clearA_, &loadB_, &clearB_,
+    for (juce::Button* b : std::initializer_list<juce::Button*>{&presets_, &alignOn_, &multiAlign_, &speakerIntense_, &tunerOn_, &tunerMute_, &vibrato_, &rackTab_, &tunerTab_, &loadA_, &clearA_, &loadB_, &clearB_,
                                                            &namLoad_, &namClear_, &namCabLoad_, &namCabClear_})
         b->setButtonText(tr(b->getButtonText()));  // the texts these were built with are English
     cabNote_.setText(tr("IR plays the impulses above, mixed by the blend. Filter is a simple cabinet curve; Off is the raw amp."), juce::dontSendNotification);
@@ -191,6 +198,7 @@ SasEditor::SasEditor(SasProcessor& p)
     for (auto* c : std::initializer_list<juce::Component*>{&cab_, &cabCaption_, &blend_, &blendNote_, &alignOn_, &alignNote_, &loadA_, &clearA_, &loadB_, &clearB_, &nameA_, &nameB_, &curveA_, &curveB_, &cabNote_,
                                                            &stereoWidth_, &doubleAmount_, &doubleTime_, &namCabLoad_, &namCabClear_, &namCabName_, &speaker_, &speakerIntense_})
         cabPanel_.addAndMakeVisible(*c);
+    for (auto* c : std::initializer_list<juce::Component*>{multiPanel_.get(), multiSpread_.get(), &multiAlign_, &multiAlignNote_}) cabPanel_.addChildComponent(*c);
     for (auto* c : std::initializer_list<juce::Component*>{&cable_, &bias_, &wear_, &tubes_, &pickup_, &pickupCaption_,
                                                            &tube_, &tubeCaption_, &noise_, &noiseCaption_, &unit_, &unitCaption_, &idleLabel_, &conditionNote_})
         c->setVisible(true);
@@ -230,6 +238,7 @@ SasEditor::SasEditor(SasProcessor& p)
 }
 
 SasEditor::~SasEditor() {
+    multiPanel_.reset();
     ampList_.setModel(nullptr);
     setLookAndFeel(nullptr);
 }
@@ -465,6 +474,7 @@ void SasEditor::timerCallback() {
     if (tick_++ % 8 != 0) return;  // the rest at about 4 Hz
     // Follows the amp parameter when the host or a restored state changes it.
     if (processor_.selectedAmpIndex() != shownAmp_) showAmp(processor_.selectedAmpIndex());
+    updateCabMode();
     if (face_) face_->repaint();  // the jacks follow the parameter
     refreshNam();
     refreshNamCab();
@@ -508,6 +518,8 @@ void SasEditor::updateTuner() {
     if (!active) tunerHz_ = 0.0;
     if (page_ == 1 || active) tunerDisplay_.setReading(valid && tunerHz_ > 0.0, active, tunerHz_, ref);
 }
+
+void SasEditor::showModule(sas::SlotRef slot) { rackPage_->select(slot); }
 
 void SasEditor::updateImpulseStatus() {
     for (int slot = 0; slot < 2; ++slot) {
@@ -804,7 +816,33 @@ void SasEditor::resized() {
 
 int SasEditor::ampPanelHeight() const { return (face_ ? 300 : 170) + 8 + 136; }
 
-int SasEditor::cabPanelHeight() const { return 190 + 8 + 164; }  // the blend panel also holds the "in phase" switch and its note
+// The cabinet unit changes shape with its mode: MULTI has the plane and eight strips where the two impulses A and B are otherwise.
+void SasEditor::updateCabMode() {
+    const bool multi = int(processor_.apvts.getRawParameterValue(ids::cab)->load() + 0.5f) == int(CabMode::Multi);
+    if (multi != multiMode_) {
+        multiMode_ = multi;
+        rackPage_->resized();   // the unit's height changed
+        cabPanel_.resized();
+    }
+    cabNote_.setText(multiMode_ ? tr("MULTI mixes the impulses of the strips with the ring of the plane above; SPREAD sets how far each point reaches.")
+                                : tr("IR plays the impulses above, mixed by the blend. Filter is a simple cabinet curve; Off is the raw amp."),
+                     juce::dontSendNotification);
+    if (multiMode_) {
+        int flipped = 0;
+        double latest = 0.0;
+        bool any = false;
+        for (int k = 0; k < SasProcessor::kMultiSlots; ++k) {
+            const auto info = processor_.multiAlignInfo(k);
+            if (!info.valid) continue;
+            any = true;
+            flipped += info.flipped ? 1 : 0;
+            latest = std::max(latest, info.delayMs);
+        }
+        multiAlignNote_.setText(any ? juce::String(flipped) + " " + tr("flipped") + ", " + juce::String(latest, 2) + " ms" : juce::String(), juce::dontSendNotification);
+    }
+}
+
+int SasEditor::cabPanelHeight() const { return (multiMode_ ? MultiPanel::kHeight : 190) + 8 + 164; }  // the blend panel also holds the "in phase" switch and its note
 
 // The amp unit: the amp's front (or its knobs), then the guitar, the tubes and the levels, then the state of the amp itself (docs/MODULAR_RACK.md:
 // the condition goes with the amp) and the speaker.
@@ -919,7 +957,11 @@ void SasEditor::layoutCabPanel() {
     auto& panels = cabPanel_.panels;
     panels.clear();
     auto area = cabPanel_.getLocalBounds();
-    auto top = area.removeFromTop(190);
+    const bool multi = multiMode_;
+    for (auto* c : std::initializer_list<juce::Component*>{&loadA_, &clearA_, &loadB_, &clearB_, &nameA_, &nameB_, &curveA_, &curveB_, &blend_, &blendNote_, &alignOn_, &alignNote_})
+        c->setVisible(!multi);
+    for (auto* c : std::initializer_list<juce::Component*>{multiPanel_.get(), multiSpread_.get(), &multiAlign_, &multiAlignNote_}) c->setVisible(multi);
+    auto top = area.removeFromTop(multi ? MultiPanel::kHeight : 190);
     area.removeFromTop(gap);
     auto slotA = top.removeFromLeft((top.getWidth() - gap) / 2);
     top.removeFromLeft(gap);
@@ -937,8 +979,12 @@ void SasEditor::layoutCabPanel() {
         in.removeFromTop(6);
         curve.setBounds(in);
     };
-    slot(slotA, tr("IMPULSE A"), loadA_, clearA_, nameA_, curveA_);
-    slot(slotB, tr("IMPULSE B"), loadB_, clearB_, nameB_, curveB_);
+    if (multi) {
+        multiPanel_->setBounds(cabPanel_.getLocalBounds().removeFromTop(MultiPanel::kHeight));
+    } else {
+        slot(slotA, tr("IMPULSE A"), loadA_, clearA_, nameA_, curveA_);
+        slot(slotB, tr("IMPULSE B"), loadB_, clearB_, nameB_, curveB_);
+    }
 
     auto cabPanel = area.removeFromLeft(200);
     area.removeFromLeft(gap);
@@ -962,8 +1008,15 @@ void SasEditor::layoutCabPanel() {
         in.removeFromTop(2);
         cabNote_.setBounds(in);
     }
-    panels.push_back({blendPanel, tr("A / B BLEND")});
-    {
+    if (multi) {
+        panels.push_back({blendPanel, tr("MULTI")});
+        auto in = blendPanel.reduced(6, 4);
+        in.removeFromTop(16);
+        multiAlignNote_.setBounds(in.removeFromBottom(14));
+        multiAlign_.setBounds(in.removeFromBottom(20).withSizeKeepingCentre(84, 20));
+        multiSpread_->setBounds(in);
+    } else {
+        panels.push_back({blendPanel, tr("A / B BLEND")});
         auto in = blendPanel.reduced(6, 4);
         in.removeFromTop(16);
         alignNote_.setBounds(in.removeFromBottom(14));

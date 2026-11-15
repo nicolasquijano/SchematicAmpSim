@@ -201,7 +201,7 @@ void addParams(Layout& l, ModuleType type, int k) {
         case ModuleType::Cabinet:
             l.add(toggle(I(ids::cabOn), N("Cabinet on"), true));
             if (k > 0) {  // the first cabinet's other parameters are declared with the amp's (they were there first)
-                l.add(std::make_unique<juce::AudioParameterChoice>(id(I(ids::cab)), N("Cabinet"), juce::StringArray{"Off", "Filter", "IR", "NAM"}, 1));
+                l.add(std::make_unique<juce::AudioParameterChoice>(id(I(ids::cab)), N("Cabinet"), juce::StringArray{"Off", "Filter", "IR", "NAM", "Multi"}, 1));  // (Multi and NAM play the filter here: only the first cabinet has them)
                 l.add(knob(I(ids::irWidth), N("IR stereo width"), 0.0f));
                 l.add(knob(I(ids::doubleAmount), N("Double tracking"), 0.0f));
                 l.add(knob(I(ids::doubleTime), N("Double tracking time"), 5.0f));

@@ -25,6 +25,18 @@ void SasProcessor::getStateInformation(juce::MemoryBlock& dest) {
             }
         }
     }
+    {
+        const juce::ScopedLock lock(irLock_);
+        for (int k = 0; k < kMultiSlots; ++k) {
+            const juce::String dataKey = "mcData" + juce::String(k), nameKey = "mcName" + juce::String(k);
+            state.removeProperty(dataKey, nullptr);
+            state.removeProperty(nameKey, nullptr);
+            if (multi_[k].bytes.getSize() > 0 && multi_[k].bytes.getSize() <= kMaxStoredIrBytes) {
+                state.setProperty(nameKey, multi_[k].name, nullptr);
+                state.setProperty(dataKey, juce::Base64::toBase64(multi_[k].bytes.getData(), multi_[k].bytes.getSize()), nullptr);
+            }
+        }
+    }
     while (state.getChildWithName("RACK").isValid()) state.removeChild(state.getChildWithName("RACK"), nullptr);
     state.appendChild(RackState::toTree(rackOrder_), nullptr);
     state.setProperty("rackVersion", RackState::kRackVersion, nullptr);
@@ -82,6 +94,16 @@ void SasProcessor::setStateInformation(const void* data, int size) {
                 clearImpulseResponse(s, cabinet);
             }
         }
+    for (int k = 0; k < kMultiSlots; ++k) {
+        const juce::String dataKey = "mcData" + juce::String(k), nameKey = "mcName" + juce::String(k);
+        if (tree.hasProperty(dataKey)) {
+            juce::MemoryOutputStream out;
+            if (juce::Base64::convertFromBase64(out, tree[dataKey].toString()) && out.getDataSize() > 0)
+                if (!loadMultiImpulseFromMemory(out.getData(), out.getDataSize(), tree[nameKey].toString(), k)) clearMultiImpulse(k);
+        } else {
+            clearMultiImpulse(k);
+        }
+    }
     if (tree.hasProperty("namData")) {
         juce::MemoryOutputStream out;
         if (juce::Base64::convertFromBase64(out, tree["namData"].toString()) && out.getDataSize() > 0)

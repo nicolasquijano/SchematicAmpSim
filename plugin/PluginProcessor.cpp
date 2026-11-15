@@ -33,7 +33,7 @@ Layout SasProcessor::createLayout(const std::vector<sas::AmpDef>& defs) {
     l.add(std::make_unique<juce::AudioParameterChoice>(
         juce::ParameterID{ids::quality, kVersion}, "Quality", juce::StringArray{"Normal (2x)", "High (4x)", "Lite (2x)", "Eco (2x)", "Efficient (2x/1x)"}, 4));  // a new instance opens in Efficient
     l.add(std::make_unique<juce::AudioParameterChoice>(
-        juce::ParameterID{ids::cab, kVersion}, "Cabinet", juce::StringArray{"Off", "Filter", "IR", "NAM"}, 1));
+        juce::ParameterID{ids::cab, kVersion}, "Cabinet", juce::StringArray{"Off", "Filter", "IR", "NAM", "Multi"}, 1));
     l.add(std::make_unique<juce::AudioParameterChoice>(
         juce::ParameterID{ids::jack, kVersion}, "Input jack", juce::StringArray{"Jack 1", "Jack 2", "Jack 3", "Jack 4", "Jack 5", "Jack 6", "Jack 7", "Jack 8"}, 0));
     l.add(std::make_unique<juce::AudioParameterBool>(juce::ParameterID{ids::levelMatch, kVersion}, "Level match", true));
@@ -88,6 +88,29 @@ Layout SasProcessor::createLayout(const std::vector<sas::AmpDef>& defs) {
     l.add(knob(ids::doubleTime, "Double tracking time", 5.0f));
     l.add(knob(ids::irBlend, "IR blend", 5.0f));
     l.add(std::make_unique<juce::AudioParameterBool>(juce::ParameterID{ids::irAlign, kVersion}, "IR phase align", false));
+    // The multi impulse loader: eight slots with their own level, solo, polarity, delay, filters and place on the plane, and the cursor.
+    for (int k = 0; k < sas::kMultiIrSlots; ++k) {
+        const juce::String n = "Multi IR " + juce::String(k + 1) + " ";
+        l.add(std::make_unique<juce::AudioParameterFloat>(juce::ParameterID{ids::multiId(ids::mcLevel, k), kVersion}, n + "level",
+                                                          juce::NormalisableRange<float>(-24.0f, 12.0f, 0.1f), 0.0f, juce::AudioParameterFloatAttributes().withLabel("dB")));
+        l.add(std::make_unique<juce::AudioParameterBool>(juce::ParameterID{ids::multiId(ids::mcSolo, k), kVersion}, n + "solo", false));
+        l.add(std::make_unique<juce::AudioParameterChoice>(juce::ParameterID{ids::multiId(ids::mcPolarity, k), kVersion}, n + "polarity",
+                                                           juce::StringArray{"Auto", "Normal", "Inverted"}, 0));
+        l.add(std::make_unique<juce::AudioParameterFloat>(juce::ParameterID{ids::multiId(ids::mcDelay, k), kVersion}, n + "delay",
+                                                          juce::NormalisableRange<float>(0.0f, 3.0f, 0.01f), 0.0f, juce::AudioParameterFloatAttributes().withLabel("ms")));
+        l.add(std::make_unique<juce::AudioParameterFloat>(juce::ParameterID{ids::multiId(ids::mcHp, k), kVersion}, n + "high-pass",
+                                                          juce::NormalisableRange<float>(20.0f, 500.0f, 1.0f, 0.4f), 20.0f, juce::AudioParameterFloatAttributes().withLabel("Hz")));
+        l.add(std::make_unique<juce::AudioParameterFloat>(juce::ParameterID{ids::multiId(ids::mcLp, k), kVersion}, n + "low-pass",
+                                                          juce::NormalisableRange<float>(2000.0f, 20000.0f, 10.0f, 0.4f), 20000.0f, juce::AudioParameterFloatAttributes().withLabel("Hz")));
+        float x, y;
+        sas::multiIrDefaultPosition(k, x, y);
+        l.add(std::make_unique<juce::AudioParameterFloat>(juce::ParameterID{ids::multiId(ids::mcX, k), kVersion}, n + "x", juce::NormalisableRange<float>(0.0f, 1.0f, 0.0f), x));
+        l.add(std::make_unique<juce::AudioParameterFloat>(juce::ParameterID{ids::multiId(ids::mcY, k), kVersion}, n + "y", juce::NormalisableRange<float>(0.0f, 1.0f, 0.0f), y));
+    }
+    l.add(std::make_unique<juce::AudioParameterFloat>(juce::ParameterID{ids::mcCursorX, kVersion}, "Multi IR cursor x", juce::NormalisableRange<float>(0.0f, 1.0f, 0.0f), 0.5f));
+    l.add(std::make_unique<juce::AudioParameterFloat>(juce::ParameterID{ids::mcCursorY, kVersion}, "Multi IR cursor y", juce::NormalisableRange<float>(0.0f, 1.0f, 0.0f), 0.5f));
+    l.add(knob(ids::mcSpread, "Multi IR spread", 5.0f));
+    l.add(std::make_unique<juce::AudioParameterBool>(juce::ParameterID{ids::mcAlign, kVersion}, "Multi IR phase align", false));
     l.add(knob(ids::speaker, "Speaker dynamics", 0.0f));
     l.add(std::make_unique<juce::AudioParameterBool>(juce::ParameterID{ids::speakerIntense, kVersion}, "Speaker dynamics intense", false));
     l.add(knob(ids::bias, "Bias", 5.0f));
@@ -230,6 +253,23 @@ SasProcessor::SasProcessor()
     mono2_.resize(kMaxChunk);
     mono3_.resize(kMaxChunk);
     monoR_.resize(kMaxChunk);
+    multiAcc_.resize(kMaxChunk);
+    multiAccR_.resize(kMaxChunk);
+    for (int k = 0; k < sas::kMultiIrSlots; ++k) {
+        multiShown_[k] = 0.0f;
+        mcLevelP_[k] = apvts.getRawParameterValue(ids::multiId(ids::mcLevel, k));
+        mcSoloP_[k] = apvts.getRawParameterValue(ids::multiId(ids::mcSolo, k));
+        mcPolP_[k] = apvts.getRawParameterValue(ids::multiId(ids::mcPolarity, k));
+        mcDelayP_[k] = apvts.getRawParameterValue(ids::multiId(ids::mcDelay, k));
+        mcHpP_[k] = apvts.getRawParameterValue(ids::multiId(ids::mcHp, k));
+        mcLpP_[k] = apvts.getRawParameterValue(ids::multiId(ids::mcLp, k));
+        mcXP_[k] = apvts.getRawParameterValue(ids::multiId(ids::mcX, k));
+        mcYP_[k] = apvts.getRawParameterValue(ids::multiId(ids::mcY, k));
+    }
+    mcCursorXP_ = apvts.getRawParameterValue(ids::mcCursorX);
+    mcCursorYP_ = apvts.getRawParameterValue(ids::mcCursorY);
+    mcSpreadP_ = apvts.getRawParameterValue(ids::mcSpread);
+    mcAlignP_ = apvts.getRawParameterValue(ids::mcAlign);
     amps_[1].activeKey = -1;  // the second amp is built when a parallel asks for it
     for (int i = 0; i < 2; ++i) amps_[i].builder = std::make_unique<ChainBuilder>(*this, i);
     // A fresh instance has "4x12 OS Mix 1" ready in slot A (a restored project replaces it); the first of the list if that one is not there.
@@ -246,10 +286,16 @@ SasProcessor::SasProcessor()
     rackOrder_ = RackState::defaultOrder();
     syncRack(sas::Transition::Immediate);
     for (int c = 0; c < 2; ++c) apvts.addParameterListener(RackState::paramId(ids::irAlign, c), this);
+    for (int k = 0; k < sas::kMultiIrSlots; ++k)
+        for (const char* base : {ids::mcPolarity, ids::mcDelay, ids::mcHp, ids::mcLp}) apvts.addParameterListener(ids::multiId(base, k), this);
+    apvts.addParameterListener(ids::mcAlign, this);
 }
 
 SasProcessor::~SasProcessor() {
     for (int c = 0; c < 2; ++c) apvts.removeParameterListener(RackState::paramId(ids::irAlign, c), this);
+    for (int k = 0; k < sas::kMultiIrSlots; ++k)
+        for (const char* base : {ids::mcPolarity, ids::mcDelay, ids::mcHp, ids::mcLp}) apvts.removeParameterListener(ids::multiId(base, k), this);
+    apvts.removeParameterListener(ids::mcAlign, this);
     cancelPendingUpdate();
     for (auto& runner : amps_) runner.builder.reset();  // joins the thread before the chains it may own go away
     for (auto& runner : amps_) {
@@ -333,6 +379,10 @@ void SasProcessor::prepareToPlay(double sampleRate, int samplesPerBlock) {
         bank.irWasActive = false;
         bank.dbl.prepare(sampleRate);
     }
+    for (auto& slot : multi_) {
+        slot.conv.prepare(spec);
+        slot.convR.prepare(spec);
+    }
     latencyReported_ = -1;
     rack_.prepare(sampleRate, int(kMaxChunk));
     tuner_.prepare(sampleRate);
@@ -364,9 +414,10 @@ sas::ChainSettings SasProcessor::readSettings(bool irAvailable, int instance) {
     s.outputDb = raw(ids::output);
     s.quality = static_cast<sas::Quality>(juce::jlimit(0, 4, int(raw(ids::quality) + 0.5)));
     s.jack = def.preamp.jacks.empty() ? 0 : std::size_t(juce::jlimit(0, int(def.preamp.jacks.size()) - 1, int(raw(ids::jack) + 0.5)));
-    const auto cab = static_cast<CabMode>(juce::jlimit(0, 3, int(raw(ids::cab) + 0.5)));
+    const auto cab = static_cast<CabMode>(juce::jlimit(0, 4, int(raw(ids::cab) + 0.5)));
     // With no IR loaded the IR mode falls back to the cab filter instead of the raw amp.
-    s.cabFilter = cab == CabMode::Filter || (cab == CabMode::Ir && !irAvailable) || (cab == CabMode::Nam && namCabActive_.load() == nullptr);  // (the cabinet module applies it)
+    s.cabFilter = cab == CabMode::Filter || (cab == CabMode::Ir && !irAvailable) || (cab == CabMode::Nam && namCabActive_.load() == nullptr) ||
+                   (cab == CabMode::Multi && !anyMultiLoaded());  // (the cabinet module applies it)
     s.cabFilterInChain = false;  // the cabinet module applies it
     s.jackLevelMatch = true;  // the jacks always play at a similar level; the old "level_match" parameter stays only so saved projects load
     s.selectors.clear();
@@ -421,7 +472,8 @@ void SasProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::MidiBuff
         auto& cb = cabs_[cabinet];
         const bool aLoaded = cb.ir[0].loaded.load(), bLoaded = cb.ir[1].loaded.load();
         const bool irLoaded = aLoaded || bLoaded;
-        const auto cabParam = static_cast<CabMode>(juce::jlimit(0, 3, int(cabValue(cabinet, ids::cab) + 0.5)));
+        const auto cabParam = static_cast<CabMode>(juce::jlimit(0, 4, int(cabValue(cabinet, ids::cab) + 0.5)));
+        const bool multiNow = cabinet == 0 && cabParam == CabMode::Multi && anyMultiLoaded();
         const bool irActive = cabParam == CabMode::Ir && irLoaded;
         // Only the first cabinet has a NAM cabinet; the second one, set to NAM, plays its filter.
         sas::NamModel* const namCab = cabinet == 0 && cabParam == CabMode::Nam ? namCabActive_.load() : nullptr;
@@ -439,8 +491,23 @@ void SasProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::MidiBuff
         cb.aLoaded = aLoaded;
         cb.bLoaded = bLoaded;
         // With no IR loaded the IR mode falls back to the cab filter instead of the raw amp (and so does a NAM cabinet that has no model).
-        const bool cabFilterOn = cabParam == CabMode::Filter || (cabParam == CabMode::Ir && !irLoaded) || (cabParam == CabMode::Nam && namCab == nullptr);
-        const double irLatency = irActive ? double(std::max(aLoaded ? cb.ir[0].conv.getLatency() : 0, bLoaded ? cb.ir[1].conv.getLatency() : 0)) : 0.0;
+        const bool cabFilterOn = cabParam == CabMode::Filter || (cabParam == CabMode::Ir && !irLoaded) || (cabParam == CabMode::Nam && namCab == nullptr) ||
+                                 (cabParam == CabMode::Multi && !multiNow);
+        double irLatency = irActive ? double(std::max(aLoaded ? cb.ir[0].conv.getLatency() : 0, bLoaded ? cb.ir[1].conv.getLatency() : 0)) : 0.0;
+        if (multiNow)
+            for (const auto& s : multi_)
+                if (s.loaded.load()) irLatency = std::max(irLatency, double(s.conv.getLatency()));
+        if (cabinet == 0) {
+            if (multiNow && !multiWasActive_)  // coming in: the convolutions start from nothing, and the gains from zero
+                for (int k = 0; k < kMultiSlots; ++k) {
+                    multi_[k].conv.reset();
+                    multi_[k].convR.reset();
+                    multiRunning_[k] = false;
+                    multiGainNow_[k] = 0.0f;
+                }
+            multiWasActive_ = multiNow;
+            multiActiveNow_ = multiNow;
+        }
         const bool cabOn = cabValue(cabinet, ids::cabOn) > 0.5;
         if (cabOn && !cb.wasOn) {  // coming back: nothing of the convolution's old audio
             for (auto& slot : cb.ir) {
@@ -543,7 +610,9 @@ void SasProcessor::processCabinet(CabinetModule& cab, float* m, float* mR, std::
         }
     }
     bool haveR = pair;
-    if (cb.irActiveNow) {
+    if (cabinet == 0 && multiActiveNow_) {
+        processMulti(m, mR, pair, nn);
+    } else if (cb.irActiveNow) {
         const bool aLoaded = cb.aLoaded, bLoaded = cb.bLoaded;
         const int piece = convBlock_;
         auto convolve = [n, piece](juce::dsp::Convolution& conv, float* data) {

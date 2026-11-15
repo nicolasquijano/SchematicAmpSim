@@ -36,12 +36,14 @@ static std::vector<float> responseCurve(const juce::AudioBuffer<float>& mono, do
     return curve;
 }
 
-bool SasProcessor::loadImpulseResponseFromMemory(const void* data, std::size_t size, const juce::String& name, int slot, int cabinet) {
-    if (cabinet < 0 || cabinet > 1) return false;
-    auto& cb = cabs_[cabinet];
-    if (slot < 0 || slot >= kIrSlots) return false;
-    // The file is decoded here and the samples are handed over by value: the memory overload of the JUCE convolution reads its
-    // source later on a background thread, after a caller's temporary buffer is gone, and then silently loads nothing.
+std::vector<float> impulseCurve(const juce::AudioBuffer<float>& mono, double rate) {
+    double bandPower = 0.0;
+    return responseCurve(mono, rate, bandPower);
+}
+
+// The file is decoded here and the samples are handed over by value: the memory overload of the JUCE convolution reads its
+// source later on a background thread, after a caller's temporary buffer is gone, and then silently loads nothing.
+bool decodeImpulse(const void* data, std::size_t size, juce::AudioBuffer<float>& mono, double& rate, std::vector<float>& curve) {
     juce::AudioFormatManager formats;
     formats.registerBasicFormats();
     std::unique_ptr<juce::AudioFormatReader> reader(formats.createReaderFor(std::make_unique<juce::MemoryInputStream>(data, size, false)));
@@ -50,7 +52,7 @@ bool SasProcessor::loadImpulseResponseFromMemory(const void* data, std::size_t s
     const int length = int(std::min<juce::int64>(reader->lengthInSamples, juce::int64(reader->sampleRate * kMaxIrSeconds)));
     juce::AudioBuffer<float> all(int(reader->numChannels), length);
     reader->read(&all, 0, length, 0, true, true);
-    juce::AudioBuffer<float> mono(1, length);
+    mono.setSize(1, length);
     mono.copyFrom(0, 0, all, 0, 0, length);  // first channel: the amp is mono
     double energy = 0.0;
     for (int i = 0; i < length; ++i) energy += double(mono.getSample(0, i)) * double(mono.getSample(0, i));
@@ -59,16 +61,28 @@ bool SasProcessor::loadImpulseResponseFromMemory(const void* data, std::size_t s
     // volume. (Equal total energy would not do: a cabinet has almost nothing above 5 kHz, so its energy sits in the guitar band
     // and it would come out 9 to 14 dB louder. JUCE's own normalisation is about 20 dB lower.)
     double bandPower = 0.0;
-    auto curve = responseCurve(mono, reader->sampleRate, bandPower);
+    curve = responseCurve(mono, reader->sampleRate, bandPower);
     const double gain = bandPower > 0.0 ? 1.0 / std::sqrt(bandPower) : 1.0 / std::sqrt(energy);
     mono.applyGain(float(gain));
+    rate = reader->sampleRate;
+    return true;
+}
+
+bool SasProcessor::loadImpulseResponseFromMemory(const void* data, std::size_t size, const juce::String& name, int slot, int cabinet) {
+    if (cabinet < 0 || cabinet > 1) return false;
+    auto& cb = cabs_[cabinet];
+    if (slot < 0 || slot >= kIrSlots) return false;
+    juce::AudioBuffer<float> mono;
+    double rate = 0.0;
+    std::vector<float> curve;
+    if (!decodeImpulse(data, size, mono, rate, curve)) return false;
     {
         const juce::ScopedLock lock(irLock_);
         cb.ir[slot].bytes = juce::MemoryBlock(data, size);
         cb.ir[slot].name = name;
         cb.ir[slot].curve = std::move(curve);
         cb.ir[slot].mono = std::move(mono);
-        cb.ir[slot].rate = reader->sampleRate;
+        cb.ir[slot].rate = rate;
     }
     cb.ir[slot].loaded = true;
     applyImpulseResponses(cabinet);
@@ -161,12 +175,26 @@ SasProcessor::IrAlignInfo SasProcessor::irAlignInfo(int cabinet) const {
 void SasProcessor::parameterChanged(const juce::String& id, float) {
     for (int c = 0; c < 2; ++c)
         if (id == RackState::paramId(ids::irAlign, c)) alignDirty_[c] = true;
+    if (id == ids::mcAlign) multiAlignDirty_ = true;
+    // A slot of the multi loader whose polarity, delay or filters moved: its impulse is baked again.
+    for (const char* base : {ids::mcPolarity, ids::mcDelay, ids::mcHp, ids::mcLp})
+        if (id.startsWith(base) && id.length() > int(std::strlen(base)) && id[int(std::strlen(base))] == '_') {
+            const int k = id.fromLastOccurrenceOf("_", false, false).getIntValue() - 1;
+            if (k >= 0 && k < kMultiSlots) multiDirty_.fetch_or(1u << unsigned(k));
+        }
     triggerAsyncUpdate();
 }
 
 void SasProcessor::handleAsyncUpdate() {
     for (int c = 0; c < 2; ++c)
         if (alignDirty_[c].exchange(false)) applyImpulseResponses(c);
+    const unsigned dirty = multiDirty_.exchange(0u);
+    if (multiAlignDirty_.exchange(false) || (dirty != 0u && mcAlignP_->load() > 0.5f)) {
+        refreshMulti(-1);  // "in phase" was switched, or a polarity moved while it is on: all of them again
+    } else {
+        for (int k = 0; k < kMultiSlots; ++k)
+            if (dirty & (1u << unsigned(k))) bakeMulti(k);
+    }
 }
 
 // ------------------------------------------------------------------ NAM model

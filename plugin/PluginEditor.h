@@ -175,6 +175,8 @@ public:
     std::function<void()> onResized;
 };
 
+class MultiPanel;
+
 class SasEditor final : public juce::AudioProcessorEditor, public juce::DragAndDropContainer, private juce::Timer, private juce::ListBoxModel {
 public:
     explicit SasEditor(SasProcessor&);
@@ -186,6 +188,7 @@ public:
     void pollMeters();  // reads the processor's peaks into the level bars (the timer calls it)
     void updateTuner();  // runs the pitch detection on the latest input (the timer calls it)
     void updateImpulseStatus();  // the impulse names and response curves of the cabinet unit (the timer calls it)
+    void showModule(sas::SlotRef slot);  // opens a module of the rack page
     juce::StringArray pageNames() const { return {rackTab_.getButtonText(), tunerTab_.getButtonText()}; }
     // The input and output meters in the header (always there, whatever the page).
     float headerInputDb() const { return headIn_.levelDb(); }
@@ -272,6 +275,14 @@ private:
     juce::ToggleButton speakerIntense_{"Intense"};
     juce::ToggleButton alignOn_{"In phase"};  // the cabinet's impulses A and B put in phase
     juce::Label alignNote_;
+    // The multi impulse loader (cabinet mode MULTI): the plane and the strips on top, the spread and the phase switch in the blend panel's place.
+    std::unique_ptr<MultiPanel> multiPanel_;
+    std::unique_ptr<KnobWithLabel> multiSpread_;
+    juce::ToggleButton multiAlign_{"In phase"};
+    juce::Label multiAlignNote_;
+    std::unique_ptr<juce::AudioProcessorValueTreeState::ButtonAttachment> multiAlignAtt_;
+    bool multiMode_ = false;
+    void updateCabMode();
     juce::ToggleButton tunerOn_{"Tuner on"}, tunerMute_{"Mute output"};
     juce::ToggleButton vibrato_{"Vibrato"};  // shown only for amps that have an optical tremolo
     std::unique_ptr<juce::AudioProcessorValueTreeState::ButtonAttachment> alignAtt_, speakerIntenseAtt_, tunerOnAtt_, tunerMuteAtt_, vibratoAtt_;

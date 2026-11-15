@@ -30,6 +30,8 @@ target_sources(SchematicAmpSim PRIVATE
   ProcessorParams.cpp
   ProcessorRack.cpp
   ProcessorIrNam.cpp
+  ProcessorMulti.cpp
+  MultiPanel.cpp
   ProcessorState.cpp
   ProcessorCommon.h
   PluginProcessor.h

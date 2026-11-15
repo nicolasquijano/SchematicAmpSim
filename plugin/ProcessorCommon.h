@@ -30,3 +30,9 @@ constexpr double kMaxIrSeconds = 4.0;
 constexpr std::size_t kMaxStoredNamBytes = 16 * 1024 * 1024;
 
 }  // namespace
+
+// Decodes an audio file (from memory) into one levelled channel for the convolutions: the first channel, cut to kMaxIrSeconds, at unity gain over
+// the guitar band. `curve` is its magnitude response for the editor. False when the file is not audio or is silent.
+bool decodeImpulse(const void* data, std::size_t size, juce::AudioBuffer<float>& mono, double& rate, std::vector<float>& curve);
+// The magnitude response of an impulse in dB (see decodeImpulse).
+std::vector<float> impulseCurve(const juce::AudioBuffer<float>& mono, double rate);

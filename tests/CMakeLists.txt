@@ -12,6 +12,7 @@ add_executable(sas_tests
   test_amps_generic.cpp
   test_split.cpp
   test_ir_align.cpp
+  test_multi_ir.cpp
   test_tables.cpp
   test_gate.cpp
   test_condition.cpp
