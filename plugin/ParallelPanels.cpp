@@ -191,10 +191,15 @@ void AmpPanelB::resized() {
         auto in = bottom.reduced(8, 4);
         in.removeFromTop(18);
         note_.setBounds(in.removeFromBottom(30));
-        auto col1 = in.removeFromLeft(130);
-        tubeCaption_.setBounds(col1.removeFromTop(16));
-        tube_.setBounds(col1.removeFromTop(24));
-        bias_.setBounds(in.removeFromLeft(75));
+        // An amp with a transistor output stage has no power tubes to pick and no bias to set: those controls are not shown.
+        const bool solidState = shownAmp_ >= 0 && shownAmp_ < int(processor_.amps().size()) && processor_.amps()[std::size_t(shownAmp_)].power.tubes.empty();
+        for (auto* c : std::initializer_list<juce::Component*>{&tubeCaption_, &tube_, &bias_}) c->setVisible(!solidState);
+        if (!solidState) {
+            auto col1 = in.removeFromLeft(130);
+            tubeCaption_.setBounds(col1.removeFromTop(16));
+            tube_.setBounds(col1.removeFromTop(24));
+            bias_.setBounds(in.removeFromLeft(75));
+        }
         auto col2 = in.removeFromLeft(120);
         col2.removeFromLeft(10);
         noiseCaption_.setBounds(col2.removeFromTop(16));

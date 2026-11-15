@@ -940,11 +940,16 @@ void SasEditor::layoutAmpPanel() {
         auto cin = condPanel.reduced(8, 4);
         cin.removeFromTop(18);
         conditionNote_.setBounds(cin.removeFromBottom(16));
-        auto col1 = cin.removeFromLeft(130);
-        tubeCaption_.setBounds(col1.removeFromTop(16));
-        tube_.setBounds(col1.removeFromTop(24));
-        idleLabel_.setBounds(col1.removeFromTop(20));
-        bias_.setBounds(cin.removeFromLeft(condKnobW));
+        // An amp with a transistor output stage has no power tubes to pick and no bias to set: those controls are not shown.
+        const bool solidState = shownAmp_ >= 0 && shownAmp_ < int(processor_.amps().size()) && processor_.amps()[std::size_t(shownAmp_)].power.tubes.empty();
+        for (auto* c : std::initializer_list<juce::Component*>{&tubeCaption_, &tube_, &idleLabel_, &bias_}) c->setVisible(!solidState);
+        if (!solidState) {
+            auto col1 = cin.removeFromLeft(130);
+            tubeCaption_.setBounds(col1.removeFromTop(16));
+            tube_.setBounds(col1.removeFromTop(24));
+            idleLabel_.setBounds(col1.removeFromTop(20));
+            bias_.setBounds(cin.removeFromLeft(condKnobW));
+        }
         auto col2 = cin.removeFromLeft(120);
         col2.removeFromLeft(10);
         noiseCaption_.setBounds(col2.removeFromTop(16));
