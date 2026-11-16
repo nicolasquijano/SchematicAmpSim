@@ -22,7 +22,7 @@ using sas::ModuleType;
 static i18n::Language testLanguage() {
     const char* env = std::getenv("SAS_TEST_LANGUAGE");
     const std::string name = env ? env : "";
-    return name == "es" ? i18n::Language::Spanish : name == "pt" ? i18n::Language::Portuguese : name == "it" ? i18n::Language::Italian : name == "zh" ? i18n::Language::Chinese : name == "fr" ? i18n::Language::French : name == "de" ? i18n::Language::German : i18n::Language::English;
+    return name == "es" ? i18n::Language::Spanish : name == "pt" ? i18n::Language::Portuguese : name == "it" ? i18n::Language::Italian : name == "zh" ? i18n::Language::Chinese : name == "fr" ? i18n::Language::French : name == "de" ? i18n::Language::German : name == "ja" ? i18n::Language::Japanese : name == "ru" ? i18n::Language::Russian : name == "ko" ? i18n::Language::Korean : i18n::Language::English;
 }
 static const int sForceEnglish = (i18n::useForSession(testLanguage()), 0);
 
@@ -3010,7 +3010,7 @@ TEST_CASE("the interface follows the language: Spanish texts, English when there
     CHECK(i18n::fromSystemCode("es-ES") == i18n::Language::Spanish);
     CHECK(i18n::fromSystemCode("ES") == i18n::Language::Spanish);
     CHECK(i18n::fromSystemCode("en") == i18n::Language::English);
-    CHECK(i18n::fromSystemCode("ja_JP") == i18n::Language::English);
+    CHECK(i18n::fromSystemCode("nl_NL") == i18n::Language::English);
     CHECK(i18n::fromSystemCode("") == i18n::Language::English);
     // A message with a number inside, and the model messages of the processor.
     CHECK(i18n::namMessage("the file is too big") == juce::String::fromUTF8("el archivo es demasiado grande"));
@@ -3037,17 +3037,26 @@ TEST_CASE("Portuguese, Italian and Chinese: the system languages are detected an
     CHECK(i18n::fromSystemCode("de") == i18n::Language::German);
     CHECK(i18n::fromSystemCode("de_DE") == i18n::Language::German);
     CHECK(i18n::fromSystemCode("de-AT") == i18n::Language::German);
-    CHECK(i18n::fromSystemCode("ja_JP") == i18n::Language::English);
+    CHECK(i18n::fromSystemCode("ja") == i18n::Language::Japanese);
+    CHECK(i18n::fromSystemCode("ja_JP") == i18n::Language::Japanese);
+    CHECK(i18n::fromSystemCode("ru") == i18n::Language::Russian);
+    CHECK(i18n::fromSystemCode("ru-RU") == i18n::Language::Russian);
+    CHECK(i18n::fromSystemCode("ko") == i18n::Language::Korean);
+    CHECK(i18n::fromSystemCode("ko_KR") == i18n::Language::Korean);
+    CHECK(i18n::fromSystemCode("nl_NL") == i18n::Language::English);
     // Every language covers the same texts as the Spanish one.
     const auto es = i18n::translationCount(i18n::Language::Spanish);
     CHECK(es > 600);
-    for (auto lang : {i18n::Language::Portuguese, i18n::Language::Italian, i18n::Language::Chinese, i18n::Language::French, i18n::Language::German}) CHECK(i18n::translationCount(lang) == es);
+    for (auto lang : {i18n::Language::Portuguese, i18n::Language::Italian, i18n::Language::Chinese, i18n::Language::French, i18n::Language::German, i18n::Language::Japanese, i18n::Language::Russian, i18n::Language::Korean}) CHECK(i18n::translationCount(lang) == es);
     struct Expected { i18n::Language lang; const char* module; const char* tone; const char* tooBig; };
     const Expected expected[] = {{i18n::Language::Portuguese, "Remover este m\303\263dulo", "TOM", "o arquivo \303\251 grande demais"},
                                  {i18n::Language::Italian, "Rimuovi questo modulo", "TONO", "il file \303\250 troppo grande"},
                                  {i18n::Language::Chinese, "\347\247\273\351\231\244\346\255\244\346\250\241\345\235\227", "\351\237\263\350\211\262", "\346\226\207\344\273\266\345\244\252\345\244\247"},
                                  {i18n::Language::French, "Retirer ce module", "TONALIT\303\211", "le fichier est trop gros"},
-                                 {i18n::Language::German, "Dieses Modul entfernen", "TON", "die Datei ist zu gro\303\237"}};
+                                 {i18n::Language::German, "Dieses Modul entfernen", "TON", "die Datei ist zu gro\303\237"},
+                                 {i18n::Language::Japanese, "\343\201\223\343\201\256\343\203\242\343\202\270\343\203\245\343\203\274\343\203\253\343\202\222\345\211\212\351\231\244", "\343\203\210\343\203\274\343\203\263", "\343\203\225\343\202\241\343\202\244\343\203\253\343\201\214\345\244\247\343\201\215\343\201\231\343\201\216\343\201\276\343\201\231"},
+                                 {i18n::Language::Russian, "\320\243\320\264\320\260\320\273\320\270\321\202\321\214\040\321\215\321\202\320\276\321\202\040\320\274\320\276\320\264\321\203\320\273\321\214", "\320\242\320\225\320\234\320\221\320\240", "\321\204\320\260\320\271\320\273\040\321\201\320\273\320\270\321\210\320\272\320\276\320\274\040\320\261\320\276\320\273\321\214\321\210\320\276\320\271"},
+                                 {i18n::Language::Korean, "\354\235\264\040\353\252\250\353\223\210\040\354\240\234\352\261\260", "\355\206\244", "\355\214\214\354\235\274\354\235\264\040\353\204\210\353\254\264\040\355\201\275\353\213\210\353\213\244"}};
     for (const auto& e : expected) {
         i18n::useForSession(e.lang);
         INFO("language " << int(e.lang));

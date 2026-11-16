@@ -50,6 +50,9 @@ target_sources(SchematicAmpSim PRIVATE
   I18nZh.cpp
   I18nFr.cpp
   I18nDe.cpp
+  I18nJa.cpp
+  I18nRu.cpp
+  I18nKo.cpp
   ModuleUnit.cpp
   ModuleUnit.h
   ParallelPanels.cpp
@@ -145,5 +148,5 @@ target_link_libraries(SchematicAmpSim
 
 # The Spanish texts are written as UTF-8 in the source.
 if(MSVC)
-  set_source_files_properties(I18nEs.cpp I18nPt.cpp I18nIt.cpp I18nZh.cpp I18nFr.cpp I18nDe.cpp PROPERTIES COMPILE_OPTIONS /utf-8)
+  set_source_files_properties(I18nEs.cpp I18nPt.cpp I18nIt.cpp I18nZh.cpp I18nFr.cpp I18nDe.cpp I18nJa.cpp I18nRu.cpp I18nKo.cpp PROPERTIES COMPILE_OPTIONS /utf-8)
 endif()

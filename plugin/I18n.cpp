@@ -12,6 +12,9 @@ const std::unordered_map<std::string, std::string>& italianTable();     // I18nI
 const std::unordered_map<std::string, std::string>& chineseTable();     // I18nZh.cpp
 const std::unordered_map<std::string, std::string>& frenchTable();      // I18nFr.cpp
 const std::unordered_map<std::string, std::string>& germanTable();      // I18nDe.cpp
+const std::unordered_map<std::string, std::string>& japaneseTable();    // I18nJa.cpp
+const std::unordered_map<std::string, std::string>& russianTable();     // I18nRu.cpp
+const std::unordered_map<std::string, std::string>& koreanTable();      // I18nKo.cpp
 
 namespace {
 std::mutex gMutex;
@@ -33,6 +36,9 @@ juce::String languageKey(Language lang) {
         case Language::Chinese: return "chinese";
         case Language::French: return "french";
         case Language::German: return "german";
+        case Language::Japanese: return "japanese";
+        case Language::Russian: return "russian";
+        case Language::Korean: return "korean";
         default: return "auto";
     }
 }
@@ -47,7 +53,7 @@ void ensureLoaded() {
     gLoaded = true;
     const auto text = settingsFile().loadFileAsString().trim().toLowerCase();
     gPreference = Language::Auto;
-    for (auto lang : {Language::English, Language::Spanish, Language::Portuguese, Language::Italian, Language::Chinese, Language::French, Language::German})
+    for (auto lang : {Language::English, Language::Spanish, Language::Portuguese, Language::Italian, Language::Chinese, Language::French, Language::German, Language::Japanese, Language::Russian, Language::Korean})
         if (text == languageKey(lang)) gPreference = lang;
     gActive = resolve(gPreference);
 }
@@ -61,6 +67,9 @@ Language fromSystemCode(const juce::String& code) {
     if (c.startsWith("zh")) return Language::Chinese;
     if (c.startsWith("fr")) return Language::French;
     if (c.startsWith("de")) return Language::German;
+    if (c.startsWith("ja")) return Language::Japanese;
+    if (c.startsWith("ru")) return Language::Russian;
+    if (c.startsWith("ko")) return Language::Korean;
     return Language::English;
 }
 
@@ -101,6 +110,9 @@ juce::String languageName(Language lang) {
         case Language::Chinese: return juce::String::fromUTF8("\xe7\xae\x80\xe4\xbd\x93\xe4\xb8\xad\xe6\x96\x87");  // 简体中文
         case Language::French: return juce::String::fromUTF8("Fran\xc3\xa7" "ais");
         case Language::German: return "Deutsch";
+        case Language::Japanese: return juce::String::fromUTF8("\xe6\x97\xa5\xe6\x9c\xac\xe8\xaa\x9e");  // 日本語
+        case Language::Russian: return juce::String::fromUTF8("\xd0\xa0\xd1\x83\xd1\x81\xd1\x81\xd0\xba\xd0\xb8\xd0\xb9");  // Русский
+        case Language::Korean: return juce::String::fromUTF8("\xed\x95\x9c\xea\xb5\xad\xec\x96\xb4");  // 한국어
         default: return "Auto";
     }
 }
@@ -119,7 +131,10 @@ juce::String lookup(const juce::String& english) {
                         : lang == Language::Italian    ? italianTable()
                         : lang == Language::Chinese    ? chineseTable()
                         : lang == Language::French     ? frenchTable()
-                                                       : germanTable();
+                        : lang == Language::German     ? germanTable()
+                        : lang == Language::Japanese   ? japaneseTable()
+                        : lang == Language::Russian    ? russianTable()
+                                                       : koreanTable();
     const auto it = table.find(english.toStdString());
     return it == table.end() ? english : juce::String::fromUTF8(it->second.c_str());
 }
@@ -132,6 +147,9 @@ std::size_t translationCount(Language lang) {
         case Language::Chinese: return chineseTable().size();
         case Language::French: return frenchTable().size();
         case Language::German: return germanTable().size();
+        case Language::Japanese: return japaneseTable().size();
+        case Language::Russian: return russianTable().size();
+        case Language::Korean: return koreanTable().size();
         default: return 0;
     }
 }

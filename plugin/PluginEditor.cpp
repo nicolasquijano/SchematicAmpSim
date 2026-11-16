@@ -544,7 +544,7 @@ void SasEditor::showPresetMenu() {
     {  // the language of the interface: it applies the next time the editor window is opened
         juce::PopupMenu languages;
         const auto chosen = i18n::preference();
-        for (auto lang : {i18n::Language::Auto, i18n::Language::English, i18n::Language::Spanish, i18n::Language::Portuguese, i18n::Language::Italian, i18n::Language::Chinese, i18n::Language::French, i18n::Language::German})
+        for (auto lang : {i18n::Language::Auto, i18n::Language::English, i18n::Language::Spanish, i18n::Language::Portuguese, i18n::Language::Italian, i18n::Language::Chinese, i18n::Language::French, i18n::Language::German, i18n::Language::Japanese, i18n::Language::Russian, i18n::Language::Korean})
             languages.addItem(10 + int(lang), i18n::languageName(lang), true, chosen == lang);
         menu.addSeparator();
         menu.addSubMenu(tr("Language"), languages);
