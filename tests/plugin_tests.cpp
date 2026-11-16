@@ -19,7 +19,12 @@
 using sas::ModuleType;
 
 // The tests read texts of the interface in English, whatever the language of the machine they run on.
-static const int sForceEnglish = (i18n::useForSession(std::getenv("SAS_TEST_LANGUAGE") != nullptr && std::string(std::getenv("SAS_TEST_LANGUAGE")) == "es" ? i18n::Language::Spanish : i18n::Language::English), 0);
+static i18n::Language testLanguage() {
+    const char* env = std::getenv("SAS_TEST_LANGUAGE");
+    const std::string name = env ? env : "";
+    return name == "es" ? i18n::Language::Spanish : name == "pt" ? i18n::Language::Portuguese : name == "it" ? i18n::Language::Italian : name == "zh" ? i18n::Language::Chinese : name == "fr" ? i18n::Language::French : name == "de" ? i18n::Language::German : i18n::Language::English;
+}
+static const int sForceEnglish = (i18n::useForSession(testLanguage()), 0);
 
 namespace {
 
@@ -3005,13 +3010,56 @@ TEST_CASE("the interface follows the language: Spanish texts, English when there
     CHECK(i18n::fromSystemCode("es-ES") == i18n::Language::Spanish);
     CHECK(i18n::fromSystemCode("ES") == i18n::Language::Spanish);
     CHECK(i18n::fromSystemCode("en") == i18n::Language::English);
-    CHECK(i18n::fromSystemCode("fr_FR") == i18n::Language::English);
+    CHECK(i18n::fromSystemCode("ja_JP") == i18n::Language::English);
     CHECK(i18n::fromSystemCode("") == i18n::Language::English);
     // A message with a number inside, and the model messages of the processor.
     CHECK(i18n::namMessage("the file is too big") == juce::String::fromUTF8("el archivo es demasiado grande"));
     CHECK(i18n::namMessage("Trained at 44100 Hz, played at 48000 Hz: it will sound off-pitch.").contains("44100"));
     CHECK(i18n::namMessage("Trained at 44100 Hz, played at 48000 Hz: it will sound off-pitch.").contains("48000"));
     CHECK(trAll(juce::StringArray{"Mono", "Stereo"}) == juce::StringArray{"Mono", juce::String::fromUTF8("Est\303\251reo")});
+    i18n::useForSession(before);
+}
+
+TEST_CASE("Portuguese, Italian and Chinese: the system languages are detected and the texts are translated", "[i18n]") {
+    JuceInit init;
+    const auto before = i18n::active();
+    CHECK(i18n::fromSystemCode("pt") == i18n::Language::Portuguese);
+    CHECK(i18n::fromSystemCode("pt_BR") == i18n::Language::Portuguese);
+    CHECK(i18n::fromSystemCode("pt-PT") == i18n::Language::Portuguese);
+    CHECK(i18n::fromSystemCode("it") == i18n::Language::Italian);
+    CHECK(i18n::fromSystemCode("it_IT") == i18n::Language::Italian);
+    CHECK(i18n::fromSystemCode("zh") == i18n::Language::Chinese);
+    CHECK(i18n::fromSystemCode("zh_CN") == i18n::Language::Chinese);
+    CHECK(i18n::fromSystemCode("zh-Hans-CN") == i18n::Language::Chinese);
+    CHECK(i18n::fromSystemCode("fr") == i18n::Language::French);
+    CHECK(i18n::fromSystemCode("fr_FR") == i18n::Language::French);
+    CHECK(i18n::fromSystemCode("fr-CA") == i18n::Language::French);
+    CHECK(i18n::fromSystemCode("de") == i18n::Language::German);
+    CHECK(i18n::fromSystemCode("de_DE") == i18n::Language::German);
+    CHECK(i18n::fromSystemCode("de-AT") == i18n::Language::German);
+    CHECK(i18n::fromSystemCode("ja_JP") == i18n::Language::English);
+    // Every language covers the same texts as the Spanish one.
+    const auto es = i18n::translationCount(i18n::Language::Spanish);
+    CHECK(es > 600);
+    for (auto lang : {i18n::Language::Portuguese, i18n::Language::Italian, i18n::Language::Chinese, i18n::Language::French, i18n::Language::German}) CHECK(i18n::translationCount(lang) == es);
+    struct Expected { i18n::Language lang; const char* module; const char* tone; const char* tooBig; };
+    const Expected expected[] = {{i18n::Language::Portuguese, "Remover este m\303\263dulo", "TOM", "o arquivo \303\251 grande demais"},
+                                 {i18n::Language::Italian, "Rimuovi questo modulo", "TONO", "il file \303\250 troppo grande"},
+                                 {i18n::Language::Chinese, "\347\247\273\351\231\244\346\255\244\346\250\241\345\235\227", "\351\237\263\350\211\262", "\346\226\207\344\273\266\345\244\252\345\244\247"},
+                                 {i18n::Language::French, "Retirer ce module", "TONALIT\303\211", "le fichier est trop gros"},
+                                 {i18n::Language::German, "Dieses Modul entfernen", "TON", "die Datei ist zu gro\303\237"}};
+    for (const auto& e : expected) {
+        i18n::useForSession(e.lang);
+        INFO("language " << int(e.lang));
+        CHECK(tr("Remove this module") == juce::String::fromUTF8(e.module));
+        CHECK(tr("TONE") == juce::String::fromUTF8(e.tone));
+        CHECK(tr("a text that has no translation") == "a text that has no translation");
+        CHECK(i18n::namMessage("the file is too big") == juce::String::fromUTF8(e.tooBig));
+        const auto trained = i18n::namMessage("Trained at 44100 Hz, played at 48000 Hz: it will sound off-pitch.");
+        CHECK(trained.contains("44100"));
+        CHECK(trained.contains("48000"));
+        CHECK(i18n::languageName(e.lang).isNotEmpty());
+    }
     i18n::useForSession(before);
 }
 

@@ -544,7 +544,7 @@ void SasEditor::showPresetMenu() {
     {  // the language of the interface: it applies the next time the editor window is opened
         juce::PopupMenu languages;
         const auto chosen = i18n::preference();
-        for (auto lang : {i18n::Language::Auto, i18n::Language::English, i18n::Language::Spanish})
+        for (auto lang : {i18n::Language::Auto, i18n::Language::English, i18n::Language::Spanish, i18n::Language::Portuguese, i18n::Language::Italian, i18n::Language::Chinese, i18n::Language::French, i18n::Language::German})
             languages.addItem(10 + int(lang), i18n::languageName(lang), true, chosen == lang);
         menu.addSeparator();
         menu.addSubMenu(tr("Language"), languages);
@@ -770,9 +770,10 @@ void SasEditor::resized() {
     // Right: title and page tabs, then the page.
     {
         auto head = area.removeFromTop(70);  // tall enough for the level knobs
-        tunerTab_.setBounds(head.removeFromRight(58).withTrimmedTop(6).withHeight(28));
+        // The tabs are as wide as their texts need in the language in use ("Stimmgerät", "Accordeur"), at least what they always were.
+        tunerTab_.setBounds(head.removeFromRight(std::max(58, tunerTab_.getBestWidthForHeight(28))).withTrimmedTop(6).withHeight(28));
         head.removeFromRight(4);
-        rackTab_.setBounds(head.removeFromRight(54).withTrimmedTop(6).withHeight(28));
+        rackTab_.setBounds(head.removeFromRight(std::max(54, rackTab_.getBestWidthForHeight(28))).withTrimmedTop(6).withHeight(28));
         head.removeFromRight(14);
         // The meters and the level knobs: always there, whatever the page. From the right: the cost, then out (bar, knob, label), then in.
         const int row = head.getCentreY();
