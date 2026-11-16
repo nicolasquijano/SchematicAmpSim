@@ -27,11 +27,12 @@ public:
         heatUp_ = 1.0 - std::exp(-1.0 / (kHeatSeconds * fs));
         heatDown_ = 1.0 - std::exp(-1.0 / (kCoolSeconds * fs));
         hp_ = 1.0 - std::exp(-2.0 * kPi * kBreakupHz / fs);
+        envA_ = 1.0 - std::exp(-1.0 / (kMakeupSeconds * fs));
         amountA_ = 1.0 - std::exp(-1.0 / (0.02 * fs));
         reset();
     }
     void reset() {
-        ic1_ = ic2_ = heat_ = lp_ = 0.0;
+        ic1_ = ic2_ = heat_ = lp_ = envIn_ = envOut_ = 0.0;
         amountNow_ = amount_;
     }
     // 0..1; `intense` strengthens every effect.
@@ -75,23 +76,32 @@ public:
         lp_ += hp_ * (y - lp_);
         const double h = y - lp_;
         const double ah = std::abs(h);
+        double hb = h;  // the upper band as it leaves
         if (ah > kBreakupKnee) {
             const double limited = kBreakupKnee + kBreakupSoft * std::tanh((ah - kBreakupKnee) / kBreakupSoft);
-            y += std::min(a * 0.8, 1.0) * (std::copysign(limited, h) - h);
+            hb = h + std::min(a * 0.8, 1.0) * (std::copysign(limited, h) - h);
         }
+        // The limiter alone takes treble off (the peaks of the band are cut, so its level falls): the sound gets darker as the control goes up,
+        // which a speaker that breaks up does not do (it gets edgier). The band's level is given back, slowly, so only its shape changes: the
+        // peaks are rounded and the edge (the harmonics) stays, while the balance between bass and treble is left where it was.
+        envIn_ += envA_ * (h * h - envIn_);
+        envOut_ += envA_ * (hb * hb - envOut_);
+        const double makeup = std::clamp(std::sqrt(envIn_ / (envOut_ + 1e-18)), 1.0, kMakeupMax);
+        if (hb != h || makeup > 1.0005) y = lp_ + hb * makeup;
         return float(y);
     }
 
     static constexpr double kResonanceHz = 95.0, kQ = 1.6, kExcursionRef = 0.6;
     static constexpr double kHeatSeconds = 2.0, kCoolSeconds = 5.0;
     static constexpr double kBreakupHz = 1500.0, kBreakupKnee = 0.12, kBreakupSoft = 0.15;
+    static constexpr double kMakeupSeconds = 0.05, kMakeupMax = 2.0;
 
 private:
     static constexpr double kPi = 3.14159265358979323846;
     double fs_ = 48000.0, g0_ = 0.0, heatUp_ = 0.0, heatDown_ = 0.0, hp_ = 0.0, amountA_ = 0.0;
-    double amount_ = 0.0, amountNow_ = 0.0;
+    double amount_ = 0.0, amountNow_ = 0.0, envA_ = 0.0;
     bool intense_ = false;
-    double ic1_ = 0.0, ic2_ = 0.0, excursion_ = 0.0, heat_ = 0.0, lp_ = 0.0;
+    double ic1_ = 0.0, ic2_ = 0.0, excursion_ = 0.0, heat_ = 0.0, lp_ = 0.0, envIn_ = 0.0, envOut_ = 0.0;
 };
 
 }  // namespace sas

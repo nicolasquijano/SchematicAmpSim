@@ -128,3 +128,56 @@ TEST_CASE("speaker dynamics in the chain: a pushed amp loses level and an idle c
     CHECK(on < off * 0.97);  // the speaker compresses a hard bass note
     CHECK(on > off * 0.3);   // but does not mute it
 }
+
+TEST_CASE("speaker dynamics: gain by frequency and level (printed)", "[.speakerbench]") {
+    for (double amount : {0.3, 0.6, 1.0}) {
+        for (double amp : {0.05, 0.2, 0.5}) {
+            std::printf("amount %.1f, amplitude %.2f:", amount, amp);
+            for (double hz : {100.0, 200.0, 400.0, 800.0, 1600.0, 3200.0, 6400.0}) {
+                sas::SpeakerDynamics s;
+                s.prepare(kFs);
+                s.setAmount(amount, false);
+                const auto out = run(s, sine(hz, amp, 3.0));
+                const double g = bin(out, hz, 24000) / amp;
+                std::printf(" %5.0f Hz %+5.1f dB |", hz, 20.0 * std::log10(g + 1e-12));
+            }
+            std::printf("\n");
+        }
+    }
+}
+
+TEST_CASE("speaker dynamics in the chain: how much treble it takes off (printed)", "[.speakerbench]") {
+    const auto def = sas::loadEmbeddedAmp("jcm800_2203");
+    auto measure = [&](double speaker, bool intense) {
+        sas::Chain chain(def, kFs);
+        sas::ChainSettings s;
+        for (const auto& k : def.preamp.knobs) s.knobs.push_back(k.def);
+        for (const auto& k : def.power.knobs) s.powerKnobs.push_back(k.def);
+        s.presence = def.power.presenceDefault;
+        s.quality = sas::Quality::Lite;
+        s.cabFilter = false;
+        s.speaker = speaker;
+        s.speakerIntense = intense;
+        chain.snap(s);
+        const auto in = sine(196.0, 0.3, 2.5);
+        std::vector<float> out(in.size());
+        chain.processAmp(in.data(), out.data(), in.size());
+        sas::Biquad hp = sas::Biquad::highpass(float(kFs), 2500.0f, 0.707f);
+        double total = 0, high = 0;
+        for (std::size_t i = out.size() / 2; i < out.size(); ++i) {
+            total += double(out[i]) * out[i];
+            const float h = hp.process(out[i]);
+            high += double(h) * h;
+        }
+        const std::size_t n = out.size() - out.size() / 2;
+        return std::pair{10.0 * std::log10(total / double(n) + 1e-20), 10.0 * std::log10(high / std::max(total, 1e-20))};
+    };
+    const auto off = measure(0.0, false);
+    for (double amount : {0.0, 0.3, 0.6, 1.0}) {
+        const auto r = measure(amount, false);
+        std::printf("speaker %.1f: level %+5.1f dB, treble (>2.5 kHz) share %+5.1f dB (change %+4.1f dB, level change %+4.1f dB)\n", amount, r.first, r.second,
+                    r.second - off.second, r.first - off.first);
+    }
+    const auto r = measure(1.0, true);
+    std::printf("speaker 1.0 intense: level %+5.1f dB, treble share %+5.1f dB (change %+4.1f dB)\n", r.first, r.second, r.second - off.second);
+}
