@@ -5,41 +5,13 @@
  "name": "American Clean 120",
  "output_db": 22.0,
  "ui": [
-  {
-   "param": "volume",
-   "knob": "volume",
-   "label": "VOLUME"
-  },
-  {
-   "param": "bass",
-   "knob": "bass",
-   "label": "BASS"
-  },
-  {
-   "param": "middle",
-   "knob": "middle",
-   "label": "MIDDLE"
-  },
-  {
-   "param": "treble",
-   "knob": "treble",
-   "label": "TREBLE"
-  },
-  {
-   "param": "volume2",
-   "knob": "hi_treble",
-   "label": "HI-TREBLE"
-  },
-  {
-   "param": "master",
-   "knob": "distortion",
-   "label": "DISTORTION"
-  },
-  {
-   "param": "reverb",
-   "knob": "reverb",
-   "label": "REVERB"
-  }
+  { "param": "volume", "knob": "volume", "label": "VOLUME", "group": "PREAMP" },
+  { "param": "bass", "knob": "bass", "label": "BASS", "group": "TONE" },
+  { "param": "middle", "knob": "middle", "label": "MIDDLE", "group": "TONE" },
+  { "param": "treble", "knob": "treble", "label": "TREBLE", "group": "TONE" },
+  { "param": "volume2", "knob": "hi_treble", "label": "HI-TREBLE", "group": "TONE" },
+  { "param": "reverb", "knob": "reverb", "label": "REVERB", "group": "EFFECTS" },
+  { "param": "master", "knob": "distortion", "label": "DISTORTION", "group": "EFFECTS" }
  ],
  "theme": {
   "background": "#0f1012",

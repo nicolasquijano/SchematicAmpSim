@@ -47,12 +47,12 @@
   },
 
   "ui": [
-    { "param": "volume",   "knob": "brilliant_volume", "label": "BRILLIANT" },
-    { "param": "volume2",  "knob": "normal_volume",    "label": "NORMAL" },
-    { "param": "bass",     "knob": "bass",             "label": "BASS" },
-    { "param": "treble",   "knob": "treble",           "label": "TREBLE" },
-    { "param": "presence",                              "label": "CUT" }
-  ],
+  { "param": "volume", "knob": "brilliant_volume", "label": "BRILLIANT", "group": "CHANNELS" },
+  { "param": "volume2", "knob": "normal_volume", "label": "NORMAL", "group": "CHANNELS" },
+  { "param": "treble", "knob": "treble", "label": "TREBLE", "group": "TONE" },
+  { "param": "bass", "knob": "bass", "label": "BASS", "group": "TONE" },
+  { "param": "presence", "label": "CUT", "group": "OUTPUT" }
+ ],
 
   "power": {
     "transformer_parasitics": { "primary_pf": 150, "core_loss_ohms": 84000 },

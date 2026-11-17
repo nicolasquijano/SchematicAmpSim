@@ -6,14 +6,14 @@
   "name": "British 900",
 
   "ui": [
-    { "param": "volume",   "knob": "gain",   "label": "GAIN 1" },
-    { "param": "volume2",  "knob": "gain2",  "label": "GAIN 2" },
-    { "param": "bass",     "knob": "bass",   "label": "BASS" },
-    { "param": "middle",   "knob": "middle", "label": "MIDDLE" },
-    { "param": "treble",   "knob": "treble", "label": "TREBLE" },
-    { "param": "presence",                    "label": "PRESENCE" },
-    { "param": "master",   "knob": "master", "label": "MASTER" }
-  ],
+  { "param": "volume", "knob": "gain", "label": "GAIN 1", "group": "PREAMP" },
+  { "param": "volume2", "knob": "gain2", "label": "GAIN 2", "group": "PREAMP" },
+  { "param": "bass", "knob": "bass", "label": "BASS", "group": "TONE" },
+  { "param": "middle", "knob": "middle", "label": "MIDDLE", "group": "TONE" },
+  { "param": "treble", "knob": "treble", "label": "TREBLE", "group": "TONE" },
+  { "param": "presence", "label": "PRESENCE", "group": "OUTPUT" },
+  { "param": "master", "knob": "master", "label": "MASTER", "group": "OUTPUT" }
+ ],
 
   "theme": {
     "background": "#0c0b0b",

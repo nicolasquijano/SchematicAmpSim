@@ -207,50 +207,15 @@
   ]
  },
  "ui": [
-  {
-   "param": "volume",
-   "knob": "volume",
-   "label": "VOLUME"
-  },
-  {
-   "param": "bass",
-   "knob": "bass",
-   "label": "BASS"
-  },
-  {
-   "param": "middle",
-   "knob": "middle",
-   "label": "MIDDLE"
-  },
-  {
-   "param": "treble",
-   "knob": "treble",
-   "label": "TREBLE"
-  },
-  {
-   "param": "presence",
-   "label": "PRESENCE"
-  },
-  {
-   "param": "master",
-   "knob": "master",
-   "label": "MASTER"
-  },
-  {
-   "param": "reverb",
-   "knob": "od_trim",
-   "label": "OD TRIM"
-  },
-  {
-   "param": "volume2",
-   "knob": "od_level",
-   "label": "OD LEVEL"
-  },
-  {
-   "param": "vib_intensity",
-   "knob": "od_ratio",
-   "label": "RATIO"
-  }
+  { "param": "volume", "knob": "volume", "label": "VOLUME", "group": "PREAMP" },
+  { "param": "bass", "knob": "bass", "label": "BASS", "group": "TONE" },
+  { "param": "middle", "knob": "middle", "label": "MIDDLE", "group": "TONE" },
+  { "param": "treble", "knob": "treble", "label": "TREBLE", "group": "TONE" },
+  { "param": "presence", "label": "PRESENCE", "group": "OUTPUT" },
+  { "param": "master", "knob": "master", "label": "MASTER", "group": "OUTPUT" },
+  { "param": "reverb", "knob": "od_trim", "label": "OD TRIM", "group": "OVERDRIVE" },
+  { "param": "volume2", "knob": "od_level", "label": "OD LEVEL", "group": "OVERDRIVE" },
+  { "param": "vib_intensity", "knob": "od_ratio", "label": "RATIO", "group": "OVERDRIVE" }
  ],
  "power": {
   "transformer_parasitics": {

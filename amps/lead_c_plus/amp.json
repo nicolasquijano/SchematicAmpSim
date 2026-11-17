@@ -5,65 +5,19 @@
  "name": "American Lead C+",
  "output_db": 1.5,
  "ui": [
-  {
-   "param": "volume",
-   "knob": "volume",
-   "label": "VOL 1"
-  },
-  {
-   "param": "volume2",
-   "knob": "lead_drive",
-   "label": "LEAD DRIVE"
-  },
-  {
-   "param": "reverb",
-   "knob": "lead_master",
-   "label": "LEAD MASTER"
-  },
-  {
-   "param": "bass",
-   "knob": "bass",
-   "label": "BASS"
-  },
-  {
-   "param": "middle",
-   "knob": "middle",
-   "label": "MIDDLE"
-  },
-  {
-   "param": "treble",
-   "knob": "treble",
-   "label": "TREBLE"
-  },
-  {
-   "param": "presence",
-   "label": "PRESENCE"
-  },
-  {
-   "param": "master",
-   "knob": "master",
-   "label": "MASTER"
-  },
-  {
-   "param": "aeq1",
-   "label": "60 Hz"
-  },
-  {
-   "param": "aeq2",
-   "label": "240 Hz"
-  },
-  {
-   "param": "aeq3",
-   "label": "750 Hz"
-  },
-  {
-   "param": "aeq4",
-   "label": "2.2 kHz"
-  },
-  {
-   "param": "aeq5",
-   "label": "6.6 kHz"
-  }
+  { "param": "volume", "knob": "volume", "label": "VOL 1", "group": "CHANNELS" },
+  { "param": "volume2", "knob": "lead_drive", "label": "LEAD DRIVE", "group": "CHANNELS" },
+  { "param": "reverb", "knob": "lead_master", "label": "LEAD MSTR", "group": "CHANNELS" },
+  { "param": "bass", "knob": "bass", "label": "BASS", "group": "TONE" },
+  { "param": "middle", "knob": "middle", "label": "MIDDLE", "group": "TONE" },
+  { "param": "treble", "knob": "treble", "label": "TREBLE", "group": "TONE" },
+  { "param": "presence", "label": "PRESENCE", "group": "OUTPUT" },
+  { "param": "master", "knob": "master", "label": "MASTER", "group": "OUTPUT" },
+  { "param": "aeq1", "label": "60 Hz", "group": "GRAPHIC EQ" },
+  { "param": "aeq2", "label": "240 Hz", "group": "GRAPHIC EQ" },
+  { "param": "aeq3", "label": "750 Hz", "group": "GRAPHIC EQ" },
+  { "param": "aeq4", "label": "2.2 kHz", "group": "GRAPHIC EQ" },
+  { "param": "aeq5", "label": "6.6 kHz", "group": "GRAPHIC EQ" }
  ],
  "theme": {
   "background": "#0e0e0d",

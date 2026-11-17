@@ -225,6 +225,8 @@ private:
     void applyTheme(const sas::AmpDef&);  // colours of the shown amp
     // The amp unit and the cabinet unit of the rack page: their controls live in two panels the editor owns.
     void layoutAmpPanel();
+    int ampTopHeight() const;   // the knob row of the amp unit: its faceplate, or the knobs (taller when they have section titles)
+    void updateKnobActivity();  // dims the knobs the selectors currently make useless (amp.json "active_when")
     void layoutCabPanel();
     int ampPanelHeight() const;
     int cabPanelHeight() const;

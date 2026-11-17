@@ -81,15 +81,15 @@
   },
 
   "ui": [
-    { "param": "volume",  "knob": "vibrato_volume", "label": "VIB CHAN" },
-    { "param": "volume2", "knob": "normal_volume",  "label": "NORM CHAN" },
-    { "param": "bass",    "knob": "bass",           "label": "BASS" },
-    { "param": "middle",  "knob": "middle",         "label": "MIDDLE" },
-    { "param": "treble",  "knob": "treble",         "label": "TREBLE" },
-    { "param": "vib_speed",     "label": "SPEED" },
-    { "param": "vib_intensity", "knob": "intensity", "label": "INTENSITY" },
-    { "param": "reverb",        "knob": "reverb",    "label": "REVERB" }
-  ],
+  { "param": "volume", "knob": "vibrato_volume", "label": "VIB CHAN", "group": "CHANNELS" },
+  { "param": "volume2", "knob": "normal_volume", "label": "NORM CHAN", "group": "CHANNELS" },
+  { "param": "bass", "knob": "bass", "label": "BASS", "group": "TONE" },
+  { "param": "middle", "knob": "middle", "label": "MIDDLE", "group": "TONE" },
+  { "param": "treble", "knob": "treble", "label": "TREBLE", "group": "TONE" },
+  { "param": "vib_speed", "label": "SPEED", "group": "VIBRATO" },
+  { "param": "vib_intensity", "knob": "intensity", "label": "INTENSITY", "group": "VIBRATO" },
+  { "param": "reverb", "knob": "reverb", "label": "REVERB", "group": "REVERB" }
+ ],
 
   "power": {
     "transformer_parasitics": { "primary_pf": 150, "core_loss_ohms": 44000 },

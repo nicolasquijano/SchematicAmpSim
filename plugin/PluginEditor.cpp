@@ -92,6 +92,7 @@ SasEditor::SasEditor(SasProcessor& p)
                 param->beginChangeGesture();
                 param->setValueNotifyingHost(param->convertTo0to1(float(index)));
                 param->endChangeGesture();
+                updateKnobActivity();
             }
         };
     }
@@ -400,8 +401,25 @@ void SasEditor::showAmp(int index) {
     refreshNam();
     refreshNamCab();
     ampPanel_.resized();
+    updateKnobActivity();
     if (rackPage_) rackPage_->relayout();
     repaint();
+}
+
+void SasEditor::updateKnobActivity() {
+    if (shownAmp_ < 0 || shownAmp_ >= int(processor_.amps().size())) return;
+    const auto& def = processor_.amps()[std::size_t(shownAmp_)];
+    for (std::size_t i = 0; i < ampKnobs_.size() && i < def.ui.size(); ++i) {
+        bool active = true;
+        for (const auto& [name, positions] : def.ui[i].activeWhen)
+            for (std::size_t s = 0; s < def.preamp.selectors.size() && s < 6; ++s) {
+                if (def.preamp.selectors[s].name != name) continue;
+                const int now = int(processor_.apvts.getRawParameterValue(ids::sel[s])->load() + 0.5f);
+                active = active && std::find(positions.begin(), positions.end(), now) != positions.end();
+            }
+        const float alpha = active ? 1.0f : 0.35f;
+        if (ampKnobs_[i]->getAlpha() != alpha) ampKnobs_[i]->setAlpha(alpha);
+    }
 }
 
 void SasEditor::pollMeters() {
@@ -489,6 +507,7 @@ void SasEditor::timerCallback() {
         const int now = int(processor_.apvts.getRawParameterValue(ids::sel[i])->load() + 0.5f);
         if (now < selBox_[i].getNumItems() && selBox_[i].getSelectedItemIndex() != now) selBox_[i].setSelectedItemIndex(now, juce::dontSendNotification);
     }
+    updateKnobActivity();
 
     if (const int tubeNow = processor_.wantedCondition().tube;
         tubeNow < tube_.getNumItems() && tube_.getSelectedItemIndex() != tubeNow)
@@ -819,7 +838,14 @@ void SasEditor::resized() {
     repaint();
 }
 
-int SasEditor::ampPanelHeight() const { return (face_ ? 300 : 170) + 8 + 136; }
+int SasEditor::ampTopHeight() const {
+    if (face_) return 300;
+    const bool grouped = shownAmp_ >= 0 && shownAmp_ < int(processor_.amps().size()) && !processor_.amps()[std::size_t(shownAmp_)].ui.empty() &&
+                         !processor_.amps()[std::size_t(shownAmp_)].ui.front().group.empty();
+    return grouped ? 215 : 170;
+}
+
+int SasEditor::ampPanelHeight() const { return ampTopHeight() + 8 + 136; }
 
 // The cabinet unit changes shape with its mode: MULTI has the plane and eight strips where the two impulses A and B are otherwise.
 void SasEditor::updateCabMode() {
@@ -857,7 +883,7 @@ void SasEditor::layoutAmpPanel() {
     panels.clear();
     auto area = ampPanel_.getLocalBounds();
     const bool namAmp = shownAmp_ >= 0 && processor_.amps()[std::size_t(shownAmp_)].nam;
-    auto top = area.removeFromTop(face_ ? 300 : 170);
+    auto top = area.removeFromTop(ampTopHeight());
     area.removeFromTop(gap);
     auto mid = area;  // the guitar, the power tubes and the amp's condition share one row
 
@@ -907,9 +933,26 @@ void SasEditor::layoutAmpPanel() {
             namName_.setBounds(strip.removeFromTop(24));
             namNote_.setBounds(strip);
         }
-        const int n = std::max<int>(1, int(ampKnobs_.size()));
-        const int w = row.getWidth() / n;
-        for (auto& k : ampKnobs_) k->setBounds(row.removeFromLeft(w));
+        const auto& ui = shownAmp_ >= 0 ? processor_.amps()[std::size_t(shownAmp_)].ui : std::vector<sas::UiKnob>{};
+        const bool grouped = !ui.empty() && !ui.front().group.empty();
+        if (grouped) {
+            // Neighbouring knobs with the same "group" share a block with its title; a block is as wide as its knobs.
+            const int n = std::max<int>(1, int(ampKnobs_.size()));
+            const int w = row.getWidth() / n;
+            for (std::size_t i = 0; i < ampKnobs_.size();) {
+                std::size_t j = i;
+                while (j < ampKnobs_.size() && j < ui.size() && ui[j].group == ui[i].group) ++j;
+                auto block = row.removeFromLeft(w * int(j - i));
+                panels.push_back({block.expanded(-1, 2).withTrimmedBottom(0), ui[i].group});
+                auto inner = block.withTrimmedTop(20);
+                for (std::size_t k = i; k < j; ++k) ampKnobs_[k]->setBounds(inner.removeFromLeft(w));
+                i = j;
+            }
+        } else {
+            const int n = std::max<int>(1, int(ampKnobs_.size()));
+            const int w = row.getWidth() / n;
+            for (auto& k : ampKnobs_) k->setBounds(row.removeFromLeft(w));
+        }
     }
 
     // Middle row: the guitar and the power tubes (the input and output levels are in the header).

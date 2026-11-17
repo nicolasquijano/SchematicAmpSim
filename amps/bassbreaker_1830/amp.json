@@ -5,37 +5,13 @@
   "output_db": 6.2,
   "name": "American 18/30",
   "ui": [
-    {
-      "param": "volume",
-      "knob": "volume1",
-      "label": "VOLUME 1"
-    },
-    {
-      "param": "treble",
-      "knob": "treble",
-      "label": "TREBLE"
-    },
-    {
-      "param": "middle",
-      "knob": "middle",
-      "label": "MIDDLE"
-    },
-    {
-      "param": "bass",
-      "knob": "bass",
-      "label": "BASS"
-    },
-    {
-      "param": "volume2",
-      "knob": "volume2",
-      "label": "VOLUME 2"
-    },
-    {
-      "param": "clean_treble",
-      "knob": "tone",
-      "label": "TONE (CH 2)"
-    }
-  ],
+  { "param": "volume", "knob": "volume1", "label": "VOLUME 1", "group": "VOLUMES" },
+  { "param": "volume2", "knob": "volume2", "label": "VOLUME 2", "group": "VOLUMES" },
+  { "param": "treble", "knob": "treble", "label": "TREBLE", "group": "TONE" },
+  { "param": "middle", "knob": "middle", "label": "MIDDLE", "group": "TONE" },
+  { "param": "bass", "knob": "bass", "label": "BASS", "group": "TONE" },
+  { "param": "clean_treble", "knob": "tone", "label": "TONE (CH 2)", "group": "TONE" }
+ ],
   "theme": {
     "background": "#0c0c0d",
     "panel": "#1a1a1b",

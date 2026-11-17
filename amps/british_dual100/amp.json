@@ -5,45 +5,14 @@
  "name": "British Dual 100",
  "output_db": 2.0,
  "ui": [
-  {
-   "param": "volume2",
-   "knob": "classic_gain",
-   "label": "CLASSIC GAIN"
-  },
-  {
-   "param": "volume",
-   "knob": "classic_volume",
-   "label": "CLASSIC VOLUME"
-  },
-  {
-   "param": "clean_gain",
-   "knob": "ultra_gain",
-   "label": "ULTRA GAIN"
-  },
-  {
-   "param": "clean_volume",
-   "knob": "ultra_volume",
-   "label": "ULTRA VOLUME"
-  },
-  {
-   "param": "bass",
-   "knob": "bass",
-   "label": "BASS"
-  },
-  {
-   "param": "middle",
-   "knob": "middle",
-   "label": "MIDDLE"
-  },
-  {
-   "param": "treble",
-   "knob": "treble",
-   "label": "TREBLE"
-  },
-  {
-   "param": "presence",
-   "label": "PRESENCE"
-  }
+  { "param": "volume2", "knob": "classic_gain", "label": "GAIN", "group": "CLASSIC", "active_when": {"channel": [0]} },
+  { "param": "volume", "knob": "classic_volume", "label": "VOLUME", "group": "CLASSIC", "active_when": {"channel": [0]} },
+  { "param": "clean_gain", "knob": "ultra_gain", "label": "GAIN", "group": "ULTRA", "active_when": {"channel": [1]} },
+  { "param": "clean_volume", "knob": "ultra_volume", "label": "VOLUME", "group": "ULTRA", "active_when": {"channel": [1]} },
+  { "param": "bass", "knob": "bass", "label": "BASS", "group": "TONE" },
+  { "param": "middle", "knob": "middle", "label": "MIDDLE", "group": "TONE" },
+  { "param": "treble", "knob": "treble", "label": "TREBLE", "group": "TONE" },
+  { "param": "presence", "label": "PRESENCE", "group": "OUTPUT" }
  ],
  "theme": {
   "background": "#0d0a0a",

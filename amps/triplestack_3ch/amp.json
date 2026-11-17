@@ -372,36 +372,13 @@
     ]
   },
   "ui": [
-    {
-      "param": "volume",
-      "knob": "gain",
-      "label": "GAIN"
-    },
-    {
-      "param": "bass",
-      "knob": "bass",
-      "label": "BASS"
-    },
-    {
-      "param": "middle",
-      "knob": "mid",
-      "label": "MID"
-    },
-    {
-      "param": "treble",
-      "knob": "treble",
-      "label": "TREBLE"
-    },
-    {
-      "param": "master",
-      "knob": "master",
-      "label": "MASTER"
-    },
-    {
-      "param": "presence",
-      "label": "PRESENCE"
-    }
-  ],
+  { "param": "volume", "knob": "gain", "label": "GAIN", "group": "PREAMP" },
+  { "param": "bass", "knob": "bass", "label": "BASS", "group": "TONE" },
+  { "param": "middle", "knob": "mid", "label": "MID", "group": "TONE" },
+  { "param": "treble", "knob": "treble", "label": "TREBLE", "group": "TONE" },
+  { "param": "master", "knob": "master", "label": "MASTER", "group": "OUTPUT" },
+  { "param": "presence", "label": "PRESENCE", "group": "OUTPUT" }
+ ],
   "power": {
     "transformer_parasitics": { "primary_pf": 150, "core_loss_ohms": 46000 },
     "tubes": [

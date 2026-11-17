@@ -5,70 +5,19 @@
  "name": "German Ultra",
  "output_db": -1.0,
  "ui": [
-  {
-   "param": "volume2",
-   "knob": "gain",
-   "label": "GAIN"
-  },
-  {
-   "param": "treble",
-   "knob": "treble",
-   "label": "TREBLE"
-  },
-  {
-   "param": "middle",
-   "knob": "middle",
-   "label": "MIDDLE"
-  },
-  {
-   "param": "bass",
-   "knob": "bass",
-   "label": "BASS"
-  },
-  {
-   "param": "volume",
-   "knob": "volume",
-   "label": "VOLUME"
-  },
-  {
-   "param": "clean_gain",
-   "knob": "clean_gain",
-   "label": "CLEAN GAIN"
-  },
-  {
-   "param": "clean_treble",
-   "knob": "clean_treble",
-   "label": "CLEAN TREBLE"
-  },
-  {
-   "param": "clean_middle",
-   "knob": "clean_middle",
-   "label": "CLEAN MIDDLE"
-  },
-  {
-   "param": "clean_bass",
-   "knob": "clean_bass",
-   "label": "CLEAN BASS"
-  },
-  {
-   "param": "clean_presence",
-   "knob": "clean_presence",
-   "label": "CLEAN PRES"
-  },
-  {
-   "param": "clean_volume",
-   "knob": "clean_volume",
-   "label": "CLEAN VOLUME"
-  },
-  {
-   "param": "master",
-   "knob": "master",
-   "label": "MASTER"
-  },
-  {
-   "param": "presence",
-   "label": "PRESENCE"
-  }
+  { "param": "volume2", "knob": "gain", "label": "GAIN", "group": "OVERDRIVE", "active_when": {"channel": [0]} },
+  { "param": "treble", "knob": "treble", "label": "TREBLE", "group": "OVERDRIVE", "active_when": {"channel": [0]} },
+  { "param": "middle", "knob": "middle", "label": "MIDDLE", "group": "OVERDRIVE", "active_when": {"channel": [0]} },
+  { "param": "bass", "knob": "bass", "label": "BASS", "group": "OVERDRIVE", "active_when": {"channel": [0]} },
+  { "param": "volume", "knob": "volume", "label": "VOLUME", "group": "OVERDRIVE", "active_when": {"channel": [0]} },
+  { "param": "clean_gain", "knob": "clean_gain", "label": "GAIN", "group": "CLEAN", "active_when": {"channel": [1]} },
+  { "param": "clean_treble", "knob": "clean_treble", "label": "TREBLE", "group": "CLEAN", "active_when": {"channel": [1]} },
+  { "param": "clean_middle", "knob": "clean_middle", "label": "MIDDLE", "group": "CLEAN", "active_when": {"channel": [1]} },
+  { "param": "clean_bass", "knob": "clean_bass", "label": "BASS", "group": "CLEAN", "active_when": {"channel": [1]} },
+  { "param": "clean_presence", "knob": "clean_presence", "label": "PRESENCE", "group": "CLEAN", "active_when": {"channel": [1]} },
+  { "param": "clean_volume", "knob": "clean_volume", "label": "VOLUME", "group": "CLEAN", "active_when": {"channel": [1]} },
+  { "param": "master", "knob": "master", "label": "MASTER", "group": "OUTPUT" },
+  { "param": "presence", "label": "PRESENCE", "group": "OUTPUT" }
  ],
  "theme": {
   "background": "#0b0c10",

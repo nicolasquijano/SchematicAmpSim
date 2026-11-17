@@ -5,45 +5,14 @@
  "name": "British 800 KK",
  "output_db": -0.6,
  "ui": [
-  {
-   "param": "volume",
-   "knob": "volume",
-   "label": "PREAMP"
-  },
-  {
-   "param": "bass",
-   "knob": "bass",
-   "label": "BASS"
-  },
-  {
-   "param": "middle",
-   "knob": "middle",
-   "label": "MIDDLE"
-  },
-  {
-   "param": "treble",
-   "knob": "treble",
-   "label": "TREBLE"
-  },
-  {
-   "param": "presence",
-   "label": "PRESENCE"
-  },
-  {
-   "param": "master",
-   "knob": "master",
-   "label": "MASTER"
-  },
-  {
-   "param": "volume2",
-   "knob": "assault",
-   "label": "ASSAULT"
-  },
-  {
-   "param": "reverb",
-   "knob": "gate",
-   "label": "GATE"
-  }
+  { "param": "volume", "knob": "volume", "label": "PREAMP", "group": "PREAMP" },
+  { "param": "bass", "knob": "bass", "label": "BASS", "group": "TONE" },
+  { "param": "middle", "knob": "middle", "label": "MIDDLE", "group": "TONE" },
+  { "param": "treble", "knob": "treble", "label": "TREBLE", "group": "TONE" },
+  { "param": "presence", "label": "PRESENCE", "group": "OUTPUT" },
+  { "param": "master", "knob": "master", "label": "MASTER", "group": "OUTPUT" },
+  { "param": "volume2", "knob": "assault", "label": "ASSAULT", "group": "EFFECTS" },
+  { "param": "reverb", "knob": "gate", "label": "GATE", "group": "EFFECTS" }
  ],
  "theme": {
   "background": "#0d0c0a",

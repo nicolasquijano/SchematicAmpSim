@@ -5,40 +5,13 @@
  "name": "American 5153",
  "output_db": 11.9,
  "ui": [
-  {
-   "param": "volume2",
-   "knob": "gain",
-   "label": "GAIN"
-  },
-  {
-   "param": "bass",
-   "knob": "low",
-   "label": "LOW"
-  },
-  {
-   "param": "middle",
-   "knob": "mid",
-   "label": "MID"
-  },
-  {
-   "param": "treble",
-   "knob": "high",
-   "label": "HIGH"
-  },
-  {
-   "param": "volume",
-   "knob": "volume",
-   "label": "VOLUME"
-  },
-  {
-   "param": "presence",
-   "label": "PRESENCE"
-  },
-  {
-   "param": "resonance",
-   "power_knob": "resonance",
-   "label": "RESONANCE"
-  }
+  { "param": "volume2", "knob": "gain", "label": "GAIN", "group": "PREAMP" },
+  { "param": "bass", "knob": "low", "label": "LOW", "group": "TONE" },
+  { "param": "middle", "knob": "mid", "label": "MID", "group": "TONE" },
+  { "param": "treble", "knob": "high", "label": "HIGH", "group": "TONE" },
+  { "param": "volume", "knob": "volume", "label": "VOLUME", "group": "OUTPUT" },
+  { "param": "presence", "label": "PRESENCE", "group": "OUTPUT" },
+  { "param": "resonance", "power_knob": "resonance", "label": "RESONANCE", "group": "OUTPUT" }
  ],
  "theme": {
   "background": "#0d100d",

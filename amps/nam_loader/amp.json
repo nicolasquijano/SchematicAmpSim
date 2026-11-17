@@ -6,12 +6,12 @@
   "nam": true,
 
   "ui": [
-    { "param": "volume", "label": "DRIVE" },
-    { "param": "bass",   "label": "BASS" },
-    { "param": "middle", "label": "MIDDLE" },
-    { "param": "treble", "label": "TREBLE" },
-    { "param": "master", "label": "LEVEL" }
-  ],
+  { "param": "volume", "label": "DRIVE", "group": "INPUT" },
+  { "param": "bass", "label": "BASS", "group": "TONE" },
+  { "param": "middle", "label": "MIDDLE", "group": "TONE" },
+  { "param": "treble", "label": "TREBLE", "group": "TONE" },
+  { "param": "master", "label": "LEVEL", "group": "OUTPUT" }
+ ],
 
   "theme": {
     "background": "#0c0f10",

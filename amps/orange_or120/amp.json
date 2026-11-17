@@ -159,25 +159,10 @@
   ]
  },
  "ui": [
-  {
-   "param": "volume",
-   "knob": "gain",
-   "label": "GAIN"
-  },
-  {
-   "param": "bass",
-   "knob": "bass",
-   "label": "BASS"
-  },
-  {
-   "param": "treble",
-   "knob": "treble",
-   "label": "TREBLE"
-  },
-  {
-   "param": "presence",
-   "label": "BOOST"
-  }
+  { "param": "volume", "knob": "gain", "label": "GAIN", "group": "PREAMP" },
+  { "param": "bass", "knob": "bass", "label": "BASS", "group": "TONE" },
+  { "param": "treble", "knob": "treble", "label": "TREBLE", "group": "TONE" },
+  { "param": "presence", "label": "BOOST", "group": "OUTPUT" }
  ],
  "power": {
     "transformer_parasitics": { "primary_pf": 150, "core_loss_ohms": 40000 },

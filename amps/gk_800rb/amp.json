@@ -5,26 +5,10 @@
  "name": "Modern Bass 800",
  "output_db": 7.5,
  "ui": [
-  {
-   "param": "volume",
-   "knob": "volume",
-   "label": "VOLUME"
-  },
-  {
-   "param": "bass",
-   "knob": "bass",
-   "label": "BASS"
-  },
-  {
-   "param": "middle",
-   "knob": "lo_mid",
-   "label": "LO-MID"
-  },
-  {
-   "param": "treble",
-   "knob": "hi_mid",
-   "label": "HI-MID"
-  }
+  { "param": "volume", "knob": "volume", "label": "VOLUME", "group": "PREAMP" },
+  { "param": "bass", "knob": "bass", "label": "BASS", "group": "TONE" },
+  { "param": "middle", "knob": "lo_mid", "label": "LO-MID", "group": "TONE" },
+  { "param": "treble", "knob": "hi_mid", "label": "HI-MID", "group": "TONE" }
  ],
  "theme": {
   "background": "#101214",

@@ -50,10 +50,10 @@
   },
 
   "ui": [
-    { "param": "volume",  "knob": "bright_volume", "label": "BRIGHT" },
-    { "param": "volume2", "knob": "normal_volume", "label": "NORMAL" },
-    { "param": "treble",  "knob": "tone",          "label": "TONE" }
-  ],
+  { "param": "volume", "knob": "bright_volume", "label": "BRIGHT", "group": "CHANNELS" },
+  { "param": "volume2", "knob": "normal_volume", "label": "NORMAL", "group": "CHANNELS" },
+  { "param": "treble", "knob": "tone", "label": "TONE", "group": "TONE" }
+ ],
 
   "power": {
     "transformer_parasitics": { "primary_pf": 150, "core_loss_ohms": 168000 },

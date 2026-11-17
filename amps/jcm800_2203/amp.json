@@ -5,13 +5,13 @@
   "name": "British 800",
 
   "ui": [
-    { "param": "volume",   "knob": "volume", "label": "PREAMP" },
-    { "param": "bass",     "knob": "bass",   "label": "BASS" },
-    { "param": "middle",   "knob": "middle", "label": "MIDDLE" },
-    { "param": "treble",   "knob": "treble", "label": "TREBLE" },
-    { "param": "presence",                    "label": "PRESENCE" },
-    { "param": "master",   "knob": "master", "label": "MASTER" }
-  ],
+  { "param": "volume", "knob": "volume", "label": "PREAMP", "group": "PREAMP" },
+  { "param": "bass", "knob": "bass", "label": "BASS", "group": "TONE" },
+  { "param": "middle", "knob": "middle", "label": "MIDDLE", "group": "TONE" },
+  { "param": "treble", "knob": "treble", "label": "TREBLE", "group": "TONE" },
+  { "param": "presence", "label": "PRESENCE", "group": "OUTPUT" },
+  { "param": "master", "knob": "master", "label": "MASTER", "group": "OUTPUT" }
+ ],
 
   "theme": {
     "background": "#0d0c0a",

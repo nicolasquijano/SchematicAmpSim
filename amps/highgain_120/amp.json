@@ -56,16 +56,16 @@
   },
 
   "ui": [
-    { "param": "volume",   "knob": "lead_pre",    "label": "LEAD PRE" },
-    { "param": "volume2",  "knob": "rhythm_pre",  "label": "RHY PRE" },
-    { "param": "master",   "knob": "lead_post",   "label": "LEAD POST" },
-    { "param": "power",    "knob": "rhythm_post", "label": "RHY POST" },
-    { "param": "bass",     "knob": "low",         "label": "LOW" },
-    { "param": "middle",   "knob": "mid",         "label": "MID" },
-    { "param": "treble",   "knob": "high",        "label": "HIGH" },
-    { "param": "presence",                         "label": "PRESENCE" },
-    { "param": "resonance", "power_knob": "resonance", "label": "RESONANCE" }
-  ],
+  { "param": "volume", "knob": "lead_pre", "label": "PRE", "group": "LEAD" },
+  { "param": "master", "knob": "lead_post", "label": "POST", "group": "LEAD" },
+  { "param": "volume2", "knob": "rhythm_pre", "label": "PRE", "group": "RHYTHM" },
+  { "param": "power", "knob": "rhythm_post", "label": "POST", "group": "RHYTHM" },
+  { "param": "bass", "knob": "low", "label": "LOW", "group": "TONE" },
+  { "param": "middle", "knob": "mid", "label": "MID", "group": "TONE" },
+  { "param": "treble", "knob": "high", "label": "HIGH", "group": "TONE" },
+  { "param": "presence", "label": "PRESENCE", "group": "OUTPUT" },
+  { "param": "resonance", "power_knob": "resonance", "label": "RESONANCE", "group": "OUTPUT" }
+ ],
 
   "power": {
     "transformer_parasitics": { "primary_pf": 150, "core_loss_ohms": 46000 },

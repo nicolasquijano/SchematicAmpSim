@@ -191,45 +191,14 @@
   ]
  },
  "ui": [
-  {
-   "param": "volume",
-   "knob": "od_volume",
-   "label": "LEAD GAIN"
-  },
-  {
-   "param": "volume2",
-   "knob": "normal_volume",
-   "label": "CLEAN VOL"
-  },
-  {
-   "param": "bass",
-   "knob": "bass",
-   "label": "BASS"
-  },
-  {
-   "param": "middle",
-   "knob": "middle",
-   "label": "MIDDLE"
-  },
-  {
-   "param": "treble",
-   "knob": "treble",
-   "label": "TREBLE"
-  },
-  {
-   "param": "presence",
-   "label": "PRESENCE"
-  },
-  {
-   "param": "master",
-   "knob": "od_master",
-   "label": "LEAD MASTER"
-  },
-  {
-   "param": "resonance",
-   "knob": "norm_master",
-   "label": "CLEAN MASTER"
-  }
+  { "param": "volume", "knob": "od_volume", "label": "GAIN", "group": "LEAD" },
+  { "param": "master", "knob": "od_master", "label": "MASTER", "group": "LEAD" },
+  { "param": "volume2", "knob": "normal_volume", "label": "VOLUME", "group": "CLEAN" },
+  { "param": "resonance", "knob": "norm_master", "label": "MASTER", "group": "CLEAN" },
+  { "param": "bass", "knob": "bass", "label": "BASS", "group": "TONE" },
+  { "param": "middle", "knob": "middle", "label": "MIDDLE", "group": "TONE" },
+  { "param": "treble", "knob": "treble", "label": "TREBLE", "group": "TONE" },
+  { "param": "presence", "label": "PRESENCE", "group": "OUTPUT" }
  ],
  "power": {
   "transformer_parasitics": {
