@@ -149,6 +149,80 @@ void AmpLookAndFeel::drawToggleButton(juce::Graphics& g, juce::ToggleButton& b, 
                juce::Justification::centredLeft);
 }
 
+// ------------------------------------------------------------------ switch
+
+namespace {
+float textWidth(const juce::FontOptions& f, const juce::String& s) {
+    juce::GlyphArrangement ga;
+    ga.addLineOfText(juce::Font(f), s, 0.0f, 0.0f);
+    return ga.getBoundingBox(0, -1, true).getWidth();
+}
+}  // namespace
+
+bool SwitchBox::segmented() const {
+    const int n = getNumItems();
+    if (n < 2 || n > 4) return false;
+    const auto f = AmpLookAndFeel::font(11.0f, true);
+    const float cell = float(getWidth()) / float(n);
+    for (int i = 0; i < n; ++i)
+        if (textWidth(f, getItemText(i)) + 14.0f > cell) return false;
+    return true;
+}
+
+void SwitchBox::hideLabelIfSegmented() {
+    const bool seg = dynamic_cast<const AmpLookAndFeel*>(&getLookAndFeel()) && segmented();
+    for (auto* c : getChildren()) c->setVisible(!seg);
+}
+
+void SwitchBox::resized() {
+    juce::ComboBox::resized();
+    hideLabelIfSegmented();
+}
+
+void SwitchBox::paint(juce::Graphics& g) {
+    const auto* look = dynamic_cast<const AmpLookAndFeel*>(&getLookAndFeel());
+    const bool seg = look && segmented();
+    hideLabelIfSegmented();
+    if (!seg) {
+        juce::ComboBox::paint(g);
+        return;
+    }
+    const int n = getNumItems(), now = getSelectedItemIndex();
+    const auto b = getLocalBounds().toFloat().reduced(0.5f);
+    g.setColour(look->background().darker(0.3f));
+    g.fillRoundedRectangle(b, 5.0f);
+    const float cell = b.getWidth() / float(n);
+    for (int i = 0; i < n; ++i) {
+        const auto r = juce::Rectangle<float>(b.getX() + cell * float(i), b.getY(), cell, b.getHeight());
+        if (i == now) {
+            g.setColour(look->accent().withAlpha(0.28f));
+            g.fillRoundedRectangle(r.reduced(2.0f), 4.0f);
+            g.setColour(look->accent());
+            g.drawRoundedRectangle(r.reduced(2.0f), 4.0f, 1.2f);
+        }
+        g.setColour(i == now ? look->text() : look->label());
+        g.setFont(AmpLookAndFeel::font(11.0f, true));
+        g.drawText(getItemText(i), r.toNearestInt(), juce::Justification::centred);
+    }
+    g.setColour(look->panelEdge());
+    g.drawRoundedRectangle(b, 5.0f, 1.0f);
+}
+
+void SwitchBox::mouseDown(const juce::MouseEvent& e) {
+    if (!segmented()) {
+        juce::ComboBox::mouseDown(e);
+        return;
+    }
+    if (!isEnabled()) return;
+    const int i = juce::jlimit(0, getNumItems() - 1, int(float(e.x) / float(getWidth()) * float(getNumItems())));
+    if (i != getSelectedItemIndex()) setSelectedItemIndex(i, juce::sendNotificationSync);
+    repaint();
+}
+
+void SwitchBox::mouseUp(const juce::MouseEvent& e) {
+    if (!segmented()) juce::ComboBox::mouseUp(e);
+}
+
 // ------------------------------------------------------------------ knob
 
 KnobWithLabel::KnobWithLabel(juce::AudioProcessorValueTreeState& apvts, const char* paramId, const juce::String& caption)

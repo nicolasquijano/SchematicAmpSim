@@ -278,6 +278,8 @@ const std::unordered_map<std::string, std::string>& russianTable() {
     {"CHROMATIC TUNER", "ХРОМАТИЧЕСКИЙ ТЮНЕР"},
     {"TUNER", "ТЮНЕР"},
     {"AMP CONTROLS", "РЕГУЛЯТОРЫ УСИЛИТЕЛЯ"},
+    {"Favorites", "Избранное"},
+    {"Recent", "Недавние"},
     {"ULTRA", "УЛЬТРА"},
     {"GRAPHIC EQ", "ГРАФИЧЕСКИЙ ЭКВАЛАЙЗЕР"},
     {"VOLUMES", "ГРОМКОСТИ"},

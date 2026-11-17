@@ -278,6 +278,8 @@ const std::unordered_map<std::string, std::string>& italianTable() {
     {"CHROMATIC TUNER", "ACCORDATORE CROMATICO"},
     {"TUNER", "ACCORDATORE"},
     {"AMP CONTROLS", "CONTROLLI DELL'AMPLI"},
+    {"Favorites", "Preferiti"},
+    {"Recent", "Recenti"},
     {"ULTRA", "ULTRA"},
     {"GRAPHIC EQ", "EQUALIZZATORE GRAFICO"},
     {"VOLUMES", "VOLUMI"},

@@ -278,6 +278,8 @@ const std::unordered_map<std::string, std::string>& chineseTable() {
     {"CHROMATIC TUNER", "半音调音器"},
     {"TUNER", "调音器"},
     {"AMP CONTROLS", "音箱控制"},
+    {"Favorites", "收藏"},
+    {"Recent", "最近"},
     {"ULTRA", "ULTRA"},
     {"GRAPHIC EQ", "图示均衡器"},
     {"VOLUMES", "音量"},

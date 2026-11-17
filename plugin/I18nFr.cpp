@@ -278,6 +278,8 @@ const std::unordered_map<std::string, std::string>& frenchTable() {
     {"CHROMATIC TUNER", "ACCORDEUR CHROMATIQUE"},
     {"TUNER", "ACCORDEUR"},
     {"AMP CONTROLS", "COMMANDES DE L'AMPLI"},
+    {"Favorites", "Favoris"},
+    {"Recent", "Récents"},
     {"ULTRA", "ULTRA"},
     {"GRAPHIC EQ", "ÉGALISEUR GRAPHIQUE"},
     {"VOLUMES", "VOLUMES"},

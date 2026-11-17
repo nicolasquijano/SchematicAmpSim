@@ -278,6 +278,8 @@ const std::unordered_map<std::string, std::string>& japaneseTable() {
     {"CHROMATIC TUNER", "クロマチック・チューナー"},
     {"TUNER", "チューナー"},
     {"AMP CONTROLS", "アンプのコントロール"},
+    {"Favorites", "お気に入り"},
+    {"Recent", "最近"},
     {"ULTRA", "ULTRA"},
     {"GRAPHIC EQ", "グラフィックEQ"},
     {"VOLUMES", "ボリューム"},

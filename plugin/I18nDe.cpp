@@ -278,6 +278,8 @@ const std::unordered_map<std::string, std::string>& germanTable() {
     {"CHROMATIC TUNER", "CHROMATISCHES STIMMGERÄT"},
     {"TUNER", "STIMMGERÄT"},
     {"AMP CONTROLS", "AMP-REGLER"},
+    {"Favorites", "Favoriten"},
+    {"Recent", "Zuletzt"},
     {"ULTRA", "ULTRA"},
     {"GRAPHIC EQ", "GRAFIK-EQ"},
     {"VOLUMES", "LAUTSTÄRKEN"},

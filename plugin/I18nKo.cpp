@@ -278,6 +278,8 @@ const std::unordered_map<std::string, std::string>& koreanTable() {
     {"CHROMATIC TUNER", "크로매틱 튜너"},
     {"TUNER", "튜너"},
     {"AMP CONTROLS", "앰프 컨트롤"},
+    {"Favorites", "즐겨찾기"},
+    {"Recent", "최근"},
     {"ULTRA", "울트라"},
     {"GRAPHIC EQ", "그래픽 EQ"},
     {"VOLUMES", "볼륨"},

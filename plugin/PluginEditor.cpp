@@ -1,5 +1,6 @@
 #include "I18n.h"
 #include "PluginEditor.h"
+#include "UiSettings.h"
 #include "IconData.h"
 #include "TubeData.h"
 #include "MultiPanel.h"
@@ -233,7 +234,14 @@ SasEditor::SasEditor(SasProcessor& p)
     showAmp(processor_.selectedAmpIndex());
     setResizable(true, true);
     setResizeLimits(920, 480, 3840, 2400);
-    setSize(1000, 560);
+    {
+        // The size the window had when it was last closed (kept between sessions and instances), if it still fits the screen.
+        auto size = UiSettings::windowSize();
+        const auto area = juce::Desktop::getInstance().getDisplays().getPrimaryDisplay() ? juce::Desktop::getInstance().getDisplays().getPrimaryDisplay()->userArea
+                                                                                          : juce::Rectangle<int>(0, 0, 1920, 1080);
+        if (size.x < 920 || size.y < 480) size = {1000, 560};
+        setSize(std::min(size.x, std::max(920, area.getWidth())), std::min(size.y, std::max(480, area.getHeight())));
+    }
     startTimerHz(30);
     timerCallback();
 }
@@ -248,9 +256,84 @@ SasEditor::~SasEditor() {
 
 int SasEditor::getNumRows() { return int(shown_.size()); }
 
+namespace {
+// The star at the right end of an amp's row: filled when the amp is a favourite, a click toggles it. Only the star takes the mouse; the rest of
+// the row goes on to the list (which chooses the amp).
+class StarCell final : public juce::Component {
+public:
+    std::function<void()> onToggle;
+    bool favourite = false;
+    bool hitTest(int x, int) override { return x >= getWidth() - 28; }
+    void mouseUp(const juce::MouseEvent& e) override {
+        if (e.mouseWasClicked() && onToggle) onToggle();
+    }
+    void paint(juce::Graphics& g) override {
+        const auto* look = dynamic_cast<const AmpLookAndFeel*>(&getLookAndFeel());
+        const auto colour = look ? look->accent() : juce::Colours::orange;
+        const auto c = juce::Point<float>(float(getWidth()) - 16.0f, float(getHeight()) * 0.5f);
+        juce::Path star;
+        star.addStar(c, 5, 3.2f, 7.0f, -juce::MathConstants<float>::halfPi);
+        if (favourite) {
+            g.setColour(colour);
+            g.fillPath(star);
+        } else {
+            g.setColour((look ? look->label() : juce::Colours::grey).withAlpha(0.45f));
+            g.strokePath(star, juce::PathStrokeType(1.0f));
+        }
+    }
+};
+}  // namespace
+
+juce::Component* SasEditor::refreshComponentForRow(int row, bool, juce::Component* existing) {
+    if (row < 0 || row >= int(shown_.size()) || shown_[std::size_t(row)] < 0) {  // a group header has no star
+        delete existing;
+        return nullptr;
+    }
+    auto* cell = dynamic_cast<StarCell*>(existing);
+    if (!cell) {
+        delete existing;
+        cell = new StarCell;
+    }
+    const int amp = shown_[std::size_t(row)];
+    const auto& defs = processor_.amps();
+    const juce::String id = amp < int(defs.size()) ? juce::String(defs[std::size_t(amp)].id) : juce::String();
+    cell->favourite = UiSettings::isFavourite(id);
+    cell->onToggle = [this, id] {
+        UiSettings::toggleFavourite(id);
+        juce::MessageManager::callAsync([safe = juce::Component::SafePointer<SasEditor>(this)] {
+            if (safe != nullptr) safe->refreshAmpList();
+        });
+    };
+    cell->repaint();
+    return cell;
+}
+
 void SasEditor::refreshAmpList() {
     const auto query = ampSearch_.getText().trim();
     shown_.clear();
+    // The favourites and the amps used last go first (when nothing is being searched); they are also in their own groups below.
+    if (query.isEmpty()) {
+        const auto& all = processor_.amps();
+        const auto indexOf = [&](const juce::String& id) {
+            for (std::size_t i = 0; i < all.size(); ++i)
+                if (juce::String(all[i].id) == id) return int(i);
+            return -1;
+        };
+        std::vector<int> fav, rec;
+        for (const auto& id : UiSettings::favourites())
+            if (const int i = indexOf(id); i >= 0 && i < ampNames_.size()) fav.push_back(i);
+        std::sort(fav.begin(), fav.end(), [&](int a, int b) { return ampNames_[a].compareIgnoreCase(ampNames_[b]) < 0; });
+        for (const auto& id : UiSettings::recent())
+            if (const int i = indexOf(id); i >= 0 && i < ampNames_.size() && std::find(fav.begin(), fav.end(), i) == fav.end()) rec.push_back(i);
+        if (!fav.empty()) {
+            shown_.push_back(-6);
+            shown_.insert(shown_.end(), fav.begin(), fav.end());
+        }
+        if (!rec.empty()) {
+            shown_.push_back(-7);
+            shown_.insert(shown_.end(), rec.begin(), rec.end());
+        }
+    }
     // Grouped by character, each group in alphabetical order; a group only shows when something in it matches.
     static const char* const kGroups[] = {"clean", "crunch", "highgain", "bass", "other"};
     const auto& defs = processor_.amps();
@@ -270,12 +353,14 @@ void SasEditor::refreshAmpList() {
     }
     ampList_.updateContent();
     juce::SparseSet<int> sel;
-    const auto it = std::find(shown_.begin(), shown_.end(), processor_.selectedAmpIndex());
-    if (it != shown_.end()) {
-        const int row = int(it - shown_.begin());
+    // An amp that is in a section at the top (favourites, recent) is also in its group below; the row that was clicked keeps the highlight.
+    const auto rit = std::find(shown_.rbegin(), shown_.rend(), processor_.selectedAmpIndex());
+    const auto fit = std::find(shown_.begin(), shown_.end(), processor_.selectedAmpIndex());
+    if (rit != shown_.rend()) {
+        const int row = pickedFromTop_ ? int(fit - shown_.begin()) : int(shown_.rend() - rit) - 1;
         sel.addRange(juce::Range<int>(row, row + 1));
         ampList_.setSelectedRows(sel, juce::dontSendNotification);
-        ampList_.scrollToEnsureRowIsOnscreen(row);
+        if (!pickedFromTop_) ampList_.scrollToEnsureRowIsOnscreen(row);
     } else {
         ampList_.setSelectedRows(sel, juce::dontSendNotification);
     }
@@ -285,7 +370,7 @@ void SasEditor::refreshAmpList() {
 void SasEditor::paintListBoxItem(int row, juce::Graphics& g, int w, int h, bool selected) {
     if (row < 0 || row >= int(shown_.size())) return;
     if (shown_[std::size_t(row)] < 0) {  // the header of a group
-        static const char* const kTitles[] = {"Clean amps", "Crunch amps", "High-gain amps", "Bass amps", "Other"};
+        static const char* const kTitles[] = {"Clean amps", "Crunch amps", "High-gain amps", "Bass amps", "Other", "Favorites", "Recent"};
         g.setColour(look_.label());
         g.setFont(AmpLookAndFeel::font(10.5f, true, 0.12f));
         g.drawText(tr(kTitles[-shown_[std::size_t(row)] - 1]).toUpperCase(), 10, 4, w - 14, h - 4, juce::Justification::centredLeft);
@@ -312,6 +397,11 @@ void SasEditor::selectedRowsChanged(int lastRow) {
             if (safe != nullptr) safe->refreshAmpList();
         });
         return;
+    }
+    {
+        std::size_t firstGroup = 0;  // the first row of the ordinary groups: the rows before it are the favourites and the recent ones
+        while (firstGroup < shown_.size() && !(shown_[firstGroup] <= -1 && shown_[firstGroup] >= -5)) ++firstGroup;
+        pickedFromTop_ = std::size_t(lastRow) < firstGroup;
     }
     if (amp == processor_.selectedAmpIndex()) return;
     if (auto* param = processor_.apvts.getParameter(ids::amp)) {
@@ -358,6 +448,7 @@ void SasEditor::showAmp(int index) {
     if (index < 0 || index >= int(defs.size())) return;
     shownAmp_ = index;
     const auto& def = defs[std::size_t(index)];
+    if (getPeer() != nullptr) UiSettings::pushRecent(juce::String(def.id));  // only for a window on screen
     title_ = juce::String(def.name);
     applyTheme(def);
 
@@ -489,6 +580,10 @@ void SasEditor::updateLevelButtons() {
 }
 
 void SasEditor::timerCallback() {
+    if (sizeDirty_ && juce::Time::getMillisecondCounter() - sizeChangedMs_ > 600) {
+        sizeDirty_ = false;
+        UiSettings::setWindowSize(getWidth(), getHeight());
+    }
     pollMeters();
     if (levelSide_ != 0 && juce::Time::getMillisecondCounter() - levelStartMs_ >= 5000) finishLevelMeasure();
     if (tick_ % 4 == 0) updateLevelButtons();
@@ -757,6 +852,10 @@ void SasEditor::parentHierarchyChanged() {
 }
 
 void SasEditor::resized() {
+    if (getPeer() != nullptr) {  // on screen (not a test or a host that has not shown it yet): remember the size once the drag stops
+        sizeDirty_ = true;
+        sizeChangedMs_ = juce::Time::getMillisecondCounter();
+    }
     constexpr int pad = 12, gap = 8, leftW = 168;
     panels_.clear();
     auto area = getLocalBounds().reduced(pad);

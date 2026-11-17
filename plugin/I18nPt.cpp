@@ -278,6 +278,8 @@ const std::unordered_map<std::string, std::string>& portugueseTable() {
     {"CHROMATIC TUNER", "AFINADOR CROMÁTICO"},
     {"TUNER", "AFINADOR"},
     {"AMP CONTROLS", "CONTROLES DO AMP"},
+    {"Favorites", "Favoritos"},
+    {"Recent", "Recentes"},
     {"ULTRA", "ULTRA"},
     {"GRAPHIC EQ", "EQUALIZADOR GRÁFICO"},
     {"VOLUMES", "VOLUMES"},

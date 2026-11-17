@@ -45,6 +45,20 @@ private:
     EditorTheme theme_;
 };
 
+// An amp's own switch. A drop-down like any ComboBox, but a switch with two to four short positions is drawn as a row of buttons with the
+// chosen one lit, and a click on a position picks it directly (no menu). Long position names keep the drop-down.
+class SwitchBox final : public juce::ComboBox {
+public:
+    void paint(juce::Graphics&) override;
+    void resized() override;
+    void mouseDown(const juce::MouseEvent&) override;
+    void mouseUp(const juce::MouseEvent&) override;
+
+private:
+    bool segmented() const;
+    void hideLabelIfSegmented();  // the drop-down's own text label would draw over the buttons
+};
+
 // A knob with its caption above and its value below.
 class KnobWithLabel final : public juce::Component {
 public:
@@ -208,6 +222,7 @@ private:
     int getNumRows() override;
     void paintListBoxItem(int row, juce::Graphics&, int w, int h, bool selected) override;
     void selectedRowsChanged(int lastRow) override;
+    juce::Component* refreshComponentForRow(int row, bool selected, juce::Component* existing) override;  // the star that marks a favourite
     void refreshAmpList();  // applies the search box to the list (the rows are positions in shown_)
 
     void timerCallback() override;
@@ -237,6 +252,9 @@ private:
     int page_ = 0;
     juce::String title_;
     juce::StringArray ampNames_;
+    bool sizeDirty_ = false;  // the window was resized and the new size is not saved yet
+    juce::uint32 sizeChangedMs_ = 0;
+    bool pickedFromTop_ = false;  // the amp in use was chosen in the favourites / recent rows at the top of the list
     juce::Rectangle<int> logoBounds_;  // the product mark and name, top of the left column
     std::vector<PanelBox> panels_;  // drawn behind the controls of the editor itself (the tuner), set by resized()
     HostPanel ampPanel_, cabPanel_;
@@ -273,7 +291,7 @@ private:
     std::vector<int> shown_;  // the rows of the amp list: an amp index that matches the search, or -(group + 1) for the header of a group (clean, crunch, high gain, bass, other)
     juce::ComboBox quality_, jack_, cab_, pickup_, tube_, noise_, unit_;
     std::unique_ptr<AmpFace> face_;  // the amp's front, for amps that have a faceplate (replaces the generic knobs)
-    juce::ComboBox selBox_[6];  // the amp's own switches
+    SwitchBox selBox_[6];  // the amp's own switches
     juce::Label selCaption_[6];
     std::unique_ptr<juce::AudioProcessorValueTreeState::ComboBoxAttachment> qualityAtt_, cabAtt_, pickupAtt_, noiseAtt_, unitAtt_;
     juce::Label ampCaption_, qualityCaption_, jackCaption_, cabCaption_, pickupCaption_, nameA_, nameB_, blendNote_, cabNote_, tubeCaption_, noiseCaption_, unitCaption_, idleLabel_, conditionNote_;

@@ -14,6 +14,7 @@
 #include "EqPresets.h"
 #include "FxPresets.h"
 #include "I18n.h"
+#include "UiSettings.h"
 #include "ModuleUnit.h"
 
 using sas::ModuleType;
@@ -3834,4 +3835,32 @@ TEST_CASE("amp page: a picture of an amp with a transistor output stage", "[.tra
         o.truncate();
         juce::PNGImageFormat().writeImageToStream(img, o);
     }
+}
+
+TEST_CASE("the interface remembers favourites, the amps used last and the window size, in a file of its own", "[ui]") {
+    const auto dir = juce::File::getSpecialLocation(juce::File::tempDirectory).getChildFile("sas_ui_settings_test");
+    dir.deleteRecursively();
+    dir.createDirectory();
+#ifdef _WIN32
+    _putenv_s("SAS_UI_SETTINGS_DIR", dir.getFullPathName().toRawUTF8());
+#else
+    setenv("SAS_UI_SETTINGS_DIR", dir.getFullPathName().toRawUTF8(), 1);
+#endif
+    CHECK(UiSettings::favourites().isEmpty());
+    UiSettings::toggleFavourite("a");
+    UiSettings::toggleFavourite("b");
+    UiSettings::toggleFavourite("a");  // off again
+    CHECK(UiSettings::favourites() == juce::StringArray{"b"});
+    CHECK(UiSettings::isFavourite("b"));
+    for (const char* id : {"w", "x", "y", "z", "y"}) UiSettings::pushRecent(id);
+    CHECK(UiSettings::recent() == juce::StringArray{"y", "z", "x"});  // the last three, the latest first, no repeats
+    CHECK(UiSettings::windowSize() == juce::Point<int>(0, 0));
+    UiSettings::setWindowSize(1234, 777);
+    CHECK(UiSettings::windowSize() == juce::Point<int>(1234, 777));
+#ifdef _WIN32
+    _putenv_s("SAS_UI_SETTINGS_DIR", "");
+#else
+    unsetenv("SAS_UI_SETTINGS_DIR");
+#endif
+    dir.deleteRecursively();
 }

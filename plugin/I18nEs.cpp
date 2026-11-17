@@ -278,6 +278,8 @@ const std::unordered_map<std::string, std::string>& spanishTable() {
     {"CHROMATIC TUNER", "AFINADOR CROMÁTICO"},
     {"TUNER", "AFINADOR"},
     {"AMP CONTROLS", "CONTROLES DEL AMPLI"},
+    {"Favorites", "Favoritos"},
+    {"Recent", "Recientes"},
     {"ULTRA", "ULTRA"},
     {"GRAPHIC EQ", "ECUALIZADOR GRÁFICO"},
     {"VOLUMES", "VOLÚMENES"},
