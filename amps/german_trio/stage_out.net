@@ -1,0 +1,53 @@
+* German Trio preamp, stage 5 of 5: the V4A cathode follower, the effects loop (send and return normalled), V4B, the DEEP network and the two
+* master volumes. The Clean channel arrives from stage 2 (node cw, link source VCV), Crunch and Lead from stage 4 (node vw, VVW); the
+* switch resistors SW_M4C / SW_M4X pick which one is connected (the relays CL, CR, LE).
+*
+* V4A: grid behind 100n, 1M back to the tap between its 1k82 and a 10k to ground; the plate through 100k from the V4 rail. The send is
+* taken from the cathode (1u + 100n). With nothing in the return jack both legs of the return network are fed from that node: 100k each
+* into the 100kB pot (its wiper to ground, half each side at 50k here) and 100k from each end to V4B's grid.
+* V4B: 100k plate load (265 V), 1k82 + 100n cathode, 10n coupling. After it: 100k || 220p from the coupling to the master pots' input, 100k
+* of which also sees the DEEP network (10n + 47k5 to ground, with the 500kA pot in parallel with the 10n), then MA1 and MA2 (1MB) whose
+* wipers go through the relays MA1 / MA2 to the output (node pa) with its 1M to ground.
+
+V VRAIL x 100 380
+S VCV cw 1 0
+S VVW vw 1 0
+R SW_M4C cw m4 1
+R SW_M4X vw m4 1e12
+R R1M4 m4 0 1M
+C C100n m4 g4a 100n
+T V4A g4a p4a k4a 12AX7
+R R4A x p4a 100k
+R RK4A k4a n4k 1k82
+R R10K n4k 0 10k
+R R1MK g4a n4k 1M
+C C1u k4a lp 1u
+C C100s k4a lp 100n
+
+* Effects loop (nothing plugged in): both legs from the send.
+R RL1 lp la 100k
+R RL2 lp lb 100k
+R RPa la pw 50k
+R RPb lb pw 50k
+R RPg pw 0 1
+R RG1 la g4b 100k
+R RG2 lb g4b 100k
+T V4B g4b p4b k4b 12AX7
+R R4B x p4b 100k
+R RK4B k4b 0 1k82
+C CK4B k4b 0 100n
+
+* After V4B.
+C C10n p4b m0 10n
+R RM100 m0 s1 100k
+C CM220 m0 s1 220p
+R R47k5 e 0 47k5
+C CD10 s1 e 10n
+R VRDEEP s1 e 1
+R VRMA1_T s1 w1 1
+R VRMA1_B w1 0 1
+R VRMA2_T s1 w2 1
+R VRMA2_B w2 0 1
+R SW_MA1 w1 pa 1
+R SW_MA2 w2 pa 1e12
+R R1MPA pa 0 1M

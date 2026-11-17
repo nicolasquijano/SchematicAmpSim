@@ -140,7 +140,7 @@ TEST_CASE("AFD100 Eco preamp (three parts, tables) matches the monolithic circui
 // A preamp stage that belongs to some jacks or selector positions only (a channel's own tubes) is not solved for the others: the sound is
 // the same as with every stage solved, sample for sample down to the isolation of the relays (1e12 ohm).
 TEST_CASE("preamp: stages of the channels that are not heard are skipped without changing the sound", "[preamp]") {
-    for (const char* id : {"american_5153", "german_ultra", "superlead_100", "modbe_100", "svt_bass300"}) {
+    for (const char* id : {"american_5153", "german_ultra", "german_trio", "superlead_100", "modbe_100", "svt_bass300"}) {
         const AmpDef skipping = loadEmbeddedAmp(id);
         AmpDef all = skipping;
         all.preamp.mainJacks.clear();

@@ -33,6 +33,11 @@
   {
    "param": "presence",
    "label": "PRESENCE"
+  },
+  {
+   "param": "resonance",
+   "power_knob": "resonance",
+   "label": "RESONANCE"
   }
  ],
  "theme": {
@@ -332,6 +337,9 @@
   "rail_node": "x",
   "output_node": "t16",
   "load_resistor": "RLOAD",
+  "knobs": [
+   { "name": "resonance", "resistor": "VR8", "scale": 1000000.0, "min_ohms": 50000, "default": 0.5 }
+  ],
   "presence": {
    "resistor": "VRPD",
    "complement": "VRPS",

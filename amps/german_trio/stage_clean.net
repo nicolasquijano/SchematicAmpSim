@@ -1,0 +1,19 @@
+* German Trio preamp, stage 2 of 5 (Clean channel only): V1B, 47n and the CLEAN VOLUME pot. The wiper of the GAIN CLEAN pot (node gw of the
+* first stage) arrives through the link source VGCW. The volume's wiper (cw) goes through the contact CL to V4A in stage 5; its loads
+* (1M leak and the 100n into V4A's grid with its 1M) are repeated here so the wiper sees them.
+*
+* V1B: 100k plate load (155 V on the drawing), 1k82 cathode with 22u. The rail is a fixed source chosen to reproduce that DC point.
+
+V VRAIL x 100 380
+V VXB xb 50 231
+S VGCW gw 1 0
+T V1B gw p1b k1b 12AX7
+R R100 xb p1b 100k
+R RK1B k1b 0 1k82
+C CK1B k1b 0 22u
+C C47b p1b cv 47n
+R VRCV_T cv cw 1
+R VRCV_B cw 0 1
+R R1MA cw 0 1M
+C C100n cw gl 100n
+R R1MB gl 0 1M

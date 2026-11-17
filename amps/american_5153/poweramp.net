@@ -3,7 +3,7 @@
 * C52 / C47 (.047u) into four 6L6GC as two parallel pairs (1.5k grid stoppers, 220k grid returns to the bias supply, 100 ohm screen resistors, the cathodes through R186 (1 ohm:
 * 80 mV across it is the bias setting), the output transformer with its 16 / 8 / 4 ohm sections (the impedance switch at 16 ohm) and the HT supply.
 * The negative feedback and the presence / resonance network are on another sheet of the drawing (the presence board): here the feedback is taken from the 8 ohm tap through
-* R_FB 33k and a presence rheostat in series (more resistance, less feedback, more presence) into the feedback node (an assumption). The resonance control is not modelled.
+* R_FB 33k and a presence rheostat in series (more resistance, less feedback, more presence) into the feedback node (an assumption). The resonance control is the 5150's network (an assumption: the 5153 sheet was not available): VR8 from the 8 ohm tap and C12 6n8 to ground into the junction nb, which C30 22u joins to the feedback node.
 
 S VAUDIO pin 50k 0
 S VHT a 1 485
@@ -26,6 +26,9 @@ C C71 pa pb 47p
 R VRPD pdum 0 100k
 R VRPS t8 pp 1k
 R R_FB pp n1 33k
+C C30 n1 nb 22u
+C C12 nb 0 6n8
+R VR8 t8 nb 500k
 
 * Grid drive: C52 / C47 (.047u) from each plate, 220k returns to the bias supply (R111 / R110), 1.5k stoppers (R143 / R144 and R145 / R146).
 C C52 pa d1 47n
