@@ -155,3 +155,18 @@ TEST_CASE("every amp carries its own editor theme") {
     }
     CHECK(accents.size() == embeddedAmpIds().size());
 }
+
+TEST_CASE("the user's edits of components scale the preamp's resistors and capacitors") {
+    const auto def = loadEmbeddedAmp("jazz_clean_120");
+    Condition c;
+    c.parts = {{"R6", 2.0}, {"C12", 0.5}, {"VR2T", 3.0}, {"SW_DIST", 5.0}};
+    const auto out = applyCondition(def, c);
+    const auto& text = out.preamp.netlistText;
+    CHECK(text.find("R R6 gh j (33k)*2") != std::string::npos);
+    CHECK(text.find("C C12 j a1 (0.082u)*0.5") != std::string::npos);
+    CHECK(text.find("(1)*3") == std::string::npos);  // the pot sections stay (the knob sets them)
+    CHECK(text.find("SW_DIST gsw 0 1e12") != std::string::npos);  // and so do the switches
+    CHECK(out.power.netlistText == def.power.netlistText);  // the power amp is not edited
+    CHECK(applyCondition(def, Condition{}).preamp.netlistText == def.preamp.netlistText);
+    Chain chain(out, 48000.0);  // the edited circuits still build
+}

@@ -139,25 +139,25 @@
 <ellipse id="pot_bass" cx="940" cy="330" rx="18" ry="18" fill="url(#g35)" stroke="#9a8760" stroke-width="1.5"/>
 <ellipse id="dial_bass" cx="940" cy="330" rx="11" ry="11" fill="#26211c" stroke="#3b3329" stroke-width="1"/>
 <path id="ptr_bass" d="M940,330 L940,319" fill="none" stroke="#f0b53a" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>
-<ellipse id="valC_1_68k" cx="84" cy="136" rx="1" ry="1" fill="none" stroke="none"/>
-<ellipse id="valC_2_68k" cx="84" cy="276" rx="1" ry="1" fill="none" stroke="none"/>
-<ellipse id="valL_3_1M" cx="150" cy="128" rx="1" ry="1" fill="none" stroke="none"/>
-<ellipse id="valL_4_1M" cx="150" cy="320" rx="1" ry="1" fill="none" stroke="none"/>
-<ellipse id="valL_5_100k" cx="212" cy="80" rx="1" ry="1" fill="none" stroke="none"/>
-<ellipse id="valL_6_100k" cx="212" cy="365" rx="1" ry="1" fill="none" stroke="none"/>
-<ellipse id="valC_7_20n" cx="240" cy="106" rx="1" ry="1" fill="none" stroke="none"/>
-<ellipse id="valC_8_20n" cx="240" cy="306" rx="1" ry="1" fill="none" stroke="none"/>
-<ellipse id="valC_9_100p" cx="340" cy="56" rx="1" ry="1" fill="none" stroke="none"/>
-<ellipse id="valR_10_820" cx="252" cy="263" rx="1" ry="1" fill="none" stroke="none"/>
-<ellipse id="valL_11_250u" cx="302" cy="262" rx="1" ry="1" fill="none" stroke="none"/>
-<ellipse id="valC_12_270k" cx="428" cy="116" rx="1" ry="1" fill="none" stroke="none"/>
-<ellipse id="valC_13_270k" cx="428" cy="316" rx="1" ry="1" fill="none" stroke="none"/>
-<ellipse id="valL_14_100k" cx="572" cy="80" rx="1" ry="1" fill="none" stroke="none"/>
-<ellipse id="valR_15_820" cx="533" cy="293" rx="1" ry="1" fill="none" stroke="none"/>
-<ellipse id="valL_16_0.68u" cx="588" cy="289" rx="1" ry="1" fill="none" stroke="none"/>
-<ellipse id="valL_17_100k" cx="692" cy="308" rx="1" ry="1" fill="none" stroke="none"/>
-<ellipse id="valC_18_56k" cx="738" cy="260" rx="1" ry="1" fill="none" stroke="none"/>
-<ellipse id="valC_19_20n" cx="835" cy="256" rx="1" ry="1" fill="none" stroke="none"/>
-<ellipse id="valC_20_20n" cx="905" cy="256" rx="1" ry="1" fill="none" stroke="none"/>
+<ellipse id="valC_1_68k@R:R68_B1" cx="84" cy="136" rx="1" ry="1" fill="none" stroke="none"/>
+<ellipse id="valC_2_68k@R:R68_N1" cx="84" cy="276" rx="1" ry="1" fill="none" stroke="none"/>
+<ellipse id="valL_3_1M@R:RLEAK_B" cx="150" cy="128" rx="1" ry="1" fill="none" stroke="none"/>
+<ellipse id="valL_4_1M@R:RLEAK_N" cx="150" cy="320" rx="1" ry="1" fill="none" stroke="none"/>
+<ellipse id="valL_5_100k@R:R_PB" cx="212" cy="80" rx="1" ry="1" fill="none" stroke="none"/>
+<ellipse id="valL_6_100k@R:R_PN" cx="212" cy="365" rx="1" ry="1" fill="none" stroke="none"/>
+<ellipse id="valC_7_20n@C:C_B" cx="240" cy="106" rx="1" ry="1" fill="none" stroke="none"/>
+<ellipse id="valC_8_20n@C:C_N" cx="240" cy="306" rx="1" ry="1" fill="none" stroke="none"/>
+<ellipse id="valC_9_100p@C:C_BRIGHT" cx="340" cy="56" rx="1" ry="1" fill="none" stroke="none"/>
+<ellipse id="valR_10_820@R:RK1" cx="252" cy="263" rx="1" ry="1" fill="none" stroke="none"/>
+<ellipse id="valL_11_250u@C:CK1" cx="302" cy="262" rx="1" ry="1" fill="none" stroke="none"/>
+<ellipse id="valC_12_270k@R:R270_B" cx="428" cy="116" rx="1" ry="1" fill="none" stroke="none"/>
+<ellipse id="valC_13_270k@R:R270_N" cx="428" cy="316" rx="1" ry="1" fill="none" stroke="none"/>
+<ellipse id="valL_14_100k@R:R_P2A" cx="572" cy="80" rx="1" ry="1" fill="none" stroke="none"/>
+<ellipse id="valR_15_820@R:RK2A" cx="533" cy="293" rx="1" ry="1" fill="none" stroke="none"/>
+<ellipse id="valL_16_0.68u@C:CK2A" cx="588" cy="289" rx="1" ry="1" fill="none" stroke="none"/>
+<ellipse id="valL_17_100k@R:R100K" cx="692" cy="308" rx="1" ry="1" fill="none" stroke="none"/>
+<ellipse id="valC_18_56k@R:R56K" cx="738" cy="260" rx="1" ry="1" fill="none" stroke="none"/>
+<ellipse id="valC_19_20n@C:C02A" cx="835" cy="256" rx="1" ry="1" fill="none" stroke="none"/>
+<ellipse id="valC_20_20n@C:C02B" cx="905" cy="256" rx="1" ry="1" fill="none" stroke="none"/>
 <path id="next_power" d="M985,267 V283 L1007,275 Z" fill="url(#g36)" stroke="#8c7a55" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
 </svg>

@@ -121,6 +121,15 @@ def tweed_5e3_power():
     return s
 
 
+_TYPES = {}
+
+
+def comp_of(amp_id, vals, names):
+    """The component a value of the drawing belongs to ("R:R12": its kind and its name in the netlist), for the plugin's value editing."""
+    name = next((n for n in names if n in vals), None)
+    return '%s:%s' % (_TYPES[(amp_id, name)], name) if name else None
+
+
 def netlist_values(amp_id):
     """name -> value of every resistor and capacitor of the amp's preamp netlist."""
     out = {}
@@ -129,6 +138,7 @@ def netlist_values(amp_id):
             t = ln.split()
             if len(t) >= 5 and t[0] in ('R', 'C') and not ln.lstrip().startswith('*') and t[4] not in ('1', '1e12'):
                 out[t[1]] = t[4]
+                _TYPES[(amp_id, t[1])] = t[0]
     return out
 
 
@@ -205,7 +215,7 @@ def two_channel_preamp(amp_id):
                               ('C', 738, 260, ('R56K', 'R33')), ('C', 835, 256, ('C02A', 'C022A')), ('C', 905, 256, ('C02B', 'C022B'))):
         text = v(*names)
         if text:
-            s.val(kind, x, y, text)
+            s.val(kind, x, y, text, comp_of(amp_id, vals, names))
     s.path('next_power', 'M985,267 V283 L1007,275 Z', '#8c7a55', 1.5, s.lin(0, 267, 0, 283, [(0, '#d9b866'), (1, '#8a6d2c')]))
     return s
 
@@ -255,7 +265,7 @@ def orange_preamp(amp_id='orange_or120'):
                               ('C', 712, 106, ('C68B',)), ('C', 760, 106, ('CF1',)), ('C', 820, 106, ('CF3',)), ('C', 880, 106, ('CF5',)), ('L', 952, 168, ('RPI',))):
         text = v(*names)
         if text:
-            s.val(kind, x, y, text)
+            s.val(kind, x, y, text, comp_of(amp_id, vals, names))
     s.path('next_power', 'M985,122 V138 L1007,130 Z', '#8c7a55', 1.5, s.lin(0, 122, 0, 138, [(0, '#d9b866'), (1, '#8a6d2c')]))
     return s
 
@@ -320,7 +330,7 @@ def hiwatt_preamp(amp_id='hiwatt_dr103'):
                               ('C', 1040, 96, ('C47O',))):
         text = v(*names)
         if text:
-            s.val(kind, x, y, text)
+            s.val(kind, x, y, text, comp_of(amp_id, vals, names))
     s.path('next_power', 'M1110,112 V128 L1132,120 Z', '#8c7a55', 1.5, s.lin(0, 112, 0, 128, [(0, '#d9b866'), (1, '#8a6d2c')]))
     return s
 
@@ -386,7 +396,7 @@ def ac30_preamp(amp_id='ac30_normal'):
                               ('L', 692, 308, ('R8',)), ('C', 738, 260, ('R35',)), ('C', 835, 256, ('C4',)), ('C', 905, 256, ('C5',))):
         text = v(*names)
         if text:
-            s.val(kind, x, y, text)
+            s.val(kind, x, y, text, comp_of(amp_id, vals, names))
     s.path('next_power', 'M1030,267 V283 L1052,275 Z', '#8c7a55', 1.5, s.lin(0, 267, 0, 283, [(0, '#d9b866'), (1, '#8a6d2c')]))
     return s
 
@@ -465,7 +475,7 @@ def fender_two_channel_preamp(amp_id):
                               ('L', 212, 316, ('R16',)), ('L', 692, 316, ('R29',)), ('R', 173, 464, ('R17',)), ('L', 227, 480, ('C6',)), ('C', 240, 286, ('C7',))):
         text = next((vals[n] for n in names if n in vals), None)
         if text:
-            s.val(kind, x, y, text)
+            s.val(kind, x, y, text, comp_of(amp_id, vals, names))
     s.path('next_power', 'M1100,147 V163 L1122,155 Z', '#8c7a55', 1.5, s.lin(0, 147, 0, 163, [(0, '#d9b866'), (1, '#8a6d2c')]))
     return s
 
@@ -507,7 +517,7 @@ def bassbreaker_preamp(amp_id='bassbreaker_1830'):
                               ('L', 332, 308, ('R5',)), ('C', 375, 251, ('C2',)), ('L', 1012, 80, ('R16',)), ('R', 973, 272, ('R17',)), ('L', 1027, 268, ('C9',))):
         text = next((vals[n] for n in names if n in vals), None)
         if text:
-            s.val(kind, x, y, text)
+            s.val(kind, x, y, text, comp_of(amp_id, vals, names))
     s.path('next_power', 'M1085,122 V138 L1107,130 Z', '#8c7a55', 1.5, s.lin(0, 122, 0, 138, [(0, '#d9b866'), (1, '#8a6d2c')]))
     return s
 

@@ -155,6 +155,36 @@ TEST_CASE("switching amp keeps audio flowing and swaps in the new circuits") {
     CHECK(rms(run(p, 12)) == Catch::Approx(before).epsilon(0.1));
 }
 
+TEST_CASE("editing a resistor of the preamp changes the sound once the circuits are built again, and putting it back restores it") {
+    JuceInit init;
+    SasProcessor p;
+    for (std::size_t i = 0; i < p.amps().size(); ++i)
+        if (p.amps()[i].id == "jazz_clean_120") setParam(p, "amp", float(i));
+    p.prepareToPlay(48000.0, 512);
+    setParam(p, ids::quality, 2.0f);  // Lite: cheaper to build and run
+    const int amp = p.selectedAmpIndex();
+    double level = 0.0;
+    auto settle = [&](auto changed) {
+        for (int i = 0; i < 800; ++i) {
+            const auto out = run(p, 2);
+            level = rms(out);
+            for (int s = 0; s < out.getNumSamples(); ++s) REQUIRE(std::isfinite(out.getSample(0, s)));
+            if (changed(level)) break;
+            juce::Thread::sleep(15);
+        }
+        level = rms(run(p, 12));
+    };
+    settle([](double) { return true; });
+    const double before = level;
+    REQUIRE(before > 1e-5);
+    p.setPartFactor(amp, "R46", 0.25);  // the gain resistor of IC3A: about 10 dB less gain
+    settle([&](double l) { return l < before * 0.6; });
+    CHECK(level < before * 0.6);
+    p.clearPartFactors(amp);
+    settle([&](double l) { return l > before * 0.9; });
+    CHECK(level == Catch::Approx(before).epsilon(0.1));
+}
+
 TEST_CASE("choosing other output tubes or wear rebuilds the circuits and changes the plate current") {
     JuceInit init;
     SasProcessor p;
@@ -255,6 +285,36 @@ TEST_CASE("state round trip restores parameters") {
     CHECK(b.apvts.getRawParameterValue(ids::volume)->load() == 9.0f);
     CHECK(b.apvts.getRawParameterValue(ids::quality)->load() == 2.0f);
     CHECK(b.apvts.getRawParameterValue(ids::tsOn)->load() == 1.0f);
+}
+
+TEST_CASE("component edits: kept per amp, rebuild the circuits, survive the project state, and the reset button clears them") {
+    JuceInit init;
+    SasProcessor a, b;
+    a.prepareToPlay(48000.0, 512);
+    const int amp = a.selectedAmpIndex();
+    CHECK(a.partEditCount(amp) == 0);
+    const int before = a.runningAmpIndex();
+    a.setPartFactor(amp, "R6", 2.0);
+    a.setPartFactor(amp, "C12", 0.5);
+    CHECK(a.partEditCount(amp) == 2);
+    CHECK(a.partFactor(amp, "R6") == Catch::Approx(2.0));
+    CHECK(a.partFactor(amp, "nothing") == Catch::Approx(1.0));
+    CHECK(a.partFactor(amp, "R6 ") == Catch::Approx(1.0));
+    a.setPartFactor(amp, "C12", 1.0);  // back to the drawn value: the edit goes away
+    CHECK(a.partEditCount(amp) == 1);
+    juce::MemoryBlock state;
+    a.getStateInformation(state);
+    b.setStateInformation(state.getData(), int(state.getSize()));
+    CHECK(b.partFactor(amp, "R6") == Catch::Approx(2.0));
+    CHECK(b.partEditCount(amp) == 1);
+    CHECK(b.wantedCondition().parts.size() == 1);
+    a.clearPartFactors(amp);
+    CHECK(a.partEditCount(amp) == 0);
+    juce::MemoryBlock empty;
+    a.getStateInformation(empty);
+    b.setStateInformation(empty.getData(), int(empty.getSize()));
+    CHECK(b.partEditCount(amp) == 0);
+    CHECK(before == a.runningAmpIndex());
 }
 
 TEST_CASE("an impulse response loads, survives the state, and shapes the sound") {
@@ -3964,6 +4024,49 @@ TEST_CASE("every amp's circuit page can be rendered", "[.circuitshots]") {
             }
         }
     }
+}
+
+TEST_CASE("the circuit page lets the user change the values of the components", "[ui]") {
+    JuceInit init;
+    SasProcessor p;
+    for (std::size_t i = 0; i < p.amps().size(); ++i)
+        if (p.amps()[i].id == "jazz_clean_120") setParam(p, "amp", float(i));
+    p.prepareToPlay(48000.0, 512);
+    std::unique_ptr<juce::AudioProcessorEditor> ed(p.createEditor());
+    auto* se = dynamic_cast<SasEditor*>(ed.get());
+    REQUIRE(se != nullptr);
+    ed->setSize(1000, 560);
+    se->selectPage(2);
+    auto& page = se->circuitPage();
+    const int amp = p.selectedAmpIndex();
+    REQUIRE(page.editableCount() > 10);
+    const auto name = page.editableName(0);
+    const auto before = page.editableText(0);
+    page.editValue(0, 1);  // one step up in the E12 series
+    CHECK(page.editableText(0) != before);
+    CHECK(p.partEditCount(amp) == 0);  // not given to the processor yet: it waits for the last step
+    if (const char* dir = std::getenv("SAS_SCREENSHOT_DIR")) {  // what an edited value looks like
+        page.editValue(3, 1);
+        page.editValue(3, 1);
+        page.tick();
+        const auto img = ed->createComponentSnapshot(ed->getLocalBounds(), true, 1.0f);
+        juce::File(dir).createDirectory();
+        juce::FileOutputStream out(juce::File(dir).getChildFile("circuit_edit.png"));
+        if (out.openedOk()) {
+            out.setPosition(0);
+            out.truncate();
+            juce::PNGImageFormat().writeImageToStream(img, out);
+        }
+        page.editValue(3, -1);
+        page.editValue(3, -1);
+    }
+    page.applyEdits();
+    CHECK(p.partEditCount(amp) == 1);
+    CHECK(p.partFactor(amp, name.toStdString()) > 1.0);
+    page.editValue(0, -1);  // and back: the edit is gone
+    page.applyEdits();
+    CHECK(p.partEditCount(amp) == 0);
+    CHECK(page.editableText(0) == before);
 }
 
 TEST_CASE("the circuit page shows the channel the amp is set to", "[ui]") {

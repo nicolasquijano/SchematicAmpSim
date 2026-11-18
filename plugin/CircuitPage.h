@@ -52,6 +52,14 @@ public:
     // Turns pot `i` by `delta` of its range (what a drag or the wheel does).
     void nudgePot(int i, float delta);
 
+    // The components whose values the user can change in the drawing shown: how many, the name of one in the netlist, the value as shown, one step
+    // up (1) or down (-1) in the E12 series, and giving the pending edits to the processor now (tick() does it a moment after the last step).
+    int editableCount() const;
+    juce::String editableName(int i) const { return drawings_[std::size_t(view_)].values[std::size_t(editableIndex(i))].name; }
+    juce::String editableText(int i) const { return shownText(drawings_[std::size_t(view_)].values[std::size_t(editableIndex(i))]); }
+    void editValue(int i, int dir) { stepValue(drawings_[std::size_t(view_)].values[std::size_t(editableIndex(i))], dir); }
+    void applyEdits();
+
     // The meters span this many dB below the stage's limit.
     static constexpr float kRangeDb = 48.0f;
 
@@ -93,6 +101,9 @@ private:
             juce::Drawable* item = nullptr;
             juce::String text;
             char align = 'L';
+            juce::String name;  // the component in the netlist, when the user can edit it ("valL_<n>_<text>@R:R12")
+            double base = 0.0;  // its value as drawn
+            bool isCap = false;
         };
         struct Switch {
             juce::Drawable* closed = nullptr;
@@ -118,6 +129,15 @@ private:
     Pot* potOf(PotRef r) { return r.drawing < 0 ? nullptr : &drawings_[std::size_t(r.drawing)].pots[std::size_t(r.index)]; }
     const Pot* potOf(PotRef r) const { return r.drawing < 0 ? nullptr : &drawings_[std::size_t(r.drawing)].pots[std::size_t(r.index)]; }
     void updatePots();
+    // Editing a component's value: the wheel or a drag over it steps through the E12 series, a double-click puts it back. The new value is shown at once and
+    // given to the processor a moment after the last step (it builds the amp's circuits again).
+    double factorOf(const juce::String& name) const;
+    juce::String shownText(const Drawing::Value& v) const;
+    juce::Rectangle<float> valueBox(const Drawing& dr, const Drawing::Value& v) const;
+    int valueAt(juce::Point<float> pos) const;
+    void stepValue(const Drawing::Value& v, int dir);
+    void setPending(const juce::String& name, double factor);
+    int editableIndex(int i) const;
     void updateSwitches();
     static float fractionOf(float ratio);
     static juce::Colour levelColour(float db);
@@ -131,7 +151,12 @@ private:
     std::map<juce::String, juce::String> uiLabels_;  // parameter -> the knob's label
     std::vector<juce::String> uiParams_;  // the plugin parameters the amp has on its panel: a pot is live when one has its name
     std::vector<std::unique_ptr<juce::TextButton>> viewButtons_;
-    juce::TextButton valuesButton_;
+    juce::TextButton valuesButton_, resetButton_;
+    int ampIndex_ = 0;
+    std::map<juce::String, double> pending_;  // the factors asked for and not yet given to the processor
+    juce::uint32 applyAtMs_ = 0;
+    int valueHover_ = -1, valueDrag_ = -1;
+    float valueDragY_ = 0.0f;
     static inline bool showValues_ = true;  // the values of the components: shown or hidden, kept for the session
     std::vector<std::map<juce::String, double>> jackRes_;              // per jack: the switch resistors it sets
     std::vector<std::vector<std::map<juce::String, double>>> selRes_;  // per selector and position

@@ -278,6 +278,7 @@ const std::unordered_map<std::string, std::string>& italianTable() {
     {"CHROMATIC TUNER", "ACCORDATORE CROMATICO"},
     {"TUNER", "ACCORDATORE"},
     {"VALUES", "VALORI"},
+    {"RESET", "RIPRISTINA"},
     {"Circuit", "Circuito"},
     {"SIGNAL CHAIN", "CATENA DEL SEGNALE"},
     {"Bar: level now. Line: recent peak. Red: at the limit.", "Barra: livello attuale. Linea: picco recente. Rosso: al limite."},

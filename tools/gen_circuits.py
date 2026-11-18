@@ -50,10 +50,11 @@ class Svg:
     def add(self, s):
         self.body.append(s)
 
-    def val(self, kind, x, y, text):
-        """A component value the plugin writes in small type: an invisible anchor, `kind` L (starts at x), R (ends at x) or C (centred on x)."""
+    def val(self, kind, x, y, text, comp=None):
+        """A component value the plugin writes in small type: an invisible anchor, `kind` L (starts at x), R (ends at x) or C (centred on x). `comp`
+        ("R:R12": the kind and the name in the netlist) lets the user edit the value from the page."""
         self.nv = getattr(self, 'nv', 0) + 1
-        self.add('<ellipse id="val%s_%d_%s" cx="%g" cy="%g" rx="1" ry="1" fill="none" stroke="none"/>' % (kind, self.nv, text, x, y))
+        self.add('<ellipse id="val%s_%d_%s%s" cx="%g" cy="%g" rx="1" ry="1" fill="none" stroke="none"/>' % (kind, self.nv, text, ('@' + comp) if comp else '', x, y))
 
     def path(self, name, d, stroke=WIRE, w=3.5, fill='none', extra=''):
         self.add('<path id="%s" d="%s" fill="%s" stroke="%s" stroke-width="%g" stroke-linecap="round" stroke-linejoin="round"%s/>' % (name, d, fill, stroke, w, extra))

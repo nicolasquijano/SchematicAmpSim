@@ -278,6 +278,7 @@ const std::unordered_map<std::string, std::string>& germanTable() {
     {"CHROMATIC TUNER", "CHROMATISCHES STIMMGERÄT"},
     {"TUNER", "STIMMGERÄT"},
     {"VALUES", "WERTE"},
+    {"RESET", "ZURÜCK"},
     {"Circuit", "Schaltung"},
     {"SIGNAL CHAIN", "SIGNALWEG"},
     {"Bar: level now. Line: recent peak. Red: at the limit.", "Balken: aktueller Pegel. Linie: letzte Spitze. Rot: am Limit."},

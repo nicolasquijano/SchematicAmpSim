@@ -278,6 +278,7 @@ const std::unordered_map<std::string, std::string>& japaneseTable() {
     {"CHROMATIC TUNER", "クロマチック・チューナー"},
     {"TUNER", "チューナー"},
     {"VALUES", "値"},
+    {"RESET", "リセット"},
     {"Circuit", "回路"},
     {"SIGNAL CHAIN", "シグナルチェーン"},
     {"Bar: level now. Line: recent peak. Red: at the limit.", "バー：現在のレベル。線：直近のピーク。赤：限界。"},

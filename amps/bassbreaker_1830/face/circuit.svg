@@ -110,15 +110,15 @@
 <ellipse id="pot_clean_treble" cx="870" cy="330" rx="18" ry="18" fill="url(#g27)" stroke="#9a8760" stroke-width="1.5"/>
 <ellipse id="dial_clean_treble" cx="870" cy="330" rx="11" ry="11" fill="#26211c" stroke="#3b3329" stroke-width="1"/>
 <path id="ptr_clean_treble" d="M870,330 L870,319" fill="none" stroke="#f0b53a" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>
-<ellipse id="valC_1_33k" cx="84" cy="176" rx="1" ry="1" fill="none" stroke="none"/>
-<ellipse id="valL_2_1M" cx="150" cy="168" rx="1" ry="1" fill="none" stroke="none"/>
-<ellipse id="valL_3_220k" cx="212" cy="80" rx="1" ry="1" fill="none" stroke="none"/>
-<ellipse id="valR_4_1.5k" cx="173" cy="262" rx="1" ry="1" fill="none" stroke="none"/>
-<ellipse id="valL_5_2.2u" cx="227" cy="258" rx="1" ry="1" fill="none" stroke="none"/>
-<ellipse id="valL_6_100k" cx="332" cy="308" rx="1" ry="1" fill="none" stroke="none"/>
-<ellipse id="valC_7_0.1u" cx="375" cy="251" rx="1" ry="1" fill="none" stroke="none"/>
-<ellipse id="valL_8_100k" cx="1012" cy="80" rx="1" ry="1" fill="none" stroke="none"/>
-<ellipse id="valR_9_1.5k" cx="973" cy="272" rx="1" ry="1" fill="none" stroke="none"/>
-<ellipse id="valL_10_2.2u" cx="1027" cy="268" rx="1" ry="1" fill="none" stroke="none"/>
+<ellipse id="valC_1_33k@R:R2" cx="84" cy="176" rx="1" ry="1" fill="none" stroke="none"/>
+<ellipse id="valL_2_1M@R:R1" cx="150" cy="168" rx="1" ry="1" fill="none" stroke="none"/>
+<ellipse id="valL_3_220k@R:R3" cx="212" cy="80" rx="1" ry="1" fill="none" stroke="none"/>
+<ellipse id="valR_4_1.5k@R:R4" cx="173" cy="262" rx="1" ry="1" fill="none" stroke="none"/>
+<ellipse id="valL_5_2.2u@C:C1" cx="227" cy="258" rx="1" ry="1" fill="none" stroke="none"/>
+<ellipse id="valL_6_100k@R:R5" cx="332" cy="308" rx="1" ry="1" fill="none" stroke="none"/>
+<ellipse id="valC_7_0.1u@C:C2" cx="375" cy="251" rx="1" ry="1" fill="none" stroke="none"/>
+<ellipse id="valL_8_100k@R:R16" cx="1012" cy="80" rx="1" ry="1" fill="none" stroke="none"/>
+<ellipse id="valR_9_1.5k@R:R17" cx="973" cy="272" rx="1" ry="1" fill="none" stroke="none"/>
+<ellipse id="valL_10_2.2u@C:C9" cx="1027" cy="268" rx="1" ry="1" fill="none" stroke="none"/>
 <path id="next_power" d="M1085,122 V138 L1107,130 Z" fill="url(#g28)" stroke="#8c7a55" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
 </svg>

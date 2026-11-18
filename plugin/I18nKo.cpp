@@ -278,6 +278,7 @@ const std::unordered_map<std::string, std::string>& koreanTable() {
     {"CHROMATIC TUNER", "크로매틱 튜너"},
     {"TUNER", "튜너"},
     {"VALUES", "값"},
+    {"RESET", "초기화"},
     {"Circuit", "회로"},
     {"SIGNAL CHAIN", "신호 체인"},
     {"Bar: level now. Line: recent peak. Red: at the limit.", "막대: 현재 레벨. 선: 최근 피크. 빨강: 한계."},

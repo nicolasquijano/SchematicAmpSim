@@ -6,7 +6,9 @@
 
 #include <array>
 #include <atomic>
+#include <map>
 #include <memory>
+#include <string>
 #include <vector>
 
 #include "RackState.h"
@@ -452,7 +454,14 @@ public:
     // Average plate current of one output tube in mA (0 in the Lite / Eco modes).
     float idleMilliamps() const { return idleMa_.load(); }
     // The physical condition (tube, wear, unit) the "tube", "wear" and "unit" parameters ask for.
-    sas::Condition wantedCondition(int instance = 0) const;
+    sas::Condition wantedCondition(int instance = 0, bool withParts = true) const;
+    // The user's edits of the components of an amp's preamp (the circuit page): a factor on the value of a resistor or capacitor by its name in the
+    // netlist (1 = as drawn). An edit builds the amp's circuits again off the audio thread, as another amp or a tube does. Message thread.
+    double partFactor(int amp, const std::string& name) const;
+    void setPartFactor(int amp, const std::string& name, double factor);  // 1 removes the edit
+    void clearPartFactors(int amp);
+    int partEditCount(int amp) const;
+    std::map<std::string, double> partFactors(int amp) const;
 
     // The rack: the order of the modules (docs/MODULAR_RACK.md). A new instance starts with the amp and the cabinet.
     const sas::RackOrder& rackOrder() const { return rackOrder_; }
@@ -514,7 +523,13 @@ private:
     // The cabinet's work: filter, NAM cabinet or impulse responses, double tracking (called by CabinetModule on the audio thread).
     void processCabinet(class CabinetModule& cab, float* l, float* r, std::size_t n);
     int wantedKey(int instance) const;
-    static int makeKey(int amp, const sas::Condition& c) { return amp + 32 * (c.tube + 8 * (c.wear + 16 * c.unit)); }
+    // amp (5 bits), tube (3), wear (4), unit (4), then the revision of the amp's component edits.
+    static int makeKey(int amp, const sas::Condition& c, int partsRev = 0) { return amp + 32 * (c.tube + 8 * (c.wear + 16 * c.unit)) + (partsRev << 16); }
+    mutable juce::CriticalSection partsLock_;
+    std::vector<std::map<std::string, double>> parts_;  // per amp of the list; guarded by partsLock_
+    std::array<std::atomic<int>, 32> partsRev_{};       // bumped with every edit, so the key of the amp changes
+    void restoreParts(const juce::ValueTree& tree);
+
 
     std::vector<sas::AmpDef> defs_;
 

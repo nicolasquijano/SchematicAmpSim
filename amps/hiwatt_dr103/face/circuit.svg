@@ -130,20 +130,20 @@
 <ellipse id="pot_master" cx="900" cy="120" rx="18" ry="18" fill="url(#g31)" stroke="#9a8760" stroke-width="1.5"/>
 <ellipse id="dial_master" cx="900" cy="120" rx="11" ry="11" fill="#26211c" stroke="#3b3329" stroke-width="1"/>
 <path id="ptr_master" d="M900,120 L908.899,113.534" fill="none" stroke="#f0b53a" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>
-<ellipse id="valL_1_1M" cx="150" cy="128" rx="1" ry="1" fill="none" stroke="none"/>
-<ellipse id="valL_2_1M" cx="150" cy="320" rx="1" ry="1" fill="none" stroke="none"/>
-<ellipse id="valL_3_220k" cx="212" cy="80" rx="1" ry="1" fill="none" stroke="none"/>
-<ellipse id="valL_4_220k" cx="212" cy="365" rx="1" ry="1" fill="none" stroke="none"/>
-<ellipse id="valC_5_1n" cx="240" cy="106" rx="1" ry="1" fill="none" stroke="none"/>
-<ellipse id="valC_6_22n" cx="240" cy="306" rx="1" ry="1" fill="none" stroke="none"/>
-<ellipse id="valR_7_1k5" cx="252" cy="263" rx="1" ry="1" fill="none" stroke="none"/>
-<ellipse id="valL_8_100u" cx="302" cy="262" rx="1" ry="1" fill="none" stroke="none"/>
-<ellipse id="valL_9_100k" cx="572" cy="80" rx="1" ry="1" fill="none" stroke="none"/>
-<ellipse id="valR_10_1k" cx="533" cy="293" rx="1" ry="1" fill="none" stroke="none"/>
-<ellipse id="valL_11_47n" cx="588" cy="289" rx="1" ry="1" fill="none" stroke="none"/>
-<ellipse id="valC_12_1n" cx="612" cy="96" rx="1" ry="1" fill="none" stroke="none"/>
-<ellipse id="valL_13_100k" cx="1012" cy="80" rx="1" ry="1" fill="none" stroke="none"/>
-<ellipse id="valR_14_1k5" cx="988" cy="296" rx="1" ry="1" fill="none" stroke="none"/>
-<ellipse id="valC_15_47n" cx="1040" cy="96" rx="1" ry="1" fill="none" stroke="none"/>
+<ellipse id="valL_1_1M@R:RLEAK_B" cx="150" cy="128" rx="1" ry="1" fill="none" stroke="none"/>
+<ellipse id="valL_2_1M@R:RLEAK_N" cx="150" cy="320" rx="1" ry="1" fill="none" stroke="none"/>
+<ellipse id="valL_3_220k@R:R220B" cx="212" cy="80" rx="1" ry="1" fill="none" stroke="none"/>
+<ellipse id="valL_4_220k@R:R220N" cx="212" cy="365" rx="1" ry="1" fill="none" stroke="none"/>
+<ellipse id="valC_5_1n@C:C_B" cx="240" cy="106" rx="1" ry="1" fill="none" stroke="none"/>
+<ellipse id="valC_6_22n@C:C_N" cx="240" cy="306" rx="1" ry="1" fill="none" stroke="none"/>
+<ellipse id="valR_7_1k5@R:RK1" cx="252" cy="263" rx="1" ry="1" fill="none" stroke="none"/>
+<ellipse id="valL_8_100u@C:CK1" cx="302" cy="262" rx="1" ry="1" fill="none" stroke="none"/>
+<ellipse id="valL_9_100k@R:R100P" cx="572" cy="80" rx="1" ry="1" fill="none" stroke="none"/>
+<ellipse id="valR_10_1k@R:RK2A" cx="533" cy="293" rx="1" ry="1" fill="none" stroke="none"/>
+<ellipse id="valL_11_47n@C:CK2B" cx="588" cy="289" rx="1" ry="1" fill="none" stroke="none"/>
+<ellipse id="valC_12_1n@C:C1000T" cx="612" cy="96" rx="1" ry="1" fill="none" stroke="none"/>
+<ellipse id="valL_13_100k@R:R100V" cx="1012" cy="80" rx="1" ry="1" fill="none" stroke="none"/>
+<ellipse id="valR_14_1k5@R:RK3" cx="988" cy="296" rx="1" ry="1" fill="none" stroke="none"/>
+<ellipse id="valC_15_47n@C:C47O" cx="1040" cy="96" rx="1" ry="1" fill="none" stroke="none"/>
 <path id="next_power" d="M1110,112 V128 L1132,120 Z" fill="url(#g32)" stroke="#8c7a55" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
 </svg>

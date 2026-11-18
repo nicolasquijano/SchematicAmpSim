@@ -279,10 +279,13 @@ class Chain:
             ends = {e['a'], e['b']}
             if e['type'] == 'R' and t['plate'] in ends and ends & net.supply and 'plate' not in out:
                 out['plate'] = e['val']
+                out['plate_n'] = e['name']
             if e['type'] == 'R' and t['cath'] in ends and ends & GND and 'cath' not in out and not net.is_short(e):
                 out['cath'] = e['val']
+                out['cath_n'] = e['name']
             if e['type'] == 'C' and t['cath'] in ends and ends & GND and 'bypass' not in out:
                 out['bypass'] = e['val']
+                out['bypass_n'] = e['name']
         return out
 
     def edge_width(self, e):
@@ -489,20 +492,20 @@ class Chain:
             else:
                 statics.append('M%g,%g V%g' % (cx, 36 + oy, YJ - 42 + oy))
                 wire(key, 'M%g,%g V%g' % (cx, YJ - 6 + oy, CY - R + oy))
-                parts.append(('res_v', cx, YJ - 42 + oy, 'rp%d' % i, v.get('plate')))
+                parts.append(('res_v', cx, YJ - 42 + oy, 'rp%d' % i, v.get('plate'), v.get('plate_n')))
             parts.append(('tube', cx, CY + oy, t))
             yk = BASE_BOTTOM + 8 + oy
             bypass = None if cf else v.get('bypass')
             statics.append('M%g,%g V%g' % (cx, BASE_BOTTOM + (6 if cf else 0) + oy, yk))
             if not bypass:
-                parts.append(('res_v', cx, yk, 'rk%d' % i, v.get('cath')))
+                parts.append(('res_v', cx, yk, 'rk%d' % i, v.get('cath'), v.get('cath_n')))
                 statics.append('M%g,%g V%g' % (cx, yk + 36, yk + 46))
                 grounds.append((cx, yk + 46))
             else:
                 statics.append('M%g,%g H%g M%g,%g V%g M%g,%g V%g' % (cx - 15, yk, cx + 15, cx - 15, yk, yk + 10, cx + 15, yk, yk + 18))
                 statics.append('M%g,%g V%g H%g M%g,%g V%g' % (cx - 15, yk + 46, yk + 58, cx + 15, cx + 15, yk + 30, yk + 58))
-                parts.append(('res_v', cx - 15, yk + 10, 'rk%d' % i, v.get('cath')))
-                parts.append(('cap_h', cx + 15, yk + 24, 'ck%d' % i, bypass))
+                parts.append(('res_v', cx - 15, yk + 10, 'rk%d' % i, v.get('cath'), v.get('cath_n')))
+                parts.append(('cap_h', cx + 15, yk + 24, 'ck%d' % i, bypass, v.get('bypass_n')))
                 grounds.append((cx, yk + 58))
         # the knobs the netlist did not place: a row of their own under the drawing
         left = [u for u in self.pots_left if u['param'] not in pot_count]
@@ -510,6 +513,13 @@ class Chain:
         for k, u in enumerate(left):
             parts.append(('pot', 70 + k * min(120, 1000 / max(1, len(left))), py, u['param'], u['param']))
         # draw
+        real = {e['name']: e['type'] for e in net.elems}
+
+        def comp(part):
+            """The component a value belongs to, for the plugin to edit: "R:R12" (kind and name in the netlist), or None."""
+            name = part[5] if len(part) > 5 else part[3]
+            return '%s:%s' % (real[name], name) if name in real else None
+
         for rw, xs in rails.items():
             s.path('rail%d' % rw, 'M%g,%g H%g' % (min(xs) - 40, 36 + rw * ROW_H, max(xs) + 40), '#7a6a4c', 2, extra=' stroke-dasharray="6 5"')
         for key, ds in wires.items():
@@ -523,21 +533,21 @@ class Chain:
             if kind == 'res_v':
                 resistor_v(s, part[1], part[2], part[3])
                 if part[4]:
-                    s.val('L', part[1] + 11, part[2] + 18, part[4])
+                    s.val('L', part[1] + 11, part[2] + 18, part[4], comp(part))
             elif kind == 'res_h':
                 resistor_h(s, part[1], part[2], part[3])
                 if part[4]:
-                    s.val('C', part[1] + 18, part[2] - 14, part[4])
+                    s.val('C', part[1] + 18, part[2] - 14, part[4], comp(part))
             elif kind == 'res_f':  # the feedback resistor of an op-amp: its value goes under it (the capacitor is above)
                 resistor_h(s, part[1], part[2], part[3])
                 if part[4]:
-                    s.val('C', part[1] + 18, part[2] + 22, part[4])
+                    s.val('C', part[1] + 18, part[2] + 22, part[4], comp(part))
             elif kind == 'cap_v':
                 cap(s, part[1], part[2], part[3])
-                s.val('C', part[1], part[2] - 26, part[4])
+                s.val('C', part[1], part[2] - 26, part[4], comp(part))
             elif kind == 'cap_h':
                 cap_h(s, part[1], part[2], part[3])
-                s.val('L', part[1] + 15, part[2], part[4])
+                s.val('L', part[1] + 15, part[2], part[4], comp(part))
             elif kind == 'pot':
                 pot(s, part[1], part[2], part[3], 0.8)
             elif kind == 'lbl':
@@ -560,6 +570,6 @@ class Chain:
             elif kind == 'cap_f':
                 cap(s, part[1], part[2], part[3])
                 if part[4]:
-                    s.val('C', part[1], part[2] - 26, part[4])
+                    s.val('C', part[1], part[2] - 26, part[4], comp(part))
         ax, ay = arrow
         s.path('next_power', 'M%g,%g V%g L%g,%g Z' % (ax, ay - 8, ay + 8, ax + 22, ay), '#8c7a55', 1.5, s.lin(0, ay - 8, 0, ay + 8, [(0, '#d9b866'), (1, '#8a6d2c')]))

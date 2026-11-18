@@ -278,6 +278,7 @@ const std::unordered_map<std::string, std::string>& russianTable() {
     {"CHROMATIC TUNER", "ХРОМАТИЧЕСКИЙ ТЮНЕР"},
     {"TUNER", "ТЮНЕР"},
     {"VALUES", "НОМИНАЛЫ"},
+    {"RESET", "СБРОС"},
     {"Circuit", "Схема"},
     {"SIGNAL CHAIN", "СИГНАЛЬНЫЙ ТРАКТ"},
     {"Bar: level now. Line: recent peak. Red: at the limit.", "Полоса: текущий уровень. Линия: недавний пик. Красный: на пределе."},

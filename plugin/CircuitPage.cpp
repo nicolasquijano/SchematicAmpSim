@@ -9,6 +9,52 @@
 #include "BinaryData.h"
 #endif
 
+namespace {
+// "4k7" is 4700, "0.082u" 8.2e-8: the netlists' notation.
+double parseValue(const juce::String& s) {
+    int at = -1;
+    for (int i = 0; i < s.length() && at < 0; ++i)
+        if (juce::String("pnumkKMGR").containsChar(s[i])) at = i;
+    if (at < 0) return s.getDoubleValue();
+    double mult = 1.0;
+    switch (s[at]) {
+        case 'p': mult = 1e-12; break;
+        case 'n': mult = 1e-9; break;
+        case 'u': mult = 1e-6; break;
+        case 'm': mult = 1e-3; break;
+        case 'k': case 'K': mult = 1e3; break;
+        case 'M': mult = 1e6; break;
+        case 'G': mult = 1e9; break;
+        default: break;
+    }
+    const auto head = s.substring(0, at), tail = s.substring(at + 1);
+    return (tail.isEmpty() ? head : head + "." + tail).getDoubleValue() * mult;
+}
+
+juce::String formatValue(double v, bool cap) {
+    auto g = [](double x) { return juce::String::formatted("%.3g", x); };
+    if (cap) {
+        if (v >= 1e-6) return g(v * 1e6) + juce::String(juce::CharPointer_UTF8("\xc2\xb5"));
+        return v >= 1e-9 ? g(v * 1e9) + "n" : g(v * 1e12) + "p";
+    }
+    return v >= 1e6 ? g(v / 1e6) + "M" : v >= 1e3 ? g(v / 1e3) + "k" : g(v);
+}
+
+// The next preferred value (E12) above or below v.
+double stepE12(double v, int dir) {
+    static const double e12[] = {1.0, 1.2, 1.5, 1.8, 2.2, 2.7, 3.3, 3.9, 4.7, 5.6, 6.8, 8.2};
+    const double e = std::floor(std::log10(v)), m = v / std::pow(10.0, e);
+    if (dir > 0) {
+        for (const double s : e12)
+            if (s > m * 1.01) return s * std::pow(10.0, e);
+        return std::pow(10.0, e + 1.0);
+    }
+    for (int i = 11; i >= 0; --i)
+        if (e12[i] < m * 0.99) return e12[i] * std::pow(10.0, e);
+    return 8.2 * std::pow(10.0, e - 1.0);
+}
+}  // namespace
+
 CircuitPage::CircuitPage(SasProcessor& processor, const AmpLookAndFeel& look) : processor_(processor), look_(look) {
     addAndMakeVisible(host_);  // before the buttons, so they stay above the drawings
     host_.setInterceptsMouseClicks(false, false);
@@ -20,6 +66,14 @@ CircuitPage::CircuitPage(SasProcessor& processor, const AmpLookAndFeel& look) : 
         repaint();
     };
     addAndMakeVisible(valuesButton_);
+    resetButton_.setButtonText(tr("RESET"));
+    resetButton_.onClick = [this] {
+        pending_.clear();
+        processor_.clearPartFactors(ampIndex_);
+        repaint();
+    };
+    resetButton_.setVisible(false);
+    addChildComponent(resetButton_);
 }
 
 CircuitPage::~CircuitPage() = default;
@@ -70,10 +124,22 @@ void CircuitPage::collect(Drawing& dr, juce::Drawable& d) {
     } else if (id == "next_power") {
         dr.next = &d;
     } else if (id.length() > 6 && id.substring(0, 3) == "val" && id.substring(4, 5) == "_") {
-        juce::String text = id.substring(5).fromFirstOccurrenceOf("_", false, false);
+        juce::String text = id.substring(5).fromFirstOccurrenceOf("_", false, false), comp;
+        if (text.contains("@")) {
+            comp = text.fromFirstOccurrenceOf("@", false, false);
+            text = text.upToFirstOccurrenceOf("@", false, false);
+        }
+        const juce::String raw = text;
         if (text.endsWithChar('u')) text = text.dropLastCharacters(1) + juce::String(juce::CharPointer_UTF8("\xc2\xb5"));
         else if (text.endsWithChar('R')) text = text.dropLastCharacters(1) + juce::String(juce::CharPointer_UTF8("\xce\xa9"));
-        dr.values.push_back({&d, text, char(id[3])});
+        Drawing::Value value{&d, text, char(id[3])};
+        if (comp.length() > 2 && comp[1] == ':') {
+            value.isCap = comp[0] == 'C';
+            value.name = comp.substring(2);
+            value.base = parseValue(raw);
+            if (!(value.base > 0.0)) value.name = {};
+        }
+        dr.values.push_back(value);
     } else if (id.startsWith("swc_") || id.startsWith("swo_")) {  // "swc_1_SW_NAME": the closed blade of a switch that is closed in the netlist
         const auto rest = id.substring(4);
         auto& sw = dr.switches[rest.fromFirstOccurrenceOf("_", false, false)];
@@ -125,6 +191,10 @@ void CircuitPage::load(int which, const sas::AmpDef& def) {
 }
 
 void CircuitPage::setAmp(const sas::AmpDef& def) {
+    pending_.clear();
+    ampIndex_ = 0;
+    for (std::size_t i = 0; i < processor_.amps().size(); ++i)
+        if (processor_.amps()[i].id == def.id) ampIndex_ = int(i);
     stages_.clear();
     auto add = [&](const juce::String& key) {
         Stage s;
@@ -231,6 +301,8 @@ void CircuitPage::resized() {
             bar.removeFromRight(4);
         }
         valuesButton_.setBounds(bar.removeFromRight(std::max(72, valuesButton_.getBestWidthForHeight(22) + 10)));
+        bar.removeFromRight(4);
+        resetButton_.setBounds(bar.removeFromRight(std::max(64, resetButton_.getBestWidthForHeight(22) + 10)));
     }
     // The drawings live in a host that clips them to the schematic's area; a wide one starts at a readable size (not squeezed to fit) and the player
     // drags it along, wheels to zoom and double-clicks to see all of it.
@@ -251,9 +323,75 @@ void CircuitPage::resized() {
     }
 }
 
+double CircuitPage::factorOf(const juce::String& name) const {
+    if (const auto it = pending_.find(name); it != pending_.end()) return it->second;
+    return processor_.partFactor(ampIndex_, name.toStdString());
+}
+
+juce::String CircuitPage::shownText(const Drawing::Value& v) const {
+    if (v.name.isEmpty()) return v.text;
+    const double f = factorOf(v.name);
+    return std::abs(f - 1.0) < 1e-6 ? v.text : formatValue(v.base * f, v.isCap);
+}
+
+juce::Rectangle<float> CircuitPage::valueBox(const Drawing& dr, const Drawing::Value& v) const {
+    const auto c = v.item->getDrawableBounds().transformedBy(dr.fit).getCentre();
+    juce::GlyphArrangement ga;
+    ga.addLineOfText(juce::Font(AmpLookAndFeel::font(9.5f)), shownText(v), 0.0f, 0.0f);
+    const float w = std::max(14.0f, ga.getBoundingBox(0, -1, true).getWidth() + 4.0f);
+    return v.align == 'R' ? juce::Rectangle<float>(c.x - w, c.y - 7.0f, w, 14.0f)
+           : v.align == 'C' ? juce::Rectangle<float>(c.x - w * 0.5f, c.y - 7.0f, w, 14.0f)
+                             : juce::Rectangle<float>(c.x, c.y - 7.0f, w, 14.0f);
+}
+
+int CircuitPage::valueAt(juce::Point<float> pos) const {
+    if (!showValues_ || !hasDrawing() || view_ >= int(drawings_.size()) || !host_.getBounds().toFloat().contains(pos)) return -1;
+    const auto& dr = drawings_[std::size_t(view_)];
+    for (std::size_t i = 0; i < dr.values.size(); ++i)
+        if (dr.values[i].name.isNotEmpty() && valueBox(dr, dr.values[i]).expanded(2.0f).contains(pos)) return int(i);
+    return -1;
+}
+
+void CircuitPage::setPending(const juce::String& name, double factor) {
+    pending_[name] = factor;
+    applyAtMs_ = juce::Time::getMillisecondCounter() + 350;
+    repaint();
+}
+
+void CircuitPage::stepValue(const Drawing::Value& v, int dir) {
+    const double cur = v.base * factorOf(v.name);
+    double next = stepE12(cur, dir);
+    if ((cur - v.base) * (next - v.base) < 0.0) next = v.base;  // a value that is not in the series: the step passes through it on the way back
+    double f = std::clamp(next / v.base, 0.1, 10.0);
+    if (std::abs(f - 1.0) < 0.02) f = 1.0;  // back on the value as drawn
+    setPending(v.name, f);
+}
+
+int CircuitPage::editableIndex(int i) const {
+    const auto& dr = drawings_[std::size_t(view_)];
+    for (std::size_t k = 0; k < dr.values.size(); ++k)
+        if (dr.values[k].name.isNotEmpty() && i-- == 0) return int(k);
+    return 0;
+}
+
+int CircuitPage::editableCount() const {
+    if (!hasDrawing() || view_ >= int(drawings_.size())) return 0;
+    int n = 0;
+    for (const auto& v : drawings_[std::size_t(view_)].values) n += v.name.isNotEmpty() ? 1 : 0;
+    return n;
+}
+
+void CircuitPage::applyEdits() {
+    for (const auto& [name, f] : pending_) processor_.setPartFactor(ampIndex_, name.toStdString(), f);
+    pending_.clear();
+}
+
 void CircuitPage::tick() {
     const int n = processor_.meterCount();
     const auto now = juce::Time::getMillisecondCounter();
+    if (!pending_.empty() && static_cast<juce::int32>(now - applyAtMs_) >= 0) applyEdits();
+    const bool edited = !pending_.empty() || processor_.partEditCount(ampIndex_) > 0;
+    if (edited != resetButton_.isVisible()) resetButton_.setVisible(edited);
     for (int i = 0; i < int(stages_.size()); ++i) {
         auto& s = stages_[std::size_t(i)];
         const float ratio = i < n ? processor_.takeMeter(i) : 0.0f;
@@ -372,6 +510,16 @@ void CircuitPage::nudgePot(int i, float delta) {
 }
 
 void CircuitPage::mouseMove(const juce::MouseEvent& e) {
+    if (const int vi = valueAt(e.position); vi >= 0 || valueHover_ >= 0) {
+        if (vi != valueHover_) {
+            valueHover_ = vi;
+            repaint();
+        }
+        if (vi >= 0) {
+            setMouseCursor(juce::MouseCursor::UpDownResizeCursor);
+            return;
+        }
+    }
     const auto h = potAt(e.position);
     const auto& dr = drawings_[std::size_t(view_)];
     const bool onNext = dr.next && dr.next->getDrawableBounds().transformedBy(dr.fit).expanded(6.0f).contains(e.position);
@@ -390,6 +538,11 @@ void CircuitPage::mouseExit(const juce::MouseEvent&) {
 }
 
 void CircuitPage::mouseDown(const juce::MouseEvent& e) {
+    valueDrag_ = valueAt(e.position);
+    if (valueDrag_ >= 0) {
+        valueDragY_ = e.position.y;
+        return;
+    }
     drag_ = potAt(e.position);
     if (drag_.drawing < 0) {  // the arrow at the end of the preamp leads on to the power amp
         const auto& dr = drawings_[std::size_t(view_)];
@@ -411,6 +564,18 @@ void CircuitPage::mouseDown(const juce::MouseEvent& e) {
 }
 
 void CircuitPage::mouseDrag(const juce::MouseEvent& e) {
+    if (valueDrag_ >= 0) {  // one step of the series for every 9 pixels
+        const auto& v = drawings_[std::size_t(view_)].values[std::size_t(valueDrag_)];
+        while (valueDragY_ - e.position.y >= 9.0f) {
+            stepValue(v, 1);
+            valueDragY_ -= 9.0f;
+        }
+        while (e.position.y - valueDragY_ >= 9.0f) {
+            stepValue(v, -1);
+            valueDragY_ += 9.0f;
+        }
+        return;
+    }
     if (panning_) {
         pan_ = e.position - panAnchor_;
         resized();
@@ -426,6 +591,11 @@ void CircuitPage::mouseDrag(const juce::MouseEvent& e) {
 }
 
 void CircuitPage::mouseUp(const juce::MouseEvent& e) {
+    if (valueDrag_ >= 0) {
+        valueDrag_ = -1;
+        mouseMove(e);
+        return;
+    }
     if (panning_) {
         panning_ = false;
         mouseMove(e);
@@ -439,6 +609,10 @@ void CircuitPage::mouseUp(const juce::MouseEvent& e) {
 }
 
 void CircuitPage::mouseDoubleClick(const juce::MouseEvent& e) {
+    if (const int vi = valueAt(e.position); vi >= 0) {  // a component's value goes back to the drawn one
+        setPending(drawings_[std::size_t(view_)].values[std::size_t(vi)].name, 1.0);
+        return;
+    }
     const auto r = potAt(e.position);
     const auto* pot = potOf(r);
     if (!pot) {  // on the drawing: all of it, or back to the readable size
@@ -461,6 +635,10 @@ void CircuitPage::mouseDoubleClick(const juce::MouseEvent& e) {
 }
 
 void CircuitPage::mouseWheelMove(const juce::MouseEvent& e, const juce::MouseWheelDetails& w) {
+    if (const int vi = valueAt(e.position); vi >= 0 && w.deltaY != 0.0f) {
+        stepValue(drawings_[std::size_t(view_)].values[std::size_t(vi)], w.deltaY > 0 ? 1 : -1);
+        return;
+    }
     const auto r = potAt(e.position);
     const auto* pot = potOf(r);
     if (!pot) {  // the wheel over the drawing zooms it about the pointer
@@ -517,16 +695,13 @@ void CircuitPage::paintOverChildren(juce::Graphics& g) {
             g.drawFittedText(text, box.toNearestInt(), juce::Justification::centred, 1, 0.6f);
         }
     }
-    g.setFont(AmpLookAndFeel::font(9.5f));  // the values of the components
-    g.setColour(look_.label().withAlpha(0.9f));
-    for (const auto& v : dr.values) {
-        if (!showValues_) break;
-        const auto c = v.item->getDrawableBounds().transformedBy(dr.fit).getCentre();
-        const float w = 48.0f;
-        const auto box = v.align == 'R' ? juce::Rectangle<float>(c.x - w, c.y - 7.0f, w, 14.0f)
-                         : v.align == 'C' ? juce::Rectangle<float>(c.x - w * 0.5f, c.y - 7.0f, w, 14.0f)
-                                           : juce::Rectangle<float>(c.x, c.y - 7.0f, w, 14.0f);
-        g.drawText(v.text, box.toNearestInt(), v.align == 'R' ? juce::Justification::centredRight : v.align == 'C' ? juce::Justification::centred : juce::Justification::centredLeft);
+    g.setFont(AmpLookAndFeel::font(9.5f));  // the values of the components: the ones the user changed in the accent colour
+    for (std::size_t i = 0; i < dr.values.size() && showValues_; ++i) {
+        const auto& v = dr.values[i];
+        const bool edited = v.name.isNotEmpty() && std::abs(factorOf(v.name) - 1.0) > 1e-6;
+        g.setColour(edited ? look_.accent() : int(i) == valueHover_ ? look_.text() : look_.label().withAlpha(0.9f));
+        const auto box = valueBox(dr, v).expanded(6.0f, 0.0f);
+        g.drawText(shownText(v), box.toNearestInt(), v.align == 'R' ? juce::Justification::centredRight : v.align == 'C' ? juce::Justification::centred : juce::Justification::centredLeft);
     }
     if (view_ != powerIndex() && hasPowerDrawing() && dr.next) {  // the way on to the power amp
         const auto b = dr.next->getDrawableBounds().transformedBy(dr.fit);

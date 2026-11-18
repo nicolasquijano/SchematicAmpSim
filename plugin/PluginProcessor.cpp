@@ -147,7 +147,8 @@ public:
             const int amp = key & 31;
             if (key < 0 || amp >= int(owner_.defs_.size()) || owner_.sampleRate_ <= 0.0) continue;
             try {
-                const sas::Condition cond{(key >> 5) & 7, (key >> 8) & 15, key >> 12};
+                sas::Condition cond{(key >> 5) & 7, (key >> 8) & 15, (key >> 12) & 15};
+                cond.parts = owner_.partFactors(amp);
                 auto* built = new sas::Chain(sas::applyCondition(owner_.defs_[std::size_t(amp)], cond), owner_.sampleRate_);
                 runner_.readyKey.store(key);
                 delete runner_.ready.exchange(built);  // replaces a build nobody picked up
@@ -174,9 +175,10 @@ int SasProcessor::selectedAmpIndex(int instance) const {
     return juce::jlimit(0, int(defs_.size()) - 1, int(ampValue(instance, ids::amp) + 0.5));
 }
 
-sas::Condition SasProcessor::wantedCondition(int instance) const {
+sas::Condition SasProcessor::wantedCondition(int instance, bool withParts) const {
     const auto& def = defs_[std::size_t(selectedAmpIndex(instance))];
     sas::Condition c;
+    if (withParts) c.parts = partFactors(selectedAmpIndex(instance));
     const int tubes = int(def.power.tubes.size());
 // The parameter holds a tube TYPE, not a position: every amp lists its tubes in its own order (stock first), so a position picked on
     // one amp would mean another tube on the next. An amp that does not offer the type keeps its own tubes.
@@ -189,7 +191,76 @@ sas::Condition SasProcessor::wantedCondition(int instance) const {
     return c;
 }
 
-int SasProcessor::wantedKey(int instance) const { return makeKey(selectedAmpIndex(instance), wantedCondition(instance)); }
+int SasProcessor::wantedKey(int instance) const {
+    const int amp = selectedAmpIndex(instance);
+    return makeKey(amp, wantedCondition(instance, false), partsRev_[std::size_t(amp)].load() & 0x3fff);  // no lock on the audio thread: the edits are in the revision
+}
+
+std::map<std::string, double> SasProcessor::partFactors(int amp) const {
+    const juce::ScopedLock lock(partsLock_);
+    return amp >= 0 && amp < int(parts_.size()) ? parts_[std::size_t(amp)] : std::map<std::string, double>{};
+}
+
+double SasProcessor::partFactor(int amp, const std::string& name) const {
+    const juce::ScopedLock lock(partsLock_);
+    if (amp < 0 || amp >= int(parts_.size())) return 1.0;
+    const auto it = parts_[std::size_t(amp)].find(name);
+    return it == parts_[std::size_t(amp)].end() ? 1.0 : it->second;
+}
+
+int SasProcessor::partEditCount(int amp) const {
+    const juce::ScopedLock lock(partsLock_);
+    return amp >= 0 && amp < int(parts_.size()) ? int(parts_[std::size_t(amp)].size()) : 0;
+}
+
+void SasProcessor::setPartFactor(int amp, const std::string& name, double factor) {
+    if (amp < 0 || amp >= int(defs_.size())) return;
+    factor = juce::jlimit(0.1, 10.0, factor);
+    {
+        const juce::ScopedLock lock(partsLock_);
+        auto& m = parts_[std::size_t(amp)];
+        if (std::abs(factor - 1.0) < 1e-6) {
+            if (m.erase(name) == 0) return;
+        } else {
+            auto [it, fresh] = m.try_emplace(name, factor);
+            if (!fresh) {
+                if (it->second == factor) return;
+                it->second = factor;
+            }
+        }
+    }
+    partsRev_[std::size_t(amp)].fetch_add(1);
+}
+
+void SasProcessor::clearPartFactors(int amp) {
+    if (amp < 0 || amp >= int(defs_.size())) return;
+    {
+        const juce::ScopedLock lock(partsLock_);
+        if (parts_[std::size_t(amp)].empty()) return;
+        parts_[std::size_t(amp)].clear();
+    }
+    partsRev_[std::size_t(amp)].fetch_add(1);
+}
+
+void SasProcessor::restoreParts(const juce::ValueTree& tree) {
+    std::vector<std::map<std::string, double>> fresh(defs_.size());
+    if (const auto node = tree.getChildWithName("PARTS"); node.isValid())
+        for (const auto amp : node)
+            for (std::size_t i = 0; i < defs_.size(); ++i)
+                if (defs_[i].id == amp["id"].toString().toStdString())
+                    for (const auto part : amp) {
+                        const double f = double(part["f"]);
+                        if (f >= 0.1 && f <= 10.0) fresh[i][part["n"].toString().toStdString()] = f;
+                    }
+    bool changed[32] = {};
+    {
+        const juce::ScopedLock lock(partsLock_);
+        for (std::size_t i = 0; i < defs_.size() && i < 32; ++i) changed[i] = parts_[i] != fresh[i];
+        parts_ = std::move(fresh);
+    }
+    for (std::size_t i = 0; i < defs_.size() && i < 32; ++i)
+        if (changed[i]) partsRev_[i].fetch_add(1);
+}
 
 void SasProcessor::swapInBuiltChain(int instance) {
     auto& runner = amps_[instance];
@@ -227,6 +298,7 @@ SasProcessor::SasProcessor()
                 return defs;
             }())) {
     for (const auto& id : sas::embeddedAmpIds(true)) defs_.push_back(sas::loadEmbeddedAmp(id));
+    parts_.resize(defs_.size());
 
     // Resolve, per instance of the amp and per amp, which parameter drives each of its knobs (via its "ui" block).
     for (int inst = 0; inst < 2; ++inst)

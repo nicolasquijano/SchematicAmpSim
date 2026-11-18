@@ -39,6 +39,7 @@ std::vector<std::string> tokens(const std::string& s) {
 
 struct Rules {
     Condition cond;
+    const std::map<std::string, double>* parts = nullptr;  // the user's edits (preamp only)
     double wear = 0.0;
     std::set<std::string> protectedResistors;
     const PowerTubeDef* tube = nullptr;
@@ -47,6 +48,12 @@ struct Rules {
 };
 
 std::string factor(const std::string& v, double f) { return "(" + v + ")*" + num(f); }
+
+double editFactor(const Rules& r, const std::string& name) {
+    if (!r.parts) return 1.0;
+    const auto it = r.parts->find(name);
+    return it == r.parts->end() || !(it->second > 0.0) ? 1.0 : it->second;
+}
 
 // Rewrites one netlist line (comment already cut off); returns it unchanged when no rule applies.
 std::string rewriteLine(const std::string& line, const Rules& r) {
@@ -62,8 +69,11 @@ std::string rewriteLine(const std::string& line, const Rules& r) {
                 return line;
             double ohms = 0.0;
             try { ohms = evalExpression(t[4]); } catch (const std::exception&) { return line; }
-            if (ohms < 10.0 || ohms > 1e8 || r.cond.unit <= 0) return line;
-            t[4] = factor(t[4], 1.0 + 0.05 * unitNoise(r.cond.unit, 'R', name));
+            double f = 1.0;
+            if (ohms >= 10.0 && ohms <= 1e8 && r.cond.unit > 0) f *= 1.0 + 0.05 * unitNoise(r.cond.unit, 'R', name);
+            f *= editFactor(r, name);
+            if (f == 1.0) return line;
+            t[4] = factor(t[4], f);
             break;
         }
         case 'C': {
@@ -76,6 +86,7 @@ std::string rewriteLine(const std::string& line, const Rules& r) {
             double f = 1.0;
             if (r.cond.unit > 0) f *= 1.0 + (electrolytic ? 0.20 : 0.10) * unitNoise(r.cond.unit, 'C', name);
             if (electrolytic) f *= 1.0 - 0.45 * r.wear;
+            f *= editFactor(r, name);
             if (f == 1.0) return line;
             t[4] = factor(t[4], f);
             break;
@@ -170,6 +181,7 @@ AmpDef applyCondition(const AmpDef& def, const Condition& c) {
 
     auto preamp = [&](PreampDef& p) {
         Rules pr = r;
+        pr.parts = &c.parts;
         pr.tube = nullptr;
         pr.biasSource.clear();
         p.netlistText = rewriteNetlist(p.netlistText, pr);

@@ -55,21 +55,21 @@
 <ellipse id="jack_hole" cx="30" cy="215" rx="5" ry="5" fill="#14110d" stroke="#3b3329" stroke-width="1"/>
 <rect id="R221" x="279" y="161" width="14" height="36" rx="3" fill="url(#g2)" stroke="#5a4630" stroke-width="1"/>
 <path id="R221_bands" d="M279,169 H293 M279,175 H293 M279,181 H293" fill="none" stroke="#7a3b1f" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
-<ellipse id="valL_1_221k" cx="297" cy="179" rx="1" ry="1" fill="none" stroke="none"/>
+<ellipse id="valL_1_221k@R:R221" cx="297" cy="179" rx="1" ry="1" fill="none" stroke="none"/>
 <ellipse id="open_286_207" cx="286" cy="207" rx="2.5" ry="2.5" fill="#7a6a4c" stroke="none" stroke-width="1"/>
 <rect id="C47a" x="330" y="137" width="4" height="36" rx="1" fill="url(#g3)" stroke="#5a4630" stroke-width="0.8"/>
 <rect id="C47b" x="338" y="137" width="4" height="36" rx="1" fill="url(#g3)" stroke="#5a4630" stroke-width="0.8"/>
-<ellipse id="valC_2_47n" cx="336" cy="129" rx="1" ry="1" fill="none" stroke="none"/>
+<ellipse id="valC_2_47n@C:C47" cx="336" cy="129" rx="1" ry="1" fill="none" stroke="none"/>
 <rect id="R1MP1" x="379" y="161" width="14" height="36" rx="3" fill="url(#g4)" stroke="#5a4630" stroke-width="1"/>
 <path id="R1MP1_bands" d="M379,169 H393 M379,175 H393 M379,181 H393" fill="none" stroke="#7a3b1f" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
-<ellipse id="valL_3_1M" cx="397" cy="179" rx="1" ry="1" fill="none" stroke="none"/>
+<ellipse id="valL_3_1M@R:R1MP1" cx="397" cy="179" rx="1" ry="1" fill="none" stroke="none"/>
 <rect id="R562c" x="423" y="161" width="14" height="36" rx="3" fill="url(#g5)" stroke="#5a4630" stroke-width="1"/>
 <path id="R562c_bands" d="M423,169 H437 M423,175 H437 M423,181 H437" fill="none" stroke="#7a3b1f" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
-<ellipse id="valL_4_562k" cx="441" cy="179" rx="1" ry="1" fill="none" stroke="none"/>
+<ellipse id="valL_4_562k@R:R562c" cx="441" cy="179" rx="1" ry="1" fill="none" stroke="none"/>
 <ellipse id="open_430_207" cx="430" cy="207" rx="2.5" ry="2.5" fill="#7a6a4c" stroke="none" stroke-width="1"/>
 <rect id="C22ca" x="462" y="167" width="24" height="4" rx="1" fill="url(#g6)" stroke="#5a4630" stroke-width="0.8"/>
 <rect id="C22cb" x="462" y="175" width="24" height="4" rx="1" fill="url(#g6)" stroke="#5a4630" stroke-width="0.8"/>
-<ellipse id="valL_5_2.2n" cx="489" cy="173" rx="1" ry="1" fill="none" stroke="none"/>
+<ellipse id="valL_5_2.2n@C:C22c" cx="489" cy="173" rx="1" ry="1" fill="none" stroke="none"/>
 <ellipse id="open_474_191" cx="474" cy="191" rx="2.5" ry="2.5" fill="#7a6a4c" stroke="none" stroke-width="1"/>
 <ellipse id="sw_pin_SW_CL_506_155" cx="506" cy="155" rx="2.6" ry="2.6" fill="#cdbd92" stroke="none" stroke-width="1"/>
 <ellipse id="sw_pin_SW_CL_530_155" cx="530" cy="155" rx="2.6" ry="2.6" fill="#cdbd92" stroke="none" stroke-width="1"/>
@@ -77,44 +77,44 @@
 <path id="swo_1_SW_CL" d="M506,155 L527,144" fill="none" stroke="#8c7a55" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
 <rect id="CC10aa" x="550" y="167" width="24" height="4" rx="1" fill="url(#g7)" stroke="#5a4630" stroke-width="0.8"/>
 <rect id="CC10ab" x="550" y="175" width="24" height="4" rx="1" fill="url(#g7)" stroke="#5a4630" stroke-width="0.8"/>
-<ellipse id="valL_6_10n" cx="577" cy="173" rx="1" ry="1" fill="none" stroke="none"/>
+<ellipse id="valL_6_10n@C:CC10a" cx="577" cy="173" rx="1" ry="1" fill="none" stroke="none"/>
 <rect id="RC10k" x="555" y="197" width="14" height="36" rx="3" fill="url(#g8)" stroke="#5a4630" stroke-width="1"/>
 <path id="RC10k_bands" d="M555,205 H569 M555,211 H569 M555,217 H569" fill="none" stroke="#7a3b1f" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
-<ellipse id="valL_7_10k" cx="573" cy="215" rx="1" ry="1" fill="none" stroke="none"/>
+<ellipse id="valL_7_10k@R:RC10k" cx="573" cy="215" rx="1" ry="1" fill="none" stroke="none"/>
 <ellipse id="pot_clean_middle" cx="622" cy="155" rx="14.4" ry="14.4" fill="url(#g9)" stroke="#9a8760" stroke-width="1.5"/>
 <ellipse id="dial_clean_middle" cx="622" cy="155" rx="8.8" ry="8.8" fill="#26211c" stroke="#3b3329" stroke-width="1"/>
 <path id="ptr_clean_middle" d="M622,155 L622,146.2" fill="none" stroke="#f0b53a" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>
 <ellipse id="lbl_clean_middle" cx="622" cy="121" rx="1" ry="1" fill="none" stroke="none" stroke-width="0"/>
 <rect id="CC10ba" x="670" y="167" width="24" height="4" rx="1" fill="url(#g10)" stroke="#5a4630" stroke-width="0.8"/>
 <rect id="CC10bb" x="670" y="175" width="24" height="4" rx="1" fill="url(#g10)" stroke="#5a4630" stroke-width="0.8"/>
-<ellipse id="valL_8_10n" cx="697" cy="173" rx="1" ry="1" fill="none" stroke="none"/>
+<ellipse id="valL_8_10n@C:CC10b" cx="697" cy="173" rx="1" ry="1" fill="none" stroke="none"/>
 <rect id="RC10k" x="675" y="197" width="14" height="36" rx="3" fill="url(#g11)" stroke="#5a4630" stroke-width="1"/>
 <path id="RC10k_bands" d="M675,205 H689 M675,211 H689 M675,217 H689" fill="none" stroke="#7a3b1f" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
-<ellipse id="valL_9_10k" cx="693" cy="215" rx="1" ry="1" fill="none" stroke="none"/>
+<ellipse id="valL_9_10k@R:RC10k" cx="693" cy="215" rx="1" ry="1" fill="none" stroke="none"/>
 <rect id="RC100" x="719" y="161" width="14" height="36" rx="3" fill="url(#g12)" stroke="#5a4630" stroke-width="1"/>
 <path id="RC100_bands" d="M719,169 H733 M719,175 H733 M719,181 H733" fill="none" stroke="#7a3b1f" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
-<ellipse id="valL_10_100k" cx="737" cy="179" rx="1" ry="1" fill="none" stroke="none"/>
+<ellipse id="valL_10_100k@R:RC100" cx="737" cy="179" rx="1" ry="1" fill="none" stroke="none"/>
 <rect id="CC22aa" x="714" y="219" width="24" height="4" rx="1" fill="url(#g13)" stroke="#5a4630" stroke-width="0.8"/>
 <rect id="CC22ab" x="714" y="227" width="24" height="4" rx="1" fill="url(#g13)" stroke="#5a4630" stroke-width="0.8"/>
-<ellipse id="valL_11_22n" cx="741" cy="225" rx="1" ry="1" fill="none" stroke="none"/>
+<ellipse id="valL_11_22n@C:CC22a" cx="741" cy="225" rx="1" ry="1" fill="none" stroke="none"/>
 <ellipse id="open_726_243" cx="726" cy="243" rx="2.5" ry="2.5" fill="#7a6a4c" stroke="none" stroke-width="1"/>
 <rect id="CC220a" x="770" y="137" width="4" height="36" rx="1" fill="url(#g14)" stroke="#5a4630" stroke-width="0.8"/>
 <rect id="CC220b" x="778" y="137" width="4" height="36" rx="1" fill="url(#g14)" stroke="#5a4630" stroke-width="0.8"/>
-<ellipse id="valC_12_220p" cx="776" cy="129" rx="1" ry="1" fill="none" stroke="none"/>
+<ellipse id="valC_12_220p@C:CC220" cx="776" cy="129" rx="1" ry="1" fill="none" stroke="none"/>
 <ellipse id="pot_clean_treble" cx="858" cy="155" rx="14.4" ry="14.4" fill="url(#g15)" stroke="#9a8760" stroke-width="1.5"/>
 <ellipse id="dial_clean_treble" cx="858" cy="155" rx="8.8" ry="8.8" fill="#26211c" stroke="#3b3329" stroke-width="1"/>
 <path id="ptr_clean_treble" d="M858,155 L858,146.2" fill="none" stroke="#f0b53a" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>
 <ellipse id="lbl_clean_treble" cx="858" cy="121" rx="1" ry="1" fill="none" stroke="none" stroke-width="0"/>
 <rect id="CC22aa" x="906" y="167" width="24" height="4" rx="1" fill="url(#g16)" stroke="#5a4630" stroke-width="0.8"/>
 <rect id="CC22ab" x="906" y="175" width="24" height="4" rx="1" fill="url(#g16)" stroke="#5a4630" stroke-width="0.8"/>
-<ellipse id="valL_13_22n" cx="933" cy="173" rx="1" ry="1" fill="none" stroke="none"/>
+<ellipse id="valL_13_22n@C:CC22a" cx="933" cy="173" rx="1" ry="1" fill="none" stroke="none"/>
 <rect id="RC100" x="911" y="197" width="14" height="36" rx="3" fill="url(#g17)" stroke="#5a4630" stroke-width="1"/>
 <path id="RC100_bands" d="M911,205 H925 M911,211 H925 M911,217 H925" fill="none" stroke="#7a3b1f" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
-<ellipse id="valL_14_100k" cx="929" cy="215" rx="1" ry="1" fill="none" stroke="none"/>
+<ellipse id="valL_14_100k@R:RC100" cx="929" cy="215" rx="1" ry="1" fill="none" stroke="none"/>
 <ellipse id="open_918_243" cx="918" cy="243" rx="2.5" ry="2.5" fill="#7a6a4c" stroke="none" stroke-width="1"/>
 <rect id="CBRa" x="950" y="167" width="24" height="4" rx="1" fill="url(#g18)" stroke="#5a4630" stroke-width="0.8"/>
 <rect id="CBRb" x="950" y="175" width="24" height="4" rx="1" fill="url(#g18)" stroke="#5a4630" stroke-width="0.8"/>
-<ellipse id="valL_15_100p" cx="977" cy="173" rx="1" ry="1" fill="none" stroke="none"/>
+<ellipse id="valL_15_100p@C:CBR" cx="977" cy="173" rx="1" ry="1" fill="none" stroke="none"/>
 <ellipse id="open_962_191" cx="962" cy="191" rx="2.5" ry="2.5" fill="#7a6a4c" stroke="none" stroke-width="1"/>
 <ellipse id="pot_clean_gain" cx="1022" cy="155" rx="14.4" ry="14.4" fill="url(#g19)" stroke="#9a8760" stroke-width="1.5"/>
 <ellipse id="dial_clean_gain" cx="1022" cy="155" rx="8.8" ry="8.8" fill="#26211c" stroke="#3b3329" stroke-width="1"/>
@@ -136,10 +136,10 @@
 <rect id="base_V1A" x="150" y="243" width="32" height="14" rx="3" fill="url(#g23)" stroke="#5a4d3a" stroke-width="1"/>
 <rect id="rk0" x="144" y="275" width="14" height="36" rx="3" fill="url(#g24)" stroke="#5a4630" stroke-width="1"/>
 <path id="rk0_bands" d="M144,283 H158 M144,289 H158 M144,295 H158" fill="none" stroke="#7a3b1f" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
-<ellipse id="valL_16_1k82" cx="162" cy="293" rx="1" ry="1" fill="none" stroke="none"/>
+<ellipse id="valL_16_1k82@R:RK1" cx="162" cy="293" rx="1" ry="1" fill="none" stroke="none"/>
 <rect id="ck0a" x="169" y="283" width="24" height="4" rx="1" fill="url(#g25)" stroke="#5a4630" stroke-width="0.8"/>
 <rect id="ck0b" x="169" y="291" width="24" height="4" rx="1" fill="url(#g25)" stroke="#5a4630" stroke-width="0.8"/>
-<ellipse id="valL_17_1u" cx="196" cy="289" rx="1" ry="1" fill="none" stroke="none"/>
+<ellipse id="valL_17_1u@C:CK1" cx="196" cy="289" rx="1" ry="1" fill="none" stroke="none"/>
 <rect id="rp1" x="1197" y="113" width="14" height="36" rx="3" fill="url(#g26)" stroke="#5a4630" stroke-width="1"/>
 <path id="rp1_bands" d="M1197,121 H1211 M1197,127 H1211 M1197,133 H1211" fill="none" stroke="#7a3b1f" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
 <ellipse id="tube_V1B-12AX7" cx="1204" cy="215" rx="32" ry="32" fill="url(#g27)" stroke="#a08b63" stroke-width="2"/>
@@ -151,10 +151,10 @@
 <rect id="base_V1B" x="1188" y="243" width="32" height="14" rx="3" fill="url(#g29)" stroke="#5a4d3a" stroke-width="1"/>
 <rect id="rk1" x="1182" y="275" width="14" height="36" rx="3" fill="url(#g30)" stroke="#5a4630" stroke-width="1"/>
 <path id="rk1_bands" d="M1182,283 H1196 M1182,289 H1196 M1182,295 H1196" fill="none" stroke="#7a3b1f" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
-<ellipse id="valL_18_1k82" cx="1200" cy="293" rx="1" ry="1" fill="none" stroke="none"/>
+<ellipse id="valL_18_1k82@R:RK1B" cx="1200" cy="293" rx="1" ry="1" fill="none" stroke="none"/>
 <rect id="ck1a" x="1207" y="283" width="24" height="4" rx="1" fill="url(#g31)" stroke="#5a4630" stroke-width="0.8"/>
 <rect id="ck1b" x="1207" y="291" width="24" height="4" rx="1" fill="url(#g31)" stroke="#5a4630" stroke-width="0.8"/>
-<ellipse id="valL_19_22u" cx="1234" cy="289" rx="1" ry="1" fill="none" stroke="none"/>
+<ellipse id="valL_19_22u@C:CK1B" cx="1234" cy="289" rx="1" ry="1" fill="none" stroke="none"/>
 <ellipse id="pot_clean_bass" cx="70" cy="540" rx="14.4" ry="14.4" fill="url(#g32)" stroke="#9a8760" stroke-width="1.5"/>
 <ellipse id="dial_clean_bass" cx="70" cy="540" rx="8.8" ry="8.8" fill="#26211c" stroke="#3b3329" stroke-width="1"/>
 <path id="ptr_clean_bass" d="M70,540 L70,531.2" fill="none" stroke="#f0b53a" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>

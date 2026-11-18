@@ -37,6 +37,24 @@ void SasProcessor::getStateInformation(juce::MemoryBlock& dest) {
             }
         }
     }
+    while (state.getChildWithName("PARTS").isValid()) state.removeChild(state.getChildWithName("PARTS"), nullptr);
+    {
+        const juce::ScopedLock lock(partsLock_);
+        juce::ValueTree node("PARTS");
+        for (std::size_t i = 0; i < defs_.size(); ++i) {
+            if (parts_[i].empty()) continue;
+            juce::ValueTree amp("AMP");
+            amp.setProperty("id", juce::String(defs_[i].id), nullptr);
+            for (const auto& [name, f] : parts_[i]) {
+                juce::ValueTree part("PART");
+                part.setProperty("n", juce::String(name), nullptr);
+                part.setProperty("f", f, nullptr);
+                amp.appendChild(part, nullptr);
+            }
+            node.appendChild(amp, nullptr);
+        }
+        if (node.getNumChildren() > 0) state.appendChild(node, nullptr);
+    }
     while (state.getChildWithName("RACK").isValid()) state.removeChild(state.getChildWithName("RACK"), nullptr);
     state.appendChild(RackState::toTree(rackOrder_), nullptr);
     state.setProperty("rackVersion", RackState::kRackVersion, nullptr);
@@ -80,6 +98,7 @@ void SasProcessor::setStateInformation(const void* data, int size) {
     if (!xml || !xml->hasTagName(apvts.state.getType())) return;
     const auto tree = juce::ValueTree::fromXml(*xml);
     apvts.replaceState(tree);
+    restoreParts(tree);
     // A state from before the rack has no order: it comes from the old parameters.
     if (const auto rack = tree.getChildWithName("RACK"); rack.isValid()) rackOrder_ = RackState::fromTree(rack);
     else rackOrder_ = RackState::fromLegacy(apvts, tree.hasProperty("namPedalData"));
