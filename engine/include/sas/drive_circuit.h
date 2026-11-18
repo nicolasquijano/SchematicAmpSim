@@ -13,6 +13,7 @@
 #include "sas/circuit.h"
 #include "sas/netlist.h"
 #include "sas/oversample.h"
+#include "sas/sd1_fast.h"
 #include "sas/ts808_fast.h"
 
 namespace sas {
@@ -27,10 +28,14 @@ enum class DriveModel { TubeScreamer = 0, SuperOverdrive = 1, BluesDriver = 2, R
 inline constexpr int kDriveModelCount = 4;  // the models of the Overdrive module (the first four)
 inline constexpr int kDistortionModelCount = 1;  // the models of the Distortion module (DriveModel::Ds1 onwards)
 
+// How a pedal is solved: Fast is the analytic model where there is one (the SD1 so far: sas/sd1_fast.h, a few percent of the nodal solver's cost) and the circuit
+// where there is not; Circuit is always the nodal solver, the reference the fast models are compared with.
+enum class DriveSolve { Fast, Circuit };
+
 class DriveCircuit {
 public:
     // `model` is SuperOverdrive, BluesDriver or Rat; `fs` is the host rate.
-    DriveCircuit(DriveModel model, double fs);
+    DriveCircuit(DriveModel model, double fs, DriveSolve solve = DriveSolve::Fast);
 
     void setControls(const TsControls& c);
     const TsControls& controls() const { return controls_; }
@@ -43,7 +48,7 @@ public:
 
 private:
     struct Built;
-    DriveCircuit(Built&& b, DriveModel model, double fs);
+    DriveCircuit(Built&& b, DriveModel model, double fs, DriveSolve solve);
     static Built build(DriveModel model);
 
     DriveModel model_;
@@ -52,6 +57,7 @@ private:
     Node out_;
     ResId drive1_, drive2_, toneA_, toneB_, levelT_, levelB_;
     TsControls controls_;
+    std::unique_ptr<SuperOverdriveFast> fast_;  // set when the analytic model runs in place of the solver
 };
 
 }  // namespace sas

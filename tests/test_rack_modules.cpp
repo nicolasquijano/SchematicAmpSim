@@ -1,6 +1,7 @@
 #include <catch2/catch_approx.hpp>
 #include <catch2/catch_test_macros.hpp>
 #include <cmath>
+#include <complex>
 #include <vector>
 
 #include "sas/chorus.h"
@@ -299,4 +300,41 @@ TEST_CASE("the Mix of a modulation effect: 100 % is the effect, 0 % the dry sign
     checkMix<Chorus, ChorusModule, ChorusParams>("chorus");
     checkMix<Vibe, VibeModule, VibeParams>("vibe");
     checkMix<Flanger, FlangerModule, FlangerParams>("flanger");
+}
+
+// The analytic SD-1 (sas/sd1_fast.h) against the nodal solver on the netlist: the same level for the note and for its harmonics, for sines of playing size at
+// several settings (the amplitude of each harmonic, read from a whole number of cycles). Tiny signals at full drive differ by a few dB (the circuit's op-amp
+// has a finite gain the analytic model does not), which is far below what a guitar gives the pedal.
+TEST_CASE("the analytic SD-1 matches the SD-1 circuit", "[rack]") {
+    auto bin = [](const std::vector<float>& x, std::size_t from, double hz) {
+        double re = 0, im = 0;
+        const std::size_t n = x.size() - from;
+        for (std::size_t i = 0; i < n; ++i) {
+            const double ph = 2.0 * 3.14159265358979 * hz * double(i) / kFs;
+            re += double(x[from + i]) * std::cos(ph);
+            im += double(x[from + i]) * std::sin(ph);
+        }
+        return 2.0 * std::sqrt(re * re + im * im) / double(n);
+    };
+    struct Case { double amp, drive, tone, level; };
+    const Case cases[] = {{0.05, 0.0, 0.5, 0.5}, {0.3, 0.0, 0.5, 0.5}, {0.05, 0.5, 0.5, 0.5}, {0.3, 0.5, 0.5, 0.5}, {0.3, 1.0, 0.5, 0.5}, {0.3, 0.6, 0.15, 0.8}, {0.3, 0.6, 0.9, 0.3}, {0.1, 0.8, 0.7, 0.5}};
+    for (const auto& k : cases) {
+        INFO("amp " << k.amp << " drive " << k.drive << " tone " << k.tone << " level " << k.level);
+        const double hz = 200.0;
+        const std::size_t n = std::size_t(1.0 * kFs);  // 200 whole cycles
+        std::vector<float> a(n), b(n);
+        for (std::size_t i = 0; i < n; ++i) a[i] = b[i] = float(k.amp * std::sin(2.0 * 3.14159265358979 * hz * double(i) / kFs));
+        DriveCircuit fast(DriveModel::SuperOverdrive, kFs, DriveSolve::Fast), ref(DriveModel::SuperOverdrive, kFs, DriveSolve::Circuit);
+        const TsControls ctl{k.drive, k.tone, k.level};
+        fast.setControls(ctl);
+        ref.setControls(ctl);
+        fast.process(a.data(), n);
+        ref.process(b.data(), n);
+        auto diffDb = [&](int h) { return 20.0 * std::log10(bin(a, n / 2, hz * h) / std::max(bin(b, n / 2, hz * h), 1e-12)); };
+        CHECK(std::abs(diffDb(1)) < 1.0);
+        if (k.drive > 0.0) {
+            CHECK(std::abs(diffDb(3)) < 3.5);
+            CHECK(std::abs(diffDb(5)) < 7.0);
+        }
+    }
 }

@@ -19,6 +19,8 @@
 #include "sas/phaser.h"
 #include "sas/pitch_shifter.h"
 #include "sas/plate.h"
+#include "sas/drive_circuit.h"
+#include "sas/klon.h"
 #include "sas/ts808_fast.h"
 #include "sas/vibe.h"
 
@@ -73,6 +75,30 @@ int main() {
     row("overdrive (TS, 2x)", [](double fs) {
         auto t = std::make_shared<sas::TubeScreamerFast>(fs * 2.0);
         return [t](float* l, float*, std::size_t n) { for (std::size_t i = 0; i < n; ++i) l[i] = float(t->process(double(l[i]))); };
+    });
+    row("overdrive (SD1, analytic)", [](double fs) {
+        auto d = std::make_shared<sas::DriveCircuit>(sas::DriveModel::SuperOverdrive, fs);
+        return [d](float* l, float*, std::size_t n) { d->process(l, n); };
+    });
+    row("overdrive (SD1, circuit)", [](double fs) {
+        auto d = std::make_shared<sas::DriveCircuit>(sas::DriveModel::SuperOverdrive, fs, sas::DriveSolve::Circuit);
+        return [d](float* l, float*, std::size_t n) { d->process(l, n); };
+    });
+    row("overdrive (BD2, circuit)", [](double fs) {
+        auto d = std::make_shared<sas::DriveCircuit>(sas::DriveModel::BluesDriver, fs);
+        return [d](float* l, float*, std::size_t n) { d->process(l, n); };
+    });
+    row("overdrive (RAT, circuit)", [](double fs) {
+        auto d = std::make_shared<sas::DriveCircuit>(sas::DriveModel::Rat, fs);
+        return [d](float* l, float*, std::size_t n) { d->process(l, n); };
+    });
+    row("overdrive (DS-1, circuit)", [](double fs) {
+        auto d = std::make_shared<sas::DriveCircuit>(sas::DriveModel::Ds1, fs);
+        return [d](float* l, float*, std::size_t n) { d->process(l, n); };
+    });
+    row("klon (circuit)", [](double fs) {
+        auto k = std::make_shared<sas::Klon>(fs);
+        return [k](float* l, float*, std::size_t n) { k->process(l, n); };
     });
     row("phaser", [](double fs) {
         auto m = std::make_shared<sas::Phaser>();

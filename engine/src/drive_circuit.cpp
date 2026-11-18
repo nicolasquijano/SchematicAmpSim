@@ -25,7 +25,7 @@ DriveCircuit::Built DriveCircuit::build(DriveModel model) {
     return Built{parseNetlist(sd1NetlistText(), "sd1.net"), false, false};
 }
 
-DriveCircuit::DriveCircuit(Built&& b, DriveModel model, double fs)
+DriveCircuit::DriveCircuit(Built&& b, DriveModel model, double fs, DriveSolve solve)
     : model_(model), solver_(std::move(b.net.circuit), oversampleFactor(model) * fs), os_(model == DriveModel::Rat || model == DriveModel::Ds1 ? 2 : 1), out_(b.net.node("y")),
       drive1_(b.net.resistor(b.bd2 ? "VRG1" : b.rat ? "VRG" : b.ds1 ? "VR1_T" : "VRD")), drive2_(b.bd2 ? b.net.resistor("VRG2") : b.ds1 ? b.net.resistor("VR1_B") : drive1_),
       toneA_(b.net.resistor(b.bd2 ? "VRT_T" : b.rat ? "VR_F" : b.ds1 ? "VR3_T" : "VRT_A")), toneB_(b.rat ? toneA_ : b.net.resistor(b.ds1 ? "VR3_B" : "VRT_B")),
@@ -33,15 +33,20 @@ DriveCircuit::DriveCircuit(Built&& b, DriveModel model, double fs)
     if (!solver_.dcConverged) throw std::runtime_error("overdrive DC operating point did not converge");
     solver_.tolerance = 2e-6;
     solver_.chord = true;
+    if (solve == DriveSolve::Fast && model == DriveModel::SuperOverdrive) fast_ = std::make_unique<SuperOverdriveFast>(oversampleFactor(model) * fs);
     controls_.drive = -1.0;  // force the first setControls to apply
     setControls(TsControls{});
 }
 
-DriveCircuit::DriveCircuit(DriveModel model, double fs) : DriveCircuit(build(model), model, fs) {}
+DriveCircuit::DriveCircuit(DriveModel model, double fs, DriveSolve solve) : DriveCircuit(build(model), model, fs, solve) {}
 
 void DriveCircuit::setControls(const TsControls& c) {
     if (c == controls_) return;
     controls_ = c;
+    if (fast_) {
+        fast_->setControls(c);
+        return;
+    }
     auto clamp01 = [](double v) { return std::clamp(v, 0.0, 1.0); };
     const double drive = clamp01(c.drive), tone = clamp01(c.tone), level = clamp01(c.level);
     if (model_ == DriveModel::Ds1) {
@@ -82,6 +87,10 @@ void DriveCircuit::setControls(const TsControls& c) {
 }
 
 void DriveCircuit::process(float* x, std::size_t n) {
+    if (fast_) {
+        for (std::size_t i = 0; i < n; ++i) x[i] = os_.process(x[i], [&](float s) { return float(fast_->process(double(s))); });
+        return;
+    }
     for (std::size_t i = 0; i < n; ++i)
         x[i] = os_.process(x[i], [&](float s) {
             solver_.process(double(s));
