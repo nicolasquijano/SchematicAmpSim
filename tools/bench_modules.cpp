@@ -84,8 +84,12 @@ int main() {
         auto d = std::make_shared<sas::DriveCircuit>(sas::DriveModel::SuperOverdrive, fs, sas::DriveSolve::Circuit);
         return [d](float* l, float*, std::size_t n) { d->process(l, n); };
     });
-    row("overdrive (BD2, circuit)", [](double fs) {
+    row("overdrive (BD2, analytic)", [](double fs) {
         auto d = std::make_shared<sas::DriveCircuit>(sas::DriveModel::BluesDriver, fs);
+        return [d](float* l, float*, std::size_t n) { d->process(l, n); };
+    });
+    row("overdrive (BD2, circuit)", [](double fs) {
+        auto d = std::make_shared<sas::DriveCircuit>(sas::DriveModel::BluesDriver, fs, sas::DriveSolve::Circuit);
         return [d](float* l, float*, std::size_t n) { d->process(l, n); };
     });
     row("overdrive (RAT, analytic)", [](double fs) {

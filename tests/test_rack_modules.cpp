@@ -406,3 +406,36 @@ TEST_CASE("the analytic DS-1 matches the DS-1 circuit", "[rack]") {
         CHECK(std::abs(diffDb(3)) < 1.6);
     }
 }
+
+// The analytic BD-2 (sas/bd2_fast.h) against the nodal solver on the netlist, the same way. The third harmonic is compared where it is audible (above -50 dB).
+TEST_CASE("the analytic BD-2 matches the BD-2 circuit", "[rack]") {
+    auto bin = [](const std::vector<float>& x, std::size_t from, double hz) {
+        double re = 0, im = 0;
+        const std::size_t n = x.size() - from;
+        for (std::size_t i = 0; i < n; ++i) {
+            const double ph = 2.0 * 3.14159265358979 * hz * double(i) / kFs;
+            re += double(x[from + i]) * std::cos(ph);
+            im += double(x[from + i]) * std::sin(ph);
+        }
+        return 2.0 * std::sqrt(re * re + im * im) / double(n);
+    };
+    struct Case { double amp, drive, tone, level; };
+    const Case cases[] = {{0.05, 0.0, 0.5, 0.5}, {0.3, 0.0, 0.5, 0.5}, {0.05, 0.3, 0.5, 0.5}, {0.3, 0.3, 0.5, 0.5}, {0.05, 0.6, 0.5, 0.5}, {0.3, 0.6, 0.5, 0.5}, {0.05, 1.0, 0.5, 0.5},
+                          {0.3, 1.0, 0.5, 0.5}, {0.2, 0.7, 0.1, 0.8}, {0.2, 0.7, 0.9, 0.3}};
+    for (const auto& k : cases) {
+        INFO("amp " << k.amp << " drive " << k.drive << " tone " << k.tone << " level " << k.level);
+        const double hz = 200.0;
+        const std::size_t n = std::size_t(1.0 * kFs);
+        std::vector<float> a(n), b(n);
+        for (std::size_t i = 0; i < n; ++i) a[i] = b[i] = float(k.amp * std::sin(2.0 * 3.14159265358979 * hz * double(i) / kFs));
+        DriveCircuit fast(DriveModel::BluesDriver, kFs, DriveSolve::Fast), ref(DriveModel::BluesDriver, kFs, DriveSolve::Circuit);
+        const TsControls ctl{k.drive, k.tone, k.level};
+        fast.setControls(ctl);
+        ref.setControls(ctl);
+        fast.process(a.data(), n);
+        ref.process(b.data(), n);
+        auto diffDb = [&](int h) { return 20.0 * std::log10(bin(a, n / 2, hz * h) / std::max(bin(b, n / 2, hz * h), 1e-12)); };
+        CHECK(std::abs(diffDb(1)) < 0.6);
+        if (bin(b, n / 2, hz * 3) > 3e-3) CHECK(std::abs(diffDb(3)) < 3.5);
+    }
+}

@@ -36,6 +36,7 @@ DriveCircuit::DriveCircuit(Built&& b, DriveModel model, double fs, DriveSolve so
     if (solve == DriveSolve::Fast && model == DriveModel::SuperOverdrive) fast_ = std::make_unique<SuperOverdriveFast>(oversampleFactor(model) * fs);
     if (solve == DriveSolve::Fast && model == DriveModel::Rat) fastRat_ = std::make_unique<RatFast>(oversampleFactor(model) * fs);
     if (solve == DriveSolve::Fast && model == DriveModel::Ds1) fastDs1_ = std::make_unique<Ds1Fast>(oversampleFactor(model) * fs);
+    if (solve == DriveSolve::Fast && model == DriveModel::BluesDriver) fastBd2_ = std::make_unique<Bd2Fast>(oversampleFactor(model) * fs);
     controls_.drive = -1.0;  // force the first setControls to apply
     setControls(TsControls{});
 }
@@ -51,6 +52,11 @@ void DriveCircuit::setControls(const TsControls& c) {
     }
     auto clamp01 = [](double v) { return std::clamp(v, 0.0, 1.0); };
     const double drive = clamp01(c.drive), tone = clamp01(c.tone), level = clamp01(c.level);
+    if (fastBd2_) {  // GAIN: two 250k audio-taper gangs; TONE: 10k linear, clockwise is the bright end; LEVEL: 100k audio taper
+        const double g = potTaper(Taper::Log, drive), lv = potTaper(Taper::Log, level);
+        fastBd2_->setParts(250e3 * g, 250e3 * g, 10e3 * (1.0 - tone), 10e3 * tone, 100e3 * (1.0 - lv), 100e3 * lv);
+        return;
+    }
     if (fastDs1_) {  // DIST: 100k linear; TONE: 20k linear (the wiper from the low-pass end to the high-pass end); LEVEL: 100k linear
         fastDs1_->setParts(100e3 * drive, 100e3 * (1.0 - drive), 20e3 * tone, 20e3 * (1.0 - tone), 100e3 * (1.0 - level), 100e3 * level);
         return;
@@ -108,6 +114,10 @@ void DriveCircuit::process(float* x, std::size_t n) {
     }
     if (fastDs1_) {
         for (std::size_t i = 0; i < n; ++i) x[i] = os_.process(x[i], [&](float s) { return float(fastDs1_->process(double(s))); });
+        return;
+    }
+    if (fastBd2_) {
+        for (std::size_t i = 0; i < n; ++i) x[i] = os_.process(x[i], [&](float s) { return float(fastBd2_->process(double(s))); });
         return;
     }
     for (std::size_t i = 0; i < n; ++i)
