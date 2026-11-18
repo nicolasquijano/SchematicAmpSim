@@ -128,4 +128,9 @@ private:
     PotRef hover_, drag_;
     float dragY_ = 0.0f;
     juce::Rectangle<float> strip_;
+    juce::Component host_;  // clips the drawings to the schematic's area
+    float zoom_ = 1.0f;
+    juce::Point<float> pan_, panAnchor_;
+    bool panning_ = false, overview_ = false;
+    static constexpr float kReadableScale = 0.7f;  // a drawing wider than the page fits at this scale at least, and is dragged along
 };

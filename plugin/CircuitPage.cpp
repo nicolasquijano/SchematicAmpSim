@@ -9,7 +9,10 @@
 #include "BinaryData.h"
 #endif
 
-CircuitPage::CircuitPage(SasProcessor& processor, const AmpLookAndFeel& look) : processor_(processor), look_(look) {}
+CircuitPage::CircuitPage(SasProcessor& processor, const AmpLookAndFeel& look) : processor_(processor), look_(look) {
+    addAndMakeVisible(host_);  // before the buttons, so they stay above the drawings
+    host_.setInterceptsMouseClicks(false, false);
+}
 
 CircuitPage::~CircuitPage() = default;
 
@@ -46,7 +49,7 @@ void CircuitPage::collect(Drawing& dr, juce::Drawable& d) {
     if (id.startsWith("pot_")) {
         const auto param = id.fromFirstOccurrenceOf("pot_", false, false).upToFirstOccurrenceOf("-", false, false);  // "treble-2": the same knob drawn again
         const auto it = uiLabels_.find(param);  // the name the amp gives its knob ("VOLUME", "MASTER"...)
-        dr.tags.push_back({&d, it != uiLabels_.end() ? it->second : param.toUpperCase(), 0});
+        if (!id.contains("-")) dr.tags.push_back({&d, it != uiLabels_.end() ? it->second : param.toUpperCase(), 0});  // the copies carry no name
     } else if (id.startsWith("tube_")) {
         const auto rest = id.fromFirstOccurrenceOf("tube_", false, false);  // "V1", or "PA-EL34": what follows the dash is the name shown
         dr.tags.push_back({&d, rest.contains("-") ? rest.fromFirstOccurrenceOf("-", false, false) : rest, 1});
@@ -72,7 +75,7 @@ void CircuitPage::collect(Drawing& dr, juce::Drawable& d) {
 
 void CircuitPage::load(int which, const sas::AmpDef& def) {
     auto& dr = drawings_[std::size_t(which)];
-    if (dr.art) removeChildComponent(dr.art.get());
+    if (dr.art) host_.removeChildComponent(dr.art.get());
     dr = Drawing{};
 #ifdef SAS_HAS_FACES
     int size = 0;
@@ -84,7 +87,7 @@ void CircuitPage::load(int which, const sas::AmpDef& def) {
     juce::ignoreUnused(def);
 #endif
     if (!dr.art) return;
-    addChildComponent(*dr.art);
+    host_.addChildComponent(*dr.art);
     dr.art->setInterceptsMouseClicks(false, false);
     collect(dr, *dr.art);
     for (const auto& t : dr.tags) {  // a pot whose name is a knob of the amp is a live control
@@ -127,7 +130,7 @@ void CircuitPage::setAmp(const sas::AmpDef& def) {
     }
     hover_ = drag_ = {};
     for (auto& dr : drawings_)
-        if (dr.art) removeChildComponent(dr.art.get());
+        if (dr.art) host_.removeChildComponent(dr.art.get());
     channels_ = def.circuitChannels;
     channelSel_.clear();
     for (const auto& ch : channels_) {
@@ -178,6 +181,9 @@ void CircuitPage::setView(int v) {
         if (drawings_[i].art) drawings_[i].art->setVisible(int(i) == view_);
     for (auto& b : viewButtons_) b->setToggleState(int(b->getProperties()["view"]) == view_, juce::dontSendNotification);
     hover_ = {};
+    zoom_ = 1.0f;
+    pan_ = {};
+    overview_ = false;
     resized();
     repaint();
 }
@@ -194,12 +200,22 @@ void CircuitPage::resized() {
             bar.removeFromRight(4);
         }
     }
+    // The drawings live in a host that clips them to the schematic's area; a wide one starts at a readable size (not squeezed to fit) and the player
+    // drags it along, wheels to zoom and double-clicks to see all of it.
+    host_.setBounds(area.toNearestInt());
+    const auto local = juce::Rectangle<float>(0.0f, 0.0f, float(host_.getWidth()), float(host_.getHeight()));
     for (auto& dr : drawings_) {
         if (!dr.art) continue;
         const auto src = dr.art->getDrawableBounds();
         const juce::RectanglePlacement placement(juce::RectanglePlacement::centred);
-        dr.fit = placement.getTransformToFit(src, area);
-        dr.art->setTransformToFit(area, placement);
+        auto base = local;
+        const float fitScale = std::min(local.getWidth() / src.getWidth(), local.getHeight() / src.getHeight());
+        if (!overview_ && fitScale < kReadableScale)
+            base = juce::Rectangle<float>(0.0f, std::max(0.0f, (local.getHeight() - src.getHeight() * kReadableScale) * 0.5f), src.getWidth() * kReadableScale, src.getHeight() * kReadableScale);
+        const auto c = local.getCentre();
+        const auto shown = juce::Rectangle<float>(base.getWidth() * zoom_, base.getHeight() * zoom_).withCentre(c + (base.getCentre() - c) * zoom_ + pan_);
+        dr.fit = placement.getTransformToFit(src, shown).translated(float(host_.getX()), float(host_.getY()));
+        dr.art->setTransformToFit(shown, placement);
     }
 }
 
@@ -319,7 +335,15 @@ void CircuitPage::mouseDown(const juce::MouseEvent& e) {
     drag_ = potAt(e.position);
     if (drag_.drawing < 0) {  // the arrow at the end of the preamp leads on to the power amp
         const auto& dr = drawings_[std::size_t(view_)];
-        if (view_ != powerIndex() && hasPowerDrawing() && dr.next && dr.next->getDrawableBounds().transformedBy(dr.fit).expanded(6.0f).contains(e.position)) setView(powerIndex());
+        if (view_ != powerIndex() && hasPowerDrawing() && dr.next && dr.next->getDrawableBounds().transformedBy(dr.fit).expanded(6.0f).contains(e.position)) {
+            setView(powerIndex());
+            return;
+        }
+        if (host_.getBounds().toFloat().contains(e.position)) {  // anywhere else on the drawing: drag it along
+            panning_ = true;
+            panAnchor_ = e.position - pan_;
+            setMouseCursor(juce::MouseCursor::DraggingHandCursor);
+        }
         return;
     }
     hover_ = drag_;
@@ -329,6 +353,12 @@ void CircuitPage::mouseDown(const juce::MouseEvent& e) {
 }
 
 void CircuitPage::mouseDrag(const juce::MouseEvent& e) {
+    if (panning_) {
+        pan_ = e.position - panAnchor_;
+        resized();
+        repaint();
+        return;
+    }
     if (drag_.drawing < 0) return;
     const float dy = dragY_ - e.position.y;
     dragY_ = e.position.y;
@@ -338,6 +368,11 @@ void CircuitPage::mouseDrag(const juce::MouseEvent& e) {
 }
 
 void CircuitPage::mouseUp(const juce::MouseEvent& e) {
+    if (panning_) {
+        panning_ = false;
+        mouseMove(e);
+        return;
+    }
     if (drag_.drawing < 0) return;
     if (const auto* pot = potOf(drag_))
         if (auto* param = processor_.apvts.getParameter(pot->param)) param->endChangeGesture();
@@ -348,7 +383,16 @@ void CircuitPage::mouseUp(const juce::MouseEvent& e) {
 void CircuitPage::mouseDoubleClick(const juce::MouseEvent& e) {
     const auto r = potAt(e.position);
     const auto* pot = potOf(r);
-    if (!pot) return;
+    if (!pot) {  // on the drawing: all of it, or back to the readable size
+        if (host_.getBounds().toFloat().contains(e.position)) {
+            overview_ = !overview_;
+            zoom_ = 1.0f;
+            pan_ = {};
+            resized();
+            repaint();
+        }
+        return;
+    }
     if (auto* param = processor_.apvts.getParameter(pot->param)) {
         param->beginChangeGesture();
         param->setValueNotifyingHost(param->getDefaultValue());
@@ -361,7 +405,17 @@ void CircuitPage::mouseDoubleClick(const juce::MouseEvent& e) {
 void CircuitPage::mouseWheelMove(const juce::MouseEvent& e, const juce::MouseWheelDetails& w) {
     const auto r = potAt(e.position);
     const auto* pot = potOf(r);
-    if (!pot) return;
+    if (!pot) {  // the wheel over the drawing zooms it about the pointer
+        if (!host_.getBounds().toFloat().contains(e.position) || w.deltaY == 0.0f) return;
+        const float newZoom = std::clamp(zoom_ * (w.deltaY > 0 ? 1.15f : 1.0f / 1.15f), 0.5f, 8.0f);
+        const float f = newZoom / zoom_;
+        const auto p = e.position - host_.getBounds().toFloat().getCentre();
+        pan_ = p - (p - pan_) * f;
+        zoom_ = newZoom;
+        resized();
+        repaint();
+        return;
+    }
     auto* param = processor_.apvts.getParameter(pot->param);
     if (!param) return;
     int flat = r.index;
@@ -382,6 +436,8 @@ void CircuitPage::paint(juce::Graphics& g) {
 void CircuitPage::paintOverChildren(juce::Graphics& g) {
     if (!hasDrawing()) return;
     const auto& dr = drawings_[std::size_t(view_)];
+    g.saveState();
+    g.reduceClipRegion(host_.getBounds());  // the names and values stay inside the schematic's area when it is zoomed or dragged
     // The names of the tubes and pots, under or beside them.
     g.setFont(AmpLookAndFeel::font(11.5f, true, 0.06f));
     for (const auto& t : dr.tags) {
@@ -421,6 +477,7 @@ void CircuitPage::paintOverChildren(juce::Graphics& g) {
     for (std::size_t i = 0; i < dr.pots.size(); ++i) {  // the value of each pot under its name; a ring on the one under the mouse
         const auto b = dr.pots[i].body->getDrawableBounds().transformedBy(dr.fit);
         const bool hovered = hover_.drawing == view_ && hover_.index == int(i);
+        if (dr.pots[i].name != dr.pots[i].param && !hovered) continue;  // the copies of a knob show no value
         if (const auto* param = processor_.apvts.getParameter(dr.pots[i].param)) {
             g.setColour(hovered ? look_.accent() : look_.text().withAlpha(0.8f));
             g.setFont(juce::Font(juce::FontOptions(juce::Font::getDefaultMonospacedFontName(), 11.0f, juce::Font::plain)));
@@ -436,6 +493,7 @@ void CircuitPage::paintOverChildren(juce::Graphics& g) {
             g.drawEllipse(b.expanded(4.0f), 2.0f);
         }
     }
+    g.restoreState();
     paintStrip(g, strip_);
 }
 

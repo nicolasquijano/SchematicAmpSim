@@ -455,6 +455,21 @@ def pots_for_channel(d, ch):
     return pots
 
 
+CHAIN_AMPS = {'american_5153', 'superlead_100', 'lead_c_plus', 'triplestack_3ch', 'british_dual100', 'jcm900_2100', 'highgain_120', 'german_ultra', 'german_trio',
+              'modbe_100', 'jcm800_2203kk'}  # drawn from the netlist as a chain with its networks (gen_chain.py)
+
+
+def draw_any(amp_id, d, files, tubes, pots):
+    """The chain drawing for the amps in CHAIN_AMPS (when their netlists give one), else the plain row of tubes."""
+    if amp_id in CHAIN_AMPS:
+        try:
+            import gen_chain
+            return gen_chain.Chain(amp_id, d, files, pots).s
+        except Exception as e:  # the netlists do not read as a chain: the plain drawing
+            print('  %s: plain drawing (%s: %s)' % (amp_id, type(e).__name__, e))
+    return draw_preamp(amp_id, d, tubes, pots)
+
+
 def write_drawings(amp_id, d, probe_tubes, power):
     """circuit.svg (circuit_1.svg... for further channels) and circuit_power.svg. Returns the channels, [] for an amp with one drawing."""
     face = os.path.join(ROOT, amp_id, 'face')
@@ -462,13 +477,14 @@ def write_drawings(amp_id, d, probe_tubes, power):
     names = {label for label, _ in probe_tubes}
     chans = channels_of(amp_id, d)
     drawings = []
+    all_files = [d['preamp']['netlist']] + [st['netlist'] for st in d['preamp'].get('stages', [])]
     if not chans:
-        drawings.append(draw_preamp(amp_id, d, probe_tubes))
+        drawings.append(draw_any(amp_id, d, all_files, probe_tubes, classify_pots(d)[0]))
     else:
         for ch in chans:
             tubes, _ = preamp_tubes(amp_id, d, ch['files'])
             tubes = [t for t in tubes if t[0] in names] or probe_tubes
-            drawings.append(draw_preamp(amp_id, d, tubes, pots_for_channel(d, ch)))
+            drawings.append(draw_any(amp_id, d, ch['files'], tubes, pots_for_channel(d, ch)))
     for i in range(1, 8):  # drawings of an earlier run with more channels
         stale = os.path.join(face, 'circuit_%d.svg' % i)
         if i >= len(drawings) and os.path.exists(stale):
