@@ -66,7 +66,7 @@ public:
         double vd = vdPrev_;
         for (int it = 0; it < 40; ++it) {
             const double arg = std::clamp(vd / kNvt, -600.0, 600.0);
-            const double ep = std::exp(arg), em = std::exp(-arg);
+            const double ep = std::exp(arg), em = 1.0 / ep;
             const double isrc = (e - vd - vc7Prev_ - h7 * ic7Prev_) / (rs + h7);
             const double f = isrc - kIs * (ep - em) - gf_ * vd + hf - vd / kBleed;
             const double df = -1.0 / (rs + h7) - kIs * (ep + em) / kNvt - gf_ - 1.0 / kBleed;

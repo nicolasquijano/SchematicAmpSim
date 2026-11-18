@@ -35,6 +35,7 @@ DriveCircuit::DriveCircuit(Built&& b, DriveModel model, double fs, DriveSolve so
     solver_.chord = true;
     if (solve == DriveSolve::Fast && model == DriveModel::SuperOverdrive) fast_ = std::make_unique<SuperOverdriveFast>(oversampleFactor(model) * fs);
     if (solve == DriveSolve::Fast && model == DriveModel::Rat) fastRat_ = std::make_unique<RatFast>(oversampleFactor(model) * fs);
+    if (solve == DriveSolve::Fast && model == DriveModel::Ds1) fastDs1_ = std::make_unique<Ds1Fast>(oversampleFactor(model) * fs);
     controls_.drive = -1.0;  // force the first setControls to apply
     setControls(TsControls{});
 }
@@ -50,6 +51,10 @@ void DriveCircuit::setControls(const TsControls& c) {
     }
     auto clamp01 = [](double v) { return std::clamp(v, 0.0, 1.0); };
     const double drive = clamp01(c.drive), tone = clamp01(c.tone), level = clamp01(c.level);
+    if (fastDs1_) {  // DIST: 100k linear; TONE: 20k linear (the wiper from the low-pass end to the high-pass end); LEVEL: 100k linear
+        fastDs1_->setParts(100e3 * drive, 100e3 * (1.0 - drive), 20e3 * tone, 20e3 * (1.0 - tone), 100e3 * (1.0 - level), 100e3 * level);
+        return;
+    }
     if (fastRat_) {  // DISTORTION: 100k audio taper; FILTER: 100k audio taper (clockwise is darker, so TONE is the reverse); VOLUME: 100k audio taper
         const double lv = potTaper(Taper::Log, level);
         fastRat_->setParts(100e3 * potTaper(Taper::Log, drive), 100e3 * potTaper(Taper::Log, 1.0 - tone), 100e3 * (1.0 - lv), 100e3 * lv);
@@ -99,6 +104,10 @@ void DriveCircuit::process(float* x, std::size_t n) {
     }
     if (fastRat_) {
         for (std::size_t i = 0; i < n; ++i) x[i] = os_.process(x[i], [&](float s) { return float(fastRat_->process(double(s))); });
+        return;
+    }
+    if (fastDs1_) {
+        for (std::size_t i = 0; i < n; ++i) x[i] = os_.process(x[i], [&](float s) { return float(fastDs1_->process(double(s))); });
         return;
     }
     for (std::size_t i = 0; i < n; ++i)

@@ -96,8 +96,12 @@ int main() {
         auto d = std::make_shared<sas::DriveCircuit>(sas::DriveModel::Rat, fs, sas::DriveSolve::Circuit);
         return [d](float* l, float*, std::size_t n) { d->process(l, n); };
     });
-    row("overdrive (DS-1, circuit)", [](double fs) {
+    row("overdrive (DS-1, analytic)", [](double fs) {
         auto d = std::make_shared<sas::DriveCircuit>(sas::DriveModel::Ds1, fs);
+        return [d](float* l, float*, std::size_t n) { d->process(l, n); };
+    });
+    row("overdrive (DS-1, circuit)", [](double fs) {
+        auto d = std::make_shared<sas::DriveCircuit>(sas::DriveModel::Ds1, fs, sas::DriveSolve::Circuit);
         return [d](float* l, float*, std::size_t n) { d->process(l, n); };
     });
     row("klon (circuit)", [](double fs) {
