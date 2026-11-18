@@ -25,9 +25,9 @@
   ],
 
   "probes": [
-    { "label": "V7", "node": "kf", "full_scale": 1.58 },
-    { "label": "V8", "node": "p8b", "full_scale": 59 },
-    { "label": "OUT", "node": "m", "full_scale": 5.57 }
+    { "label": "V8", "node": "p8a", "full_scale": 60 },
+    { "label": "V7", "node": "kf", "full_scale": 120 },
+    { "label": "OUT", "node": "m", "full_scale": 20 }
   ],
   "power_probes": [
     { "label": "PHASE", "node": "g1", "full_scale": 80.9 },

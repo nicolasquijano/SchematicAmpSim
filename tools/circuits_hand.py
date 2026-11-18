@@ -325,7 +325,74 @@ def hiwatt_preamp(amp_id='hiwatt_dr103'):
     return s
 
 
-AMPS = {'hiwatt_dr103': (hiwatt_preamp, None),
+def ac30_preamp(amp_id='ac30_normal'):
+    """The Vox AC30: V8 (brilliant on top, normal below), the brilliant channel through V7a and the cathode follower into the treble-bass network, the normal
+    channel straight to the output mix."""
+    vals = netlist_values(amp_id)
+
+    def v(*names):
+        return next((vals[n] for n in names if n in vals), None)
+
+    s = Svg(1060, 430)
+    p = s.path
+    p('rail', 'M150,36 H720', '#7a6a4c', 2, extra=' stroke-dasharray="6 5"')
+    p('rail_bottom', 'M150,400 H260', '#7a6a4c', 2, extra=' stroke-dasharray="6 5"')
+    p('wire_static_rail', 'M200,36 V60 M200,381 V400 M560,36 V60 M680,36 V183', '#7a6a4c', 3)
+    p('wire_INPUT', 'M43,150 H66 M102,150 H140 V208 H164 M43,290 H66 M102,290 H140 V232 H164')
+    p('wire_V8', 'M200,96 V184 M200,130 H234 M246,130 H362 M300,130 V80 H334 M346,80 H404 V130 M200,345 V256 M200,330 H234 M246,330 H362')
+    p('wire_V8-m', 'M398,130 H480 V215 H528 M398,330 H410 M446,330 H470 V395 H980 V275')
+    p('wire_V7', 'M560,96 V183 M560,120 H610 V215 H648 M680,257 V275 M680,275 H720 M756,275 H940 M800,275 V312 M870,275 V312')
+    p('wire_OUT', 'M940,275 H980 M980,275 H1030')
+    p('wire_static', 'M236,220 H270 V235 M262,235 H290 M262,235 V245 M262,281 V296 H290 V266 M290,235 V254 M380,148 V165 M380,348 V362 '
+      'M140,150 V144 M140,108 V96 M140,290 V300 M140,336 V346 M560,257 V265 M545,265 H575 M545,265 V275 M545,311 V325 H575 V295 M560,325 V330 M575,265 V283 '
+      'M680,290 V275 M680,326 V340 M800,348 V362 M870,348 V362', '#5a4d3a', 3)
+    for gx, gy in ((140, 96), (140, 346), (380, 165), (380, 362), (276, 296), (560, 330), (680, 340), (800, 362), (870, 362)):
+        ground(s, gx, gy)
+    s.ellipse('jack_BRILLIANT', 30, 150, 13, 13, s.rad(30, 150, 13, [(0, '#d9d0b8'), (1, '#5f5846')]), '#9a8760', 1.5)
+    s.ellipse('jack_BRILLIANT_hole', 30, 150, 5, 5, '#14110d', '#3b3329', 1)
+    s.ellipse('jack_NORMAL', 30, 290, 13, 13, s.rad(30, 290, 13, [(0, '#d9d0b8'), (1, '#5f5846')]), '#9a8760', 1.5)
+    s.ellipse('jack_NORMAL_hole', 30, 290, 5, 5, '#14110d', '#3b3329', 1)
+    resistor_h(s, 66, 150, 'res_68k_b')
+    resistor_h(s, 66, 290, 'res_68k_n')
+    resistor_v(s, 140, 108, 'res_leak_b')
+    resistor_v(s, 140, 300, 'res_leak_n')
+    resistor_v(s, 200, 60, 'res_pb')
+    resistor_v(s, 200, 345, 'res_pn')
+    resistor_v(s, 262, 245, 'res_k8')
+    resistor_h(s, 410, 330, 'res_mix_n')
+    resistor_v(s, 560, 60, 'res_p7')
+    resistor_v(s, 545, 275, 'res_k7')
+    resistor_v(s, 680, 290, 'res_cf')
+    resistor_h(s, 720, 275, 'res_100k')
+    cap(s, 240, 130, 'cap_cb')
+    cap(s, 240, 330, 'cap_cn')
+    cap(s, 340, 80, 'cap_bright')
+    cap_h(s, 290, 260, 'cap_k8')
+    cap_h(s, 575, 289, 'cap_k7')
+    cap(s, 835, 275, 'cap_t1')
+    cap(s, 905, 275, 'cap_t2')
+    bulb(s, 200, 220, 1.125, 'V8', 'V8', pi=True, label='12AX7')
+    bulb(s, 560, 215, 1.0, 'V7', 'V7', label='12AX7')
+    bulb(s, 680, 215, 1.0, 'V7B', 'V7B', label='CF')
+    pot(s, 380, 130, 'volume', 1.0, 0.5)
+    pot(s, 380, 330, 'volume2', 1.0, 0.5)
+    anchor(s, 'volume', 440, 176)
+    anchor(s, 'volume2', 440, 376)
+    pot(s, 800, 330, 'treble', 1.0, 0.6)
+    pot(s, 870, 330, 'bass', 1.0, 0.5)
+    for kind, x, y, names in (('C', 84, 136, ('R34',)), ('C', 84, 276, ('R31',)), ('L', 150, 128, ('R32',)), ('L', 150, 320, ('R29',)), ('L', 212, 80, ('R57',)),
+                              ('L', 212, 365, ('R58',)), ('C', 240, 106, ('C9',)), ('C', 240, 306, ('C11',)), ('C', 340, 56, ('C8',)), ('R', 252, 263, ('R10',)),
+                              ('L', 302, 262, ('C10',)), ('C', 428, 316, ('R6',)), ('L', 572, 80, ('R55',)), ('R', 533, 293, ('R9',)), ('L', 588, 289, ('C7',)),
+                              ('L', 692, 308, ('R8',)), ('C', 738, 260, ('R35',)), ('C', 835, 256, ('C4',)), ('C', 905, 256, ('C5',))):
+        text = v(*names)
+        if text:
+            s.val(kind, x, y, text)
+    s.path('next_power', 'M1030,267 V283 L1052,275 Z', '#8c7a55', 1.5, s.lin(0, 267, 0, 283, [(0, '#d9b866'), (1, '#8a6d2c')]))
+    return s
+
+
+AMPS = {'ac30_normal': (ac30_preamp, None),
+        'hiwatt_dr103': (hiwatt_preamp, None),
         'orange_or120': (orange_preamp, None),
         'tweed_5e3': (tweed_5e3_preamp, tweed_5e3_power),
         'plexi_1959': (lambda: two_channel_preamp('plexi_1959'), None),
