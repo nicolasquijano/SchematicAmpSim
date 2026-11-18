@@ -59,16 +59,21 @@ double stepE12(double v, int dir) {
 
 // What each component of the preamp does, read from where it sits in the netlists: a resistor from a plate to a supply is a plate load, one from a
 // cathode to ground a cathode resistor, a capacitor across it a bypass, and so on. The names repeat from stage to stage only for the same part.
-void classifyNetlist(const std::string& text, std::map<juce::String, juce::String>& roles, std::map<juce::String, std::pair<juce::String, bool>>& tubes) {
+struct PowerHints {  // what the power amp's netlist is made of: its output node, the load, the input source and the supply nodes
+    std::string output, load, input, ht, rail;
+};
+
+void classifyNetlist(const std::string& text, std::map<juce::String, juce::String>& roles, std::map<juce::String, std::pair<juce::String, bool>>& tubes,
+                     const PowerHints* hints = nullptr) {
     struct El {
-        std::string name, a, b;
+        std::string name, a, b, value;
         bool cap;
     };
     std::vector<El> els;
     std::set<std::string> grids, plates, cathodes, screens, supplies;
     std::vector<std::array<std::string, 3>> opamps;  // plus, minus, out
     struct Triode {
-        std::string name, model, plate;
+        std::string name, model, plate, cathode;
     };
     std::vector<Triode> triodes;
     std::istringstream in(text);
@@ -80,15 +85,28 @@ void classifyNetlist(const std::string& text, std::map<juce::String, juce::Strin
         for (std::string w; ls >> w;) t.push_back(w);
         if (t.size() < 4 || t[0][0] == '*') continue;
         const auto& kind = t[0];
-        if (kind == "R" || kind == "C") els.push_back({t[1], t[2], t[3], kind == "C"});
+        if (kind == "R" || kind == "C") els.push_back({t[1], t[2], t[3], t.size() > 4 ? t[4] : std::string(), kind == "C"});
         else if (kind == "T" && t.size() >= 5) {
             grids.insert(t[2]); plates.insert(t[3]); cathodes.insert(t[4]);
-            triodes.push_back({t[1], t.size() > 5 ? t[5] : std::string(), t[3]});
+            triodes.push_back({t[1], t.size() > 5 ? t[5] : std::string(), t[3], t[4]});
         }
         else if (kind == "P" && t.size() >= 6) { grids.insert(t[2]); plates.insert(t[3]); screens.insert(t[4]); cathodes.insert(t[5]); }
         else if ((kind == "O" || kind == "U") && t.size() >= 5) opamps.push_back({t[2], t[3], t[4]});
         else if (kind == "V") supplies.insert(t[2]);
+        else if (kind == "S" && hints && t[1] != hints->input) supplies.insert(t[2]);  // the power amp's bias and screen supplies
     }
+    if (hints) {
+        if (!hints->ht.empty()) supplies.insert(hints->ht);
+        if (!hints->rail.empty()) supplies.insert(hints->rail);
+    }
+    std::map<std::string, int> cathodeUsers;  // two triodes on one cathode node: a long-tailed pair (the phase inverter)
+    for (const auto& tt : triodes) ++cathodeUsers[tt.cathode];
+    std::set<std::string> pairPlates, pairCathodes;
+    for (const auto& tt : triodes)
+        if (cathodeUsers[tt.cathode] >= 2) {
+            pairPlates.insert(tt.plate);
+            pairCathodes.insert(tt.cathode);
+        }
     auto ground = [](const std::string& n) { return n == "0" || n == "gnd"; };
     std::set<std::pair<std::string, std::string>> resistorPairs;  // the nodes of every resistor and pot section
     for (const auto& e : els)
@@ -105,6 +123,8 @@ void classifyNetlist(const std::string& text, std::map<juce::String, juce::Strin
         for (const auto& o : opamps) feedback = feedback || ((e.a == o[1] && e.b == o[2]) || (e.b == o[1] && e.a == o[2]));
         if (feedback) {
             role = e.cap ? "feedback_c" : "feedback_r";
+        } else if (hints && !e.cap && (e.a == hints->output || e.b == hints->output) && e.name != hints->load && e.name.rfind("DCR", 0) != 0) {
+            role = "nfb";  // from the output transformer's tap back to the phase inverter
         } else if (e.cap) {
             if (touches(cathodes)) role = "bypass";
             else if ((has(supplies, e.a) && ground(e.b)) || (has(supplies, e.b) && ground(e.a))) role = "filter";
@@ -112,13 +132,15 @@ void classifyNetlist(const std::string& text, std::map<juce::String, juce::Strin
             else if (anyGround) role = "shunt_c";
             else role = touches(plates) || touches(grids) ? "coupling" : "tone_c";
         } else if (touches(plates) && has(supplies, other(plates))) {
-            role = "plate";
+            role = has(pairPlates, has(plates, e.a) ? e.a : e.b) ? "pi_plate" : "plate";
         } else if (touches(cathodes)) {
-            role = "cathode";
+            role = touches(pairCathodes) ? "pi_tail" : "cathode";
         } else if (touches(screens)) {
             role = "screen";
         } else if (touches(grids)) {
-            role = anyGround ? "grid_leak" : "grid_stopper";
+            role = anyGround || parseValue(juce::String(e.value)) >= 100e3 ? "grid_leak" : "grid_stopper";
+        } else if (!anyGround && (has(supplies, e.a) || has(supplies, e.b))) {
+            role = "feed_r";
         } else {
             role = anyGround ? "shunt_r" : "series_r";
         }
@@ -136,6 +158,10 @@ const RoleText kRoleTexts[] = {
     {"grid_leak", "Grid leak", "Loads the stage before it. Fewer ohms: less level and less bass. More ohms: more level, but the tube can block when pushed hard."},
     {"grid_stopper", "Grid stopper", "With the tube's own capacitance it filters the highs and softens the clipping. More ohms: darker and smoother."},
     {"screen", "Screen resistor", "Limits the screen current. More ohms: softer, with less power. Fewer: harder and with more power."},
+    {"pi_plate", "Phase inverter plate load", "With the load of the other half it sets the balance between the two output tubes. Unequal loads: more even-order distortion and less clean power."},
+    {"pi_tail", "Phase inverter tail resistor", "Sets the inverter's gain and balance. More ohms: better balance but less gain and headroom. Fewer: more gain and less balance."},
+    {"nfb", "Negative feedback", "Brings the output back to the phase inverter. More ohms: less feedback, so looser, with more gain and a livelier feel. Fewer: tighter and cleaner, with less gain."},
+    {"feed_r", "Supply or bias resistor", "Feeds a supply or a bias voltage. More ohms: more drop and a softer supply. Fewer: stiffer."},
     {"series_r", "Series resistor", "Part of the signal path, it forms a divider or a filter with its neighbours. More ohms: less level and a darker tone."},
     {"shunt_r", "Resistor to ground", "Divides or loads the signal with the parts around it. More ohms: more level and less loading. Fewer: less level."},
     {"coupling", "Coupling capacitor", "Passes the signal on and blocks the DC. More capacity: more bass gets through. Less: tighter and thinner."},
@@ -237,6 +263,8 @@ void CircuitPage::collect(Drawing& dr, juce::Drawable& d) {
         dr.tags.push_back({&d, id.fromFirstOccurrenceOf("jack_", false, false), 0});
     } else if (id == "spk_cone" || id == "spk_cone_p") {
         dr.tags.push_back({&d, "SPEAKER", 0});
+    } else if (id.startsWith("ttl_")) {  // the name of a box of parts
+        dr.titles.push_back({&d, id.fromFirstOccurrenceOf("ttl_", false, false).replaceCharacter('_', ' ')});
     } else if (id == "next_power") {
         dr.next = &d;
     } else if (id.length() > 6 && id.substring(0, 3) == "val" && id.substring(4, 5) == "_") {
@@ -291,6 +319,8 @@ void CircuitPage::load(int which, const sas::AmpDef& def) {
     dr.art->setInterceptsMouseClicks(false, false);
     loadingPower_ = which == powerIndex();
     collect(dr, *dr.art);
+    if (loadingPower_)
+        for (auto& v : dr.values) v.fixed = true;  // the parts of the power amp have a tip, they are not edited
     loadingPower_ = false;
     for (const auto& t : dr.tags) {  // a pot whose name is a knob of the amp is a live control
         if (!t.item->getName().startsWith("pot_")) continue;
@@ -320,7 +350,9 @@ void CircuitPage::setAmp(const sas::AmpDef& def) {
     {
         std::map<juce::String, juce::String> unused;
         std::map<juce::String, std::pair<juce::String, bool>> foundPower;
-        classifyNetlist(def.power.netlistText, unused, foundPower);
+        const PowerHints hints{def.power.outputNode, def.power.loadResistor, def.power.inputSource, def.power.htNode, def.power.railNode};
+        powerRoles_.clear();
+        classifyNetlist(def.power.netlistText, powerRoles_, foundPower, &hints);
         for (const auto& [name, info] : foundPower) powerTubes_[name] = {info.first, info.second};
     }
     tubeHover_ = tubeDown_ = -1;
@@ -462,7 +494,7 @@ double CircuitPage::factorOf(const juce::String& name) const {
 
 juce::String CircuitPage::shownText(const Drawing::Value& v) const {
     if (v.name.isEmpty()) return v.text;
-    const double f = factorOf(v.name);
+    const double f = valueFactor(v);
     return std::abs(f - 1.0) < 1e-6 ? v.text : formatValue(v.base * f, v.isCap);
 }
 
@@ -476,11 +508,11 @@ juce::Rectangle<float> CircuitPage::valueBox(const Drawing& dr, const Drawing::V
                              : juce::Rectangle<float>(c.x, c.y - 7.0f, w, 14.0f);
 }
 
-int CircuitPage::valueAt(juce::Point<float> pos) const {
+int CircuitPage::valueAt(juce::Point<float> pos, bool editableOnly) const {
     if (!showValues_ || !hasDrawing() || view_ >= int(drawings_.size()) || !host_.getBounds().toFloat().contains(pos)) return -1;
     const auto& dr = drawings_[std::size_t(view_)];
     for (std::size_t i = 0; i < dr.values.size(); ++i)
-        if (dr.values[i].name.isNotEmpty() && valueBox(dr, dr.values[i]).expanded(2.0f).contains(pos)) return int(i);
+        if (dr.values[i].name.isNotEmpty() && !(editableOnly && dr.values[i].fixed) && valueBox(dr, dr.values[i]).expanded(2.0f).contains(pos)) return int(i);
     return -1;
 }
 
@@ -545,14 +577,14 @@ void CircuitPage::stepValue(const Drawing::Value& v, int dir) {
 int CircuitPage::editableIndex(int i) const {
     const auto& dr = drawings_[std::size_t(view_)];
     for (std::size_t k = 0; k < dr.values.size(); ++k)
-        if (dr.values[k].name.isNotEmpty() && i-- == 0) return int(k);
+        if (dr.values[k].name.isNotEmpty() && !dr.values[k].fixed && i-- == 0) return int(k);
     return 0;
 }
 
 int CircuitPage::editableCount() const {
     if (!hasDrawing() || view_ >= int(drawings_.size())) return 0;
     int n = 0;
-    for (const auto& v : drawings_[std::size_t(view_)].values) n += v.name.isNotEmpty() ? 1 : 0;
+    for (const auto& v : drawings_[std::size_t(view_)].values) n += v.name.isNotEmpty() && !v.fixed ? 1 : 0;
     return n;
 }
 
@@ -698,7 +730,7 @@ void CircuitPage::mouseMove(const juce::MouseEvent& e) {
             valueHover_ = vi;
             repaint();
         }
-        if (vi >= 0) {
+        if (vi >= 0 && !drawings_[std::size_t(view_)].values[std::size_t(vi)].fixed) {
             setMouseCursor(juce::MouseCursor::UpDownResizeCursor);
             return;
         }
@@ -734,7 +766,7 @@ void CircuitPage::mouseDown(const juce::MouseEvent& e) {
         tubeDownAt_ = e.position;
         return;
     }
-    valueDrag_ = valueAt(e.position);
+    valueDrag_ = valueAt(e.position, true);
     if (valueDrag_ >= 0) {
         valueDragY_ = e.position.y;
         return;
@@ -818,7 +850,7 @@ void CircuitPage::mouseDoubleClick(const juce::MouseEvent& e) {
         if (!drawings_[std::size_t(view_)].tubes[std::size_t(ti)].output) setPending("T:" + drawings_[std::size_t(view_)].tubes[std::size_t(ti)].key, 1.0);
         return;
     }
-    if (const int vi = valueAt(e.position); vi >= 0) {  // a component's value goes back to the drawn one
+    if (const int vi = valueAt(e.position, true); vi >= 0) {  // a component's value goes back to the drawn one
         setPending(drawings_[std::size_t(view_)].values[std::size_t(vi)].name, 1.0);
         return;
     }
@@ -848,7 +880,7 @@ void CircuitPage::mouseWheelMove(const juce::MouseEvent& e, const juce::MouseWhe
         stepTube(drawings_[std::size_t(view_)].tubes[std::size_t(ti)], w.deltaY > 0 ? 1 : -1);
         return;
     }
-    if (const int vi = valueAt(e.position); vi >= 0 && w.deltaY != 0.0f) {
+    if (const int vi = valueAt(e.position, true); vi >= 0 && w.deltaY != 0.0f) {
         stepValue(drawings_[std::size_t(view_)].values[std::size_t(vi)], w.deltaY > 0 ? 1 : -1);
         return;
     }
@@ -918,10 +950,16 @@ void CircuitPage::paintOverChildren(juce::Graphics& g) {
             g.drawFittedText(text, box.toNearestInt(), juce::Justification::centred, 1, 0.6f);
         }
     }
+    g.setColour(look_.label());  // the names of the boxes of parts of the power amp
+    g.setFont(AmpLookAndFeel::font(10.5f, true, 0.06f));
+    for (const auto& t : dr.titles) {
+        const auto b = t.item->getDrawableBounds().transformedBy(dr.fit);
+        g.drawText(tr(t.text), juce::Rectangle<float>(b.getCentreX() - 120.0f, b.getCentreY() - 8.0f, 240.0f, 16.0f).toNearestInt(), juce::Justification::centred);
+    }
     g.setFont(AmpLookAndFeel::font(9.5f));  // the values of the components: the ones the user changed in the accent colour
     for (std::size_t i = 0; i < dr.values.size() && showValues_; ++i) {
         const auto& v = dr.values[i];
-        const bool edited = v.name.isNotEmpty() && std::abs(factorOf(v.name) - 1.0) > 1e-6;
+        const bool edited = v.name.isNotEmpty() && std::abs(valueFactor(v) - 1.0) > 1e-6;
         g.setColour(edited ? look_.accent() : int(i) == valueHover_ ? look_.text() : look_.label().withAlpha(0.9f));
         const auto box = valueBox(dr, v).expanded(6.0f, 0.0f);
         g.drawText(shownText(v), box.toNearestInt(), v.align == 'R' ? juce::Justification::centredRight : v.align == 'C' ? juce::Justification::centred : juce::Justification::centredLeft);
@@ -987,9 +1025,9 @@ void CircuitPage::paintTip(juce::Graphics& g, const Drawing& dr, const Drawing::
     for (const auto& r : kRoleTexts)
         if (role == r.role) text = &r;
     if (!text) return;
-    const bool edited = std::abs(factorOf(v.name) - 1.0) > 1e-6;
+    const bool edited = std::abs(valueFactor(v) - 1.0) > 1e-6;
     paintTipBox(g, valueBox(dr, v), tr(text->title) + "  " + v.name + "  " + shownText(v) + (edited ? "  (" + v.text + ")" : juce::String()), tr(text->body),
-                tr("Wheel or drag: change the value. Double-click: back to the drawn one."), edited);
+                v.fixed ? tr("Fixed in the power amp: its bias and supply are calibrated together.") : tr("Wheel or drag: change the value. Double-click: back to the drawn one."), edited);
 }
 
 // The box of a tip near `anchor`: a title line, what it does, and how to change it.

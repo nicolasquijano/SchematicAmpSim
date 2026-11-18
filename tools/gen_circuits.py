@@ -443,10 +443,90 @@ def draw_power_ss(amp_id, d, info):
     return s
 
 
+def power_parts(amp_id, d):
+    """The parts of the power amp's three networks that decide its character, read from its netlist: [(title, [(kind, name, value)])]. The phase
+    inverter (what touches its triodes), the feedback (the presence pot and the parts around it, three steps out) and the supply and bias (what touches
+    a supply, the screens and the output grids). At most 8 each; the drawing shows them as a row of parts with their values (they have tips, they
+    are not edited: the bias and the supply are calibrated together)."""
+    lines = netlist_lines(amp_id, d['power']['netlist'])
+    gnd = {'0', 'gnd'}
+    els, tri, pent_grids, screens, supplies = [], set(), set(), set(), set()
+    for ln in lines:
+        t = ln.split()
+        if t[0] in ('R', 'C') and len(t) >= 5:
+            els.append((t[0], t[1], t[2], t[3], t[4]))
+        elif t[0] == 'T' and len(t) >= 5:
+            tri.update(t[2:5])
+        elif t[0] == 'P' and len(t) >= 6:
+            pent_grids.add(t[2])
+            screens.add(t[4])
+            tri.update([t[3], t[5]])  # the plates and cathodes belong to the output stage, not to the networks
+        elif t[0] in ('V', 'S') and len(t) > 2 and t[1] != d['power'].get('input_source', 'VAUDIO'):
+            supplies.add(t[2])
+    tubes_nodes = set()
+    for ln in lines:
+        t = ln.split()
+        if t[0] == 'T' and len(t) >= 5:
+            tubes_nodes.update(t[2:5])
+    supplies.update(n for n in (d['power'].get('ht_node'), d['power'].get('rail_node')) if n)
+    skip = {d['power'].get('load_resistor')}
+    skipped = lambda e: e[1] in skip or e[1].startswith(('DCR', 'SW', 'RLOAD')) or e[1].startswith('VR')
+    pres = (d['power'].get('presence') or {}).get('resistor') or d['power'].get('nfb_resistor')
+    groups = {'PHASE INVERTER': [], 'FEEDBACK': [], 'SUPPLY AND BIAS': []}
+    used = set()
+    # feedback: from the presence resistor's nodes (or the feedback resistor's), three steps out through nodes that are not ground, supply or tube terminals
+    start = set()
+    for ln in lines:
+        t = ln.split()
+        if t[0] == 'R' and len(t) >= 5 and t[1] == pres:
+            start = {n for n in (t[2], t[3]) if n not in gnd}
+    reach = set(start)
+    for _ in range(3):
+        cur = set(reach)  # one step at a time: what touches the nodes reached so far
+        for e in els:
+            if (e[2] in cur or e[3] in cur) and not skipped(e) and e[1] not in used:
+                if e[2] in tubes_nodes or e[3] in tubes_nodes or e[2] in supplies or e[3] in supplies:
+                    continue
+                used.add(e[1])
+                groups['FEEDBACK'].append(e)
+                reach.update(n for n in (e[2], e[3]) if n not in gnd)
+    for e in els:
+        if e[1] in used or skipped(e):
+            continue
+        if (e[2] in tubes_nodes or e[3] in tubes_nodes) and not (e[2] in pent_grids or e[3] in pent_grids):
+            groups['PHASE INVERTER'].append(e)
+        elif e[2] in supplies or e[3] in supplies or e[2] in screens or e[3] in screens or e[2] in pent_grids or e[3] in pent_grids:
+            groups['SUPPLY AND BIAS'].append(e)
+    out = []
+    for title, es in groups.items():
+        if es:
+            out.append((title, [(k, n, v) for k, n, a, b, v in es][:8]))
+    return out
+
+
+def draw_parts(s, groups, y0):
+    """A box for each network with its parts in two rows of four: the part, its value under it (the plug-in gives each a tip)."""
+    w = (840 - 40 - 2 * 14) // 3
+    for gi, (title, parts) in enumerate(groups):
+        x0 = 20 + gi * (w + 14)
+        s.rect('pp_box%d' % gi, x0, y0, w, 150, 'none', '#5a4d3a', 1.2, 6)
+        s.ellipse('ttl_%s' % title.replace(' ', '_'), x0 + w / 2, y0 + 14, 1, 1, 'none', 'none', 0)
+        for i, (kind, name, value) in enumerate(parts):
+            cx = x0 + 34 + (i % 4) * ((w - 36) / 4.0)
+            cy = y0 + 52 + (i // 4) * 58
+            if kind == 'R':
+                resistor_h(s, cx - 18, cy, 'pp_' + name)
+            else:
+                import gen_chain
+                gen_chain.cap_h(s, cx, cy, 'pp_' + name)
+            s.val('C', cx, cy + 20, value, '%s:%s' % (kind, name))
+
+
 def draw_power(amp_id, d, info):
     if info.get('opamp'):
         return draw_power_ss(amp_id, d, info)
-    s = Svg(840, 415)
+    groups = power_parts(amp_id, d)
+    s = Svg(840, 415 + (190 if groups else 0))
     _, pots = classify_pots(d)
     tube = info['tube']
     # the wires
@@ -477,6 +557,8 @@ def draw_power(amp_id, d, info):
     for i, u in enumerate(pots):
         pot(s, px[i], 310, u['param'], 1.0)
     speaker(s, 740, 170, 'p')
+    if groups:
+        draw_parts(s, groups, 412)
     return s
 
 

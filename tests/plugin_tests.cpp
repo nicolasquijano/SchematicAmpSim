@@ -4173,7 +4173,26 @@ TEST_CASE("the power amp drawing: the phase inverter's tube can be swapped and t
         }
     page.applyEdits();
     CHECK(p.partEditCount(amp) == 1);
+    // The three networks are drawn with their parts, each with a tip that tells its role; none of them can be edited.
+    CHECK(page.partCount() >= 15);
+    CHECK(page.editableCount() == 0);
+    CHECK(page.roleOf("R82") == "pi_plate");
+    CHECK(page.roleOf("RKT") == "pi_tail");
+    CHECK(page.roleOf("RN1") == "nfb");
+    CHECK(page.roleOf("R59") == "feed_r");
+    CHECK(page.roleOf("CBIAS") == "filter");
+    CHECK(page.roleOf("R3K32A") == "grid_stopper");
     if (const char* dir = std::getenv("SAS_SCREENSHOT_DIR")) {
+        page.hoverPart("RN1");
+        page.tick();
+        const auto img0 = ed->createComponentSnapshot(ed->getLocalBounds(), true, 1.0f);
+        juce::File(dir).createDirectory();
+        juce::FileOutputStream out0(juce::File(dir).getChildFile("circuit_power_parts.png"));
+        if (out0.openedOk()) {
+            out0.setPosition(0);
+            out0.truncate();
+            juce::PNGImageFormat().writeImageToStream(img0, out0);
+        }
         page.hoverTube(pi);
         page.tick();
         const auto img = ed->createComponentSnapshot(ed->getLocalBounds(), true, 1.0f);

@@ -66,9 +66,26 @@ public:
     juce::String tubeModel(int i) const { const auto& t = drawings_[std::size_t(view_)].tubes[std::size_t(i)]; return tubeOptions(t)[tubeChoice(t)]; }
     void editTube(int i, int dir) { stepTube(drawings_[std::size_t(view_)].tubes[std::size_t(i)], dir); }
     void hoverTube(int i) { tubeHover_ = i; repaint(); }
+    // For the tests: the mouse is on the part of that name (editable or not), and how many parts of the shown drawing have a tip.
+    void hoverPart(const juce::String& name) {
+        valueHover_ = -1;
+        const auto& vs = drawings_[std::size_t(view_)].values;
+        for (std::size_t k = 0; k < vs.size(); ++k)
+            if (vs[k].name == name) valueHover_ = int(k);
+        repaint();
+    }
+    int partCount() const {
+        int n = 0;
+        for (const auto& v : drawings_[std::size_t(view_)].values) n += v.name.isNotEmpty() ? 1 : 0;
+        return n;
+    }
     void hoverValue(int i) { valueHover_ = i < 0 ? -1 : editableIndex(i); repaint(); }  // for the tests: the mouse is on this component
     // What the component does in the circuit (the role the page tells the user about when the mouse is on it); empty when unknown.
-    juce::String roleOf(const juce::String& name) const { const auto it = roles_.find(name); return it == roles_.end() ? juce::String() : it->second; }
+    juce::String roleOf(const juce::String& name) const {
+        const auto& m = view_ > 0 && view_ == int(drawings_.size()) - 1 ? powerRoles_ : roles_;  // the power amp's drawing has its own netlist
+        const auto it = m.find(name);
+        return it == m.end() ? juce::String() : it->second;
+    }
 
     // The meters span this many dB below the stage's limit.
     static constexpr float kRangeDb = 48.0f;
@@ -114,7 +131,13 @@ private:
             juce::String name;  // the component in the netlist, when the user can edit it ("valL_<n>_<text>@R:R12")
             double base = 0.0;  // its value as drawn
             bool isCap = false;
+            bool fixed = false;  // a part of the power amp: it has its tip, but it is not edited
         };
+        struct Title {
+            juce::Drawable* item = nullptr;
+            juce::String text;
+        };
+        std::vector<Title> titles;  // "ttl_<TEXT>": the name of a box of parts
         struct Switch {
             juce::Drawable* closed = nullptr;
             juce::Drawable* open = nullptr;
@@ -152,7 +175,7 @@ private:
     double factorOf(const juce::String& name) const;
     juce::String shownText(const Drawing::Value& v) const;
     juce::Rectangle<float> valueBox(const Drawing& dr, const Drawing::Value& v) const;
-    int valueAt(juce::Point<float> pos) const;
+    int valueAt(juce::Point<float> pos, bool editableOnly = false) const;
     void stepValue(const Drawing::Value& v, int dir);
     void setPending(const juce::String& name, double factor);
     int editableIndex(int i) const;
@@ -189,7 +212,8 @@ private:
     int tubeChoice(const Drawing::Tube& t) const;
     void stepTube(const Drawing::Tube& t, int dir);
     void paintTipBox(juce::Graphics&, juce::Rectangle<float> anchor, const juce::String& title, const juce::String& body, const juce::String& hint, bool edited);
-    std::map<juce::String, juce::String> roles_;  // component name -> what it does ("plate", "cathode", ...), read from the preamp's netlists
+    std::map<juce::String, juce::String> roles_, powerRoles_;
+    double valueFactor(const Drawing::Value& v) const { return v.fixed ? 1.0 : factorOf(v.name); }  // component name -> what it does ("plate", "cathode", ...), read from the preamp's netlists
     void paintTip(juce::Graphics&, const Drawing&, const Drawing::Value&);
     float valueDragY_ = 0.0f;
     static inline bool showValues_ = true;  // the values of the components: shown or hidden, kept for the session
