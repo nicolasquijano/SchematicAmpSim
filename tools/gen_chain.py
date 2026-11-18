@@ -29,6 +29,36 @@ def cap_h(s, cx, cy, name):
     s.rect(name + 'b', cx - 12, cy + 2, 24, 4, f, '#5a4630', 0.8, 1)
 
 
+def diode(s, cx, cy, key, anode_first, horizontal):
+    """A diode: the triangle (it glows with the signal that reaches it: diode_<stage>_<n>) and the bar at its cathode. `anode_first`: the anode is the
+    top (or left) end."""
+    s.n += 1
+    sg = 1 if anode_first else -1
+    if horizontal:
+        tri = 'M%g,%g V%g L%g,%g Z' % (cx - 6 * sg, cy - 8, cy + 8, cx + 7 * sg, cy)
+        bar = 'M%g,%g V%g' % (cx + 9 * sg, cy - 9, cy + 9)
+    else:
+        tri = 'M%g,%g H%g L%g,%g Z' % (cx - 8, cy - 6 * sg, cx + 8, cx, cy + 7 * sg)
+        bar = 'M%g,%g H%g' % (cx - 9, cy + 9 * sg, cx + 9)
+    s.path('diode_%s_%d' % (key, s.n), tri, '#cdbd92', 1.5, '#3a332a')
+    s.path('diode_bar_%d' % s.n, bar, '#cdbd92', 2)
+
+
+def switch(s, cx, cy, name, closed_default, horizontal):
+    """A switch with its two blades: swc_<1|0>_<name> (closed) and swo_<1|0>_<name> (open); the page shows the one the amp's setting asks for."""
+    d = 1 if closed_default else 0
+    if horizontal:
+        a, b = (cx - 12, cy), (cx + 12, cy)
+        open_tip = (cx + 9, cy - 11)
+    else:
+        a, b = (cx, cy - 11), (cx, cy + 11)
+        open_tip = (cx + 11, cy + 5)
+    for p in (a, b):
+        s.ellipse('sw_pin_%s_%d_%d' % (name, p[0], p[1]), p[0], p[1], 2.6, 2.6, '#cdbd92')
+    s.path('swc_%d_%s' % (d, name), 'M%g,%g L%g,%g' % (a[0], a[1], b[0], b[1]), '#f0b53a', 2.4)
+    s.path('swo_%d_%s' % (d, name), 'M%g,%g L%g,%g' % (a[0], a[1], open_tip[0], open_tip[1]), '#8c7a55', 2.4)
+
+
 def anchor(s, param, x, y):
     s.ellipse('lbl_%s' % param, x, y, 1, 1, 'none', 'none', 0)
 
@@ -47,6 +77,9 @@ class Net:
                 if t[0] in ('R', 'C') and len(t) >= 5 and t[1] not in names:
                     names.add(t[1])
                     self.elems.append({'type': t[0], 'name': t[1], 'a': t[2], 'b': t[3], 'val': t[4]})
+                if t[0] == 'D' and len(t) >= 4 and t[1] not in names:  # a diode: anode, cathode, model
+                    names.add(t[1])
+                    self.elems.append({'type': 'D', 'name': t[1], 'a': t[2], 'b': t[3], 'val': t[4] if len(t) > 4 else ''})
                 if t[0] == 'T' and len(t) >= 6 and not any(x['name'] == t[1] for x in self.tubes):
                     m = re.match(r'^(V\d+)[A-Za-z]?$', t[1])
                     self.tubes.append({'name': t[1], 'grid': t[2], 'plate': t[3], 'cath': t[4], 'model': t[5].replace('ECC83', '12AX7'), 'key': m.group(1) if m else t[1]})
@@ -70,6 +103,13 @@ class Net:
                 for k in ('grid', 'plate', 'cath'):
                     t[k] = alias.get(t[k], t[k])
         self.supply = self._supply()
+        # the switches the amp sets (the resistors its jacks and selectors name): drawn as switches, open or closed as they are set
+        self.settable = set()
+        for j in pre.get('jacks', []):
+            self.settable |= set((j.get('resistors') or {}).keys())
+        for sd in pre.get('selectors', []):
+            for pos in sd.get('positions', []):
+                self.settable |= set((pos.get('resistors') or {}).keys())
         # the knobs: pot section -> (parameter, role)
         self.pots, self.partner = {}, {}
         ui = {u.get('knob'): u['param'] for u in d['ui'] if u.get('knob')}
@@ -104,6 +144,9 @@ class Net:
 
     def is_open(self, e):
         return e['val'] in OPEN
+
+    def is_switch(self, e):
+        return e['type'] == 'R' and e['name'] in self.settable and e['name'] not in self.pots
 
     def is_short(self, e):
         return e['type'] == 'R' and e['val'] == '1' and e['name'] not in self.pots and not e['name'].startswith('VR')
@@ -173,14 +216,14 @@ def branches_of(net, path, blocked):
     for n in nodes:
         found = []
         for e in net.touching(n):
-            if id(e) in on_path or net.is_short(e):
+            if id(e) in on_path or (net.is_short(e) and not net.is_switch(e)):
                 continue
             m = other(e, n)
             if m in nodes or (m in blocked and m not in GND):
                 continue
             seq, at, seen = [e], m, {n, m}
             while at not in GND and len(seq) < 3:
-                nxt = [x for x in net.touching(at) if x not in seq and not net.is_short(x) and other(x, at) not in seen
+                nxt = [x for x in net.touching(at) if x not in seq and (not net.is_short(x) or net.is_switch(x)) and other(x, at) not in seen
                        and (other(x, at) not in blocked or other(x, at) in GND)]
                 if not nxt:
                     break
@@ -189,7 +232,13 @@ def branches_of(net, path, blocked):
                 seq.append(x)
                 at = other(x, at)
                 seen.add(at)
-            found.append((seq, at in GND))
+            found.append((seq, at in GND, n))
+        for e in net.elems:  # the switches that are open in the netlist (the signal does not pass them, the drawing shows them)
+            if net.is_switch(e) and net.is_open(e) and n in (e['a'], e['b']):
+                m = other(e, n)
+                if m in nodes or (m in blocked and m not in GND):
+                    continue
+                found.append(([e], m in GND, n))
         out[n] = found[:3]
     return out
 
@@ -222,6 +271,8 @@ class Chain:
 
     def edge_width(self, e):
         net = self.net
+        if net.is_switch(e):
+            return 44
         if net.is_short(e):
             return W_SHORT
         if e['name'] in net.pots and net.pots[e['name']][1] in ('T', 'V') and net.pots[e['name']][0]:
@@ -278,15 +329,26 @@ class Chain:
             pot_count[param] = n + 1
             return param, ('%s-%d' % (param, n + 1) if n else param), n == 0
 
-        def hang(x0, y0, seq, end_gnd):
+        def hang(x0, y0, seq, end_gnd, top, key):
             """A branch hanging down from (x0, y0): its elements one under the other, to ground or open."""
             y = y0
+            at = top
             for e in seq:
                 name = e['name']
                 info = net.pots.get(name)
+                anode_top = e['a'] == at
+                at = e['b'] if e['a'] == at else e['a']
                 if info and info[1] == 'B':  # a pot's bottom section hangs with its top: the knob is drawn once
                     continue
-                if info and info[0] and info[1] in ('T', 'V'):
+                if e['type'] == 'D':
+                    statics.append('M%g,%g V%g M%g,%g V%g' % (x0, y, y + 10, x0, y + 32, y + 42))
+                    parts.append(('diode_v', x0, y + 21, key, anode_top))
+                    y += 42
+                elif net.is_switch(e):
+                    statics.append('M%g,%g V%g M%g,%g V%g' % (x0, y, y + 8, x0, y + 34, y + 42))
+                    parts.append(('sw_v', x0, y + 21, name, 0 if net.is_open(e) else 1))
+                    y += 42
+                elif info and info[0] and info[1] in ('T', 'V'):
                     param, pid, _ = pot_param(name)
                     statics.append('M%g,%g V%g M%g,%g V%g' % (x0, y, y + 8, x0, y + 36, y + 46))
                     parts.append(('pot', x0, y + 22, pid, param))
@@ -327,15 +389,21 @@ class Chain:
                 nb = br.get(n, [])
                 slot = max(16, W_NODE * len(nb))
                 wire(key, 'M%g,%g H%g' % (xcur, yo, xcur + slot))
-                for j, (seq, gnd) in enumerate(nb):
-                    hang(xcur + slot / max(1, len(nb)) * (j + 0.5), yo, seq, gnd)
+                for j, (seq, gnd, top) in enumerate(nb):
+                    hang(xcur + slot / max(1, len(nb)) * (j + 0.5), yo, seq, gnd, top, key)
                 xcur += slot
                 if k < len(path):
                     e = path[k][0]
                     w = self.edge_width(e)
                     xm = xcur + w / 2
                     info = net.pots.get(e['name'])
-                    if net.is_short(e):
+                    if net.is_switch(e):  # a closed switch in the path (the amp may open it)
+                        wire(key, 'M%g,%g H%g M%g,%g H%g' % (xcur, yo, xm - 14, xm + 14, yo, xcur + w))
+                        parts.append(('sw_h', xm, yo, e['name'], 1))
+                    elif e['type'] == 'D':
+                        wire(key, 'M%g,%g H%g M%g,%g H%g' % (xcur, yo, xm - 8, xm + 8, yo, xcur + w))
+                        parts.append(('diode_h', xm, yo, key, e['a'] == path[k][1]))
+                    elif net.is_short(e):
                         wire(key, 'M%g,%g H%g' % (xcur, yo, xcur + w))
                     elif info and info[0] and info[1] in ('T', 'V'):
                         param, pid, first = pot_param(e['name'])
@@ -424,6 +492,14 @@ class Chain:
                 pot(s, part[1], part[2], part[3], 0.8)
             elif kind == 'lbl':
                 anchor(s, part[1], part[2], part[3])
+            elif kind == 'diode_v':
+                diode(s, part[1], part[2], part[3], part[4], False)
+            elif kind == 'diode_h':
+                diode(s, part[1], part[2], part[3], part[4], True)
+            elif kind == 'sw_v':
+                switch(s, part[1], part[2], part[3], part[4], False)
+            elif kind == 'sw_h':
+                switch(s, part[1], part[2], part[3], part[4], True)
             elif kind == 'dot':
                 s.ellipse('open_%d_%d' % (part[1], part[2]), part[1], part[2], 2.5, 2.5, '#7a6a4c')
             elif kind == 'tube':

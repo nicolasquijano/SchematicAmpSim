@@ -94,6 +94,17 @@ private:
             juce::String text;
             char align = 'L';
         };
+        struct Switch {
+            juce::Drawable* closed = nullptr;
+            juce::Drawable* open = nullptr;
+            bool defaultClosed = true;
+        };
+        std::map<juce::String, Switch> switches;  // "swc_<0|1>_<name>" and "swo_<0|1>_<name>": the two blades of a switch (the digit: closed in the netlist)
+        struct Diode {
+            juce::DrawableShape* shape = nullptr;
+            std::size_t stage = 0;
+        };
+        std::vector<Diode> diodes;  // "diode_<stage>_<n>": lit by the level of that stage
         std::vector<Value> values;  // "valL_<n>_<text>": the value of a component, in small type (L: starts at the anchor, R: ends there, C: centred)
         std::map<juce::String, juce::Drawable*> labels;  // "lbl_<param>": where a pot's name and value go when not under it
     };
@@ -107,6 +118,7 @@ private:
     Pot* potOf(PotRef r) { return r.drawing < 0 ? nullptr : &drawings_[std::size_t(r.drawing)].pots[std::size_t(r.index)]; }
     const Pot* potOf(PotRef r) const { return r.drawing < 0 ? nullptr : &drawings_[std::size_t(r.drawing)].pots[std::size_t(r.index)]; }
     void updatePots();
+    void updateSwitches();
     static float fractionOf(float ratio);
     static juce::Colour levelColour(float db);
     void paintBlocks(juce::Graphics&, juce::Rectangle<float> area);
@@ -119,6 +131,10 @@ private:
     std::map<juce::String, juce::String> uiLabels_;  // parameter -> the knob's label
     std::vector<juce::String> uiParams_;  // the plugin parameters the amp has on its panel: a pot is live when one has its name
     std::vector<std::unique_ptr<juce::TextButton>> viewButtons_;
+    juce::TextButton valuesButton_;
+    static inline bool showValues_ = true;  // the values of the components: shown or hidden, kept for the session
+    std::vector<std::map<juce::String, double>> jackRes_;              // per jack: the switch resistors it sets
+    std::vector<std::vector<std::map<juce::String, double>>> selRes_;  // per selector and position
     std::vector<sas::CircuitChannelDef> channels_;
     std::vector<int> channelSel_;  // for each channel: the index of its selector in the amp's selectors (-1: none)
     int lastChannel_ = -1;

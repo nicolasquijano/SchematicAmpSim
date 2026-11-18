@@ -456,7 +456,7 @@ def pots_for_channel(d, ch):
 
 
 CHAIN_AMPS = {'american_5153', 'superlead_100', 'lead_c_plus', 'triplestack_3ch', 'british_dual100', 'jcm900_2100', 'highgain_120', 'german_ultra', 'german_trio',
-              'modbe_100', 'jcm800_2203kk'}  # drawn from the netlist as a chain with its networks (gen_chain.py)
+              'modbe_100', 'jcm800_2203kk', 'afd100', 'svt_bass300', 'boutique_od'}  # drawn from the netlist as a chain with its networks (gen_chain.py)
 
 
 def draw_any(amp_id, d, files, tubes, pots):

@@ -277,6 +277,7 @@ const std::unordered_map<std::string, std::string>& chineseTable() {
     {"OUT", "输出"},
     {"CHROMATIC TUNER", "半音调音器"},
     {"TUNER", "调音器"},
+    {"VALUES", "数值"},
     {"Circuit", "电路"},
     {"SIGNAL CHAIN", "信号链"},
     {"Bar: level now. Line: recent peak. Red: at the limit.", "条：当前电平。线：近期峰值。红色：已达上限。"},

@@ -277,6 +277,7 @@ const std::unordered_map<std::string, std::string>& frenchTable() {
     {"OUT", "SORT"},
     {"CHROMATIC TUNER", "ACCORDEUR CHROMATIQUE"},
     {"TUNER", "ACCORDEUR"},
+    {"VALUES", "VALEURS"},
     {"Circuit", "Circuit"},
     {"SIGNAL CHAIN", "CHAÎNE DU SIGNAL"},
     {"Bar: level now. Line: recent peak. Red: at the limit.", "Barre : niveau actuel. Trait : crête récente. Rouge : à la limite."},

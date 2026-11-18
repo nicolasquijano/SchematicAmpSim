@@ -12,6 +12,14 @@
 CircuitPage::CircuitPage(SasProcessor& processor, const AmpLookAndFeel& look) : processor_(processor), look_(look) {
     addAndMakeVisible(host_);  // before the buttons, so they stay above the drawings
     host_.setInterceptsMouseClicks(false, false);
+    valuesButton_.setButtonText(tr("VALUES"));
+    valuesButton_.setClickingTogglesState(true);
+    valuesButton_.setToggleState(showValues_, juce::dontSendNotification);
+    valuesButton_.onClick = [this] {
+        showValues_ = valuesButton_.getToggleState();
+        repaint();
+    };
+    addAndMakeVisible(valuesButton_);
 }
 
 CircuitPage::~CircuitPage() = default;
@@ -66,6 +74,16 @@ void CircuitPage::collect(Drawing& dr, juce::Drawable& d) {
         if (text.endsWithChar('u')) text = text.dropLastCharacters(1) + juce::String(juce::CharPointer_UTF8("\xc2\xb5"));
         else if (text.endsWithChar('R')) text = text.dropLastCharacters(1) + juce::String(juce::CharPointer_UTF8("\xce\xa9"));
         dr.values.push_back({&d, text, char(id[3])});
+    } else if (id.startsWith("swc_") || id.startsWith("swo_")) {  // "swc_1_SW_NAME": the closed blade of a switch that is closed in the netlist
+        const auto rest = id.substring(4);
+        auto& sw = dr.switches[rest.fromFirstOccurrenceOf("_", false, false)];
+        sw.defaultClosed = rest.startsWithChar('1');
+        (id.startsWith("swc_") ? sw.closed : sw.open) = &d;
+    } else if (id.startsWith("diode_")) {  // "diode_<stage>_<n>"
+        const auto stage = id.substring(6).upToFirstOccurrenceOf("_", false, false);
+        if (auto* shape = dynamic_cast<juce::DrawableShape*>(&d))
+            for (std::size_t i = 0; i < stages_.size(); ++i)
+                if (stages_[i].key == stage) dr.diodes.push_back({shape, i});
     } else if (id.startsWith("lbl_")) {
         dr.labels[id.fromFirstOccurrenceOf("lbl_", false, false)] = &d;
     }
@@ -122,6 +140,19 @@ void CircuitPage::setAmp(const sas::AmpDef& def) {
     }
     add("SPEAKER");
 
+    jackRes_.clear();
+    selRes_.clear();
+    for (const auto& jk : def.preamp.jacks) {
+        jackRes_.emplace_back();
+        for (const auto& [name, ohms] : jk.resistors) jackRes_.back()[juce::String(name)] = ohms;
+    }
+    for (const auto& sd : def.preamp.selectors) {
+        selRes_.emplace_back();
+        for (const auto& pos : sd.positions) {
+            selRes_.back().emplace_back();
+            for (const auto& [name, ohms] : pos.resistors) selRes_.back().back()[juce::String(name)] = ohms;
+        }
+    }
     uiParams_.clear();
     uiLabels_.clear();
     for (const auto& u : def.ui) {
@@ -199,6 +230,7 @@ void CircuitPage::resized() {
             viewButtons_[std::size_t(i)]->setBounds(bar.removeFromRight(std::max(72, viewButtons_[std::size_t(i)]->getBestWidthForHeight(22) + 10)));
             bar.removeFromRight(4);
         }
+        valuesButton_.setBounds(bar.removeFromRight(std::max(72, valuesButton_.getBestWidthForHeight(22) + 10)));
     }
     // The drawings live in a host that clips them to the schematic's area; a wide one starts at a readable size (not squeezed to fit) and the player
     // drags it along, wheels to zoom and double-clicks to see all of it.
@@ -257,8 +289,34 @@ void CircuitPage::tick() {
         lastChannel_ = ch;
         if (ch >= 0 && view_ != powerIndex() && view_ != ch) setView(ch);
     }
+    updateSwitches();
+    // The diodes light up as the signal that reaches them grows: from about -18 dB below their stage's limit they glow, amber then red.
+    for (auto& dr : drawings_)
+        for (auto& dd : dr.diodes) {
+            const float db = -kRangeDb + stages_[dd.stage].shown * kRangeDb;
+            const float a = std::clamp((db + 18.0f) / 18.0f, 0.0f, 1.0f);
+            dd.shape->setFill(juce::FillType(juce::Colour(0xff3a332a).interpolatedWith(a < 0.7f ? juce::Colour(0xfff0b53a) : juce::Colour(0xffe5533a), a)));
+        }
     updatePots();
     repaint();
+}
+
+// A switch is closed or open as the amp's jack and selectors set it (what they say overrides the netlist's own state).
+void CircuitPage::updateSwitches() {
+    const int jack = int(processor_.apvts.getRawParameterValue(ids::jack)->load() + 0.5f);
+    for (auto& dr : drawings_)
+        for (auto& [name, sw] : dr.switches) {
+            bool closed = sw.defaultClosed;
+            if (jack >= 0 && jack < int(jackRes_.size()))
+                if (const auto it = jackRes_[std::size_t(jack)].find(name); it != jackRes_[std::size_t(jack)].end()) closed = it->second < 1000.0;
+            for (std::size_t i = 0; i < selRes_.size() && i < 6; ++i) {
+                const int pos = int(processor_.apvts.getRawParameterValue(ids::sel[i])->load() + 0.5f);
+                if (pos < 0 || pos >= int(selRes_[i].size())) continue;
+                if (const auto it = selRes_[i][std::size_t(pos)].find(name); it != selRes_[i][std::size_t(pos)].end()) closed = it->second < 1000.0;
+            }
+            if (sw.closed) sw.closed->setVisible(closed);
+            if (sw.open) sw.open->setVisible(!closed);
+        }
 }
 
 // The pointer of each pot follows its parameter: the knobs turn through 270 degrees, from lower left to lower right.
@@ -462,6 +520,7 @@ void CircuitPage::paintOverChildren(juce::Graphics& g) {
     g.setFont(AmpLookAndFeel::font(9.5f));  // the values of the components
     g.setColour(look_.label().withAlpha(0.9f));
     for (const auto& v : dr.values) {
+        if (!showValues_) break;
         const auto c = v.item->getDrawableBounds().transformedBy(dr.fit).getCentre();
         const float w = 48.0f;
         const auto box = v.align == 'R' ? juce::Rectangle<float>(c.x - w, c.y - 7.0f, w, 14.0f)

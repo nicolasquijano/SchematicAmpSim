@@ -277,6 +277,7 @@ const std::unordered_map<std::string, std::string>& portugueseTable() {
     {"OUT", "SAÍ"},
     {"CHROMATIC TUNER", "AFINADOR CROMÁTICO"},
     {"TUNER", "AFINADOR"},
+    {"VALUES", "VALORES"},
     {"Circuit", "Circuito"},
     {"SIGNAL CHAIN", "CADEIA DE SINAL"},
     {"Bar: level now. Line: recent peak. Red: at the limit.", "Barra: nível atual. Linha: pico recente. Vermelho: no limite."},
