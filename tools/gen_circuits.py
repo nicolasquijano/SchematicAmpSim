@@ -168,11 +168,59 @@ def netlist_lines(amp_id, name):
         return [ln.strip() for ln in f if ln.strip() and not ln.lstrip().startswith('*')]
 
 
-def preamp_tubes(amp_id, d):
+def stage_active(jacks_of_stage, when, jack_name, positions):
+    """The preamp's own rule: a stage is solved when the jack is one of its jacks (all, when it names none) and every selector it names is at a listed position."""
+    if jacks_of_stage and jack_name not in jacks_of_stage:
+        return False
+    return all(positions.get(name, 0) in listed for name, listed in (when or {}).items())
+
+
+def channels_of(amp_id, d):
+    """The channels of the preamp as the circuit page shows them: [{label, files, jacks | selector+position}]. By the 'channel' selector when the amp has one,
+    else by input jack (jacks that run the same stages, or share a 'chN_' prefix, are one channel). One entry (or none) when the preamp has no channels."""
+    pre = d['preamp']
+    jacks = pre.get('jacks', [])
+    stages = pre.get('stages', [])
+    main = pre['netlist']
+
+    def files_for(jack_name, positions):
+        out = [main] if stage_active(pre.get('main_jacks'), pre.get('main_when_selector'), jack_name, positions) else []
+        out += [st['netlist'] for st in stages if stage_active(st.get('jacks'), st.get('when_selector'), jack_name, positions)]
+        return out
+
+    chan_sel = next((s for s in pre.get('selectors', []) if s['name'] == 'channel'), None)
+    if chan_sel and len(chan_sel['positions']) > 1:
+        res = []
+        for p, pos in enumerate(chan_sel['positions']):
+            files = files_for(jacks[0]['name'] if jacks else '', {'channel': p})
+            if res and res[-1]['files'] == files:  # neighbouring positions that run the same stages are one channel
+                res[-1]['positions'].append(p)
+                res[-1]['label'] += ' / ' + pos['label'].upper()
+            else:
+                res.append({'label': pos['label'].upper(), 'selector': 'channel', 'positions': [p], 'files': files})
+    elif len(jacks) > 1:
+        groups = {}
+        for i, j in enumerate(jacks):
+            m = re.match(r'^(ch\d+)_', j['name'])
+            key = (tuple(files_for(j['name'], {})), m.group(1) if m else None)
+            groups.setdefault(key, {'jacks': [], 'files': list(key[0]), 'prefix': key[1], 'label': (key[1] or j.get('label') or j['name']).upper()})['jacks'].append(i)
+        if not key[1]:
+            g = groups[key]
+            g['label'] = ' / '.join((jacks[i2].get('label') or jacks[i2]['name']).upper() for i2 in g['jacks'])
+        res = list(groups.values())
+    else:
+        return []
+    if len(res) < 2 or len({tuple(c['files']) for c in res}) < 2:  # all the same circuit: one drawing
+        return []
+    return res
+
+
+def preamp_tubes(amp_id, d, files=None):
     """The tubes of the preamp in signal order: [(label, probe node)]. One per physical tube (V1A and V1B are the V1); a cathode follower is
     probed at its cathode, since its plate is the rail."""
     pre = d['preamp']
-    files = [pre['netlist']] + [st['netlist'] for st in pre.get('stages', [])]
+    if files is None:
+        files = [pre['netlist']] + [st['netlist'] for st in pre.get('stages', [])]
     rail_node = None
     first = netlist_lines(amp_id, pre['netlist'])
     for ln in first:
@@ -270,7 +318,7 @@ def tube_values(amp_id, d, label, comps, rail):
     return out
 
 
-def draw_preamp(amp_id, d, tubes):
+def draw_preamp(amp_id, d, tubes, pots=None):
     s = Svg(840, 415)
     n = len(tubes)
     W = min(150.0, 560.0 / n)
@@ -282,7 +330,7 @@ def draw_preamp(amp_id, d, tubes):
     top = cy - r
     yj = top - 28
     base_bottom = cy + r - 4 * k + 14 * k
-    pre_pots, _ = classify_pots(d)
+    pre_pots = pots if pots is not None else classify_pots(d)[0]
     bus = 300
     npot = len(pre_pots)
     pk = 1.0 if npot <= 8 else 0.8
@@ -393,20 +441,77 @@ def probes_text(tubes, fs_tube, power, nl, indent='  '):
     return s
 
 
+def pots_for_channel(d, ch):
+    """The preamp pots that do something in a channel: with a channel selector, the ones whose "active_when" lists the channel (or has none)."""
+    pots = classify_pots(d)[0]
+    if ch.get('selector'):
+        pots = [u for u in pots if ch['selector'] not in (u.get('active_when') or {}) or set(ch['positions']) & set(u['active_when'][ch['selector']])]
+    return pots
+
+
+def write_drawings(amp_id, d, probe_tubes, power):
+    """circuit.svg (circuit_1.svg... for further channels) and circuit_power.svg. Returns the channels, [] for an amp with one drawing."""
+    face = os.path.join(ROOT, amp_id, 'face')
+    os.makedirs(face, exist_ok=True)
+    names = {label for label, _ in probe_tubes}
+    chans = channels_of(amp_id, d)
+    drawings = []
+    if not chans:
+        drawings.append(draw_preamp(amp_id, d, probe_tubes))
+    else:
+        for ch in chans:
+            tubes, _ = preamp_tubes(amp_id, d, ch['files'])
+            tubes = [t for t in tubes if t[0] in names] or probe_tubes
+            drawings.append(draw_preamp(amp_id, d, tubes, pots_for_channel(d, ch)))
+    for i in range(1, 8):  # drawings of an earlier run with more channels
+        stale = os.path.join(face, 'circuit_%d.svg' % i)
+        if i >= len(drawings) and os.path.exists(stale):
+            os.remove(stale)
+    for i, svg in enumerate(drawings):
+        with open(os.path.join(face, 'circuit.svg' if i == 0 else 'circuit_%d.svg' % i), 'w', encoding='utf-8', newline='\n') as f:
+            f.write(svg.text())
+    if power:
+        with open(os.path.join(face, 'circuit_power.svg'), 'w', encoding='utf-8', newline='\n') as f:
+            f.write(draw_power(amp_id, d, power).text())
+    return chans
+
+
+def channels_text(chans, nl, indent='  '):
+    rows = []
+    for ch in chans:
+        if ch.get('selector'):
+            rows.append('%s  { "label": "%s", "selector": "%s", "positions": [%s] }' % (indent, ch['label'], ch['selector'], ', '.join(str(x) for x in ch['positions'])))
+        else:
+            rows.append('%s  { "label": "%s", "jacks": [%s] }' % (indent, ch['label'], ', '.join(str(j) for j in ch['jacks'])))
+    return indent + '"circuit_channels": [' + nl + (',' + nl).join(rows) + nl + indent + '],' + nl
+
+
+def set_channels_json(path, raw, d, chans):
+    """Writes "circuit_channels" into amp.json when it is not there (or has changed)."""
+    if not chans and 'circuit_channels' not in d:
+        return
+    nl = '\r\n' if '\r\n' in raw else '\n'
+    if 'circuit_channels' in d:
+        raw = re.sub(r'\n[ \t]*"circuit_channels"\s*:\s*\[.*?\],[ \t]*\r?\n', '\n', raw, count=1, flags=re.S)
+    if chans:
+        m = re.search(r'(\r?\n)([ \t]*)"preamp"\s*:\s*\{', raw)
+        raw = raw[:m.start() + len(m.group(1))] + channels_text(chans, nl) + raw[m.start() + len(m.group(1)):]
+    json.loads(raw)
+    with open(path, 'w', encoding='utf-8', newline='') as f:
+        f.write(raw)
+
+
 def process(amp_id, force, svg_only=False):
     path, raw, d = read_amp(amp_id)
     if svg_only:
         tubes, _ = preamp_tubes(amp_id, d)
         if not tubes or d.get('nam'):
             return None
-        face = os.path.join(ROOT, amp_id, 'face')
-        with open(os.path.join(face, 'circuit.svg'), 'w', encoding='utf-8', newline='\n') as f:
-            f.write(draw_preamp(amp_id, d, tubes).text())
-        power = power_info(amp_id, d)
-        if power:
-            with open(os.path.join(face, 'circuit_power.svg'), 'w', encoding='utf-8', newline='\n') as f:
-                f.write(draw_power(amp_id, d, power).text())
-        return 'svg only'
+        keep = {p['label'] for p in d.get('probes', [])}
+        tubes = [t for t in tubes if t[0] in keep] or tubes
+        chans = write_drawings(amp_id, d, tubes, power_info(amp_id, d))
+        set_channels_json(path, raw, d, chans)
+        return 'svg only, %d channels' % len(chans)
     if d.get('nam') or 'probes' in d and not force:
         return None
     nl = '\r\n' if '\r\n' in raw else '\n'
@@ -414,14 +519,7 @@ def process(amp_id, force, svg_only=False):
     if not tubes:
         return 'no tubes'
     power = power_info(amp_id, d)
-    pre_svg = draw_preamp(amp_id, d, tubes)
-    face = os.path.join(ROOT, amp_id, 'face')
-    os.makedirs(face, exist_ok=True)
-    with open(os.path.join(face, 'circuit.svg'), 'w', encoding='utf-8', newline='\n') as f:
-        f.write(pre_svg.text())
-    if power:
-        with open(os.path.join(face, 'circuit_power.svg'), 'w', encoding='utf-8', newline='\n') as f:
-            f.write(draw_power(amp_id, d, power).text())
+    chans = write_drawings(amp_id, d, tubes, power)
     out_node = d['preamp']['output_node']
     text = probes_text(tubes, fs_tube, power, nl).replace('@OUT', out_node)
     if 'probes' in d:  # --force: drop the old ones
@@ -433,7 +531,8 @@ def process(amp_id, force, svg_only=False):
     json.loads(raw)
     with open(path, 'w', encoding='utf-8', newline='') as f:
         f.write(raw)
-    return '%d tubes%s' % (len(tubes), ', power' if power else '')
+    set_channels_json(path, raw, json.loads(raw), chans)
+    return '%d tubes%s, %d channels' % (len(tubes), ', power' if power else '', len(chans))
 
 
 def calibrate(cal_path):

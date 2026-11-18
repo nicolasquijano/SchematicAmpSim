@@ -9,17 +9,7 @@
 #include "BinaryData.h"
 #endif
 
-CircuitPage::CircuitPage(SasProcessor& processor, const AmpLookAndFeel& look) : processor_(processor), look_(look) {
-    viewButtons_[0].setButtonText(tr("PREAMP"));
-    viewButtons_[1].setButtonText(tr("POWER"));
-    for (int i = 0; i < 2; ++i) {
-        viewButtons_[i].setClickingTogglesState(true);
-        viewButtons_[i].setRadioGroupId(31);
-        viewButtons_[i].onClick = [this, i] { setView(i); };
-        addChildComponent(viewButtons_[i]);
-    }
-    viewButtons_[0].setToggleState(true, juce::dontSendNotification);
-}
+CircuitPage::CircuitPage(SasProcessor& processor, const AmpLookAndFeel& look) : processor_(processor), look_(look) {}
 
 CircuitPage::~CircuitPage() = default;
 
@@ -86,7 +76,7 @@ void CircuitPage::load(int which, const sas::AmpDef& def) {
     dr = Drawing{};
 #ifdef SAS_HAS_FACES
     int size = 0;
-    const std::string resource = def.id + (which == 0 ? "_circuit_svg" : "_circuit_power_svg");
+    const std::string resource = def.id + (which == powerIndex() ? "_circuit_power_svg" : which == 0 ? "_circuit_svg" : "_circuit_" + std::to_string(which) + "_svg");
     if (const char* data = BinaryData::getNamedResource(resource.c_str(), size))
         if (auto xml = juce::XmlDocument::parse(juce::String::fromUTF8(data, size)))
             dr.art = juce::Drawable::createFromSVG(*xml);
@@ -136,20 +126,57 @@ void CircuitPage::setAmp(const sas::AmpDef& def) {
         uiLabels_[juce::String(u.param)] = juce::String(u.label);
     }
     hover_ = drag_ = {};
-    load(0, def);
-    load(1, def);
-    for (auto& b : viewButtons_) b.setVisible(hasPowerDrawing());
-    if (!hasPowerDrawing()) view_ = 0;
+    for (auto& dr : drawings_)
+        if (dr.art) removeChildComponent(dr.art.get());
+    channels_ = def.circuitChannels;
+    channelSel_.clear();
+    for (const auto& ch : channels_) {
+        int index = -1;
+        for (std::size_t i = 0; i < def.preamp.selectors.size(); ++i)
+            if (!ch.selector.empty() && def.preamp.selectors[i].name == ch.selector) index = int(i);
+        channelSel_.push_back(index);
+    }
+    drawings_.clear();
+    drawings_.resize(std::max<std::size_t>(1, channels_.size()) + 1);
+    for (int i = 0; i < int(drawings_.size()); ++i) load(i, def);
+    // The buttons: one per channel drawing (named as the amp names the channel), then the power amp.
+    viewButtons_.clear();
+    const bool several = channelCount() > 1 || hasPowerDrawing();
+    for (int i = 0; i < int(drawings_.size()); ++i) {
+        if (!drawings_[std::size_t(i)].art) continue;
+        auto b = std::make_unique<juce::TextButton>(i == powerIndex() ? tr("POWER") : channels_.empty() ? tr("PREAMP") : tr(juce::String(channels_[std::size_t(i)].label)));
+        b->setClickingTogglesState(true);
+        b->setRadioGroupId(31);
+        b->getProperties().set("view", i);
+        b->onClick = [this, i] { setView(i); };
+        addChildComponent(*b);
+        b->setVisible(several);
+        viewButtons_.push_back(std::move(b));
+    }
+    if (view_ >= int(drawings_.size()) || !drawings_[std::size_t(view_)].art) view_ = 0;
+    lastChannel_ = -1;
     setView(view_);
     updatePots();
 }
 
-void CircuitPage::setView(int v) {
-    view_ = (v == 1 && hasPowerDrawing()) ? 1 : 0;
-    for (int i = 0; i < 2; ++i) {
-        viewButtons_[i].setToggleState(i == view_, juce::dontSendNotification);
-        if (drawings_[std::size_t(i)].art) drawings_[std::size_t(i)].art->setVisible(i == view_);
+// The channel the amp is set to: the input jack, or a selector, as the amp's own channels are chosen.
+int CircuitPage::currentChannel() const {
+    const int jack = int(processor_.apvts.getRawParameterValue(ids::jack)->load() + 0.5f);
+    for (std::size_t i = 0; i < channels_.size(); ++i) {
+        const auto& ch = channels_[i];
+        if (!ch.jacks.empty() && std::find(ch.jacks.begin(), ch.jacks.end(), jack) != ch.jacks.end()) return int(i);
+        if (channelSel_[i] >= 0 && channelSel_[i] < 6 &&
+            std::find(ch.positions.begin(), ch.positions.end(), int(processor_.apvts.getRawParameterValue(ids::sel[channelSel_[i]])->load() + 0.5f)) != ch.positions.end())
+            return int(i);
     }
+    return -1;
+}
+
+void CircuitPage::setView(int v) {
+    view_ = (v >= 0 && v < int(drawings_.size()) && drawings_[std::size_t(v)].art) ? v : 0;
+    for (std::size_t i = 0; i < drawings_.size(); ++i)
+        if (drawings_[i].art) drawings_[i].art->setVisible(int(i) == view_);
+    for (auto& b : viewButtons_) b->setToggleState(int(b->getProperties()["view"]) == view_, juce::dontSendNotification);
     hover_ = {};
     resized();
     repaint();
@@ -161,10 +188,11 @@ void CircuitPage::resized() {
     strip_ = area.removeFromBottom(64.0f);
     area.removeFromBottom(26.0f);  // room for the names and values under the pots
     {
-        auto bar = getLocalBounds().reduced(10, 4).removeFromTop(22).removeFromRight(190);
-        viewButtons_[1].setBounds(bar.removeFromRight(92));
-        bar.removeFromRight(4);
-        viewButtons_[0].setBounds(bar.removeFromRight(92));
+        auto bar = getLocalBounds().reduced(10, 4).removeFromTop(22);
+        for (int i = int(viewButtons_.size()) - 1; i >= 0; --i) {
+            viewButtons_[std::size_t(i)]->setBounds(bar.removeFromRight(std::max(72, viewButtons_[std::size_t(i)]->getBestWidthForHeight(22) + 10)));
+            bar.removeFromRight(4);
+        }
     }
     for (auto& dr : drawings_) {
         if (!dr.art) continue;
@@ -208,6 +236,11 @@ void CircuitPage::tick() {
                 for (const auto& s : stages_)
                     if (s.key == key)
                         for (auto* g : it->second) g->setAlpha(0.35f + 0.65f * std::clamp(s.shown * 1.2f, 0.0f, 1.0f));
+    // The drawing follows the amp's channel when the player changes it (the buttons choose freely until then).
+    if (const int ch = currentChannel(); ch != lastChannel_) {
+        lastChannel_ = ch;
+        if (ch >= 0 && view_ != powerIndex() && view_ != ch) setView(ch);
+    }
     updatePots();
     repaint();
 }
@@ -286,7 +319,7 @@ void CircuitPage::mouseDown(const juce::MouseEvent& e) {
     drag_ = potAt(e.position);
     if (drag_.drawing < 0) {  // the arrow at the end of the preamp leads on to the power amp
         const auto& dr = drawings_[std::size_t(view_)];
-        if (view_ == 0 && hasPowerDrawing() && dr.next && dr.next->getDrawableBounds().transformedBy(dr.fit).expanded(6.0f).contains(e.position)) setView(1);
+        if (view_ != powerIndex() && hasPowerDrawing() && dr.next && dr.next->getDrawableBounds().transformedBy(dr.fit).expanded(6.0f).contains(e.position)) setView(powerIndex());
         return;
     }
     hover_ = drag_;
@@ -380,7 +413,7 @@ void CircuitPage::paintOverChildren(juce::Graphics& g) {
                                            : juce::Rectangle<float>(c.x, c.y - 7.0f, w, 14.0f);
         g.drawText(v.text, box.toNearestInt(), v.align == 'R' ? juce::Justification::centredRight : v.align == 'C' ? juce::Justification::centred : juce::Justification::centredLeft);
     }
-    if (view_ == 0 && hasPowerDrawing() && dr.next) {  // the way on to the power amp
+    if (view_ != powerIndex() && hasPowerDrawing() && dr.next) {  // the way on to the power amp
         const auto b = dr.next->getDrawableBounds().transformedBy(dr.fit);
         g.setColour(look_.label());
         g.drawText(tr("POWER"), juce::Rectangle<float>(b.getCentreX() - 50.0f, b.getBottom() + 4.0f, 100.0f, 16.0f).toNearestInt(), juce::Justification::centred);

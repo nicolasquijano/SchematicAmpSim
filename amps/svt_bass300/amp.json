@@ -36,6 +36,11 @@
     { "label": "PHASE", "node": "g1", "full_scale": 130 },
     { "label": "POWER", "node": "pt", "full_scale": 450 }
   ],
+  "circuit_channels": [
+    { "label": "CH1", "jacks": [0, 1] },
+    { "label": "CH2", "jacks": [2, 3] },
+    { "label": "CH 1 + 2 NORMAL", "jacks": [4] }
+  ],
  "preamp": {
   "netlist": "preamp.net",
   "tolerance": 2e-06,

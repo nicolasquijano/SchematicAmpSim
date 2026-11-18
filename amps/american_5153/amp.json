@@ -38,6 +38,10 @@
     { "label": "PHASE", "node": "g910", "full_scale": 85.5 },
     { "label": "POWER", "node": "pt", "full_scale": 382 }
   ],
+  "circuit_channels": [
+    { "label": "GREEN", "jacks": [0, 1] },
+    { "label": "RED", "jacks": [2] }
+  ],
  "preamp": {
   "netlist": "preamp.net",
   "main_jacks": ["green", "blue"],

@@ -32,6 +32,10 @@
     { "label": "PHASE", "node": "g45", "full_scale": 130 },
     { "label": "POWER", "node": "pt", "full_scale": 450 }
   ],
+  "circuit_channels": [
+    { "label": "CLEAN", "jacks": [0] },
+    { "label": "LEAD", "jacks": [1] }
+  ],
  "preamp": {
   "netlist": "preamp.net",
   "tolerance": 2e-06,

@@ -38,14 +38,15 @@ public:
     float shownFraction(int i) const { return i >= 0 && i < int(stages_.size()) ? stages_[std::size_t(i)].shown : 0.0f; }
     int stageCount() const { return int(stages_.size()); }
     juce::String stageName(int i) const { return stages_[std::size_t(i)].name; }
-    bool hasDrawing() const { return drawings_[0].art != nullptr; }
-    bool hasPowerDrawing() const { return drawings_[1].art != nullptr; }
-    // Which drawing is shown: 0 the preamp, 1 the power amp.
+    bool hasDrawing() const { return !drawings_.empty() && drawings_[0].art != nullptr; }
+    bool hasPowerDrawing() const { return drawings_.size() > 1 && drawings_.back().art != nullptr; }
+    // Which drawing is shown: the preamp's channels first (one when the amp has no channels), the power amp last.
     int view() const { return view_; }
+    int channelCount() const { return int(drawings_.size()) - 1; }
     void setView(int v);
     // How many wires of the drawings follow a stage's level, and how many pots they have.
-    int wireCount() const { return int(drawings_[0].wires.size() + drawings_[1].wires.size()); }
-    int potCount() const { return int(drawings_[0].pots.size() + drawings_[1].pots.size()); }
+    int wireCount() const { int n = 0; for (const auto& d : drawings_) n += int(d.wires.size()); return n; }
+    int potCount() const { int n = 0; for (const auto& d : drawings_) n += int(d.pots.size()); return n; }
     // The parameter of pot `i` (the preamp's first, then the power amp's).
     juce::String potParam(int i) const;
     // Turns pot `i` by `delta` of its range (what a drag or the wheel does).
@@ -114,10 +115,15 @@ private:
     SasProcessor& processor_;
     const AmpLookAndFeel& look_;
     std::vector<Stage> stages_;
-    std::array<Drawing, 2> drawings_;
+    std::vector<Drawing> drawings_;  // the preamp's channels, then the power amp (which may be empty)
     std::map<juce::String, juce::String> uiLabels_;  // parameter -> the knob's label
     std::vector<juce::String> uiParams_;  // the plugin parameters the amp has on its panel: a pot is live when one has its name
-    juce::TextButton viewButtons_[2];
+    std::vector<std::unique_ptr<juce::TextButton>> viewButtons_;
+    std::vector<sas::CircuitChannelDef> channels_;
+    std::vector<int> channelSel_;  // for each channel: the index of its selector in the amp's selectors (-1: none)
+    int lastChannel_ = -1;
+    int currentChannel() const;
+    int powerIndex() const { return int(drawings_.size()) - 1; }
     int view_ = 0;
     PotRef hover_, drag_;
     float dragY_ = 0.0f;

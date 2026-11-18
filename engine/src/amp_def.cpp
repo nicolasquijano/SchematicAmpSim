@@ -419,6 +419,16 @@ AmpDef loadAmpDef(const std::string& jsonText, const FileReader& read) {
             k.activeWhen = parseWhenSelector(u, "active_when");
             d.ui.push_back(std::move(k));
         }
+    if (j.contains("circuit_channels"))
+        for (const auto& cj : j.at("circuit_channels")) {
+            CircuitChannelDef c;
+            c.label = str(cj, "label", "circuit_channels");
+            if (cj.contains("selector")) c.selector = str(cj, "selector", "circuit_channels." + c.label);
+            if (cj.contains("positions")) for (const auto& pp : cj.at("positions")) c.positions.push_back(pp.get<int>());
+            else if (cj.contains("position")) c.positions.push_back(cj.at("position").get<int>());
+            if (cj.contains("jacks")) for (const auto& jj : cj.at("jacks")) c.jacks.push_back(jj.get<int>());
+            d.circuitChannels.push_back(std::move(c));
+        }
     if (j.contains("power_probes"))
         for (const auto& pj : j.at("power_probes")) {
             ProbeDef p;

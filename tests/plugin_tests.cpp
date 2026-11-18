@@ -3950,12 +3950,13 @@ TEST_CASE("every amp's circuit page can be rendered", "[.circuitshots]") {
             run(p, 30, 220.0, 0.15);
             page.tick();
         }
-        for (int view = 0; view < (page.hasPowerDrawing() ? 2 : 1); ++view) {
+        for (int view = 0; view <= page.channelCount(); ++view) {
+            if (view == page.channelCount() && !page.hasPowerDrawing()) break;
             page.setView(view);
             for (int i = 0; i < 6; ++i) { run(p, 30, 220.0, 0.15); page.tick(); }
             const auto img = ed->createComponentSnapshot(ed->getLocalBounds(), true, 1.0f);
             juce::PNGImageFormat png;
-            juce::FileOutputStream out(juce::File(dir).getChildFile("cp_" + juce::String(ids[index]) + (view ? "_power" : "") + ".png"));
+            juce::FileOutputStream out(juce::File(dir).getChildFile("cp_" + juce::String(ids[index]) + (view == page.channelCount() ? "_power" : view ? "_ch" + juce::String(view) : "") + ".png"));
             if (out.openedOk()) {
                 out.setPosition(0);
                 out.truncate();
@@ -3963,4 +3964,32 @@ TEST_CASE("every amp's circuit page can be rendered", "[.circuitshots]") {
             }
         }
     }
+}
+
+TEST_CASE("the circuit page shows the channel the amp is set to", "[ui]") {
+    JuceInit init;
+    SasProcessor p;
+    p.prepareToPlay(48000.0, 512);
+    const auto ids_ = sas::embeddedAmpIds(true);
+    const auto at = std::find(ids_.begin(), ids_.end(), "american_5153") - ids_.begin();
+    REQUIRE(std::size_t(at) < ids_.size());
+    setParam(p, ids::amp, float(at));
+    std::unique_ptr<juce::AudioProcessorEditor> ed(p.createEditor());
+    auto* se = dynamic_cast<SasEditor*>(ed.get());
+    REQUIRE(se != nullptr);
+    ed->setSize(1000, 560);
+    se->selectPage(2);
+    auto& page = se->circuitPage();
+    REQUIRE(page.channelCount() == 2);  // green and blue share a drawing; red has its own
+    for (const int jack : {0, 2, 1, 2}) {
+        auto* param = p.apvts.getParameter(ids::jack);
+        param->setValueNotifyingHost(param->convertTo0to1(float(jack)));
+        page.tick();
+        CHECK(page.view() == (jack == 2 ? 1 : 0));
+    }
+    page.setView(page.channelCount());  // the power amp: the channel changing does not take the player away from it
+    auto* param = p.apvts.getParameter(ids::jack);
+    param->setValueNotifyingHost(param->convertTo0to1(0.0f));
+    page.tick();
+    CHECK(page.view() == page.channelCount());
 }

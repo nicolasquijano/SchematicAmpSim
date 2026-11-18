@@ -289,6 +289,13 @@ struct ProbeDef {
     double fullScale = 1.0;
 };
 
+// A channel the circuit page can show on its own (amp.json "circuit_channels"): it is current while the amp's input jack is one of `jacks` (indices of
+// preamp.jacks) or, with `selector`, while that selector is at one of `positions`. The drawings are circuit.svg (the first channel), circuit_1.svg, circuit_2.svg...
+struct CircuitChannelDef {
+    std::string label, selector;
+    std::vector<int> jacks, positions;  // with `selector`: the positions it is current in
+};
+
 struct AmpDef {
     std::string id, name;
     ThemeDef theme;
@@ -303,6 +310,7 @@ struct AmpDef {
     std::vector<UiKnob> ui;
     GraphicEqDef graphicEq;             // empty: the amp has none
     std::vector<AmpPresetDef> presets;  // factory settings, in the order of the menu (may be empty)
+    std::vector<CircuitChannelDef> circuitChannels;  // empty: one drawing for the whole preamp
     std::vector<ProbeDef> powerProbes;  // the same for the full power amp's netlist ("power_probes"): after the preamp's in the circuit page; Lite and Eco have no such nodes
     std::vector<ProbeDef> probes;       // the stages of the circuit page, in signal order (may be empty: the page then shows input, preamp and output only)
     // A loader for Neural Amp Modeler models ("nam": true in amp.json): no circuits at all, the chain runs the model the user loaded. Its
