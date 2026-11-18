@@ -834,8 +834,9 @@ void SasEditor::paint(juce::Graphics& g) {
     g.setColour(look_.accent());
     g.setFont(AmpLookAndFeel::font(26.0f, true, 0.02f));
     g.drawFittedText(title_, titleBounds_.isEmpty() ? juce::Rectangle<int>(left, 12, getWidth() - left - 12 - 160, 34) : titleBounds_, juce::Justification::centredLeft, 1, 0.5f);
-    g.setGradientFill(juce::ColourGradient(look_.accent().withAlpha(0.7f), float(left), 0.0f, look_.accent().withAlpha(0.0f), float(getWidth() - 12), 0.0f, false));
-    g.fillRect(float(left), 49.0f, float(getWidth() - 12 - left), 1.0f);
+    const float lineEnd = titleBounds_.isEmpty() ? float(getWidth() - 12) : float(titleBounds_.getRight());  // it stops where the level meters begin
+    g.setGradientFill(juce::ColourGradient(look_.accent().withAlpha(0.7f), float(left), 0.0f, look_.accent().withAlpha(0.0f), lineEnd, 0.0f, false));
+    g.fillRect(float(left), 49.0f, std::max(0.0f, lineEnd - float(left)), 1.0f);
 }
 
 float SasEditor::totalCpu() const {
