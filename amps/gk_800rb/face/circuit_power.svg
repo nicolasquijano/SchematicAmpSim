@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="840" height="415" viewBox="0 0 840 415">
+<defs>
+<linearGradient id="g1" x1="298" y1="0" x2="362" y2="0" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#3d4a52"/><stop offset="1" stop-color="#161c20"/></linearGradient>
+<radialGradient id="g2" cx="326" cy="190" r="24" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#7ee0ff" stop-opacity="0.9"/><stop offset="1" stop-color="#2a6f8a" stop-opacity="0"/></radialGradient>
+<linearGradient id="g3" x1="94" y1="0" x2="106" y2="0" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#f0d27a"/><stop offset="1" stop-color="#a67c2e"/></linearGradient>
+<linearGradient id="g4" x1="0" y1="287" x2="0" y2="301" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#e6c98c"/><stop offset="1" stop-color="#a88a52"/></linearGradient>
+<linearGradient id="g5" x1="249" y1="0" x2="263" y2="0" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#e6c98c"/><stop offset="1" stop-color="#a88a52"/></linearGradient>
+<linearGradient id="g6" x1="0" y1="170" x2="0" y2="180" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#6b6350"/><stop offset="1" stop-color="#2a251d"/></linearGradient>
+<linearGradient id="g7" x1="0" y1="180" x2="0" y2="222" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#4a4338"/><stop offset="1" stop-color="#16130f"/></linearGradient>
+</defs>
+<path id="wire_PHASE" d="M20,176 H298" fill="none" stroke="#6b5c44" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+<path id="wire_POWER" d="M362,190 H410 V294 H336 M300,294 H256 V204 H298" fill="none" stroke="#6b5c44" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+<path id="wire_SPEAKER" d="M410,190 H600 V120 H740 V170" fill="none" stroke="#6b5c44" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+<path id="wire_static_power" d="M740,226 V340 M256,294 V302" fill="none" stroke="#5a4d3a" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+<path id="ground_power" d="M732,340 H748 M735,345 H745 M738,350 H742 M248,346 H264 M251,351 H261 M254,356 H258" fill="none" stroke="#8c7a55" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+<path id="tube_POW-GK_POWER" d="M298,158 L298,222 L362,190 Z" fill="url(#g1)" stroke="#8fb4c4" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+<path id="glow_POW" d="M304,169 L304,211 L352,190 Z" fill="url(#g2)" stroke="none" stroke-width="0" stroke-linecap="round" stroke-linejoin="round"/>
+<path id="opsign_POW" d="M303,176 H311 M307,172 V180 M303,204 H311" fill="none" stroke="#cfe6ee" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+<rect id="cap_ina" x="94" y="158" width="4" height="36" rx="1" fill="url(#g3)" stroke="#5a4630" stroke-width="0.8"/>
+<rect id="cap_inb" x="102" y="158" width="4" height="36" rx="1" fill="url(#g3)" stroke="#5a4630" stroke-width="0.8"/>
+<rect id="rfb" x="300" y="287" width="36" height="14" rx="3" fill="url(#g4)" stroke="#5a4630" stroke-width="1"/>
+<path id="rfb_bands" d="M308,287 V301 M314,287 V301 M320,287 V301" fill="none" stroke="#7a3b1f" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+<ellipse id="valC_1_36k" cx="318" cy="316" rx="1" ry="1" fill="none" stroke="none"/>
+<rect id="rg" x="249" y="302" width="14" height="36" rx="3" fill="url(#g5)" stroke="#5a4630" stroke-width="1"/>
+<path id="rg_bands" d="M249,310 H263 M249,316 H263 M249,322 H263" fill="none" stroke="#7a3b1f" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+<path id="wire_static_rg" d="M256,338 V346" fill="none" stroke="#5a4d3a" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+<ellipse id="valL_2_1k" cx="268" cy="322" rx="1" ry="1" fill="none" stroke="none"/>
+<rect id="spk_magnet_p" x="730" y="170" width="20" height="10" rx="2" fill="url(#g6)" stroke="#9a8760" stroke-width="1.5"/>
+<path id="spk_cone_p" d="M730,180 H750 L764,222 H716 Z" fill="url(#g7)" stroke="#9a8760" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+<ellipse id="spk_dust_p" cx="740" cy="215" rx="10" ry="3" fill="#0d0c0a" stroke="none" stroke-width="1"/>
+</svg>

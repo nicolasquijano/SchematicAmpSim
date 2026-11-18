@@ -19,6 +19,7 @@ from gen_circuits import Svg, bulb, cap, ground, jack, netlist_lines, pot, resis
 GND = {'0', 'gnd'}
 OPEN = {'1e12', '1G', '1e9'}
 CY, R, YJ, BASE_BOTTOM = 215, 32, 155, 257
+OP_BOX = 66  # the room an op-amp's feedback network takes to the left of its triangle
 MAXW, ROW_H = 1500, 460
 W_R, W_C, W_POT, W_SHORT, W_NODE = 84, 56, 76, 12, 44  # the room of a resistor, a capacitor, a knob, a closed switch and of each branch at a node
 
@@ -80,6 +81,9 @@ class Net:
                 if t[0] == 'D' and len(t) >= 4 and t[1] not in names:  # a diode: anode, cathode, model
                     names.add(t[1])
                     self.elems.append({'type': 'D', 'name': t[1], 'a': t[2], 'b': t[3], 'val': t[4] if len(t) > 4 else ''})
+                if t[0] == 'O' and len(t) >= 7 and not any(x['name'] == t[1] for x in self.tubes):  # an op-amp: + input (the "grid"), - input (the "cathode"), output (the "plate")
+                    inv = t[2] in GND and t[3] not in GND  # + input at ground: the signal comes in on the - input (an inverting stage)
+                    self.tubes.append({'name': t[1], 'grid': t[3] if inv else t[2], 'plate': t[4], 'cath': t[2] if inv else t[3], 'model': t[6], 'key': t[1], 'opamp': True, 'inv': inv})
                 if t[0] == 'T' and len(t) >= 6 and not any(x['name'] == t[1] for x in self.tubes):
                     m = re.match(r'^(V\d+)[A-Za-z]?$', t[1])
                     self.tubes.append({'name': t[1], 'grid': t[2], 'plate': t[3], 'cath': t[4], 'model': t[5].replace('ECC83', '12AX7'), 'key': m.group(1) if m else t[1]})
@@ -155,7 +159,7 @@ class Net:
         return [e for e in self.elems if n in (e['a'], e['b']) and not self.is_open(e)]
 
     def out_node(self, t):
-        return t['cath'] if t['plate'] in self.supply else t['plate']
+        return t['cath'] if t['plate'] in self.supply and not t.get('opamp') else t['plate']
 
     def blocked_for(self, goal):
         out = set(GND) | self.supply
@@ -208,9 +212,10 @@ def other(e, n):
     return e['b'] if e['a'] == n else e['a']
 
 
-def branches_of(net, path, blocked):
+def branches_of(net, path, blocked, nodes=None):
     """What hangs off the nodes of a path: {node: [(elements, ends at ground)]}, at most three at a node."""
-    nodes = ([path[0][1]] + [n for _, _, n in path]) if path else []
+    if nodes is None:
+        nodes = ([path[0][1]] + [n for _, _, n in path]) if path else []
     on_path = {id(e) for e, _, _ in path}
     out = {}
     for n in nodes:
@@ -241,6 +246,17 @@ def branches_of(net, path, blocked):
                 found.append(([e], m in GND, n))
         out[n] = found[:3]
     return out
+
+
+def triangle(s, cx, cy, t):
+    """An op-amp: a triangle pointing right, + above and - below on the input side; it glows with its level like a tube."""
+    key = t['key']
+    f = s.lin(cx - R, 0, cx + R, 0, [(0, '#3d4a52'), (1, '#161c20')])
+    plus, minus = (cy + 14, cy - 14) if t.get('inv') else (cy - 14, cy + 14)
+    s.path('tube_%s-%s' % (key, t['model']), 'M%g,%g L%g,%g L%g,%g Z' % (cx - R, cy - R, cx - R, cy + R, cx + R, cy), '#8fb4c4', 2, f)
+    g = s.rad(cx - 4, cy, 24, [(0, '#7ee0ff', 0.9), (1, '#2a6f8a', 0)])
+    s.path('glow_%s' % key, 'M%g,%g L%g,%g L%g,%g Z' % (cx - R + 6, cy - R + 11, cx - R + 6, cy + R - 11, cx + R - 10, cy), 'none', 0, g)
+    s.path('opsign_%s' % key, 'M%g,%g H%g M%g,%g V%g M%g,%g H%g' % (cx - R + 5, plus, cx - R + 13, cx - R + 9, plus - 4, plus + 4, cx - R + 5, minus, cx - R + 13), '#cfe6ee', 1.6)
 
 
 class Chain:
@@ -309,7 +325,7 @@ class Chain:
             row[i], seg_x[i] = r, sx
             end = sx + w
             if i < n_tubes:
-                tube_x[i] = end + 24 + R
+                tube_x[i] = end + 24 + R + (OP_BOX if self.chain[i][0].get('opamp') else 0)  # an op-amp has its feedback network beside it
                 x = tube_x[i]
             else:
                 x = end
@@ -366,11 +382,36 @@ class Chain:
             else:
                 parts.append(('dot', x0, y))
 
+        def opamp(cx, oy, t):
+            """An op-amp: the triangle, and under it the feedback loop (resistor and capacitor from the output to the - input) with what else hangs from the - input."""
+            key = t['key']
+            cy = CY + oy
+            xr, xl = cx + R + 16, cx - R - OP_BOX
+            yc, yf = cy + R + 30, cy + R + 72
+            xm = (xl + xr) / 2
+            neg = t['grid'] if t.get('inv') else t['cath']
+            rf = next((e for e in net.elems if e['type'] == 'R' and {e['a'], e['b']} == {neg, t['plate']}), None)
+            cf = next((e for e in net.elems if e['type'] == 'C' and {e['a'], e['b']} == {neg, t['plate']}), None)
+            wire(key, 'M%g,%g H%g V%g H%g M%g,%g H%g V%g H%g' % (cx + R, cy, xr, yf, xm + 18, xm - 18, yf, xl, cy + 14, cx - R))
+            if cf is not None:
+                wire(key, 'M%g,%g V%g H%g M%g,%g H%g' % (xr, yf, yc, xm + 7, xm - 7, yc, xl))
+                parts.append(('cap_f', xm, yc, cf['name'], cf['val']))
+            parts.append(('res_f', xm - 18, yf, rf['name'] if rf else 'rf%s' % key, rf['val'] if rf else None))
+            br = [] if t.get('inv') else branches_of(net, [], net.blocked_for(None) - {t['cath']}, nodes=[t['cath']]).get(t['cath'], [])
+            if t.get('inv'):  # the + input is tied to ground
+                statics.append('M%g,%g H%g V%g' % (cx - R, cy - 14, cx - R - 14, cy - 4))
+                grounds.append((cx - R - 14, cy - 4))
+            for j, (seq, gnd, top) in enumerate(br[:2]):
+                hang(xl + j * 38, yf, seq, gnd, top, key)
+            parts.append(('opamp', cx, cy, t))
+
         arrow = (0, 0)
         for i, (key, path, br) in enumerate(segs):
             oy = row[i] * ROW_H
             prev = self.chain[i - 1][0] if i > 0 else None
-            prev_cf = prev is not None and prev['plate'] in net.supply
+            prev_op = prev is not None and prev.get('opamp')
+            prev_cf = prev is not None and prev['plate'] in net.supply and not prev_op
+            x0 = tube_x[i - 1] + (R if prev_op else 0) if i > 0 else 0  # where the wire leaves the previous stage
             sx = seg_x[i]
             if i == 0:
                 yo = CY
@@ -378,11 +419,11 @@ class Chain:
             elif wrapped[i]:
                 yo = YJ + oy
                 oyp = row[i - 1] * ROW_H
-                ypo = (BASE_BOTTOM + 6 if prev_cf else YJ) + oyp
-                wire(key, 'M%g,%g H%g V%g H30 V%g H%g' % (tube_x[i - 1], ypo, MAXW + 30, oy + 70, yo, sx))
+                ypo = (CY if prev_op else BASE_BOTTOM + 6 if prev_cf else YJ) + oyp
+                wire(key, 'M%g,%g H%g V%g H30 V%g H%g' % (x0, ypo, MAXW + 30, oy + 70, yo, sx))
             else:
-                yo = (BASE_BOTTOM + 6 if prev_cf else YJ) + oy
-                wire(key, 'M%g,%g H%g' % (tube_x[i - 1], yo, sx))
+                yo = (CY if prev_op else BASE_BOTTOM + 6 if prev_cf else YJ) + oy
+                wire(key, 'M%g,%g H%g' % (x0, yo, sx))
             nodes = ([path[0][1]] + [n for _, _, n in path]) if path else []
             xcur = sx
             for k, n in enumerate(nodes):
@@ -423,7 +464,8 @@ class Chain:
                         parts.append(('cap_v', xm, yo, e['name'], e['val']))
                     xcur += w
             if i < n_tubes:
-                cyi = CY + oy
+                tt = self.chain[i][0]
+                cyi = CY + oy + ((14 if tt.get('inv') else -14) if tt.get('opamp') else 0)  # an op-amp takes the signal on its + input, above the middle (an inverting stage on the - input)
                 if yo != cyi:
                     wire(key, 'M%g,%g H%g V%g H%g' % (xcur, yo, xcur + 12, cyi, tube_x[i] - R))
                 else:
@@ -434,6 +476,9 @@ class Chain:
         # the tubes
         for i, (t, _) in enumerate(self.chain):
             oy = row[i] * ROW_H
+            if t.get('opamp'):
+                opamp(tube_x[i], oy, t)
+                continue
             cx, cf, key = tube_x[i], t['plate'] in net.supply, t['key']
             lst = rails.setdefault(row[i], [])
             lst.append(cx)
@@ -481,7 +526,12 @@ class Chain:
                     s.val('L', part[1] + 11, part[2] + 18, part[4])
             elif kind == 'res_h':
                 resistor_h(s, part[1], part[2], part[3])
-                s.val('C', part[1] + 18, part[2] - 14, part[4])
+                if part[4]:
+                    s.val('C', part[1] + 18, part[2] - 14, part[4])
+            elif kind == 'res_f':  # the feedback resistor of an op-amp: its value goes under it (the capacitor is above)
+                resistor_h(s, part[1], part[2], part[3])
+                if part[4]:
+                    s.val('C', part[1] + 18, part[2] + 22, part[4])
             elif kind == 'cap_v':
                 cap(s, part[1], part[2], part[3])
                 s.val('C', part[1], part[2] - 26, part[4])
@@ -505,5 +555,11 @@ class Chain:
             elif kind == 'tube':
                 _, cx, cyt, t = part
                 bulb(s, cx, cyt, 1.0, t['name'], t['key'], label=t['model'])
+            elif kind == 'opamp':
+                triangle(s, part[1], part[2], part[3])
+            elif kind == 'cap_f':
+                cap(s, part[1], part[2], part[3])
+                if part[4]:
+                    s.val('C', part[1], part[2] - 26, part[4])
         ax, ay = arrow
         s.path('next_power', 'M%g,%g V%g L%g,%g Z' % (ax, ay - 8, ay + 8, ax + 22, ay), '#8c7a55', 1.5, s.lin(0, ay - 8, 0, ay + 8, [(0, '#d9b866'), (1, '#8a6d2c')]))

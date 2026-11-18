@@ -17,7 +17,7 @@ import sys
 
 ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'amps')
 HAND_MADE = {'jcm800_2203', 'tweed_5e3', 'plexi_1959', 'jtm45', 'bassman_5f6a', 'orange_or120', 'hiwatt_dr103', 'ac30_normal', 'deluxe_reverb', 'twin_65', 'bassbreaker_1830'}  # drawn by hand (VectorCraft) or by circuits_hand.py
-NO_DRAWING = {'nam_loader', 'gk_800rb', 'jazz_clean_120'}  # no tubes: the page shows blocks
+NO_DRAWING = {'nam_loader'}  # no circuit to draw: the page shows blocks
 MAX_TUBES = 8
 POWER_PARAMS = {'presence'}
 
@@ -233,6 +233,11 @@ def preamp_tubes(amp_id, d, files=None):
     for fn in files:
         for ln in netlist_lines(amp_id, fn):
             t = ln.split()
+            if t[0] == 'O' and len(t) >= 7:  # an op-amp is a stage like a tube: probed at its output
+                if t[1] not in groups:
+                    order.append(t[1])
+                groups[t[1]] = t[4]
+                continue
             if t[0] != 'T' or len(t) < 6:
                 continue
             name = t[1]
@@ -256,6 +261,10 @@ def power_info(amp_id, d):
     lines = netlist_lines(amp_id, d['power']['netlist'])
     pent = [ln.split() for ln in lines if ln.startswith('P ')]
     if not pent:
+        ops = [ln.split() for ln in lines if ln.startswith('O ') and len(ln.split()) >= 7]  # a solid-state power amp: its op-amp
+        if ops:
+            t = ops[0]
+            return {'grid': t[2], 'plate': t[4], 'tube': t[6], 'opamp': True, 'neg': t[3]}
         return None
     t = pent[0]
     name = (d['power'].get('tubes') or [{'name': t[6] if len(t) > 6 else 'PWR'}])[0]['name']
@@ -401,7 +410,41 @@ def draw_preamp(amp_id, d, tubes, pots=None):
     return s
 
 
+def draw_power_ss(amp_id, d, info):
+    """A solid-state power amp: the input, the op-amp that stands for its stages with its feedback network, and the speaker."""
+    s = Svg(840, 415)
+    _, pots = classify_pots(d)
+    cy = 190
+    cx = 330
+    lines = [ln.split() for ln in netlist_lines(amp_id, d['power']['netlist'])]
+    val = {t[1]: t[4] for t in lines if t[0] in ('R', 'C') and len(t) >= 5}
+    rfb = next((t for t in lines if t[0] == 'R' and {t[2], t[3]} == {info['neg'], info['plate']}), None)
+    rg = next((t for t in lines if t[0] == 'R' and info['neg'] in (t[2], t[3]) and ({t[2], t[3]} & {'0', 'gnd'})), None)
+    rout = next((t for t in lines if t[0] == 'R' and info['plate'] == t[2] and t[3] not in ('0', 'gnd') and t[1] != (rfb or [0, ''])[1]), None)
+    s.path('wire_PHASE', 'M20,%g H%g' % (cy - 14, cx - 32))
+    s.path('wire_POWER', 'M%g,%g H410 V294 H336 M300,294 H256 V%g H%g' % (cx + 32, cy, cy + 14, cx - 32))
+    s.path('wire_SPEAKER', 'M410,%g H600 V120 H740 V170' % cy)
+    s.path('wire_static_power', 'M740,226 V340 M256,294 V%g' % (302 if rg else 294), '#5a4d3a', 3)
+    s.path('ground_power', 'M732,340 H748 M735,345 H745 M738,350 H742' + (' M248,346 H264 M251,351 H261 M254,356 H258' if rg else ''), '#8c7a55', 2)
+    import gen_chain
+    gen_chain.triangle(s, cx, cy, {'key': 'POW', 'model': info['tube']})
+    cap(s, 100, cy - 14, 'cap_in')
+    resistor_h(s, 300, 294, 'rfb')
+    if rfb:
+        s.val('C', 318, 316, rfb[4])
+    if rg:
+        resistor_v(s, 256, 302, 'rg')
+        s.path('wire_static_rg', 'M256,338 V346', '#5a4d3a', 3)
+        s.val('L', 268, 322, rg[4])
+    for i, u in enumerate(pots):
+        pot(s, 560 - 80 * i, 310, u['param'], 1.0)
+    speaker(s, 740, 170, 'p')
+    return s
+
+
 def draw_power(amp_id, d, info):
+    if info.get('opamp'):
+        return draw_power_ss(amp_id, d, info)
     s = Svg(840, 415)
     _, pots = classify_pots(d)
     tube = info['tube']
@@ -443,7 +486,8 @@ def probes_text(tubes, fs_tube, power, nl, indent='  '):
     parts.append(row('OUT', '@OUT', 10))
     s = indent + '"probes": [' + nl + (',' + nl).join(parts) + nl + indent + '],' + nl
     if power:
-        s += indent + '"power_probes": [' + nl + row('PHASE', power['grid'], 60) + ',' + nl + row('POWER', power['plate'], 350) + nl + indent + '],' + nl
+        ss = power.get('opamp')
+        s += indent + '"power_probes": [' + nl + row('PHASE', power['grid'], 3 if ss else 60) + ',' + nl + row('POWER', power['plate'], 90 if ss else 350) + nl + indent + '],' + nl
     return s
 
 
@@ -456,7 +500,7 @@ def pots_for_channel(d, ch):
 
 
 CHAIN_AMPS = {'american_5153', 'superlead_100', 'lead_c_plus', 'triplestack_3ch', 'british_dual100', 'jcm900_2100', 'highgain_120', 'german_ultra', 'german_trio',
-              'modbe_100', 'jcm800_2203kk', 'afd100', 'svt_bass300', 'boutique_od'}  # drawn from the netlist as a chain with its networks (gen_chain.py)
+              'modbe_100', 'jcm800_2203kk', 'afd100', 'svt_bass300', 'boutique_od', 'jazz_clean_120', 'gk_800rb'}  # drawn from the netlist as a chain with its networks (gen_chain.py)
 
 
 def draw_any(amp_id, d, files, tubes, pots):

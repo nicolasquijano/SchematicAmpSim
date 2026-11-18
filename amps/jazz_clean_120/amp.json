@@ -24,6 +24,17 @@
   "knob_bottom": "#111215",
   "pointer": "#d8f0fa"
  },
+  "probes": [
+    { "label": "IC2B", "node": "o2b", "full_scale": 2.16 },
+    { "label": "IC2A", "node": "o2a", "full_scale": 2.16 },
+    { "label": "IC3A", "node": "o3a2", "full_scale": 1.2 },
+    { "label": "IC3B", "node": "o3b", "full_scale": 1.92 },
+    { "label": "OUT", "node": "y", "full_scale": 1.91 }
+  ],
+  "power_probes": [
+    { "label": "PHASE", "node": "pg", "full_scale": 0.35 },
+    { "label": "POWER", "node": "po", "full_scale": 28.3 }
+  ],
  "preamp": {
   "netlist": "preamp.net",
   "tolerance": 2e-06,

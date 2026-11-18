@@ -21,6 +21,19 @@
   "knob_bottom": "#121316",
   "pointer": "#fff0b8"
  },
+  "probes": [
+    { "label": "U1", "node": "o1", "full_scale": 9.23 },
+    { "label": "U2A", "node": "o2", "full_scale": 7.3 },
+    { "label": "U2B", "node": "r1", "full_scale": 5.5 },
+    { "label": "U3A", "node": "r2", "full_scale": 2.53 },
+    { "label": "U3B", "node": "r3", "full_scale": 2.22 },
+    { "label": "U5", "node": "ob", "full_scale": 18.6 },
+    { "label": "OUT", "node": "y", "full_scale": 18.6 }
+  ],
+  "power_probes": [
+    { "label": "PHASE", "node": "pg", "full_scale": 12.4 },
+    { "label": "POWER", "node": "po", "full_scale": 216 }
+  ],
  "preamp": {
   "netlist": "preamp.net",
   "tolerance": 2e-06,
