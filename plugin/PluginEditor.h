@@ -165,6 +165,7 @@ private:
 };
 
 class RackPage;
+class CircuitPage;
 class AmpPanelB;
 class CabinetPanelB;
 
@@ -206,7 +207,9 @@ public:
     void updateTuner();  // runs the pitch detection on the latest input (the timer calls it)
     void updateImpulseStatus();  // the impulse names and response curves of the cabinet unit (the timer calls it)
     void showModule(sas::SlotRef slot);  // opens a module of the rack page
-    juce::StringArray pageNames() const { return {rackTab_.getButtonText(), tunerTab_.getButtonText()}; }
+    CircuitPage& circuitPage() { return *circuitPage_; }  // for the tests
+    void selectPage(int page) { setPage(page); }
+    juce::StringArray pageNames() const { return {rackTab_.getButtonText(), tunerTab_.getButtonText(), circuitTab_.getButtonText()}; }
     // The input and output meters in the header (always there, whatever the page).
     float headerInputDb() const { return headIn_.levelDb(); }
     float headerOutputDb() const { return headOut_.levelDb(); }
@@ -235,7 +238,7 @@ private:
     void showAmp(int index);  // rebuilds the amp-specific knobs, jack list and title
     void styleCombo(juce::ComboBox&, const char* paramId, std::unique_ptr<juce::AudioProcessorValueTreeState::ComboBoxAttachment>&);
     void styleCaption(juce::Label&, const juce::String&);
-    void setPage(int page);  // 0 = rack, 1 = tuner
+    void setPage(int page);  // 0 = rack, 1 = tuner, 2 = circuit
     void drawLogo(juce::Graphics&, juce::Rectangle<float>) const;
     void applyTheme(const sas::AmpDef&);  // colours of the shown amp
     // The amp unit and the cabinet unit of the rack page: their controls live in two panels the editor owns.
@@ -254,7 +257,7 @@ private:
     juce::StringArray ampNames_;
     bool sizeDirty_ = false;  // the window was resized and the new size is not saved yet
     juce::uint32 sizeChangedMs_ = 0;
-    bool pickedFromTop_ = false;  // the amp in use was chosen in the favourites / recent rows at the top of the list
+    bool pickedFromTop_ = false;  // the amp in use was chosen in the favourites rows at the top of the list
     juce::Rectangle<int> logoBounds_;  // the product mark and name, top of the left column
     std::vector<PanelBox> panels_;  // drawn behind the controls of the editor itself (the tuner), set by resized()
     HostPanel ampPanel_, cabPanel_;
@@ -309,7 +312,7 @@ private:
     juce::ToggleButton tunerOn_{"Tuner on"}, tunerMute_{"Mute output"};
     juce::ToggleButton vibrato_{"Vibrato"};  // shown only for amps that have an optical tremolo
     std::unique_ptr<juce::AudioProcessorValueTreeState::ButtonAttachment> alignAtt_, speakerIntenseAtt_, tunerOnAtt_, tunerMuteAtt_, vibratoAtt_;
-    juce::TextButton rackTab_{"Rack"}, tunerTab_{"Tuner"};
+    juce::TextButton rackTab_{"Rack"}, tunerTab_{"Tuner"}, circuitTab_{"Circuit"};
     juce::TextButton loadA_{"Load..."}, clearA_{"Clear"}, loadB_{"Load..."}, clearB_{"Clear"};
     IrCurve curveA_, curveB_;
     juce::TextButton namLoad_{"Load model..."}, namClear_{"Clear"};  // the NAM Loader amp's model
@@ -320,6 +323,7 @@ private:
     std::unique_ptr<AmpPanelB> ampPanelB_;          // the second amp and cabinet of a parallel (their units host them)
     std::unique_ptr<CabinetPanelB> cabPanelB_;
     juce::Rectangle<int> cpuBounds_;
+    std::unique_ptr<CircuitPage> circuitPage_;
     std::unique_ptr<RackPage> rackPage_;  // declared last: it goes first, and lets go of the panels
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(SasEditor)

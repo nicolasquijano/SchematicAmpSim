@@ -21,6 +21,15 @@
   {"name": "Crunch", "jack": "fac2", "params": {"bass": 5, "presence": 5, "treble": 5, "volume": 5}},
   {"name": "Lead", "jack": "fac1", "params": {"bass": 5, "presence": 5, "treble": 5.5, "volume": 6.5}}
  ],
+  "probes": [
+    { "label": "V1", "node": "p1", "full_scale": 35.2 },
+    { "label": "V2", "node": "p2", "full_scale": 129 },
+    { "label": "OUT", "node": "o", "full_scale": 128 }
+  ],
+  "power_probes": [
+    { "label": "PHASE", "node": "g1", "full_scale": 130 },
+    { "label": "POWER", "node": "pbm", "full_scale": 450 }
+  ],
  "preamp": {
   "netlist": "preamp.net",
   "tolerance": 2e-06,

@@ -23,6 +23,17 @@
    {"name": "Crunch", "jack": "crunch", "params": {"bass": 5, "master": 5, "middle": 5, "power": 5, "presence": 5, "resonance": 5, "treble": 5, "volume": 5, "volume2": 1.1}},
    {"name": "Lead", "jack": "lead", "params": {"bass": 5, "master": 5, "middle": 5, "power": 5, "presence": 5, "resonance": 5, "treble": 5, "volume": 0.5, "volume2": 5}}
   ],
+  "probes": [
+    { "label": "V1", "node": "p1b", "full_scale": 71.5 },
+    { "label": "V2", "node": "p2b", "full_scale": 351 },
+    { "label": "V3", "node": "p3a", "full_scale": 9.7 },
+    { "label": "V5", "node": "p5a", "full_scale": 266 },
+    { "label": "OUT", "node": "pl", "full_scale": 9.94 }
+  ],
+  "power_probes": [
+    { "label": "PHASE", "node": "g1", "full_scale": 101 },
+    { "label": "POWER", "node": "pt", "full_scale": 450 }
+  ],
   "preamp": {
     "netlist": "preamp.net",
     "stages": [

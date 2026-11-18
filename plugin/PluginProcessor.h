@@ -428,6 +428,11 @@ public:
     int runningAmpIndex(int instance = 0) const { return amps_[instance].activeAmp.load(); }
 
     // Peak level (linear, 0..1+) since the last call, for the editor's meters.
+    // The circuit page's meters (sas::Chain::takeMeters): how many there are for the amp in use, and the largest value of each since the last call
+    // (the swing divided by its full scale; 1 = at the clip level).
+    static constexpr int kMaxMeters = 16;
+    int meterCount() const { return meterCount_.load(); }
+    float takeMeter(int i) { return i >= 0 && i < kMaxMeters ? meterMax_[i].exchange(0.0f) : 0.0f; }
     float takeInputPeak() { return inputPeak_.exchange(0.0f); }
     float takeOutputPeak() { return outputPeak_.exchange(0.0f); }
     // The highest input (before any gain) and output (after the output level) peaks since the last resetLevelMax(): the editor's "Auto" level
@@ -633,6 +638,8 @@ private:
     // What the cabinet module needs this block (set by processBlock).
     sas::SpectrumFeed spectrumFeed_;  // the output, for the picture of what is sounding on the EQ page
     sas::TunerFeed tuner_;
+    std::atomic<float> meterMax_[kMaxMeters] = {};
+    std::atomic<int> meterCount_{0};
     std::atomic<float> inputPeak_{0.0f}, outputPeak_{0.0f}, inputMax_{0.0f}, outputMax_{0.0f}, gateGain_{1.0f}, idleMa_{0.0f};
     std::vector<float> mono_;
     sas::ChainSettings settings_, settingsB_;

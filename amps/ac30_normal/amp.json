@@ -24,6 +24,15 @@
    {"name": "Lead", "jack": "brilliant", "params": {"bass": 4.5, "presence": 0, "treble": 6, "volume": 6.6, "volume2": 5}}
   ],
 
+  "probes": [
+    { "label": "V7", "node": "kf", "full_scale": 1.58 },
+    { "label": "V8", "node": "p8b", "full_scale": 59 },
+    { "label": "OUT", "node": "m", "full_scale": 5.57 }
+  ],
+  "power_probes": [
+    { "label": "PHASE", "node": "g1", "full_scale": 80.9 },
+    { "label": "POWER", "node": "pt", "full_scale": 450 }
+  ],
   "preamp": {
     "netlist": "preamp.net",
     "tolerance": 2e-6,

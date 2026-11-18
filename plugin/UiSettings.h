@@ -7,8 +7,6 @@
 
 class UiSettings {
 public:
-    static constexpr int kMaxRecent = 3;
-
     static juce::StringArray favourites() { return list("favourites"); }
     static bool isFavourite(const juce::String& ampId) { return favourites().contains(ampId); }
     static void toggleFavourite(const juce::String& ampId) {
@@ -16,16 +14,6 @@ public:
         if (f.contains(ampId)) f.removeString(ampId);
         else f.add(ampId);
         store("favourites", f);
-    }
-
-    static juce::StringArray recent() { return list("recent"); }
-    static void pushRecent(const juce::String& ampId) {
-        auto r = recent();
-        if (!r.isEmpty() && r[0] == ampId) return;
-        r.removeString(ampId);
-        r.insert(0, ampId);
-        while (r.size() > kMaxRecent) r.remove(r.size() - 1);
-        store("recent", r);
     }
 
     // The window size, 0 x 0 when none was saved yet.

@@ -1,5 +1,6 @@
 #include "I18n.h"
 #include "PluginEditor.h"
+#include "CircuitPage.h"
 #include "UiSettings.h"
 #include "IconData.h"
 #include "TubeData.h"
@@ -133,7 +134,7 @@ SasEditor::SasEditor(SasProcessor& p)
     blendNote_.setText("A  <  >  B", juce::dontSendNotification);
     addAndMakeVisible(blendNote_);
     cabNote_.setFont(AmpLookAndFeel::font(10.5f));
-    for (juce::Button* b : std::initializer_list<juce::Button*>{&presets_, &alignOn_, &multiAlign_, &speakerIntense_, &tunerOn_, &tunerMute_, &vibrato_, &rackTab_, &tunerTab_, &loadA_, &clearA_, &loadB_, &clearB_,
+    for (juce::Button* b : std::initializer_list<juce::Button*>{&presets_, &alignOn_, &multiAlign_, &speakerIntense_, &tunerOn_, &tunerMute_, &vibrato_, &rackTab_, &tunerTab_, &circuitTab_, &loadA_, &clearA_, &loadB_, &clearB_,
                                                            &namLoad_, &namClear_, &namCabLoad_, &namCabClear_})
         b->setButtonText(tr(b->getButtonText()));  // the texts these were built with are English
     cabNote_.setText(tr("IR plays the impulses above, mixed by the blend. Filter is a simple cabinet curve; Off is the raw amp."), juce::dontSendNotification);
@@ -222,7 +223,9 @@ SasEditor::SasEditor(SasProcessor& p)
         return nullptr;
     });
     addAndMakeVisible(*rackPage_);
-    for (auto* t : {&rackTab_, &tunerTab_}) {
+    circuitPage_ = std::make_unique<CircuitPage>(p, look_);
+    addChildComponent(*circuitPage_);
+    for (auto* t : {&rackTab_, &tunerTab_, &circuitTab_}) {
         t->setClickingTogglesState(true);
         t->setRadioGroupId(7);
         addAndMakeVisible(*t);
@@ -230,6 +233,7 @@ SasEditor::SasEditor(SasProcessor& p)
     rackTab_.setToggleState(true, juce::dontSendNotification);
     rackTab_.onClick = [this] { setPage(0); };
     tunerTab_.onClick = [this] { setPage(1); };
+    circuitTab_.onClick = [this] { setPage(2); };
 
     showAmp(processor_.selectedAmpIndex());
     setResizable(true, true);
@@ -319,19 +323,13 @@ void SasEditor::refreshAmpList() {
                 if (juce::String(all[i].id) == id) return int(i);
             return -1;
         };
-        std::vector<int> fav, rec;
+        std::vector<int> fav;
         for (const auto& id : UiSettings::favourites())
             if (const int i = indexOf(id); i >= 0 && i < ampNames_.size()) fav.push_back(i);
         std::sort(fav.begin(), fav.end(), [&](int a, int b) { return ampNames_[a].compareIgnoreCase(ampNames_[b]) < 0; });
-        for (const auto& id : UiSettings::recent())
-            if (const int i = indexOf(id); i >= 0 && i < ampNames_.size() && std::find(fav.begin(), fav.end(), i) == fav.end()) rec.push_back(i);
         if (!fav.empty()) {
             shown_.push_back(-6);
             shown_.insert(shown_.end(), fav.begin(), fav.end());
-        }
-        if (!rec.empty()) {
-            shown_.push_back(-7);
-            shown_.insert(shown_.end(), rec.begin(), rec.end());
         }
     }
     // Grouped by character, each group in alphabetical order; a group only shows when something in it matches.
@@ -353,7 +351,7 @@ void SasEditor::refreshAmpList() {
     }
     ampList_.updateContent();
     juce::SparseSet<int> sel;
-    // An amp that is in a section at the top (favourites, recent) is also in its group below; the row that was clicked keeps the highlight.
+    // An amp that is in a section at the top (favourites) is also in its group below; the row that was clicked keeps the highlight.
     const auto rit = std::find(shown_.rbegin(), shown_.rend(), processor_.selectedAmpIndex());
     const auto fit = std::find(shown_.begin(), shown_.end(), processor_.selectedAmpIndex());
     if (rit != shown_.rend()) {
@@ -370,7 +368,7 @@ void SasEditor::refreshAmpList() {
 void SasEditor::paintListBoxItem(int row, juce::Graphics& g, int w, int h, bool selected) {
     if (row < 0 || row >= int(shown_.size())) return;
     if (shown_[std::size_t(row)] < 0) {  // the header of a group
-        static const char* const kTitles[] = {"Clean amps", "Crunch amps", "High-gain amps", "Bass amps", "Other", "Favorites", "Recent"};
+        static const char* const kTitles[] = {"Clean amps", "Crunch amps", "High-gain amps", "Bass amps", "Other", "Favorites"};
         g.setColour(look_.label());
         g.setFont(AmpLookAndFeel::font(10.5f, true, 0.12f));
         g.drawText(tr(kTitles[-shown_[std::size_t(row)] - 1]).toUpperCase(), 10, 4, w - 14, h - 4, juce::Justification::centredLeft);
@@ -399,7 +397,7 @@ void SasEditor::selectedRowsChanged(int lastRow) {
         return;
     }
     {
-        std::size_t firstGroup = 0;  // the first row of the ordinary groups: the rows before it are the favourites and the recent ones
+        std::size_t firstGroup = 0;  // the first row of the ordinary groups: the rows before it are the favourites
         while (firstGroup < shown_.size() && !(shown_[firstGroup] <= -1 && shown_[firstGroup] >= -5)) ++firstGroup;
         pickedFromTop_ = std::size_t(lastRow) < firstGroup;
     }
@@ -440,6 +438,7 @@ void SasEditor::applyTheme(const sas::AmpDef& def) {
 
 void SasEditor::setPage(int page) {
     page_ = page;
+    for (int i = 0; i < 3; ++i) (i == 0 ? rackTab_ : i == 1 ? tunerTab_ : circuitTab_).setToggleState(i == page, juce::dontSendNotification);
     resized();
 }
 
@@ -448,8 +447,8 @@ void SasEditor::showAmp(int index) {
     if (index < 0 || index >= int(defs.size())) return;
     shownAmp_ = index;
     const auto& def = defs[std::size_t(index)];
-    if (getPeer() != nullptr) UiSettings::pushRecent(juce::String(def.id));  // only for a window on screen
     title_ = juce::String(def.name);
+    circuitPage_->setAmp(def);
     applyTheme(def);
 
     ampKnobs_.clear();
@@ -588,6 +587,7 @@ void SasEditor::timerCallback() {
     if (levelSide_ != 0 && juce::Time::getMillisecondCounter() - levelStartMs_ >= 5000) finishLevelMeasure();
     if (tick_ % 4 == 0) updateLevelButtons();
     if (++tunerTicks_ % 3 == 0) updateTuner();
+    if (page_ == 2) circuitPage_->tick();
     if (tick_++ % 8 != 0) return;  // the rest at about 4 Hz
     // Follows the amp parameter when the host or a restored state changes it.
     if (processor_.selectedAmpIndex() != shownAmp_) showAmp(processor_.selectedAmpIndex());
@@ -889,6 +889,8 @@ void SasEditor::resized() {
     {
         auto head = area.removeFromTop(70);  // tall enough for the level knobs
         // The tabs are as wide as their texts need in the language in use ("Stimmgerät", "Accordeur"), at least what they always were.
+        circuitTab_.setBounds(head.removeFromRight(std::max(58, circuitTab_.getBestWidthForHeight(28))).withTrimmedTop(6).withHeight(28));
+        head.removeFromRight(4);
         tunerTab_.setBounds(head.removeFromRight(std::max(58, tunerTab_.getBestWidthForHeight(28))).withTrimmedTop(6).withHeight(28));
         head.removeFromRight(4);
         rackTab_.setBounds(head.removeFromRight(std::max(54, rackTab_.getBestWidthForHeight(28))).withTrimmedTop(6).withHeight(28));
@@ -918,6 +920,8 @@ void SasEditor::resized() {
     }
     rackPage_->setVisible(page_ == 0);
     if (page_ == 0) rackPage_->setBounds(area);
+    circuitPage_->setVisible(page_ == 2);
+    if (page_ == 2) circuitPage_->setBounds(area);
     for (auto* c : std::initializer_list<juce::Component*>{&tunerDisplay_, &tunerOn_, &tunerMute_, &tunerRef_}) c->setVisible(page_ == 1);
     if (page_ == 1) {
         // Tuner page: the display fills the page, the switches and the reference pitch sit in a column on the right.

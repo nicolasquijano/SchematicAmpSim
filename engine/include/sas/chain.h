@@ -105,6 +105,13 @@ public:
     double idleMilliamps() const;
     void reset();
 
+    // The circuit page's meters, since the last call, each as the largest swing divided by its full scale (1 = at the clip level): the guitar at the
+    // input, then the preamp's probes (amp.json "probes"; the preamp's output when there are none), then the speaker. Reads and clears. Returns how many
+    // were written (at most `max`); 0 for the loader amp, which has no circuits. Call it from the thread that runs processAmp.
+    std::size_t takeMeters(float* out, std::size_t max);
+    static constexpr double kInputFullScaleVolts = 1.0;  // a hard-picked guitar is about this at the amp's input
+    static constexpr double kSpeakerFullScaleVolts = 60.0;
+
     // `mono` is the host input already averaged to one channel; writes speaker volts / 100 (and
     // the cab filter, when on) to `out`. Safe for in-place use.
     void processAmp(const float* mono, float* out, std::size_t n);
@@ -137,6 +144,8 @@ private:
     Smoother namDriveDb_, namLevelDb_, namBass_, namMid_, namTreble_;
     NamTone namTone_;
     Quality active_ = Quality::Normal;
+    Preamp* activePre();
+    double inPeak_ = 0.0, outPeak_ = 0.0;  // the largest guitar and speaker volts since takeMeters
     std::vector<Smoother> knobs_, powerKnobs_;
     // The gain at the amp's input that the jack (when the level match is on) and the selected selector positions ask for, in dB.
     double inputCompDb(std::size_t jack, bool levelMatch, const std::vector<std::size_t>& selectors) const;

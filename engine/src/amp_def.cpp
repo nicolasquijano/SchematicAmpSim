@@ -419,6 +419,22 @@ AmpDef loadAmpDef(const std::string& jsonText, const FileReader& read) {
             k.activeWhen = parseWhenSelector(u, "active_when");
             d.ui.push_back(std::move(k));
         }
+    if (j.contains("power_probes"))
+        for (const auto& pj : j.at("power_probes")) {
+            ProbeDef p;
+            p.label = str(pj, "label", "power_probes");
+            p.node = str(pj, "node", "power_probes." + p.label);
+            p.fullScale = num(pj, "full_scale", "power_probes." + p.label);
+            d.powerProbes.push_back(std::move(p));
+        }
+    if (j.contains("probes"))
+        for (const auto& pj : j.at("probes")) {
+            ProbeDef p;
+            p.label = str(pj, "label", "probes");
+            p.node = str(pj, "node", "probes." + p.label);
+            p.fullScale = num(pj, "full_scale", "probes." + p.label);
+            d.probes.push_back(std::move(p));
+        }
     if (j.contains("faceplate")) {
         const auto& f = j.at("faceplate");
         d.faceplate.style = str(f, "style", "faceplate");

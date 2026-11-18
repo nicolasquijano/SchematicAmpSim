@@ -397,3 +397,49 @@ TEST_CASE("which pedals are fused depends on the order, not on what else is swit
     };
     CHECK(render(false) == render(true));  // an inactive neighbour does not turn the fusion on
 }
+
+TEST_CASE("the chain's meters follow the signal through the stages", "[meters]") {
+    const auto& def = jcm800();
+    for (double amp : {0.02, 0.1, 0.5}) {
+        Chain chain(def, kFs);
+        auto s = defaults(def);
+        s.knobs[def.knobIndex("volume")] = 0.6;
+        chain.setSettings(s);
+        float m[16];
+        run(chain, sine(220.0, amp, 9600));
+        (void)chain.takeMeters(m, 16);  // the settling
+        run(chain, sine(220.0, amp, 9600));
+        const std::size_t n = chain.takeMeters(m, 16);
+        REQUIRE(n == def.probes.size() + def.powerProbes.size() + 2);
+        std::string line;
+        for (std::size_t i = 0; i < n; ++i) line += " " + std::to_string(m[i]);
+        INFO("input " << amp << " V:" << line);
+        CHECK(m[0] == Catch::Approx(float(amp / Chain::kInputFullScaleVolts)).margin(0.01));
+        for (std::size_t i = 0; i < n; ++i) CHECK(m[i] > 0.0f);
+        float again[16];
+        CHECK(chain.takeMeters(again, 16) == n);
+        CHECK(again[0] == 0.0f);  // read and cleared
+        WARN("input " << amp << " V:" << line);
+    }
+}
+
+// Prints, for every amp with probes, how far a loud guitar signal drives each stage; tools/gen_circuits.py --calibrate turns that into the full scales.
+TEST_CASE("the circuit page's meters, calibrated on a loud signal", "[.calibrate]") {
+    for (const auto& id : embeddedAmpIds()) {
+        const AmpDef def = loadEmbeddedAmp(id);
+        if (def.probes.empty()) continue;
+        Chain chain(def, kFs);
+        auto s = defaults(def);
+        s.knobs.assign(def.preamp.knobs.size(), 0.6);
+        for (std::size_t k = 0; k < def.preamp.knobs.size(); ++k) s.knobs[k] = def.preamp.knobs[k].def;
+        chain.setSettings(s);
+        float m[24];
+        run(chain, sine(220.0, 0.3, 14400));
+        (void)chain.takeMeters(m, 24);
+        run(chain, sine(220.0, 0.3, 14400));
+        const std::size_t n = chain.takeMeters(m, 24);
+        std::size_t at = 1;
+        for (const auto& p : def.probes) std::printf("CAL %s %s %g %g\n", id.c_str(), p.label.c_str(), at < n ? m[at] : 0.0f, p.fullScale), ++at;
+        for (const auto& p : def.powerProbes) std::printf("CAL %s %s %g %g\n", id.c_str(), p.label.c_str(), at < n ? m[at] : 0.0f, p.fullScale), ++at;
+    }
+}

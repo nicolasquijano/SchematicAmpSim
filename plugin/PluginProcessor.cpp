@@ -574,6 +574,14 @@ void SasProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::MidiBuff
         if (inPeak > inputMax_.load()) inputMax_.store(inPeak);
         if (outPeak > outputMax_.load()) outputMax_.store(outPeak);
 
+        {
+            float levels[kMaxMeters];
+            const int count = int(amps_[0].chain->takeMeters(levels, std::size_t(kMaxMeters)));
+            meterCount_.store(count);
+            for (int i = 0; i < count; ++i)
+                if (levels[i] > meterMax_[i].load()) meterMax_[i].store(levels[i]);
+        }
+
         for (int ch = 0; ch < numCh; ++ch) {
             float* out = buffer.getWritePointer(ch) + start;
             if (numCh == 1)

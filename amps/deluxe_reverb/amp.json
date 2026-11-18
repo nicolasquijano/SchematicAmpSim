@@ -23,6 +23,16 @@
    {"name": "Crunch", "jack": "vibrato1", "params": {"bass": 5, "treble": 6, "volume": 3.9, "volume2": 5}},
    {"name": "Lead", "jack": "vibrato1", "params": {"bass": 4, "treble": 6.5, "volume": 6.7, "volume2": 5}}
   ],
+  "probes": [
+    { "label": "V1", "node": "pb1", "full_scale": 9.42 },
+    { "label": "V2", "node": "pb2", "full_scale": 97.2 },
+    { "label": "V4", "node": "p4", "full_scale": 109 },
+    { "label": "OUT", "node": "m1", "full_scale": 53.2 }
+  ],
+  "power_probes": [
+    { "label": "PHASE", "node": "g1", "full_scale": 130 },
+    { "label": "POWER", "node": "pt", "full_scale": 450 }
+  ],
   "preamp": {
     "netlist": "preamp.net",
     "tolerance": 2e-6,

@@ -24,6 +24,20 @@
   "knob_bottom": "#121411",
   "pointer": "#e0f4c8"
  },
+  "probes": [
+    { "label": "V1", "node": "p1a", "full_scale": 102 },
+    { "label": "V2", "node": "p2b", "full_scale": 146 },
+    { "label": "V3", "node": "k3b", "full_scale": 73.4 },
+    { "label": "V4", "node": "p4b", "full_scale": 102 },
+    { "label": "V5", "node": "p5b", "full_scale": 102 },
+    { "label": "V6", "node": "k6b", "full_scale": 102 },
+    { "label": "V7", "node": "p7b", "full_scale": 8.03 },
+    { "label": "OUT", "node": "y", "full_scale": 7.18 }
+  ],
+  "power_probes": [
+    { "label": "PHASE", "node": "g910", "full_scale": 85.5 },
+    { "label": "POWER", "node": "pt", "full_scale": 382 }
+  ],
  "preamp": {
   "netlist": "preamp.net",
   "main_jacks": ["green", "blue"],

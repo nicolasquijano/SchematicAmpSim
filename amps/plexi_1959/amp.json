@@ -23,6 +23,15 @@
    {"name": "Crunch", "jack": "jumpered", "params": {"bass": 4, "middle": 6, "presence": 5, "treble": 6, "volume": 6, "volume2": 1}},
    {"name": "Lead", "jack": "jumpered", "params": {"bass": 4, "middle": 6, "presence": 5, "treble": 6, "volume": 5.4, "volume2": 8}}
   ],
+  "probes": [
+    { "label": "V1", "node": "pn", "full_scale": 112 },
+    { "label": "V2", "node": "nb", "full_scale": 1.66 },
+    { "label": "OUT", "node": "o", "full_scale": 88.4 }
+  ],
+  "power_probes": [
+    { "label": "PHASE", "node": "g45", "full_scale": 130 },
+    { "label": "POWER", "node": "pt", "full_scale": 450 }
+  ],
   "preamp": {
     "netlist": "preamp.net",
     "tolerance": 2e-6,

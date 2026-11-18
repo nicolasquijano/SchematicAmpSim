@@ -38,6 +38,7 @@ target_sources(SchematicAmpSim PRIVATE
   AmpFace.cpp
   AmpFace.h
   PluginEditor.cpp
+  CircuitPage.cpp
   EditorWidgets.cpp
   EqCurve.cpp
   PluginEditor.h
@@ -88,6 +89,16 @@ foreach(_png IN LISTS _face_pngs)
     continue()
   endif()
   configure_file("${_png}" "${CMAKE_BINARY_DIR}/faces/${_id}_${_name}" COPYONLY)
+  list(APPEND _face_copies "${CMAKE_BINARY_DIR}/faces/${_id}_${_name}")
+endforeach()
+# The circuit page's drawings: amps/<id>/face/circuit.svg (the preamp) and circuit_power.svg (the power amp), drawn in VectorCraft (the wires, tubes and pots carry ids that the page colours).
+file(GLOB _circuit_svgs CONFIGURE_DEPENDS "${CMAKE_SOURCE_DIR}/amps/*/face/circuit*.svg")
+foreach(_svg IN LISTS _circuit_svgs)
+  get_filename_component(_name "${_svg}" NAME)
+  get_filename_component(_facedir "${_svg}" DIRECTORY)
+  get_filename_component(_ampdir "${_facedir}" DIRECTORY)
+  get_filename_component(_id "${_ampdir}" NAME)
+  configure_file("${_svg}" "${CMAKE_BINARY_DIR}/faces/${_id}_${_name}" COPYONLY)
   list(APPEND _face_copies "${CMAKE_BINARY_DIR}/faces/${_id}_${_name}")
 endforeach()
 if(_face_copies)

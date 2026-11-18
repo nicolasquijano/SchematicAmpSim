@@ -23,6 +23,15 @@
    {"name": "Crunch", "jack": "bright_hi", "params": {"treble": 6, "volume": 3.4, "volume2": 5}},
    {"name": "Lead", "jack": "bright_hi", "params": {"treble": 7, "volume": 8.1, "volume2": 5}}
   ],
+  "probes": [
+    { "label": "V1", "node": "pn", "full_scale": 60 },
+    { "label": "V2", "node": "p2a", "full_scale": 182 },
+    { "label": "OUT", "node": "o", "full_scale": 182 }
+  ],
+  "power_probes": [
+    { "label": "PHASE", "node": "g1", "full_scale": 107 },
+    { "label": "POWER", "node": "pt", "full_scale": 450 }
+  ],
   "preamp": {
     "netlist": "preamp.net",
     "tolerance": 2e-6,

@@ -21,6 +21,16 @@
   {"name": "Crunch", "jack": "be", "params": {"bass": 5, "master": 5, "middle": 5, "presence": 5, "resonance": 5, "reverb": 5, "treble": 5, "volume": 3.1, "volume2": 5}, "selectors": {"sat": 0}},
   {"name": "Lead", "jack": "hbe", "params": {"bass": 5, "master": 5, "middle": 5, "presence": 5, "resonance": 5, "reverb": 5, "treble": 5, "volume": 1, "volume2": 5}, "selectors": {"sat": 1, "gainstruct": 1}}
  ],
+  "probes": [
+    { "label": "V1", "node": "p5", "full_scale": 57.1 },
+    { "label": "V2", "node": "p3", "full_scale": 129 },
+    { "label": "V3", "node": "x3", "full_scale": 129 },
+    { "label": "OUT", "node": "mo", "full_scale": 21.9 }
+  ],
+  "power_probes": [
+    { "label": "PHASE", "node": "g45", "full_scale": 130 },
+    { "label": "POWER", "node": "pt", "full_scale": 450 }
+  ],
  "preamp": {
   "netlist": "preamp.net",
   "tolerance": 2e-06,

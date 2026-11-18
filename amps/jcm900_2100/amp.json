@@ -34,6 +34,15 @@
    {"name": "Lead", "params": {"volume": 9, "volume2": 8, "bass": 5, "master": 5, "middle": 6, "presence": 5, "treble": 6}}
   ],
 
+  "probes": [
+    { "label": "V1", "node": "p2", "full_scale": 337 },
+    { "label": "V2", "node": "h2", "full_scale": 1.76 },
+    { "label": "OUT", "node": "mo", "full_scale": 7.23 }
+  ],
+  "power_probes": [
+    { "label": "PHASE", "node": "g45", "full_scale": 64.9 },
+    { "label": "POWER", "node": "pt", "full_scale": 450 }
+  ],
   "preamp": {
     "netlist": "preamp.net",
     "tolerance": 2e-6,

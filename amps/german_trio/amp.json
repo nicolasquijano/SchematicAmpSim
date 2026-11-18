@@ -46,6 +46,17 @@
     "params": { "volume2": 6, "treble": 5, "middle": 5, "bass": 5, "volume": 5, "master": 3, "power": 3, "presence": 5, "resonance": 5 },
     "selectors": { "channel": 2, "master": 0, "bright": 0 } }
  ],
+  "probes": [
+    { "label": "V1", "node": "p1b", "full_scale": 27.5 },
+    { "label": "V2", "node": "p2b", "full_scale": 114 },
+    { "label": "V3", "node": "x3", "full_scale": 114 },
+    { "label": "V4", "node": "p4b", "full_scale": 91.4 },
+    { "label": "OUT", "node": "pa", "full_scale": 8.44 }
+  ],
+  "power_probes": [
+    { "label": "PHASE", "node": "g1", "full_scale": 130 },
+    { "label": "POWER", "node": "pt", "full_scale": 450 }
+  ],
  "preamp": {
   "netlist": "preamp.net",
   "tolerance": 2e-06,

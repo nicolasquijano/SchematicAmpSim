@@ -1,0 +1,97 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="840" height="380" viewBox="0 0 840 380">
+  <defs>
+    <linearGradient id="linear-gradient-1" x1="52" y1="190" x2="56" y2="190" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#f0d27a"/>
+      <stop offset="1" stop-color="#a67c2e"/>
+    </linearGradient>
+    <linearGradient id="linear-gradient-2" x1="60" y1="190" x2="64" y2="190" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#f0d27a"/>
+      <stop offset="1" stop-color="#a67c2e"/>
+    </linearGradient>
+    <radialGradient id="radial-gradient-1" cx="130" cy="190" r="32" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#463d30"/>
+      <stop offset="1" stop-color="#14110d"/>
+    </radialGradient>
+    <radialGradient id="radial-gradient-2" cx="130" cy="190" r="16" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#ffb347" stop-opacity="0.95"/>
+      <stop offset="1" stop-color="#c1441a" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="radial-gradient-3" cx="330" cy="110" r="32" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#463d30"/>
+      <stop offset="1" stop-color="#14110d"/>
+    </radialGradient>
+    <radialGradient id="radial-gradient-4" cx="330" cy="126" r="16" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#ffb347" stop-opacity="0.95"/>
+      <stop offset="1" stop-color="#c1441a" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="linear-gradient-3" x1="330" y1="152" x2="330" y2="138" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#3a332a"/>
+      <stop offset="1" stop-color="#16130f"/>
+    </linearGradient>
+    <radialGradient id="radial-gradient-5" cx="330" cy="270" r="32" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#463d30"/>
+      <stop offset="1" stop-color="#14110d"/>
+    </radialGradient>
+    <radialGradient id="radial-gradient-6" cx="330" cy="254" r="16" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#ffb347" stop-opacity="0.95"/>
+      <stop offset="1" stop-color="#c1441a" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="linear-gradient-4" x1="330" y1="242" x2="330" y2="228" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#3a332a"/>
+      <stop offset="1" stop-color="#16130f"/>
+    </linearGradient>
+    <radialGradient id="radial-gradient-7" cx="700" cy="310" r="18" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#5b5246"/>
+      <stop offset="1" stop-color="#1a1612"/>
+    </radialGradient>
+    <linearGradient id="linear-gradient-5" x1="740" y1="180" x2="740" y2="170" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#6b6350"/>
+      <stop offset="1" stop-color="#2a251d"/>
+    </linearGradient>
+    <linearGradient id="linear-gradient-6" x1="740" y1="222" x2="740" y2="180" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#4a4338"/>
+      <stop offset="1" stop-color="#16130f"/>
+    </linearGradient>
+  </defs>
+  <title>Power</title>
+  <g id="Layer_1" data-name="Layer 1">
+    <path id="wire_MASTER-2" d="M20 190 L52 190 M60 190 L98 190" fill="none" stroke="#6b5c44" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+    <path id="wire_PHASE" d="M130 158 L130 110 L298 110 M130 222 L130 270 L298 270" fill="none" stroke="#6b5c44" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+    <path id="wire_POWER" d="M330 78 L330 56 L560 56 L560 100 L580 100 M330 302 L330 324 L560 324 L560 280 L580 280 M580 100 C588.284 100 595 106.716 595 115 C595 123.284 588.284 130 580 130 C588.284 130 595 136.716 595 145 C595 153.284 588.284 160 580 160 C588.284 160 595 166.716 595 175 C595 183.284 588.284 190 580 190 C588.284 190 595 196.716 595 205 C595 213.284 588.284 220 580 220 C588.284 220 595 226.716 595 235 C595 243.284 588.284 250 580 250 C588.284 250 595 256.716 595 265 C595 273.284 588.284 280 580 280" fill="none" stroke="#6b5c44" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+    <path id="wire_SPEAKER" d="M640 130 L740 130 L740 170 M700 130 L700 292 M640 250 L640 268 M640 130 C631.716 130 625 136.716 625 145 C625 153.284 631.716 160 640 160 C631.716 160 625 166.716 625 175 C625 183.284 631.716 190 640 190 C631.716 190 625 196.716 625 205 C625 213.284 631.716 220 640 220 C631.716 220 625 226.716 625 235 C625 243.284 631.716 250 640 250" fill="none" stroke="#6b5c44" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+    <path id="wire_static_power" d="M330 152 L330 228 M330 190 L360 190 L360 200 M580 190 L520 190 M700 328 L700 344 L200 344 L200 190 L162 190" fill="none" stroke="#5a4d3a" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+    <path id="ground_power" d="M352 200 L368 200 M355 205 L365 205 M358 210 L362 210 M632 268 L648 268 M635 273 L645 273 M638 278 L642 278" fill="none" stroke="#8c7a55" stroke-width="2" stroke-linecap="round" stroke-miterlimit="10"/>
+    <path id="ot_core" d="M606 95 L606 285 M614 95 L614 285" fill="none" stroke="#8c7a55" stroke-width="3" stroke-linecap="round" stroke-miterlimit="10"/>
+    <path id="rail_tap" d="M516 190 C516 187.791 517.791 186 520 186 C522.209 186 524 187.791 524 190 C524 192.209 522.209 194 520 194 C517.791 194 516 192.209 516 190 Z" fill="#7a6a4c"/>
+    <path id="cap_C13a" d="M53 172 L55 172 C55.552 172 56 172.448 56 173 L56 207 C56 207.552 55.552 208 55 208 L53 208 C52.448 208 52 207.552 52 207 L52 173 C52 172.448 52.448 172 53 172 Z" fill="url(#linear-gradient-1)" stroke="#5a4630" stroke-width="0.8" stroke-miterlimit="10"/>
+    <path id="cap_C13b" d="M61 172 L63 172 C63.552 172 64 172.448 64 173 L64 207 C64 207.552 63.552 208 63 208 L61 208 C60.448 208 60 207.552 60 207 L60 173 C60 172.448 60.448 172 61 172 Z" fill="url(#linear-gradient-2)" stroke="#5a4630" stroke-width="0.8" stroke-miterlimit="10"/>
+    <path id="tube_V3" d="M98 190 C98 172.327 112.327 158 130 158 C147.673 158 162 172.327 162 190 C162 207.673 147.673 222 130 222 C112.327 222 98 207.673 98 190 Z" fill="url(#radial-gradient-1)" stroke="#a08b63" stroke-width="2" stroke-miterlimit="10"/>
+    <path id="plate_V3a" d="M119 168 L141 168 C141.552 168 142 168.448 142 169 L142 173 C142 173.552 141.552 174 141 174 L119 174 C118.448 174 118 173.552 118 173 L118 169 C118 168.448 118.448 168 119 168 Z" fill="#9a917d" stroke="#5a5446" stroke-miterlimit="10"/>
+    <path id="plate_V3b" d="M119 206 L141 206 C141.552 206 142 206.448 142 207 L142 211 C142 211.552 141.552 212 141 212 L119 212 C118.448 212 118 211.552 118 211 L118 207 C118 206.448 118.448 206 119 206 Z" fill="#9a917d" stroke="#5a5446" stroke-miterlimit="10"/>
+    <path id="grids_V3" d="M114 181 L146 181 M114 199 L146 199" fill="none" stroke="#cdbd92" stroke-width="1.8" stroke-miterlimit="10" stroke-dasharray="3 3"/>
+    <path id="glow_V3" d="M114 190 C114 185.029 121.163 181 130 181 C138.837 181 146 185.029 146 190 C146 194.971 138.837 199 130 199 C121.163 199 114 194.971 114 190 Z" fill="url(#radial-gradient-2)"/>
+    <path id="filament_V3" d="M122 190 L138 190" fill="none" stroke="#ffae42" stroke-width="2.6" stroke-linecap="round" stroke-miterlimit="10"/>
+    <path id="shine_V3" d="M108 178 C111.52 172.027 117.28 167.707 124 166" fill="none" stroke="#ffffff" stroke-width="3" stroke-linecap="round" stroke-miterlimit="10" opacity="0.35"/>
+    <path id="tube_EL34A" d="M298 110 C298 92.327 312.327 78 330 78 C347.673 78 362 92.327 362 110 C362 127.673 347.673 142 330 142 C312.327 142 298 127.673 298 110 Z" fill="url(#radial-gradient-3)" stroke="#a08b63" stroke-width="2" stroke-miterlimit="10"/>
+    <path id="plate_EL34A" d="M319 88 L341 88 C341.552 88 342 88.448 342 89 L342 93 C342 93.552 341.552 94 341 94 L319 94 C318.448 94 318 93.552 318 93 L318 89 C318 88.448 318.448 88 319 88 Z" fill="#9a917d" stroke="#5a5446" stroke-miterlimit="10"/>
+    <path id="grid_EL34A" d="M312 110 L348 110" fill="none" stroke="#cdbd92" stroke-width="1.8" stroke-miterlimit="10" stroke-dasharray="3 3"/>
+    <path id="glow_EL34A" d="M314 126 C314 120.477 321.163 116 330 116 C338.837 116 346 120.477 346 126 C346 131.523 338.837 136 330 136 C321.163 136 314 131.523 314 126 Z" fill="url(#radial-gradient-4)"/>
+    <path id="filament_EL34A" d="M322 126 L338 126" fill="none" stroke="#ffae42" stroke-width="2.6" stroke-linecap="round" stroke-miterlimit="10"/>
+    <path id="shine_EL34A" d="M308 98 C311.52 92.027 317.28 87.707 324 86" fill="none" stroke="#ffffff" stroke-width="3" stroke-linecap="round" stroke-miterlimit="10" opacity="0.35"/>
+    <path id="base_EL34A" d="M317 138 L343 138 C344.657 138 346 139.343 346 141 L346 149 C346 150.657 344.657 152 343 152 L317 152 C315.343 152 314 150.657 314 149 L314 141 C314 139.343 315.343 138 317 138 Z" fill="url(#linear-gradient-3)" stroke="#5a4d3a" stroke-miterlimit="10"/>
+    <path id="tube_EL34B" d="M298 270 C298 252.327 312.327 238 330 238 C347.673 238 362 252.327 362 270 C362 287.673 347.673 302 330 302 C312.327 302 298 287.673 298 270 Z" fill="url(#radial-gradient-5)" stroke="#a08b63" stroke-width="2" stroke-miterlimit="10"/>
+    <path id="plate_EL34B" d="M319 286 L341 286 C341.552 286 342 286.448 342 287 L342 291 C342 291.552 341.552 292 341 292 L319 292 C318.448 292 318 291.552 318 291 L318 287 C318 286.448 318.448 286 319 286 Z" fill="#9a917d" stroke="#5a5446" stroke-miterlimit="10"/>
+    <path id="grid_EL34B" d="M312 270 L348 270" fill="none" stroke="#cdbd92" stroke-width="1.8" stroke-miterlimit="10" stroke-dasharray="3 3"/>
+    <path id="glow_EL34B" d="M314 254 C314 248.477 321.163 244 330 244 C338.837 244 346 248.477 346 254 C346 259.523 338.837 264 330 264 C321.163 264 314 259.523 314 254 Z" fill="url(#radial-gradient-6)"/>
+    <path id="filament_EL34B" d="M322 254 L338 254" fill="none" stroke="#ffae42" stroke-width="2.6" stroke-linecap="round" stroke-miterlimit="10"/>
+    <path id="base_EL34B" d="M317 228 L343 228 C344.657 228 346 229.343 346 231 L346 239 C346 240.657 344.657 242 343 242 L317 242 C315.343 242 314 240.657 314 239 L314 231 C314 229.343 315.343 228 317 228 Z" fill="url(#linear-gradient-4)" stroke="#5a4d3a" stroke-miterlimit="10"/>
+    <path id="pot_presence" d="M682 310 C682 300.059 690.059 292 700 292 C709.941 292 718 300.059 718 310 C718 319.941 709.941 328 700 328 C690.059 328 682 319.941 682 310 Z" fill="url(#radial-gradient-7)" stroke="#9a8760" stroke-width="1.5" stroke-miterlimit="10"/>
+    <path id="dial_presence" d="M689 310 C689 303.925 693.925 299 700 299 C706.075 299 711 303.925 711 310 C711 316.075 706.075 321 700 321 C693.925 321 689 316.075 689 310 Z" fill="#26211c" stroke="#3b3329" stroke-miterlimit="10"/>
+    <path id="ptr_presence" d="M700 310 L708 301" fill="none" stroke="#f0b53a" stroke-width="2.6" stroke-linecap="round" stroke-miterlimit="10"/>
+    <path id="spk_magnet_p" d="M732 170 L748 170 C749.105 170 750 170.895 750 172 L750 178 C750 179.105 749.105 180 748 180 L732 180 C730.895 180 730 179.105 730 178 L730 172 C730 170.895 730.895 170 732 170 Z" fill="url(#linear-gradient-5)" stroke="#9a8760" stroke-width="1.5" stroke-miterlimit="10"/>
+    <path id="spk_cone_p" d="M730 180 L750 180 L764 222 L716 222 Z" fill="url(#linear-gradient-6)" stroke="#9a8760" stroke-width="1.5" stroke-miterlimit="10"/>
+    <path id="spk_dust_p" d="M730 217 C730 215.343 734.477 214 740 214 C745.523 214 750 215.343 750 217 C750 218.657 745.523 220 740 220 C734.477 220 730 218.657 730 217 Z" fill="#0d0c0a"/>
+  </g>
+  <ellipse id="valC_1_0.022u" cx="56" cy="164" rx="1" ry="1" fill="none" stroke="none"/>
+</svg>

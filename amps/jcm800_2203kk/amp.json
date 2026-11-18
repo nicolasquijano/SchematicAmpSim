@@ -33,6 +33,15 @@
   {"name": "Beast", "jack": "high", "params": {"bass": 5, "master": 5, "middle": 6, "presence": 5, "treble": 5, "volume": 4, "volume2": 5, "reverb": 4}, "selectors": {"beast": 1}},
   {"name": "Beast, tight gate", "jack": "high", "params": {"bass": 5, "master": 5, "middle": 6, "presence": 5, "treble": 5, "volume": 5, "volume2": 7, "reverb": 6.5}, "selectors": {"beast": 1}}
  ],
+  "probes": [
+    { "label": "V1", "node": "p1b", "full_scale": 53.7 },
+    { "label": "V2", "node": "k2b", "full_scale": 269 },
+    { "label": "OUT", "node": "y", "full_scale": 19.2 }
+  ],
+  "power_probes": [
+    { "label": "PHASE", "node": "g45", "full_scale": 130 },
+    { "label": "POWER", "node": "pt", "full_scale": 450 }
+  ],
  "preamp": {
   "netlist": "preamp.net",
   "pre": {"netlist": "beast.net", "input_source": "VIN", "output_node": "bo", "detect_node": "pg", "gate_knob": "gate", "selector": "beast"},

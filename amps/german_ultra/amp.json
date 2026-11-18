@@ -98,6 +98,18 @@
    }
   }
  ],
+  "probes": [
+    { "label": "V1", "node": "p2", "full_scale": 5.37 },
+    { "label": "V2", "node": "p3", "full_scale": 45.1 },
+    { "label": "V3", "node": "nB", "full_scale": 3.26 },
+    { "label": "V4", "node": "p5", "full_scale": 141 },
+    { "label": "V5", "node": "p7", "full_scale": 123 },
+    { "label": "OUT", "node": "y", "full_scale": 31.2 }
+  ],
+  "power_probes": [
+    { "label": "PHASE", "node": "g45", "full_scale": 130 },
+    { "label": "POWER", "node": "pt", "full_scale": 450 }
+  ],
  "preamp": {
   "netlist": "preamp.net",
   "tolerance": 2e-06,

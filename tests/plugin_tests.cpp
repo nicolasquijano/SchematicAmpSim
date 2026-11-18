@@ -14,6 +14,8 @@
 #include "EqPresets.h"
 #include "FxPresets.h"
 #include "I18n.h"
+#include "CircuitPage.h"
+#include "sas/embedded_amps.h"
 #include "UiSettings.h"
 #include "ModuleUnit.h"
 
@@ -2191,7 +2193,7 @@ TEST_CASE("the editor has the Rack and Tuner pages, and the amp's condition live
     auto* ed = dynamic_cast<SasEditor*>(base.get());
     REQUIRE(ed != nullptr);
     base->setSize(1100, 700);
-    CHECK(ed->pageNames() == juce::StringArray{"Rack", "Tuner"});
+    CHECK(ed->pageNames() == juce::StringArray{"Rack", "Tuner", "Circuit"});
     for (const char* id : {"cond_tube", "cond_bias", "cond_wear", "cond_unit", "cond_noise"}) {
         auto* c = findById(*base, id);
         REQUIRE(c != nullptr);
@@ -3088,8 +3090,8 @@ TEST_CASE("the editor is built in Spanish and in English with the same structure
         base->setSize(1100, 700);
         pages[k++] = ed->pageNames();
     }
-    CHECK(pages[0] == juce::StringArray{"Rack", "Tuner"});
-    CHECK(pages[1] == juce::StringArray{"Rack", "Afinador"});
+    CHECK(pages[0] == juce::StringArray{"Rack", "Tuner", "Circuit"});
+    CHECK(pages[1] == juce::StringArray{"Rack", "Afinador", "Circuito"});
     i18n::useForSession(before);
 }
 
@@ -3837,7 +3839,7 @@ TEST_CASE("amp page: a picture of an amp with a transistor output stage", "[.tra
     }
 }
 
-TEST_CASE("the interface remembers favourites, the amps used last and the window size, in a file of its own", "[ui]") {
+TEST_CASE("the interface remembers favourites and the window size, in a file of its own", "[ui]") {
     const auto dir = juce::File::getSpecialLocation(juce::File::tempDirectory).getChildFile("sas_ui_settings_test");
     dir.deleteRecursively();
     dir.createDirectory();
@@ -3852,8 +3854,6 @@ TEST_CASE("the interface remembers favourites, the amps used last and the window
     UiSettings::toggleFavourite("a");  // off again
     CHECK(UiSettings::favourites() == juce::StringArray{"b"});
     CHECK(UiSettings::isFavourite("b"));
-    for (const char* id : {"w", "x", "y", "z", "y"}) UiSettings::pushRecent(id);
-    CHECK(UiSettings::recent() == juce::StringArray{"y", "z", "x"});  // the last three, the latest first, no repeats
     CHECK(UiSettings::windowSize() == juce::Point<int>(0, 0));
     UiSettings::setWindowSize(1234, 777);
     CHECK(UiSettings::windowSize() == juce::Point<int>(1234, 777));
@@ -3863,4 +3863,104 @@ TEST_CASE("the interface remembers favourites, the amps used last and the window
     unsetenv("SAS_UI_SETTINGS_DIR");
 #endif
     dir.deleteRecursively();
+}
+
+TEST_CASE("the circuit page shows a live level for every stage of the amp", "[ui]") {
+    JuceInit init;
+    SasProcessor p;
+    p.prepareToPlay(48000.0, 512);
+    std::unique_ptr<juce::AudioProcessorEditor> ed(p.createEditor());
+    auto* se = dynamic_cast<SasEditor*>(ed.get());
+    REQUIRE(se != nullptr);
+    ed->setSize(1000, 560);
+    se->selectPage(2);
+    auto& page = se->circuitPage();
+    REQUIRE(page.stageCount() >= 3);
+    CHECK(page.stageName(0) == "INPUT");
+    CHECK(page.stageName(page.stageCount() - 1) == "SPEAKER");
+    CHECK(page.isVisible());
+    CHECK(page.hasDrawing());          // the British 800 has its schematic
+    CHECK(page.wireCount() >= 6);      // a wire for every stage
+    CHECK(page.hasPowerDrawing());
+    REQUIRE(page.potCount() == 5);     // treble, middle, bass and master, and the presence of the power amp, are knobs of the amp
+    {
+        const auto id = page.potParam(0).toRawUTF8();
+        auto* param = p.apvts.getParameter(id);
+        REQUIRE(param != nullptr);
+        const float before = param->getValue();
+        page.nudgePot(0, 0.2f);
+        CHECK(param->getValue() == Catch::Approx(std::min(1.0f, before + 0.2f)).margin(0.01));
+        page.nudgePot(0, -0.2f);
+        CHECK(param->getValue() == Catch::Approx(before).margin(0.01));
+    }
+    for (int i = 0; i < 6; ++i) page.tick();  // nothing playing yet
+    page.setView(1);
+    CHECK(page.view() == 1);
+    page.setView(0);
+    for (int i = 0; i < page.stageCount(); ++i) CHECK(page.shownFraction(i) < 0.05f);
+    for (int round = 0; round < 40; ++round) {
+        run(p, 30, 220.0, 0.2);
+        page.tick();
+    }
+    for (int i = 0; i < page.stageCount(); ++i) CHECK(page.shownFraction(i) > 0.3f);  // the signal reaches every stage
+    if (const char* dir = std::getenv("SAS_SCREENSHOT_DIR")) {
+        juce::File(dir).createDirectory();
+        const auto img = ed->createComponentSnapshot(ed->getLocalBounds(), true, 1.0f);
+        juce::PNGImageFormat png;
+        juce::FileOutputStream out(juce::File(dir).getChildFile("circuit.png"));
+        if (out.openedOk()) {
+            out.setPosition(0);
+            out.truncate();
+            png.writeImageToStream(img, out);
+        }
+        page.setView(1);
+        for (int round = 0; round < 8; ++round) {
+            run(p, 30, 220.0, 0.2);
+            page.tick();
+        }
+        const auto img2 = ed->createComponentSnapshot(ed->getLocalBounds(), true, 1.0f);
+        juce::FileOutputStream out2(juce::File(dir).getChildFile("circuit_power.png"));
+        if (out2.openedOk()) {
+            out2.setPosition(0);
+            out2.truncate();
+            png.writeImageToStream(img2, out2);
+        }
+    }
+}
+
+TEST_CASE("every amp's circuit page can be rendered", "[.circuitshots]") {
+    JuceInit init;
+    const char* dir = std::getenv("SAS_SCREENSHOT_DIR");
+    if (!dir) { SKIP("SAS_SCREENSHOT_DIR is not set"); }
+    juce::File(dir).createDirectory();
+    SasProcessor p;
+    p.prepareToPlay(48000.0, 512);
+    const auto ids = sas::embeddedAmpIds(true);
+    for (std::size_t index = 0; index < ids.size(); ++index) {
+        if (const char* only = std::getenv("SAS_ONLY_AMP"); only && ids[index] != only) continue;
+        setParam(p, ids::amp, float(index));
+        p.applyDefaultAmpPreset(0);
+        std::unique_ptr<juce::AudioProcessorEditor> ed(p.createEditor());
+        auto* se = dynamic_cast<SasEditor*>(ed.get());
+        REQUIRE(se != nullptr);
+        ed->setSize(1000, 560);
+        se->selectPage(2);
+        auto& page = se->circuitPage();
+        for (int round = 0; round < 30; ++round) {
+            run(p, 30, 220.0, 0.15);
+            page.tick();
+        }
+        for (int view = 0; view < (page.hasPowerDrawing() ? 2 : 1); ++view) {
+            page.setView(view);
+            for (int i = 0; i < 6; ++i) { run(p, 30, 220.0, 0.15); page.tick(); }
+            const auto img = ed->createComponentSnapshot(ed->getLocalBounds(), true, 1.0f);
+            juce::PNGImageFormat png;
+            juce::FileOutputStream out(juce::File(dir).getChildFile("cp_" + juce::String(ids[index]) + (view ? "_power" : "") + ".png"));
+            if (out.openedOk()) {
+                out.setPosition(0);
+                out.truncate();
+                png.writeImageToStream(img, out);
+            }
+        }
+    }
 }

@@ -229,6 +229,7 @@ void Chain::processAmp(const float* mono, float* out, std::size_t n) {
         ++sinceUpdate;
 
         float vin = float(double(mono[i]) * dbToGain(inputDb_.next()));
+        inPeak_ = std::max(inPeak_, double(std::fabs(vin)));
         if (compOn) vin = float(comp_.process(double(vin)));
         // The pedal sits in front of the amp, inside the oversampled loop; it costs nothing while off.
         // `comp` is the jack's level match: extra gain at the amp's input (after the pedal), 1 when off.
@@ -261,6 +262,7 @@ void Chain::processAmp(const float* mono, float* out, std::size_t n) {
         }
         // The speaker sees the real drive (before the loudness trim); the trim is applied after it.
         volts = float(geq_.process(double(volts)));
+        outPeak_ = std::max(outPeak_, double(std::fabs(volts)));
         float y = speaker_.process(volts / float(kOutputFullScaleVolts)) * ampTrim_;
         if (cabOn) y = cab_.process(y);
         out[i] = y;
@@ -304,6 +306,40 @@ void Chain::processNam(const float* mono, float* out, std::size_t n) {
             out[at + i] = s;
         }
     }
+}
+
+Preamp* Chain::activePre() {
+    switch (active_) {
+        case Quality::Normal: return amp2_ ? &amp2_->pre() : nullptr;
+        case Quality::High: return amp4_ ? &amp4_->pre() : nullptr;
+        case Quality::Efficient: return split_ ? &split_->pre() : nullptr;
+        case Quality::Eco: return eco_ ? &eco_->pre() : nullptr;
+        default: return lite_ ? &lite_->pre() : nullptr;
+    }
+}
+
+std::size_t Chain::takeMeters(float* out, std::size_t max) {
+    Preamp* pre = def_.nam ? nullptr : activePre();
+    if (!pre) return 0;
+    const std::size_t count = pre->probeCount() + def_.powerProbes.size() + 2;
+    if (count > max) return 0;
+    out[0] = float(inPeak_ / kInputFullScaleVolts);
+    for (std::size_t i = 0; i < pre->probeCount(); ++i) out[1 + i] = float(pre->takeProbePeak(i) / pre->probeFullScale(i));
+    // The full power amp's probes (zero in Lite and Eco, which have no such circuit).
+    PowerAmp* power = nullptr;
+    switch (active_) {
+        case Quality::Normal: power = amp2_ ? &amp2_->power() : nullptr; break;
+        case Quality::High: power = amp4_ ? &amp4_->power() : nullptr; break;
+        case Quality::Efficient: power = split_ ? &split_->power() : nullptr; break;
+        default: break;
+    }
+    for (std::size_t i = 0; i < def_.powerProbes.size(); ++i) {
+        const std::size_t at = 1 + pre->probeCount() + i;
+        out[at] = power && i < power->probeCount() ? float(power->takeProbePeak(i) / power->probeFullScale(i)) : 0.0f;
+    }
+    out[count - 1] = float(outPeak_ / kSpeakerFullScaleVolts);
+    inPeak_ = outPeak_ = 0.0;
+    return count;
 }
 
 void Chain::applyOutputStereo(float* l, float* r, std::size_t n) {

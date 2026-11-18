@@ -22,6 +22,15 @@
    {"name": "Lead", "jack": "jumpered", "params": {"bass": 4, "middle": 6, "presence": 6, "treble": 6, "volume": 7, "volume2": 9}}
   ],
 
+  "probes": [
+    { "label": "V1", "node": "pn", "full_scale": 6.2 },
+    { "label": "V2", "node": "nb", "full_scale": 7.2 },
+    { "label": "OUT", "node": "o", "full_scale": 79.9 }
+  ],
+  "power_probes": [
+    { "label": "PHASE", "node": "g1", "full_scale": 130 },
+    { "label": "POWER", "node": "pt", "full_scale": 450 }
+  ],
   "preamp": {
     "netlist": "preamp.net",
     "tolerance": 2e-06,

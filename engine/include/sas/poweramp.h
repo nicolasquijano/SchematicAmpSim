@@ -37,6 +37,15 @@ public:
     double railX() const { return solver_.voltage(nodeX_); }
     double ht() const { return solver_.voltage(nodeHt_); }
 
+    // The circuit page's meters (amp.json "power_probes"): the largest swing of each probe's node, DC taken out, since the last call, in volts.
+    std::size_t probeCount() const { return probes_.size(); }
+    double takeProbePeak(std::size_t i) {
+        const double v = probes_[i].peak;
+        probes_[i].peak = 0.0;
+        return v;
+    }
+    double probeFullScale(std::size_t i) const { return probes_[i].fullScale; }
+
     Solver& solver() { return solver_; }
     const Solver& solver() const { return solver_; }
 
@@ -68,6 +77,12 @@ private:
     std::vector<IdleProbe> idleProbes_;
     double idleTubesPerHalf_ = 2.0, idleMa_ = 0.0, idleK_ = 0.0;
     double presence_ = 0.5;
+    struct Probe {
+        Node node = 0;
+        double fullScale = 1.0, dc = 0.0, peak = 0.0;
+    };
+    std::vector<Probe> probes_;
+    double dcCoef_ = 0.0;
 };
 
 }  // namespace sas

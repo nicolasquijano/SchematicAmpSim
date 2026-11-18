@@ -106,6 +106,15 @@ PowerAmp::PowerAmp(Built&& b, const AmpDef& def, double fs, bool useTables)
       idleTubesPerHalf_(def.power.bias.tubesPerHalf), idleK_(1.0 - std::exp(-1.0 / (0.3 * fs))) {
     for (const auto& p : b.idle) idleProbes_.push_back({p.first.first, p.first.second, p.second});
     if (!solver_.dcConverged) throw std::runtime_error("power amp DC operating point did not converge");
+    for (const auto& pr : def.powerProbes) {
+        const auto it = b.net.nodes.find(pr.node);
+        if (it == b.net.nodes.end()) {  // not in this netlist: the meter stays at zero
+            probes_.push_back({static_cast<Node>(-1), pr.fullScale, 0.0, 0.0});
+            continue;
+        }
+        probes_.push_back({it->second, pr.fullScale, solver_.voltage(it->second), 0.0});
+    }
+    dcCoef_ = 1.0 - std::exp(-2.0 * kPi * 5.0 / fs);
     // Signals here are volts to tens of volts, so a looser tolerance is inaudible (-125 dB).
     solver_.tolerance = def.power.tolerance;
     hasPres_ = b.hasPres;
@@ -161,6 +170,12 @@ double PowerAmp::process(double vin) {
     solver_.setSource(srcHt_, vHt_);
     solver_.setSource(srcAudio_, vin);
     solver_.step();
+    for (Probe& p : probes_) {
+        if (p.node == static_cast<Node>(-1)) continue;
+        const double v = solver_.voltage(p.node);
+        p.dc += dcCoef_ * (v - p.dc);
+        p.peak = std::max(p.peak, std::abs(v - p.dc));
+    }
     if (!idleProbes_.empty()) {
         double amps = 0.0;
         for (const auto& p : idleProbes_) amps += (solver_.voltage(p.b) - solver_.voltage(p.a)) / p.ohms;  // from the centre tap through the primary half to the plate

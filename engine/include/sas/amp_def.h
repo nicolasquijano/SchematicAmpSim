@@ -282,6 +282,13 @@ struct GraphicEqDef {
     std::vector<GraphicEqBand> bands;
 };
 
+// A point of the preamp whose level the editor's circuit page shows (amp.json "probes"): the signal at `node` (looked up in the preamp's netlists,
+// whichever one has it) with its DC removed, compared to `fullScale` volts. The input and the speaker output are measured by the chain itself.
+struct ProbeDef {
+    std::string label, node;
+    double fullScale = 1.0;
+};
+
 struct AmpDef {
     std::string id, name;
     ThemeDef theme;
@@ -296,6 +303,8 @@ struct AmpDef {
     std::vector<UiKnob> ui;
     GraphicEqDef graphicEq;             // empty: the amp has none
     std::vector<AmpPresetDef> presets;  // factory settings, in the order of the menu (may be empty)
+    std::vector<ProbeDef> powerProbes;  // the same for the full power amp's netlist ("power_probes"): after the preamp's in the circuit page; Lite and Eco have no such nodes
+    std::vector<ProbeDef> probes;       // the stages of the circuit page, in signal order (may be empty: the page then shows input, preamp and output only)
     // A loader for Neural Amp Modeler models ("nam": true in amp.json): no circuits at all, the chain runs the model the user loaded. Its
     // knobs ("ui") are only the plugin parameters it reads (input drive and output level).
     bool nam = false;

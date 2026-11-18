@@ -207,6 +207,22 @@ Preamp::Preamp(const AmpDef& def, double fs, double railVolts, bool useTables, b
         updateActive();
     }
     out_ = nets[mainStages_ - 1].node(pd.outputNode);
+    // The circuit page's meters: each probe's node, found in whichever netlist has it (a finer-split Eco preamp moves nodes between stages);
+    // an amp without probes gets the output of its preamp.
+    {
+        const auto addProbe = [&](const std::string& node, double fullScale) {
+            for (std::size_t i = 0; i < mainStages_; ++i)
+                if (nets[i].nodes.count(node)) {
+                    probes_.push_back({i, nets[i].node(node), fullScale, stages_[i].solver.voltage(nets[i].node(node)), 0.0});
+                    return;
+                }
+            // Not in this variant's netlists (a finer-split Eco preamp may leave a node out): the meter stays at zero, so the stages keep their places.
+            probes_.push_back({static_cast<std::size_t>(-1), 0, fullScale, 0.0, 0.0});
+        };
+        for (const auto& pr : def.probes) addProbe(pr.node, pr.fullScale);
+        if (probes_.empty()) addProbe(pd.outputNode, 20.0);
+        dcCoef_ = 1.0 - std::exp(-2.0 * 3.14159265358979 * 5.0 / fs);  // the DC is what stays under about 5 Hz
+    }
     if (pd.pre.present) {
         const ParsedNetlist& pn = nets[mainStages_];
         preOut_ = pn.node(pd.pre.outputNode);

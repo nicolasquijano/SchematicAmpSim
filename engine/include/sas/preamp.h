@@ -4,6 +4,8 @@
 // carries the guitar. With several netlists ("stages") each is solved on its own and the next one
 // is fed from a node of the previous one, which is much cheaper than one big circuit.
 
+#include <algorithm>
+#include <cmath>
 #include <cstddef>
 #include <cstdint>
 #include <memory>
@@ -79,8 +81,19 @@ public:
             else s.solver.step();
         }
         if (vib_ && ++vibCount_ >= vibEvery_) advanceVibrato();
+        if (!probes_.empty()) trackProbes();
         return stages_[mainStages_ - 1].solver.voltage(out_);
     }
+
+    // The circuit page's meters (amp.json "probes"; with none, the output of the preamp): the largest swing of each probe's node, with its DC taken
+    // out, since the last call, in volts. Reads and clears; called from the thread that processes.
+    std::size_t probeCount() const { return probes_.size(); }
+    double takeProbePeak(std::size_t i) {
+        const double v = probes_[i].peak;
+        probes_[i].peak = 0.0;
+        return v;
+    }
+    double probeFullScale(std::size_t i) const { return probes_[i].fullScale; }
 
     std::size_t stageCount() const { return stages_.size(); }
     // Diagnostic: leave stage `i` out of the solve altogether (to see what a mode needs).
@@ -140,6 +153,23 @@ private:
     void refreshAll() {
         for (auto& s : stages_) s.solver.refresh();
     }
+
+    // One meter: the node, the slow average that is taken as its DC, and the largest swing around it since the last read.
+    struct Probe {
+        std::size_t stage = 0;
+        Node node = 0;
+        double fullScale = 1.0, dc = 0.0, peak = 0.0;
+    };
+    void trackProbes() {
+        for (Probe& p : probes_) {
+            if (p.stage == static_cast<std::size_t>(-1)) continue;
+            const double v = stages_[p.stage].solver.voltage(p.node);
+            p.dc += dcCoef_ * (v - p.dc);
+            p.peak = std::max(p.peak, std::abs(v - p.dc));
+        }
+    }
+    std::vector<Probe> probes_;
+    double dcCoef_ = 0.0;
 
     std::vector<Stage> stages_;
     std::size_t mainStages_ = 0;  // stages_ without the pre stage (which is stored last)

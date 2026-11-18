@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="840" height="415" viewBox="0 0 840 415">
+<defs>
+<linearGradient id="g1" x1="50" y1="0" x2="62" y2="0" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#f0d27a"/><stop offset="1" stop-color="#a67c2e"/></linearGradient>
+<radialGradient id="g2" cx="130" cy="190" r="32" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#463d30"/><stop offset="1" stop-color="#14110d"/></radialGradient>
+<radialGradient id="g3" cx="130" cy="190" r="16" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#ffb347" stop-opacity="0.95"/><stop offset="1" stop-color="#c1441a" stop-opacity="0"/></radialGradient>
+<radialGradient id="g4" cx="330" cy="110" r="32" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#463d30"/><stop offset="1" stop-color="#14110d"/></radialGradient>
+<radialGradient id="g5" cx="330" cy="126" r="16" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#ffb347" stop-opacity="0.95"/><stop offset="1" stop-color="#c1441a" stop-opacity="0"/></radialGradient>
+<linearGradient id="g6" x1="0" y1="138" x2="0" y2="152" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#3a332a"/><stop offset="1" stop-color="#16130f"/></linearGradient>
+<radialGradient id="g7" cx="330" cy="270" r="32" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#463d30"/><stop offset="1" stop-color="#14110d"/></radialGradient>
+<radialGradient id="g8" cx="330" cy="254" r="16" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#ffb347" stop-opacity="0.95"/><stop offset="1" stop-color="#c1441a" stop-opacity="0"/></radialGradient>
+<linearGradient id="g9" x1="0" y1="228" x2="0" y2="242" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#3a332a"/><stop offset="1" stop-color="#16130f"/></linearGradient>
+<linearGradient id="g10" x1="0" y1="170" x2="0" y2="180" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#6b6350"/><stop offset="1" stop-color="#2a251d"/></linearGradient>
+<linearGradient id="g11" x1="0" y1="180" x2="0" y2="222" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#4a4338"/><stop offset="1" stop-color="#16130f"/></linearGradient>
+</defs>
+<path id="wire_OUT-2" d="M20,190 H52 M60,190 H98" fill="none" stroke="#6b5c44" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+<path id="wire_PHASE" d="M130,158 V110 H298 M130,222 V270 H298" fill="none" stroke="#6b5c44" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+<path id="wire_POWER" d="M330,78 V56 H560 V100 H580 M330,302 V324 H560 V280 H580 M580,100 a15,15 0 0 1 0,30 a15,15 0 0 1 0,30 a15,15 0 0 1 0,30 a15,15 0 0 1 0,30 a15,15 0 0 1 0,30 a15,15 0 0 1 0,30" fill="none" stroke="#6b5c44" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+<path id="wire_SPEAKER" d="M640,130 H740 V170 M700,130 V345 M640,250 V268 M640,130 a15,15 0 0 0 0,30 a15,15 0 0 0 0,30 a15,15 0 0 0 0,30 a15,15 0 0 0 0,30" fill="none" stroke="#6b5c44" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+<path id="wire_static_power" d="M330,152 V228 M330,190 H360 V200 M580,190 H520 M200,345 V190 H162 M700,345 H200" fill="none" stroke="#5a4d3a" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+<path id="ground_power" d="M352,200 H368 M355,205 H365 M358,210 H362 M632,268 H648 M635,273 H645 M638,278 H642" fill="none" stroke="#8c7a55" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+<path id="ot_core" d="M606,95 V285 M614,95 V285" fill="none" stroke="#8c7a55" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+<ellipse id="rail_tap" cx="520" cy="190" rx="4" ry="4" fill="#7a6a4c" stroke="none" stroke-width="1"/>
+<rect id="cap_ina" x="50" y="172" width="4" height="36" rx="1" fill="url(#g1)" stroke="#5a4630" stroke-width="0.8"/>
+<rect id="cap_inb" x="58" y="172" width="4" height="36" rx="1" fill="url(#g1)" stroke="#5a4630" stroke-width="0.8"/>
+<ellipse id="tube_PI-PI" cx="130" cy="190" rx="32" ry="32" fill="url(#g2)" stroke="#a08b63" stroke-width="2"/>
+<rect id="plate_PI-1" x="118" y="167" width="24" height="6" rx="1" fill="#9a917d" stroke="#5a5446" stroke-width="1"/>
+<rect id="plate_PI1" x="118" y="207" width="24" height="6" rx="1" fill="#9a917d" stroke="#5a5446" stroke-width="1"/>
+<path id="grids_PI" d="M114,181 H146 M114,199 H146" fill="none" stroke="#cdbd92" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="3 3"/>
+<ellipse id="glow_PHASE" cx="130" cy="190" rx="16" ry="9" fill="url(#g3)" stroke="none" stroke-width="1"/>
+<path id="filament_PI" d="M122,190 H138" fill="none" stroke="#ffae42" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>
+<path id="shine_PI" d="M108,178 A26,26 0 0 1 124,164" fill="none" stroke="#ffffff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" opacity="0.35"/>
+<ellipse id="tube_PA-6550" cx="330" cy="110" rx="32" ry="32" fill="url(#g4)" stroke="#a08b63" stroke-width="2"/>
+<rect id="plate_PA" x="318" y="85" width="24" height="6" rx="1" fill="#9a917d" stroke="#5a5446" stroke-width="1"/>
+<path id="grid_PA" d="M312,110 H348" fill="none" stroke="#cdbd92" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="3 3"/>
+<ellipse id="glow_POWER_A" cx="330" cy="126" rx="16" ry="10" fill="url(#g5)" stroke="none" stroke-width="1"/>
+<path id="filament_PA" d="M322,126 H338" fill="none" stroke="#ffae42" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>
+<path id="shine_PA" d="M308,98 A26,26 0 0 1 324,84" fill="none" stroke="#ffffff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" opacity="0.35"/>
+<rect id="base_PA" x="314" y="138" width="32" height="14" rx="3" fill="url(#g6)" stroke="#5a4d3a" stroke-width="1"/>
+<ellipse id="tube_PB-6550" cx="330" cy="270" rx="32" ry="32" fill="url(#g7)" stroke="#a08b63" stroke-width="2"/>
+<rect id="plate_PB" x="318" y="289" width="24" height="6" rx="1" fill="#9a917d" stroke="#5a5446" stroke-width="1"/>
+<path id="grid_PB" d="M312,270 H348" fill="none" stroke="#cdbd92" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="3 3"/>
+<ellipse id="glow_POWER_B" cx="330" cy="254" rx="16" ry="10" fill="url(#g8)" stroke="none" stroke-width="1"/>
+<path id="filament_PB" d="M322,254 H338" fill="none" stroke="#ffae42" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>
+<path id="shine_PB" d="M308,258 A26,26 0 0 1 324,244" fill="none" stroke="#ffffff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" opacity="0.35"/>
+<rect id="base_PB" x="314" y="228" width="32" height="14" rx="3" fill="url(#g9)" stroke="#5a4d3a" stroke-width="1"/>
+<rect id="spk_magnet_p" x="730" y="170" width="20" height="10" rx="2" fill="url(#g10)" stroke="#9a8760" stroke-width="1.5"/>
+<path id="spk_cone_p" d="M730,180 H750 L764,222 H716 Z" fill="url(#g11)" stroke="#9a8760" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+<ellipse id="spk_dust_p" cx="740" cy="215" rx="10" ry="3" fill="#0d0c0a" stroke="none" stroke-width="1"/>
+</svg>
