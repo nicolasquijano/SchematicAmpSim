@@ -391,7 +391,131 @@ def ac30_preamp(amp_id='ac30_normal'):
     return s
 
 
-AMPS = {'ac30_normal': (ac30_preamp, None),
+def fender_two_channel_preamp(amp_id):
+    """The Deluxe Reverb / Twin Reverb: the normal channel (V1) and the vibrato channel (V2), each a gain triode, the treble-bass(-middle) network, the
+    volume pot and a second triode; the two are mixed into V4b. The vibrato oscillator and the spring reverb are other circuits: their knobs are only shown."""
+    vals = netlist_values(amp_id)
+    ui = {u['param'] for u in __import__('json').load(open(os.path.join(ROOT, amp_id, 'amp.json'), encoding='utf-8'))['ui']}
+    s = Svg(1220, 540)
+    p = s.path
+    tone = ['treble', 'bass'] + (['middle'] if 'middle' in ui else [])
+    tone_x = {'treble': 330, 'bass': 400, 'middle': 470}
+    rows = ((150, 'V1', 'V1A', 'V1B', 'volume2', 1), (400, 'V2', 'V2A', 'V2B', 'volume', 2))
+    p('rail1', 'M150,28 H760', '#7a6a4c', 2, extra=' stroke-dasharray="6 5"')
+    p('rail2', 'M150,278 H760', '#7a6a4c', 2, extra=' stroke-dasharray="6 5"')
+    p('rail3', 'M900,93 H1020', '#7a6a4c', 2, extra=' stroke-dasharray="6 5"')
+    static = ''
+    gnd = []
+    inputs = ''
+    for cy, key, ta, tb, vol, n in rows:
+        yj, rail = cy - 60, cy - 122
+        inputs += 'M43,%d H164 ' % cy
+        sig = ('M200,%d V%d M200,%d H234 M246,%d H542 ' % (cy - 66, cy - 32, yj, yj))
+        sig += ' '.join('M%d,%d V%d' % (tone_x[t], yj, yj + 62) for t in tone)
+        sig += ' M578,%d H620 V%d H648 M680,%d V%d M680,%d H724 M736,%d H860' % (yj, cy, cy - 66, cy - 32, yj, yj)
+        p('wire_%s' % key, sig)
+        static += 'M200,%d V%d M680,%d V%d ' % (rail, cy - 102, rail, cy - 102)
+        static += 'M140,%d V%d M140,%d V%d ' % (cy, cy - 6, cy - 42, cy - 58)
+        for cx in (200, 680):  # the two cathodes
+            static += 'M%d,%d V%d M%d,%d H%d M%d,%d V%d M%d,%d V%d M%d,%d V%d H%d V%d ' % (
+                cx, cy + 42, cy + 50, cx - 15, cy + 50, cx + 15, cx - 15, cy + 50, cy + 60, cx + 15, cy + 50, cy + 68,
+                cx - 15, cy + 96, cy + 108, cx + 15, cy + 80)
+            gnd.append((cx, cy + 108))
+        for t in tone:
+            static += 'M%d,%d V%d ' % (tone_x[t], yj + 98, yj + 112)
+            gnd.append((tone_x[t], yj + 112))
+        static += 'M560,%d V%d ' % (yj + 18, yj + 34)
+        gnd.append((560, yj + 34))
+        gnd.append((140, cy - 58))
+    p('wire_INPUT', inputs)
+    p('wire_V4', 'M860,90 V400 M860,215 H928 M960,%d V%d' % (113 + 36, 183) if False else 'M860,90 V340 M860,215 H928 M960,149 V183')
+    p('wire_OUT', 'M960,155 H1100')
+    static += 'M960,93 V113 M960,257 V265 M945,265 H975 M945,265 V275 M975,265 V283 M945,311 V325 H975 V295'
+    gnd.append((960, 325))
+    p('wire_static', static, '#5a4d3a', 3)
+    for gx, gy in gnd:
+        ground(s, gx, gy)
+    for cy, key, ta, tb, vol, n in rows:
+        yj = cy - 60
+        name = 'NORMAL' if n == 1 else 'VIBRATO'
+        s.ellipse('jack_%s' % name, 30, cy, 13, 13, s.rad(30, cy, 13, [(0, '#d9d0b8'), (1, '#5f5846')]), '#9a8760', 1.5)
+        s.ellipse('jack_%s_hole' % name, 30, cy, 5, 5, '#14110d', '#3b3329', 1)
+        resistor_h(s, 66, cy, 'res_68k_%d' % n)
+        resistor_v(s, 140, cy - 42, 'res_leak_%d' % n)
+        for cx, tag in ((200, ta), (680, tb)):
+            resistor_v(s, cx, cy - 102, 'res_p_%s' % tag)
+            resistor_v(s, cx - 15, cy + 60, 'res_k_%s' % tag)
+            cap_h(s, cx + 15, cy + 74, 'cap_k_%s' % tag)
+            bulb(s, cx, cy, 1.0, tag, key, label='12AX7')
+        cap(s, 240, yj, 'cap_c2_%d' % n)
+        cap(s, 730, yj, 'cap_out_%d' % n)
+        for t in tone:
+            pot(s, tone_x[t], yj + 80, t + ('' if n == 1 else '-2'), 1.0, 0.5)
+        pot(s, 560, yj, vol, 1.0, 0.5)
+        anchor(s, vol, 560, yj + 70)
+    # the mixer and its output
+    resistor_v(s, 960, 113, 'res_p_v4')
+    resistor_v(s, 945, 275, 'res_k_v4')
+    cap_h(s, 975, 289, 'cap_k_v4')
+    bulb(s, 960, 215, 1.0, 'V4B', 'V4', label='12AX7')
+    for i, (param, x) in enumerate((('vib_speed', 880), ('vib_intensity', 960), ('reverb', 1040))):
+        if param in ui:
+            pot(s, x, 460, param, 1.0, 0.5)
+    for kind, x, y, names in (('L', 212, 66, ('R4',)), ('L', 692, 66, ('R11',)), ('R', 173, 214, ('R5',)), ('L', 227, 230, ('C1',)), ('C', 240, 36, ('C2',)),
+                              ('L', 212, 316, ('R16',)), ('L', 692, 316, ('R29',)), ('R', 173, 464, ('R17',)), ('L', 227, 480, ('C6',)), ('C', 240, 286, ('C7',))):
+        text = next((vals[n] for n in names if n in vals), None)
+        if text:
+            s.val(kind, x, y, text)
+    s.path('next_power', 'M1100,147 V163 L1122,155 Z', '#8c7a55', 1.5, s.lin(0, 147, 0, 163, [(0, '#d9b866'), (1, '#8a6d2c')]))
+    return s
+
+
+def bassbreaker_preamp(amp_id='bassbreaker_1830'):
+    """The Bassbreaker 18/30: V1a, the cathode follower V1b, the treble-middle-bass stack, the two volumes and V2a."""
+    vals = netlist_values(amp_id)
+    s = Svg(1100, 430)
+    p = s.path
+    p('rail', 'M150,36 H1050', '#7a6a4c', 2, extra=' stroke-dasharray="6 5"')
+    p('wire_static_rail', 'M200,36 V60 M320,36 V158 M1000,36 V60', '#7a6a4c', 3)
+    p('wire_INPUT', 'M43,190 H66 M102,190 H168')
+    p('wire_V1', 'M200,96 V158 M200,130 H260 V190 H288 M320,222 V232 M320,232 V275 M320,275 H358 M392,275 H900 '
+      'M520,275 V312 M590,275 V312 M660,275 V312 M730,275 V312 M800,275 V312 M870,275 V312')
+    p('wire_V2', 'M900,275 H930 V200 H968 M1000,96 V168 M1000,130 H1034')
+    p('wire_OUT', 'M1046,130 H1085')
+    p('wire_static', 'M140,190 V184 M140,148 V132 M200,222 V230 M185,230 H215 M185,230 V240 M215,230 V248 M185,276 V288 H215 V260 M320,290 V275 M320,326 V340 '
+      'M520,348 V362 M590,348 V362 M660,348 V362 M730,348 V362 M800,348 V362 M870,348 V362 M1000,232 V240 M985,240 H1015 M985,240 V250 M1015,240 V258 M985,286 V298 H1015 V270', '#5a4d3a', 3)
+    for gx, gy in ((140, 132), (200, 288), (320, 340), (520, 362), (590, 362), (660, 362), (730, 362), (800, 362), (870, 362), (1000, 298)):
+        ground(s, gx, gy)
+    jack(s, 30, 190)
+    resistor_h(s, 66, 190, 'res_33k')
+    resistor_v(s, 140, 148, 'res_leak')
+    resistor_v(s, 200, 60, 'res_p1')
+    resistor_v(s, 185, 240, 'res_k1')
+    resistor_v(s, 320, 290, 'res_k2')
+    resistor_v(s, 1000, 60, 'res_p2')
+    resistor_v(s, 985, 250, 'res_k3')
+    cap_h(s, 215, 254, 'cap_k1')
+    cap_h(s, 1015, 264, 'cap_k3')
+    cap(s, 375, 275, 'cap_c2')
+    cap(s, 1040, 130, 'cap_out')
+    bulb(s, 200, 190, 1.0, 'V1A', 'V1', label='12AX7')
+    bulb(s, 320, 190, 1.0, 'V1B', 'V1', label='CF')
+    bulb(s, 1000, 200, 1.0, 'V2A', 'V2', label='12AX7')
+    for param, x in (('treble', 520), ('middle', 590), ('bass', 660), ('volume', 730), ('volume2', 800), ('clean_treble', 870)):
+        pot(s, x, 330, param, 1.0, 0.5)
+    for kind, x, y, names in (('C', 84, 176, ('R2',)), ('L', 150, 168, ('R1',)), ('L', 212, 80, ('R3',)), ('R', 173, 262, ('R4',)), ('L', 227, 258, ('C1',)),
+                              ('L', 332, 308, ('R5',)), ('C', 375, 251, ('C2',)), ('L', 1012, 80, ('R16',)), ('R', 973, 272, ('R17',)), ('L', 1027, 268, ('C9',))):
+        text = next((vals[n] for n in names if n in vals), None)
+        if text:
+            s.val(kind, x, y, text)
+    s.path('next_power', 'M1085,122 V138 L1107,130 Z', '#8c7a55', 1.5, s.lin(0, 122, 0, 138, [(0, '#d9b866'), (1, '#8a6d2c')]))
+    return s
+
+
+AMPS = {'bassbreaker_1830': (bassbreaker_preamp, None),
+        'deluxe_reverb': (lambda: fender_two_channel_preamp('deluxe_reverb'), None),
+        'twin_65': (lambda: fender_two_channel_preamp('twin_65'), None),
+        'ac30_normal': (ac30_preamp, None),
         'hiwatt_dr103': (hiwatt_preamp, None),
         'orange_or120': (orange_preamp, None),
         'tweed_5e3': (tweed_5e3_preamp, tweed_5e3_power),

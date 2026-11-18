@@ -54,7 +54,7 @@ void CircuitPage::collect(Drawing& dr, juce::Drawable& d) {
         }
     }
     if (id.startsWith("pot_")) {
-        const auto param = id.fromFirstOccurrenceOf("pot_", false, false);
+        const auto param = id.fromFirstOccurrenceOf("pot_", false, false).upToFirstOccurrenceOf("-", false, false);  // "treble-2": the same knob drawn again
         const auto it = uiLabels_.find(param);  // the name the amp gives its knob ("VOLUME", "MASTER"...)
         dr.tags.push_back({&d, it != uiLabels_.end() ? it->second : param.toUpperCase(), 0});
     } else if (id.startsWith("tube_")) {
@@ -100,11 +100,12 @@ void CircuitPage::load(int which, const sas::AmpDef& def) {
     for (const auto& t : dr.tags) {  // a pot whose name is a knob of the amp is a live control
         if (!t.item->getName().startsWith("pot_")) continue;
         const auto name = t.item->getName().fromFirstOccurrenceOf("pot_", false, false);
-        if (std::find(uiParams_.begin(), uiParams_.end(), name) == uiParams_.end()) continue;
+        const auto base = name.upToFirstOccurrenceOf("-", false, false);
+        if (std::find(uiParams_.begin(), uiParams_.end(), base) == uiParams_.end()) continue;
         Pot p;
         p.body = t.item;
         p.name = name;
-        p.param = name;
+        p.param = base;
         p.centre = t.item->getDrawableBounds().getCentre();
         p.length = t.item->getDrawableBounds().getWidth() * 0.31f;
         if (const auto it = dr.pointers.find(name); it != dr.pointers.end()) p.pointer = it->second;

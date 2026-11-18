@@ -16,7 +16,7 @@ import re
 import sys
 
 ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'amps')
-HAND_MADE = {'jcm800_2203', 'tweed_5e3', 'plexi_1959', 'jtm45', 'bassman_5f6a', 'orange_or120', 'hiwatt_dr103', 'ac30_normal'}  # drawn by hand (VectorCraft) or by circuits_hand.py
+HAND_MADE = {'jcm800_2203', 'tweed_5e3', 'plexi_1959', 'jtm45', 'bassman_5f6a', 'orange_or120', 'hiwatt_dr103', 'ac30_normal', 'deluxe_reverb', 'twin_65', 'bassbreaker_1830'}  # drawn by hand (VectorCraft) or by circuits_hand.py
 NO_DRAWING = {'nam_loader', 'gk_800rb', 'jazz_clean_120'}  # no tubes: the page shows blocks
 MAX_TUBES = 8
 POWER_PARAMS = {'presence'}
