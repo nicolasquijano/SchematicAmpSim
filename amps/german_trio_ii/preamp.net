@@ -1,0 +1,80 @@
+* German Trio II (3-channel 100 W German head: Clean / Crunch / Lead) preamp, stage 1 of 5: the guitar, V1A (shared by the three channels)
+* and the input networks of the channels up to the wiper of each gain pot. Transcribed from the service manual drawing.
+*
+* The relays that pick the channel (contacts CL, CR, LE) are the SW_ resistors, set by the "channel" selector in amp.json.
+* Clean: CL -> EQ (220p and 100k from the contact, HIGH 250k, LOW 250k and MID 25k as variable resistors, 100n, 47n) -> GAIN CLEAN 1M (with the
+* BRIGHT 100p) -> V1B (stage 2).
+* Crunch and Lead: 562k || 2.2n, the contact, then the gain pot. Crunch has 150k and 82k5 in front of its 100k pot and a 1n bright cap from
+* the pot's input to its wiper; Lead drives its 250k pot directly with a 1n bright cap. Both feed V2A (stage 3) from the wiper (node g2).
+* The two pots are one element here (VRG: 100k for Crunch, 250k for Lead, changed by the selector) because the plug-in has one set of knobs
+* for both channels.
+*
+* The V1 rail is a fixed source at the value that gives the 185 V the drawing shows on V1A's plate.
+* Units: k M, m u n p. Node "0" is ground. See engine/include/sas/netlist.h for the format.
+
+V VRAIL x 100 380
+V VX1 x1 50 357
+I VIN gin 1
+R RSRC gin in 7k
+* The guitar behind its source impedance (see the other amps): coil, winding capacitance, loss, cable.
+R RPU1 gin pkb1 1e12
+.xfmr LPU1 L=2.5
+  W pkb1 in 1 pu
+.end
+R RPU2 gin pkb2 1e12
+.xfmr LPU2 L=5
+  W pkb2 in 1 pu
+.end
+C CPU gin in 110p
+R RPL gin in 1e12
+R SWK1 in pkk1 1e12
+C CCAB1 pkk1 0 200p
+R SWK2 in pkk2 1e12
+C CCAB2 pkk2 0 400p
+R SWK4 in pkk4 1e12
+C CCAB4 pkk4 0 800p
+
+* V1A: grid straight on the jack with a 1M leak, 221k plate load, 1k82 + 1u cathode, 47n coupling, 1M at the coupling's output.
+R R1M in 0 1M
+T V1A in p1a k1a 12AX7
+R R221 x1 p1a 221k
+R RK1 k1a 0 1k82
+C CK1 k1a 0 1u
+C C47 p1a p1 47n
+R R1MP1 p1 0 1M
+
+* Clean channel: contact CL, then the EQ. 220p to the HIGH pot's top and 100k to the node y; 100n from y to the HIGH pot's bottom (xh);
+* LOW 250kA is a variable resistor from xh to q (wiper tied to its top), 47n from y to q, MID 25kB a variable resistor from q to ground.
+* The HIGH wiper (hw) is the top of GAIN CLEAN 1M; BRIGHT is 100p from there to the pot's wiper (V1B's grid).
+R SW_CL p1 n0 1
+R RC100 n0 y 100k
+C CC220 n0 hh 220p
+R VRCH_T hh hw 1
+R VRCH_B hw xh 1
+C CC100n y xh 100n
+R VRCL xh q 1
+C CC47n y q 47n
+R VRCM q 0 1
+R VRGC_T hw gw 1
+R VRGC_B gw 0 1
+C CBR hw bs 100p
+R SW_BRIGHT bs gw 1e12
+
+* Crunch: 562k || 2.2n, contact CR, 150k and 82k5 into the gain pot, 1n bright cap to the wiper.
+R R562c p1 x1c 562k
+C C22c p1 x1c 2.2n
+R SW_CR x1c xc 1e12
+R R150 xc jc 150k
+R R82k5 jc 0 82.5k
+R SW_JC jc gj 1e12
+C CB1c xc g2 1n
+* Lead: the same 562k || 2.2n and contact LE, straight onto the pot, 1n bright cap.
+R R562l p1 x1l 562k
+C C22l p1 x1l 2.2n
+R SW_LE x1l xl 1e12
+R SW_JL xl gj 1e12
+C CB1l xl g2 1n
+* The shared gain pot and V2A's grid leak.
+R VRG_T gj g2 1
+R VRG_B g2 0 1
+R R1MG2 g2 0 1M

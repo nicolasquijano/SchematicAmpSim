@@ -59,6 +59,16 @@ public:
     juce::String editableText(int i) const { return shownText(drawings_[std::size_t(view_)].values[std::size_t(editableIndex(i))]); }
     void editValue(int i, int dir) { stepValue(drawings_[std::size_t(view_)].values[std::size_t(editableIndex(i))], dir); }
     void applyEdits();
+    // The preamp tubes of the drawing shown that can be swapped: how many, the name of one, the model it has now, one step on to the next model
+    // (1) or back (-1), and the mouse being over one (the tip appears).
+    int tubeCount() const { return hasDrawing() ? int(drawings_[std::size_t(view_)].tubes.size()) : 0; }
+    juce::String tubeKey(int i) const { return drawings_[std::size_t(view_)].tubes[std::size_t(i)].key; }
+    juce::String tubeModel(int i) const { const auto& t = drawings_[std::size_t(view_)].tubes[std::size_t(i)]; return tubeOptions(t)[tubeChoice(t)]; }
+    void editTube(int i, int dir) { stepTube(drawings_[std::size_t(view_)].tubes[std::size_t(i)], dir); }
+    void hoverTube(int i) { tubeHover_ = i; repaint(); }
+    void hoverValue(int i) { valueHover_ = i < 0 ? -1 : editableIndex(i); repaint(); }  // for the tests: the mouse is on this component
+    // What the component does in the circuit (the role the page tells the user about when the mouse is on it); empty when unknown.
+    juce::String roleOf(const juce::String& name) const { const auto it = roles_.find(name); return it == roles_.end() ? juce::String() : it->second; }
 
     // The meters span this many dB below the stage's limit.
     static constexpr float kRangeDb = 48.0f;
@@ -116,6 +126,14 @@ private:
             std::size_t stage = 0;
         };
         std::vector<Diode> diodes;  // "diode_<stage>_<n>": lit by the level of that stage
+        struct Tube {
+            juce::Drawable* item = nullptr;
+            juce::String key, drawn;  // the name in the netlist ("V1A", or "V1" for both sections) and the model as drawn
+            bool follower = false;
+            bool phase = false;   // the phase inverter of the power amp
+            bool output = false;  // an output tube: shown with the tip, chosen with the POWER TUBES selector
+        };
+        std::vector<Tube> tubes;  // the preamp triodes the user can swap for another model
         std::vector<Value> values;  // "valL_<n>_<text>": the value of a component, in small type (L: starts at the anchor, R: ends there, C: centred)
         std::map<juce::String, juce::Drawable*> labels;  // "lbl_<param>": where a pot's name and value go when not under it
     };
@@ -156,6 +174,23 @@ private:
     std::map<juce::String, double> pending_;  // the factors asked for and not yet given to the processor
     juce::uint32 applyAtMs_ = 0;
     int valueHover_ = -1, valueDrag_ = -1;
+    struct TubeInfo {
+        juce::String model;
+        bool follower = false;  // its plate is on the supply: a cathode follower
+    };
+    std::map<juce::String, TubeInfo> tubes_;       // the triodes of the preamp's netlists, by element name
+    std::map<juce::String, TubeInfo> powerTubes_;  // and of the power amp's (the phase inverter)
+    bool loadingPower_ = false;
+    juce::String outputTubeName() const;  // the output tube the amp is set to
+    int tubeHover_ = -1, tubeDown_ = -1;
+    juce::Point<float> tubeDownAt_;
+    int tubeAt(juce::Point<float> pos) const;
+    juce::StringArray tubeOptions(const Drawing::Tube& t) const;  // the models it can take: the one as drawn first
+    int tubeChoice(const Drawing::Tube& t) const;
+    void stepTube(const Drawing::Tube& t, int dir);
+    void paintTipBox(juce::Graphics&, juce::Rectangle<float> anchor, const juce::String& title, const juce::String& body, const juce::String& hint, bool edited);
+    std::map<juce::String, juce::String> roles_;  // component name -> what it does ("plate", "cathode", ...), read from the preamp's netlists
+    void paintTip(juce::Graphics&, const Drawing&, const Drawing::Value&);
     float valueDragY_ = 0.0f;
     static inline bool showValues_ = true;  // the values of the components: shown or hidden, kept for the session
     std::vector<std::map<juce::String, double>> jackRes_;              // per jack: the switch resistors it sets

@@ -1,7 +1,10 @@
 #include "CircuitPage.h"
 
 #include <algorithm>
+#include <array>
 #include <cmath>
+#include <set>
+#include <sstream>
 
 #include "I18n.h"
 
@@ -53,6 +56,96 @@ double stepE12(double v, int dir) {
         if (e12[i] < m * 0.99) return e12[i] * std::pow(10.0, e);
     return 8.2 * std::pow(10.0, e - 1.0);
 }
+
+// What each component of the preamp does, read from where it sits in the netlists: a resistor from a plate to a supply is a plate load, one from a
+// cathode to ground a cathode resistor, a capacitor across it a bypass, and so on. The names repeat from stage to stage only for the same part.
+void classifyNetlist(const std::string& text, std::map<juce::String, juce::String>& roles, std::map<juce::String, std::pair<juce::String, bool>>& tubes) {
+    struct El {
+        std::string name, a, b;
+        bool cap;
+    };
+    std::vector<El> els;
+    std::set<std::string> grids, plates, cathodes, screens, supplies;
+    std::vector<std::array<std::string, 3>> opamps;  // plus, minus, out
+    struct Triode {
+        std::string name, model, plate;
+    };
+    std::vector<Triode> triodes;
+    std::istringstream in(text);
+    std::string line;
+    while (std::getline(in, line)) {
+        if (const auto c = line.find(';'); c != std::string::npos) line.resize(c);
+        std::istringstream ls(line);
+        std::vector<std::string> t;
+        for (std::string w; ls >> w;) t.push_back(w);
+        if (t.size() < 4 || t[0][0] == '*') continue;
+        const auto& kind = t[0];
+        if (kind == "R" || kind == "C") els.push_back({t[1], t[2], t[3], kind == "C"});
+        else if (kind == "T" && t.size() >= 5) {
+            grids.insert(t[2]); plates.insert(t[3]); cathodes.insert(t[4]);
+            triodes.push_back({t[1], t.size() > 5 ? t[5] : std::string(), t[3]});
+        }
+        else if (kind == "P" && t.size() >= 6) { grids.insert(t[2]); plates.insert(t[3]); screens.insert(t[4]); cathodes.insert(t[5]); }
+        else if ((kind == "O" || kind == "U") && t.size() >= 5) opamps.push_back({t[2], t[3], t[4]});
+        else if (kind == "V") supplies.insert(t[2]);
+    }
+    auto ground = [](const std::string& n) { return n == "0" || n == "gnd"; };
+    std::set<std::pair<std::string, std::string>> resistorPairs;  // the nodes of every resistor and pot section
+    for (const auto& e : els)
+        if (!e.cap) resistorPairs.insert({std::min(e.a, e.b), std::max(e.a, e.b)});
+    auto has = [](const std::set<std::string>& s, const std::string& n) { return s.count(n) != 0; };
+    for (const auto& tt : triodes) tubes[juce::String(tt.name)] = {juce::String(tt.model), has(supplies, tt.plate)};
+    for (const auto& e : els) {
+        if (e.name.rfind("SW_", 0) == 0 || e.name.rfind("VR", 0) == 0) continue;
+        const bool anyGround = ground(e.a) || ground(e.b);
+        auto touches = [&](const std::set<std::string>& s) { return has(s, e.a) || has(s, e.b); };
+        auto other = [&](const std::set<std::string>& s) { return has(s, e.a) ? e.b : e.a; };
+        const char* role = nullptr;
+        bool feedback = false;
+        for (const auto& o : opamps) feedback = feedback || ((e.a == o[1] && e.b == o[2]) || (e.b == o[1] && e.a == o[2]));
+        if (feedback) {
+            role = e.cap ? "feedback_c" : "feedback_r";
+        } else if (e.cap) {
+            if (touches(cathodes)) role = "bypass";
+            else if ((has(supplies, e.a) && ground(e.b)) || (has(supplies, e.b) && ground(e.a))) role = "filter";
+            else if (resistorPairs.count({std::min(e.a, e.b), std::max(e.a, e.b)}) != 0) role = "bright";
+            else if (anyGround) role = "shunt_c";
+            else role = touches(plates) || touches(grids) ? "coupling" : "tone_c";
+        } else if (touches(plates) && has(supplies, other(plates))) {
+            role = "plate";
+        } else if (touches(cathodes)) {
+            role = "cathode";
+        } else if (touches(screens)) {
+            role = "screen";
+        } else if (touches(grids)) {
+            role = anyGround ? "grid_leak" : "grid_stopper";
+        } else {
+            role = anyGround ? "shunt_r" : "series_r";
+        }
+        roles[juce::String(e.name)] = role;
+    }
+}
+
+struct RoleText {
+    const char *role, *title, *body;
+};
+const RoleText kRoleTexts[] = {
+    {"plate", "Plate load", "Sets the gain of this stage. More ohms: more gain, earlier clipping and a little less treble. Fewer: cleaner and brighter."},
+    {"cathode", "Cathode resistor", "Sets the tube's bias. More ohms: less current, colder and tighter, with less gain. Fewer: hotter and fatter, with more gain."},
+    {"bypass", "Cathode bypass", "Lets the stage keep its gain at low frequencies. More capacity: fatter, more bass and gain. Less: tighter and thinner."},
+    {"grid_leak", "Grid leak", "Loads the stage before it. Fewer ohms: less level and less bass. More ohms: more level, but the tube can block when pushed hard."},
+    {"grid_stopper", "Grid stopper", "With the tube's own capacitance it filters the highs and softens the clipping. More ohms: darker and smoother."},
+    {"screen", "Screen resistor", "Limits the screen current. More ohms: softer, with less power. Fewer: harder and with more power."},
+    {"series_r", "Series resistor", "Part of the signal path, it forms a divider or a filter with its neighbours. More ohms: less level and a darker tone."},
+    {"shunt_r", "Resistor to ground", "Divides or loads the signal with the parts around it. More ohms: more level and less loading. Fewer: less level."},
+    {"coupling", "Coupling capacitor", "Passes the signal on and blocks the DC. More capacity: more bass gets through. Less: tighter and thinner."},
+    {"tone_c", "Tone capacitor", "Sets the frequency where the tone network acts. More capacity: the corner moves down, with more bass. Less: it moves up."},
+    {"shunt_c", "Capacitor to ground", "Sends highs to ground. More capacity: darker. Less: brighter."},
+    {"bright", "Bright capacitor", "Lets the highs skip a resistor or a pot. More capacity: more bite, above all with the control turned down. Less: subtler."},
+    {"filter", "Supply filter", "Smooths the supply. Less capacity: more hum and more sag. More: steadier."},
+    {"feedback_r", "Feedback resistor", "Sits in the op-amp's loop. More ohms: more gain. Fewer: less gain and a cleaner stage."},
+    {"feedback_c", "Feedback capacitor", "Rolls off the highs of the op-amp stage. More capacity: darker. Less: brighter."},
+};
 }  // namespace
 
 CircuitPage::CircuitPage(SasProcessor& processor, const AmpLookAndFeel& look) : processor_(processor), look_(look) {
@@ -115,6 +208,29 @@ void CircuitPage::collect(Drawing& dr, juce::Drawable& d) {
     } else if (id.startsWith("tube_")) {
         const auto rest = id.fromFirstOccurrenceOf("tube_", false, false);  // "V1", or "PA-EL34": what follows the dash is the name shown
         dr.tags.push_back({&d, rest.contains("-") ? rest.fromFirstOccurrenceOf("-", false, false) : rest, 1});
+        // A triode of the preamp (its name is an element of the netlist, or the envelope of two: V1 for V1A and V1B) can be swapped for another model.
+        const auto key = rest.upToFirstOccurrenceOf("-", false, false);
+        Drawing::Tube tube;
+        for (const auto& [name, info] : loadingPower_ ? powerTubes_ : tubes_) {  // in the power amp, "PI" is the phase inverter: its triodes
+            const bool match = name == key || (name.length() == key.length() + 1 && name.startsWith(key) && juce::CharacterFunctions::isUpperCase(name.getLastCharacter()))
+                               || (loadingPower_ && key == "PI");
+            if (!match) continue;
+            if (tube.key.isEmpty()) {
+                tube.key = key;
+                tube.drawn = info.model;
+                tube.follower = info.follower;
+                tube.phase = loadingPower_;
+            }
+        }
+        if (tube.key.isEmpty() && loadingPower_ && key.isNotEmpty()) {  // the other tubes of the power amp are the output tubes
+            tube.key = key;
+            tube.drawn = rest.contains("-") ? rest.fromFirstOccurrenceOf("-", false, false) : key;
+            tube.output = true;
+        }
+        if (tube.key.isNotEmpty()) {
+            tube.item = &d;
+            dr.tubes.push_back(tube);
+        }
     } else if (id == "jack_in") {
         dr.tags.push_back({&d, "INPUT", 0});
     } else if (id.startsWith("jack_") && !id.endsWith("_hole")) {  // an amp with several inputs: "jack_BRIGHT" is named BRIGHT
@@ -173,7 +289,9 @@ void CircuitPage::load(int which, const sas::AmpDef& def) {
     if (!dr.art) return;
     host_.addChildComponent(*dr.art);
     dr.art->setInterceptsMouseClicks(false, false);
+    loadingPower_ = which == powerIndex();
     collect(dr, *dr.art);
+    loadingPower_ = false;
     for (const auto& t : dr.tags) {  // a pot whose name is a knob of the amp is a live control
         if (!t.item->getName().startsWith("pot_")) continue;
         const auto name = t.item->getName().fromFirstOccurrenceOf("pot_", false, false);
@@ -192,6 +310,20 @@ void CircuitPage::load(int which, const sas::AmpDef& def) {
 
 void CircuitPage::setAmp(const sas::AmpDef& def) {
     pending_.clear();
+    roles_.clear();
+    tubes_.clear();
+    std::map<juce::String, std::pair<juce::String, bool>> found;
+    classifyNetlist(def.preamp.netlistText, roles_, found);
+    for (const auto& st : def.preamp.stages) classifyNetlist(st.netlistText, roles_, found);
+    for (const auto& [name, info] : found) tubes_[name] = {info.first, info.second};
+    powerTubes_.clear();
+    {
+        std::map<juce::String, juce::String> unused;
+        std::map<juce::String, std::pair<juce::String, bool>> foundPower;
+        classifyNetlist(def.power.netlistText, unused, foundPower);
+        for (const auto& [name, info] : foundPower) powerTubes_[name] = {info.first, info.second};
+    }
+    tubeHover_ = tubeDown_ = -1;
     ampIndex_ = 0;
     for (std::size_t i = 0; i < processor_.amps().size(); ++i)
         if (processor_.amps()[i].id == def.id) ampIndex_ = int(i);
@@ -349,6 +481,49 @@ int CircuitPage::valueAt(juce::Point<float> pos) const {
     const auto& dr = drawings_[std::size_t(view_)];
     for (std::size_t i = 0; i < dr.values.size(); ++i)
         if (dr.values[i].name.isNotEmpty() && valueBox(dr, dr.values[i]).expanded(2.0f).contains(pos)) return int(i);
+    return -1;
+}
+
+// The triode models a tube can be swapped for (the engine's list: factor 2 is the first). The model as drawn comes first.
+static const char* const kTubeModels[] = {"12AX7", "12AT7", "12AY7"};
+
+juce::StringArray CircuitPage::tubeOptions(const Drawing::Tube& t) const {
+    juce::StringArray o;
+    o.add(t.drawn);
+    for (const auto* m : kTubeModels)
+        if (t.drawn != m) o.add(m);
+    return o;
+}
+
+int CircuitPage::tubeChoice(const Drawing::Tube& t) const {
+    const int k = int(std::lround(factorOf("T:" + t.key))) - 2;
+    if (k < 0 || k >= int(std::size(kTubeModels))) return 0;
+    const auto o = tubeOptions(t);
+    return std::max(0, o.indexOf(kTubeModels[k]));
+}
+
+juce::String CircuitPage::outputTubeName() const {
+    const auto& tubes = processor_.amps()[std::size_t(ampIndex_)].power.tubes;
+    if (tubes.empty()) return {};
+    return juce::String(tubes[std::size_t(juce::jlimit(0, int(tubes.size()) - 1, processor_.wantedCondition(0, false).tube))].name);
+}
+
+void CircuitPage::stepTube(const Drawing::Tube& t, int dir) {
+    if (t.output) return;  // the output tubes are chosen with the selector
+    const auto o = tubeOptions(t);
+    const int next = (tubeChoice(t) + dir + o.size()) % o.size();
+    double f = 1.0;  // back on the tube as drawn: no edit
+    if (next > 0)
+        for (int k = 0; k < int(std::size(kTubeModels)); ++k)
+            if (o[next] == kTubeModels[k]) f = 2.0 + k;
+    setPending("T:" + t.key, f);
+}
+
+int CircuitPage::tubeAt(juce::Point<float> pos) const {
+    if (!hasDrawing() || view_ >= int(drawings_.size()) || !host_.getBounds().toFloat().contains(pos)) return -1;
+    const auto& dr = drawings_[std::size_t(view_)];
+    for (std::size_t i = 0; i < dr.tubes.size(); ++i)
+        if (dr.tubes[i].item->getDrawableBounds().transformedBy(dr.fit).expanded(4.0f).contains(pos)) return int(i);
     return -1;
 }
 
@@ -510,6 +685,14 @@ void CircuitPage::nudgePot(int i, float delta) {
 }
 
 void CircuitPage::mouseMove(const juce::MouseEvent& e) {
+    if (const int ti = tubeAt(e.position); ti != tubeHover_) {
+        tubeHover_ = ti;
+        repaint();
+    }
+    if (tubeHover_ >= 0) {
+        setMouseCursor(juce::MouseCursor::PointingHandCursor);
+        return;
+    }
     if (const int vi = valueAt(e.position); vi >= 0 || valueHover_ >= 0) {
         if (vi != valueHover_) {
             valueHover_ = vi;
@@ -531,6 +714,14 @@ void CircuitPage::mouseMove(const juce::MouseEvent& e) {
 }
 
 void CircuitPage::mouseExit(const juce::MouseEvent&) {
+    if (tubeHover_ >= 0) {
+        tubeHover_ = -1;
+        repaint();
+    }
+    if (valueHover_ >= 0) {
+        valueHover_ = -1;
+        repaint();
+    }
     if (hover_.drawing >= 0 && drag_.drawing < 0) {
         hover_ = {};
         repaint();
@@ -538,6 +729,11 @@ void CircuitPage::mouseExit(const juce::MouseEvent&) {
 }
 
 void CircuitPage::mouseDown(const juce::MouseEvent& e) {
+    tubeDown_ = tubeAt(e.position);
+    if (tubeDown_ >= 0) {  // a click on a tube takes the next model when the button goes up
+        tubeDownAt_ = e.position;
+        return;
+    }
     valueDrag_ = valueAt(e.position);
     if (valueDrag_ >= 0) {
         valueDragY_ = e.position.y;
@@ -564,6 +760,7 @@ void CircuitPage::mouseDown(const juce::MouseEvent& e) {
 }
 
 void CircuitPage::mouseDrag(const juce::MouseEvent& e) {
+    if (tubeDown_ >= 0) return;
     if (valueDrag_ >= 0) {  // one step of the series for every 9 pixels
         const auto& v = drawings_[std::size_t(view_)].values[std::size_t(valueDrag_)];
         while (valueDragY_ - e.position.y >= 9.0f) {
@@ -591,6 +788,13 @@ void CircuitPage::mouseDrag(const juce::MouseEvent& e) {
 }
 
 void CircuitPage::mouseUp(const juce::MouseEvent& e) {
+    if (tubeDown_ >= 0) {
+        const int i = tubeDown_;
+        tubeDown_ = -1;
+        if (e.position.getDistanceFrom(tubeDownAt_) < 5.0f && i < int(drawings_[std::size_t(view_)].tubes.size()))
+            stepTube(drawings_[std::size_t(view_)].tubes[std::size_t(i)], e.mods.isShiftDown() ? -1 : 1);
+        return;
+    }
     if (valueDrag_ >= 0) {
         valueDrag_ = -1;
         mouseMove(e);
@@ -609,6 +813,11 @@ void CircuitPage::mouseUp(const juce::MouseEvent& e) {
 }
 
 void CircuitPage::mouseDoubleClick(const juce::MouseEvent& e) {
+    if (const int ti = tubeAt(e.position); ti >= 0) {  // a tube goes back to the drawn model
+        tubeDown_ = -1;
+        if (!drawings_[std::size_t(view_)].tubes[std::size_t(ti)].output) setPending("T:" + drawings_[std::size_t(view_)].tubes[std::size_t(ti)].key, 1.0);
+        return;
+    }
     if (const int vi = valueAt(e.position); vi >= 0) {  // a component's value goes back to the drawn one
         setPending(drawings_[std::size_t(view_)].values[std::size_t(vi)].name, 1.0);
         return;
@@ -635,6 +844,10 @@ void CircuitPage::mouseDoubleClick(const juce::MouseEvent& e) {
 }
 
 void CircuitPage::mouseWheelMove(const juce::MouseEvent& e, const juce::MouseWheelDetails& w) {
+    if (const int ti = tubeAt(e.position); ti >= 0 && w.deltaY != 0.0f) {
+        stepTube(drawings_[std::size_t(view_)].tubes[std::size_t(ti)], w.deltaY > 0 ? 1 : -1);
+        return;
+    }
     if (const int vi = valueAt(e.position); vi >= 0 && w.deltaY != 0.0f) {
         stepValue(drawings_[std::size_t(view_)].values[std::size_t(vi)], w.deltaY > 0 ? 1 : -1);
         return;
@@ -679,7 +892,17 @@ void CircuitPage::paintOverChildren(juce::Graphics& g) {
     for (const auto& t : dr.tags) {
         const auto b = t.item->getDrawableBounds().transformedBy(dr.fit);
         g.setColour(look_.label());
-        const juce::String text = tr(t.text);
+        juce::String text = tr(t.text);
+        for (const auto& tb : dr.tubes) {
+            if (tb.item != t.item) continue;
+            if (tb.output) {  // an output tube: the one the amp is set to, in the accent colour when it is not the stock one
+                if (const auto name = outputTubeName(); name.isNotEmpty()) text = name;
+                if (processor_.wantedCondition(0, false).tube > 0) g.setColour(look_.accent());
+            } else if (tubeChoice(tb) > 0) {  // a tube the user swapped: its new model, in the accent colour
+                text = tubeOptions(tb)[tubeChoice(tb)];
+                g.setColour(look_.accent());
+            }
+        }
         if (t.kind == 1) g.drawText(text, juce::Rectangle<float>(b.getRight() + 6.0f, b.getCentreY() - 8.0f, 70.0f, 16.0f).toNearestInt(), juce::Justification::centredLeft);
         else if (const auto name = t.item->getName(); name.startsWith("pot_") && dr.labels.count(name.fromFirstOccurrenceOf("pot_", false, false)) != 0) {
             const auto c = dr.labels.at(name.fromFirstOccurrenceOf("pot_", false, false))->getDrawableBounds().transformedBy(dr.fit).getCentre();
@@ -727,8 +950,68 @@ void CircuitPage::paintOverChildren(juce::Graphics& g) {
             g.drawEllipse(b.expanded(4.0f), 2.0f);
         }
     }
+    if (valueHover_ >= 0 && showValues_ && valueDrag_ < 0 && valueHover_ < int(dr.values.size())) paintTip(g, dr, dr.values[std::size_t(valueHover_)]);
+    else if (tubeHover_ >= 0 && tubeHover_ < int(dr.tubes.size())) {  // what the tube is, what its model does, and how to swap it
+        const auto& tb = dr.tubes[std::size_t(tubeHover_)];
+        if (tb.output) {
+            const auto name = outputTubeName().isEmpty() ? tb.drawn : outputTubeName();
+            const auto up = name.toUpperCase();
+            juce::String body = up.startsWith("EL34") ? tr("The British output tube: strong, a little hard mids and an early, aggressive breakup.")
+                              : up.startsWith("6L6") ? tr("The American output tube: more headroom and a fuller low end, with a rounder breakup.")
+                              : up.startsWith("6550") ? tr("A big, stiff tube: the most power and headroom, tight lows and a controlled breakup.")
+                              : up.startsWith("6V6") ? tr("A small, smooth tube: it breaks up early with a sweet compression, and has little power.")
+                              : up.startsWith("EL84") ? tr("The small British tube of the Vox amps: chime, bright mids and an early, lively breakup.")
+                                                      : juce::String();
+            paintTipBox(g, tb.item->getDrawableBounds().transformedBy(dr.fit), tr("Output tube") + "  " + name, body, tr("Change them with the POWER TUBES selector."), processor_.wantedCondition(0, false).tube > 0);
+        } else {
+        const int choice = tubeChoice(tb);
+        const auto model = tubeOptions(tb)[choice];
+        juce::String body = model == "12AT7" ? tr("Medium gain (mu 60) and a lower plate resistance: cleaner, with more headroom and a tighter low end.")
+                          : model == "12AY7" ? tr("Low gain (mu 40): soft and clean, the tube of the early tweeds. A lot more headroom.")
+                          : model == "12AX7" || model == "ECC83" ? tr("High gain (mu 100): the usual preamp tube, with the most gain and the earliest breakup.")
+                                                                 : juce::String();
+        if (tb.phase) body = tr("The phase inverter splits the signal for the two output tubes. Its model changes the headroom of the power stage and how early it breaks up.") + (body.isEmpty() ? "" : " ") + body;
+        if (tb.follower) body += (body.isEmpty() ? "" : " ") + tr("This one is a cathode follower: it hardly adds gain, so another model changes little.");
+        paintTipBox(g, tb.item->getDrawableBounds().transformedBy(dr.fit), tr("Tube") + "  " + tb.key + "  " + model + (choice > 0 ? "  (" + tb.drawn + ")" : juce::String()), body,
+                    tr("Click or wheel: another model. Double-click: back to the drawn one."), choice > 0);
+        }
+    }
     g.restoreState();
     paintStrip(g, strip_);
+}
+
+// The tip over a component the mouse is on: what it is, and what a bigger or a smaller value does to the sound.
+void CircuitPage::paintTip(juce::Graphics& g, const Drawing& dr, const Drawing::Value& v) {
+    const auto role = roleOf(v.name);
+    const RoleText* text = nullptr;
+    for (const auto& r : kRoleTexts)
+        if (role == r.role) text = &r;
+    if (!text) return;
+    const bool edited = std::abs(factorOf(v.name) - 1.0) > 1e-6;
+    paintTipBox(g, valueBox(dr, v), tr(text->title) + "  " + v.name + "  " + shownText(v) + (edited ? "  (" + v.text + ")" : juce::String()), tr(text->body),
+                tr("Wheel or drag: change the value. Double-click: back to the drawn one."), edited);
+}
+
+// The box of a tip near `anchor`: a title line, what it does, and how to change it.
+void CircuitPage::paintTipBox(juce::Graphics& g, juce::Rectangle<float> anchor, const juce::String& title, const juce::String& body, const juce::String& hint, bool edited) {
+    juce::AttributedString s;
+    s.setJustification(juce::Justification::topLeft);
+    s.append(title + "\n", AmpLookAndFeel::font(11.5f, true), edited ? look_.accent() : look_.text());
+    s.append(body + "\n", AmpLookAndFeel::font(10.5f), look_.text().withAlpha(0.9f));
+    s.append(hint, AmpLookAndFeel::font(9.5f), look_.label());
+    juce::TextLayout layout;
+    layout.createLayout(s, 250.0f);
+    const float w = layout.getWidth() + 16.0f, h = layout.getHeight() + 12.0f;
+    const auto area = host_.getBounds().toFloat();
+    float x = anchor.getCentreX() - w * 0.5f, y = anchor.getBottom() + 10.0f;
+    if (y + h > area.getBottom()) y = anchor.getY() - h - 10.0f;  // no room below: above it
+    x = juce::jlimit(area.getX() + 4.0f, std::max(area.getX() + 4.0f, area.getRight() - w - 4.0f), x);
+    const auto box = juce::Rectangle<float>(x, y, w, h);
+    g.setColour(look_.background().darker(0.4f).withAlpha(0.96f));
+    g.fillRoundedRectangle(box, 5.0f);
+    g.setColour(look_.accent().withAlpha(0.8f));
+    g.drawRoundedRectangle(box, 5.0f, 1.0f);
+    layout.draw(g, box.reduced(8.0f, 6.0f));
 }
 
 // The stages as a row of horizontal bars (the schematic's meters): the name, the bar with its recent peak, the level in dB.

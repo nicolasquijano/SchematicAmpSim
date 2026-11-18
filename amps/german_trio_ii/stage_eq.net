@@ -1,0 +1,51 @@
+* German Trio II preamp, stage 4 of 5 (Crunch and Lead): V3A, the V3B cathode follower, 220n, and the tone stack and VOLUME of the channel.
+* V2B's plate arrives through the link source VV3; its coupling network (22n, 332k, 221k) is repeated.
+*
+* The two channels have the same stack (the drawing repeats it with the same values, one set of pots serves both):
+* e0 -> 22n -> b (10k to ground) and, through the MID pot (100kB) and a second 22n, to b as well; the MID wiper goes through 100p to the top of the
+* HIGH pot (1MB) and through 100k to c; LOW 1MB sits between c (1n across its upper half) and lb (1n across its lower half, and a 4.7n through
+* the switch BASS), its wiper (d) is joined by 100k to the HIGH wiper (hw), which is also the top of VOLUME 1MA; lb has 10k to ground, the
+* HIGH pot's bottom 2.2n to ground.
+* V3A 221k plate load, 1k82 + 1u; V3B is a follower (plate on the rail, 100k cathode resistor) at 200 V.
+* The volume's wiper (vw) goes through the contact (CR or LE) to V4A in stage 5, with its loads repeated.
+
+V VRAIL x 100 380
+V VX3 x3 50 392
+C C33u x3 0 33u
+S VV3 p2b 1 0
+C C22b p2b n2 22n
+R R332 n2 0 332k
+R R221b n2 g3a 221k
+T V3A g3a p3a k3a 12AX7
+R R3A x3 p3a 221k
+R RK3A k3a 0 1k82
+C CK3A k3a 0 1u
+T V3B p3a x3 k3b 12AX7
+R RK3B k3b 0 100k
+C C220 k3b e0 220n
+R R1ME e0 0 1M
+
+* Tone stack.
+C CE22a e0 b 22n
+R VRM_T e0 mw 1
+R VRM_B mw mb 1
+C CE22b mb b 22n
+R RE10a b 0 10k
+C CE100p mw hh 100p
+R RE100a mw lc 100k
+R VRL_T lc ld 1
+R VRL_B ld lb 1
+C CE1a lc ld 1n
+C CE1b lb ld 1n
+R SW_BASS lb sb 1e12
+C CE4n7 sb ld 4.7n
+R RE10b lb 0 10k
+R VRH_T hh hw 1
+R VRH_B hw hr 1
+C CE22n hr 0 2.2n
+R RE100b ld hw 100k
+R VRV_T hw vw 1
+R VRV_B vw 0 1
+R R1MV vw 0 1M
+C C100n vw gl 100n
+R R1MG gl 0 1M

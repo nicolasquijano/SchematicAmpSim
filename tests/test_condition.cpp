@@ -170,3 +170,35 @@ TEST_CASE("the user's edits of components scale the preamp's resistors and capac
     CHECK(applyCondition(def, Condition{}).preamp.netlistText == def.preamp.netlistText);
     Chain chain(out, 48000.0);  // the edited circuits still build
 }
+
+TEST_CASE("the user's choice of a preamp tube changes its model, for one section or for the whole envelope") {
+    const auto def = loadEmbeddedAmp("german_trio_ii");
+    auto line = [](const AmpDef& d, const char* tube) {  // the T line of `tube` in any stage of the preamp
+        std::vector<const std::string*> texts{&d.preamp.netlistText};
+        for (const auto& s : d.preamp.stages) texts.push_back(&s.netlistText);
+        for (const auto* t : texts)
+            if (const auto at = t->find(std::string("T ") + tube + " "); at != std::string::npos) return t->substr(at, t->find('\n', at) - at);
+        return std::string();
+    };
+    CHECK(line(def, "V1A").find("12AX7") != std::string::npos);
+    Condition c;
+    c.parts = {{"T:V1A", 3.0}, {"T:V2", 4.0}};  // V1A -> 12AT7; both sections of V2 -> 12AY7
+    const auto out = applyCondition(def, c);
+    CHECK(line(out, "V1A").find("12AT7") != std::string::npos);
+    CHECK(line(out, "V2A").find("12AY7") != std::string::npos);
+    CHECK(line(out, "V2B").find("12AY7") != std::string::npos);
+    CHECK(line(out, "V3A").find("12AX7") != std::string::npos);  // the others stay
+    Chain chain(out, 48000.0);  // and the circuit still builds
+}
+
+TEST_CASE("the user's choice of the phase inverter's tube reaches the power amp's netlist and nothing else of it") {
+    const auto def = loadEmbeddedAmp("german_trio_ii");
+    Condition c;
+    c.parts = {{"T:PI", 3.0}, {"R221A", 2.0}};  // the phase inverter -> 12AT7; a resistor of the power amp stays as it is
+    const auto out = applyCondition(def, c);
+    CHECK(out.power.netlistText.find("T V5A g5a pa kc 12AT7") != std::string::npos);
+    CHECK(out.power.netlistText.find("T V5B g5b pb kc 12AT7") != std::string::npos);
+    CHECK(out.power.netlistText.find("R R221A pga bias 221k") != std::string::npos);
+    CHECK(out.preamp.netlistText.find("12AT7") == std::string::npos);  // "PI" means the power amp's triodes only
+    Chain chain(out, 48000.0);
+}

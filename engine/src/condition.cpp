@@ -1,8 +1,10 @@
 #include "sas/condition.h"
 
 #include <algorithm>
+#include <cctype>
 #include <cmath>
 #include <cstdint>
+#include <iterator>
 #include <set>
 #include <sstream>
 
@@ -39,7 +41,9 @@ std::vector<std::string> tokens(const std::string& s) {
 
 struct Rules {
     Condition cond;
-    const std::map<std::string, double>* parts = nullptr;  // the user's edits (preamp only)
+    const std::map<std::string, double>* parts = nullptr;  // the user's edits (preamp only; in the power amp only the choice of tube)
+    bool tubesOnly = false;  // `parts` is read for the triode models alone
+    bool power = false;      // the power amp's netlist: the key "T:PI" is every triode of it (the phase inverter)
     double wear = 0.0;
     std::set<std::string> protectedResistors;
     const PowerTubeDef* tube = nullptr;
@@ -50,9 +54,27 @@ struct Rules {
 std::string factor(const std::string& v, double f) { return "(" + v + ")*" + num(f); }
 
 double editFactor(const Rules& r, const std::string& name) {
-    if (!r.parts) return 1.0;
+    if (!r.parts || r.tubesOnly) return 1.0;
     const auto it = r.parts->find(name);
     return it == r.parts->end() || !(it->second > 0.0) ? 1.0 : it->second;
+}
+
+// The preamp triode models a tube can be swapped for: the user's edit "T:<tube>" is 2 + the index here (1 would be "as drawn", which is no edit).
+// The tube is a netlist element name ("V1A") or its envelope ("V1" for V1A and V1B).
+constexpr const char* kTriodes[] = {"12AX7", "12AT7", "12AY7"};
+
+int tubeModelIndex(const Rules& r, const std::string& name) {
+    if (!r.parts) return -1;
+    auto look = [&](const std::string& key) {
+        const auto it = r.parts->find("T:" + key);
+        if (it == r.parts->end()) return -1;
+        const int i = int(std::lround(it->second)) - 2;
+        return i >= 0 && i < int(std::size(kTriodes)) ? i : -1;
+    };
+    if (const int i = look(name); i >= 0) return i;
+    if (name.size() > 1 && std::isupper(static_cast<unsigned char>(name.back())))
+        if (const int i = look(name.substr(0, name.size() - 1)); i >= 0) return i;
+    return r.power ? look("PI") : -1;
 }
 
 // Rewrites one netlist line (comment already cut off); returns it unchanged when no rule applies.
@@ -93,9 +115,12 @@ std::string rewriteLine(const std::string& line, const Rules& r) {
         }
         case 'T': {
             if (t.size() != 6 && t.size() != 7) return line;
+            const int swapped = tubeModelIndex(r, t[1]);
+            if (swapped >= 0) t[5] = kTriodes[swapped];
             double f = 1.0 - 0.15 * r.wear;  // preamp tubes lose some emission, hence some gain
             if (r.cond.unit > 0) f *= 1.0 + 0.05 * unitNoise(r.cond.unit, 'T', t[1]);
-            if (f == 1.0) return line;
+            if (f == 1.0 && swapped < 0) return line;
+            if (f == 1.0) break;
             const std::string base = t.size() == 7 ? t[6] : "1";
             if (t.size() == 6) t.push_back("");
             t[6] = factor(base, f);
@@ -189,7 +214,11 @@ AmpDef applyCondition(const AmpDef& def, const Condition& c) {
     };
     preamp(out.preamp);
     if (out.hasEcoPreamp) preamp(out.ecoPreamp);
-    out.power.netlistText = rewriteNetlist(def.power.netlistText, r);
+    Rules pw = r;
+    pw.parts = &c.parts;  // the phase inverter's tube can be swapped (nothing else of the power amp is edited)
+    pw.tubesOnly = true;
+    pw.power = true;
+    out.power.netlistText = rewriteNetlist(def.power.netlistText, pw);
     out.power.supply.reservoirFarads = def.power.supply.reservoirFarads * (1.0 - 0.45 * r.wear);
     return out;
 }

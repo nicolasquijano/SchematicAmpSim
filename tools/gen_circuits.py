@@ -500,7 +500,7 @@ def pots_for_channel(d, ch):
     return pots
 
 
-CHAIN_AMPS = {'american_5153', 'superlead_100', 'lead_c_plus', 'triplestack_3ch', 'british_dual100', 'jcm900_2100', 'highgain_120', 'german_ultra', 'german_trio',
+CHAIN_AMPS = {'american_5153', 'superlead_100', 'lead_c_plus', 'triplestack_3ch', 'british_dual100', 'jcm900_2100', 'highgain_120', 'german_ultra', 'german_trio', 'german_trio_ii',
               'modbe_100', 'jcm800_2203kk', 'afd100', 'svt_bass300', 'boutique_od', 'jazz_clean_120', 'gk_800rb'}  # drawn from the netlist as a chain with its networks (gen_chain.py)
 
 

@@ -1,0 +1,26 @@
+* German Trio preamp, stage 3 of 5 (Crunch and Lead): V2A and V2B. V2A's grid line (node g2 of the first stage, the wiper of the gain pot)
+* arrives through the link source VG2 and goes through the 475k stopper. V2B's plate drives the next stage's input network through
+* 22n: 332k to ground and 221k to V3A's grid, repeated here as its load.
+*
+* V2A: 100k plate load (245 V), 1k82 with 3u3. V2B: 100k plate load (345 V) with 1n across it, 39k2 cathode, no bypass; its grid sits behind
+* 22n, 475k and a 221k leak. The rails are fixed sources chosen to reproduce the drawing's plate voltages.
+
+V VRAIL x 100 380
+V VX2 x2 50 355
+V VX2B x2b 50 358
+S VG2 g2 1 0
+R R475a g2 g2a 475k
+T V2A g2a p2a k2a 12AX7
+R R2A x2 p2a 100k
+R RK2A k2a 0 1k82
+C CK2A k2a 0 3.3u
+C C22a p2a a2 22n
+R R475b a2 g2b 475k
+R R221g g2b 0 221k
+T V2B g2b p2b k2b 12AX7
+R R2B x2b p2b 100k
+C C1n x2b p2b 1n
+R RK2B k2b 0 39k2
+C C22b p2b n2 22n
+R R332 n2 0 332k
+R R221b n2 g3a 221k

@@ -4040,6 +4040,7 @@ TEST_CASE("the circuit page lets the user change the values of the components", 
     auto& page = se->circuitPage();
     const int amp = p.selectedAmpIndex();
     REQUIRE(page.editableCount() > 10);
+    for (int i = 0; i < page.editableCount(); ++i) CHECK(page.roleOf(page.editableName(i)).isNotEmpty());  // the tip has something to say about each one
     const auto name = page.editableName(0);
     const auto before = page.editableText(0);
     page.editValue(0, 1);  // one step up in the E12 series
@@ -4048,6 +4049,7 @@ TEST_CASE("the circuit page lets the user change the values of the components", 
     if (const char* dir = std::getenv("SAS_SCREENSHOT_DIR")) {  // what an edited value looks like
         page.editValue(3, 1);
         page.editValue(3, 1);
+        page.hoverValue(3);
         page.tick();
         const auto img = ed->createComponentSnapshot(ed->getLocalBounds(), true, 1.0f);
         juce::File(dir).createDirectory();
@@ -4057,6 +4059,7 @@ TEST_CASE("the circuit page lets the user change the values of the components", 
             out.truncate();
             juce::PNGImageFormat().writeImageToStream(img, out);
         }
+        page.hoverValue(-1);
         page.editValue(3, -1);
         page.editValue(3, -1);
     }
@@ -4095,4 +4098,91 @@ TEST_CASE("the circuit page shows the channel the amp is set to", "[ui]") {
     param->setValueNotifyingHost(param->convertTo0to1(0.0f));
     page.tick();
     CHECK(page.view() == page.channelCount());
+}
+TEST_CASE("the circuit page lets the user swap the model of a preamp tube", "[ui]") {
+    JuceInit init;
+    SasProcessor p;
+    for (std::size_t i = 0; i < p.amps().size(); ++i)
+        if (p.amps()[i].id == "german_trio_ii") setParam(p, "amp", float(i));
+    p.prepareToPlay(48000.0, 512);
+    std::unique_ptr<juce::AudioProcessorEditor> ed(p.createEditor());
+    auto* se = dynamic_cast<SasEditor*>(ed.get());
+    REQUIRE(se != nullptr);
+    ed->setSize(1000, 560);
+    se->selectPage(2);
+    auto& page = se->circuitPage();
+    const int amp = p.selectedAmpIndex();
+    REQUIRE(page.tubeCount() >= 2);
+    const auto drawn = page.tubeModel(0);
+    const auto key = page.tubeKey(0);
+    page.editTube(0, 1);  // the next model
+    CHECK(page.tubeModel(0) != drawn);
+    CHECK(p.partEditCount(amp) == 0);  // it waits for the last step, like the values
+    page.applyEdits();
+    CHECK(p.partEditCount(amp) == 1);
+    CHECK(p.partFactor(amp, ("T:" + key).toStdString()) > 1.5);
+    page.editTube(0, -1);  // and back to the drawn one
+    CHECK(page.tubeModel(0) == drawn);
+    page.applyEdits();
+    CHECK(p.partEditCount(amp) == 0);
+    if (const char* dir = std::getenv("SAS_SCREENSHOT_DIR")) {  // what the tip of a tube looks like
+        page.editTube(0, 1);
+        page.hoverTube(0);
+        page.tick();
+        const auto img = ed->createComponentSnapshot(ed->getLocalBounds(), true, 1.0f);
+        juce::File(dir).createDirectory();
+        juce::FileOutputStream out(juce::File(dir).getChildFile("circuit_tube.png"));
+        if (out.openedOk()) {
+            out.setPosition(0);
+            out.truncate();
+            juce::PNGImageFormat().writeImageToStream(img, out);
+        }
+    }
+}
+
+TEST_CASE("the power amp drawing: the phase inverter's tube can be swapped and the output tubes have their tip", "[ui]") {
+    JuceInit init;
+    SasProcessor p;
+    for (std::size_t i = 0; i < p.amps().size(); ++i)
+        if (p.amps()[i].id == "german_trio_ii") setParam(p, "amp", float(i));
+    p.prepareToPlay(48000.0, 512);
+    std::unique_ptr<juce::AudioProcessorEditor> ed(p.createEditor());
+    auto* se = dynamic_cast<SasEditor*>(ed.get());
+    REQUIRE(se != nullptr);
+    ed->setSize(1000, 560);
+    se->selectPage(2);
+    auto& page = se->circuitPage();
+    const int amp = p.selectedAmpIndex();
+    REQUIRE(page.hasPowerDrawing());
+    page.setView(page.channelCount());
+    REQUIRE(page.tubeCount() == 3);  // the phase inverter and the two output tubes
+    int pi = -1;
+    for (int i = 0; i < page.tubeCount(); ++i)
+        if (page.tubeKey(i) == "PI") pi = i;
+    REQUIRE(pi >= 0);
+    const auto drawn = page.tubeModel(pi);
+    page.editTube(pi, 1);
+    CHECK(page.tubeModel(pi) != drawn);
+    page.applyEdits();
+    CHECK(p.partFactor(amp, "T:PI") > 1.5);
+    for (int i = 0; i < page.tubeCount(); ++i)
+        if (i != pi) {  // an output tube is not swapped from the page
+            const auto before = page.tubeModel(i);
+            page.editTube(i, 1);
+            CHECK(page.tubeModel(i) == before);
+        }
+    page.applyEdits();
+    CHECK(p.partEditCount(amp) == 1);
+    if (const char* dir = std::getenv("SAS_SCREENSHOT_DIR")) {
+        page.hoverTube(pi);
+        page.tick();
+        const auto img = ed->createComponentSnapshot(ed->getLocalBounds(), true, 1.0f);
+        juce::File(dir).createDirectory();
+        juce::FileOutputStream out(juce::File(dir).getChildFile("circuit_power_tube.png"));
+        if (out.openedOk()) {
+            out.setPosition(0);
+            out.truncate();
+            juce::PNGImageFormat().writeImageToStream(img, out);
+        }
+    }
 }
