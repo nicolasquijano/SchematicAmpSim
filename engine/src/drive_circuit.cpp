@@ -34,6 +34,7 @@ DriveCircuit::DriveCircuit(Built&& b, DriveModel model, double fs, DriveSolve so
     solver_.tolerance = 2e-6;
     solver_.chord = true;
     if (solve == DriveSolve::Fast && model == DriveModel::SuperOverdrive) fast_ = std::make_unique<SuperOverdriveFast>(oversampleFactor(model) * fs);
+    if (solve == DriveSolve::Fast && model == DriveModel::Rat) fastRat_ = std::make_unique<RatFast>(oversampleFactor(model) * fs);
     controls_.drive = -1.0;  // force the first setControls to apply
     setControls(TsControls{});
 }
@@ -49,6 +50,11 @@ void DriveCircuit::setControls(const TsControls& c) {
     }
     auto clamp01 = [](double v) { return std::clamp(v, 0.0, 1.0); };
     const double drive = clamp01(c.drive), tone = clamp01(c.tone), level = clamp01(c.level);
+    if (fastRat_) {  // DISTORTION: 100k audio taper; FILTER: 100k audio taper (clockwise is darker, so TONE is the reverse); VOLUME: 100k audio taper
+        const double lv = potTaper(Taper::Log, level);
+        fastRat_->setParts(100e3 * potTaper(Taper::Log, drive), 100e3 * potTaper(Taper::Log, 1.0 - tone), 100e3 * (1.0 - lv), 100e3 * lv);
+        return;
+    }
     if (model_ == DriveModel::Ds1) {
         // DIST: 100k linear, the wiper moves from the top (gain 1) to the bottom (gain 22) as the knob goes clockwise. TONE: 20k linear, the wiper goes from the low-pass end (counter-clockwise)
         // to the high-pass end. LEVEL: 100k linear, the wiper goes up with the knob.
@@ -89,6 +95,10 @@ void DriveCircuit::setControls(const TsControls& c) {
 void DriveCircuit::process(float* x, std::size_t n) {
     if (fast_) {
         for (std::size_t i = 0; i < n; ++i) x[i] = os_.process(x[i], [&](float s) { return float(fast_->process(double(s))); });
+        return;
+    }
+    if (fastRat_) {
+        for (std::size_t i = 0; i < n; ++i) x[i] = os_.process(x[i], [&](float s) { return float(fastRat_->process(double(s))); });
         return;
     }
     for (std::size_t i = 0; i < n; ++i)

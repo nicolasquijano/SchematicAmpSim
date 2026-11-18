@@ -88,8 +88,12 @@ int main() {
         auto d = std::make_shared<sas::DriveCircuit>(sas::DriveModel::BluesDriver, fs);
         return [d](float* l, float*, std::size_t n) { d->process(l, n); };
     });
-    row("overdrive (RAT, circuit)", [](double fs) {
+    row("overdrive (RAT, analytic)", [](double fs) {
         auto d = std::make_shared<sas::DriveCircuit>(sas::DriveModel::Rat, fs);
+        return [d](float* l, float*, std::size_t n) { d->process(l, n); };
+    });
+    row("overdrive (RAT, circuit)", [](double fs) {
+        auto d = std::make_shared<sas::DriveCircuit>(sas::DriveModel::Rat, fs, sas::DriveSolve::Circuit);
         return [d](float* l, float*, std::size_t n) { d->process(l, n); };
     });
     row("overdrive (DS-1, circuit)", [](double fs) {
