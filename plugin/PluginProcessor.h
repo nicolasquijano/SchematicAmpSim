@@ -93,6 +93,7 @@ inline constexpr const char* pitchFine = "pitch_fine";   // and in cents
 inline constexpr const char* gateOn = "gate_on";
 inline constexpr const char* gateThreshold = "gate_threshold";
 inline constexpr const char* gateRelease = "gate_release";
+inline constexpr const char* sag = "sag";      // the supply's softness, 5 = as drawn: lower is stiffer, higher gives way more under a loud signal
 inline constexpr const char* bias = "bias";    // output-tube bias, 5 = as drawn (amps with a bias supply)
 inline constexpr const char* tube = "tube";    // output tube type: 0 = the amp's own, else one of tubeTypes (the amp's list may differ in order)
 inline constexpr const char* tubeTypes[] = {"Stock", "EL34", "6L6GC", "6550"};
@@ -389,6 +390,14 @@ public:
     void applyModulePreset(sas::ModuleType type, int index, int instance = 0);
     // A factory preset of the amp that the instance has selected (amp.json "presets", worked out with tools/amp_presets.cpp): knobs, channel, switches.
     void applyAmpPreset(int index, int instance = 0);
+    // The user's presets of an amp: its knobs, channel, switches, condition (tubes, bias, sag, wear, unit) and the edits of its circuit (the values of the
+    // components and the models of the tubes), kept as one small file per preset under presetFolder()/Amps/<amp id>/. Message thread.
+    static juce::File ampPresetFolder(const std::string& ampId);
+    juce::StringArray userAmpPresets(int instance = 0) const;  // the names, sorted
+    bool saveUserAmpPreset(const juce::String& name, int instance = 0);
+    bool applyUserAmpPreset(const juce::String& name, int instance = 0);
+    bool deleteUserAmpPreset(const juce::String& name, int instance = 0);
+    void setPartFactors(int amp, const std::map<std::string, double>& factors);  // the edits of the amp's circuit, all at once
     // The preset an amp comes up with when it is picked: Clean for the clean amps, Crunch for the crunch amps, Lead (the solo) for the high-gain amps; nothing for the others.
     void applyDefaultAmpPreset(int instance = 0);
     // Back to the amp's own (stock) power tubes: what choosing another amp does, so a tube picked for one amp does not follow the player to the next.

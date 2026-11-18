@@ -41,7 +41,7 @@ void wireIndex(juce::ComboBox& box, SasProcessor& p, const juce::String& id) {
 
 AmpPanelB::AmpPanelB(SasProcessor& p)
     : processor_(p), input_(p.apvts, pid(ids::input, kInstance).toRawUTF8(), "INPUT dB"), cable_(p.apvts, pid(ids::cable, kInstance).toRawUTF8(), "CABLE m"),
-      bias_(p.apvts, pid(ids::bias, kInstance).toRawUTF8(), "BIAS"), wear_(p.apvts, pid(ids::wear, kInstance).toRawUTF8(), "WEAR") {
+      bias_(p.apvts, pid(ids::bias, kInstance).toRawUTF8(), "BIAS"), sag_(p.apvts, pid(ids::sag, kInstance).toRawUTF8(), "SAG"), wear_(p.apvts, pid(ids::wear, kInstance).toRawUTF8(), "WEAR") {
     caption(*this, ampCaption_, tr("AMP B"));
     fillCombo(*this, ampBox_, p, ids::amp, kInstance, ampAtt_);
     ampBox_.setComponentID("amp_b_select");
@@ -81,7 +81,7 @@ AmpPanelB::AmpPanelB(SasProcessor& p)
         selCaption_[i].setVisible(false);
         wireIndex(selBox_[i], p, pid(ids::sel[i], kInstance));
     }
-    for (auto* k : {&input_, &cable_, &bias_, &wear_}) addAndMakeVisible(*k);
+    for (auto* k : {&input_, &cable_, &bias_, &sag_, &wear_}) addAndMakeVisible(*k);
     input_.setComponentID("amp_b_input");
     note_.setText(tr("The second amp has its own controls, circuits and condition. A NAM Loader amp here plays the model loaded in the first one."), juce::dontSendNotification);
     note_.setFont(AmpLookAndFeel::font(10.5f));
@@ -200,6 +200,7 @@ void AmpPanelB::resized() {
             tube_.setBounds(col1.removeFromTop(24));
             bias_.setBounds(in.removeFromLeft(75));
         }
+        sag_.setBounds(in.removeFromLeft(75));
         auto col2 = in.removeFromLeft(120);
         col2.removeFromLeft(10);
         noiseCaption_.setBounds(col2.removeFromTop(16));

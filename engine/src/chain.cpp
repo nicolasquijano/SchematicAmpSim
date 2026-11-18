@@ -38,6 +38,7 @@ Chain::Chain(const AmpDef& def, double fs)
     }
     presence_.reset(def.power.presenceDefault, fs, 40.0);
     bias_.reset(1.0, fs, 40.0);
+    sag_.reset(1.0, fs, 40.0);
     tsDrive_.reset(0.5, fs, 40.0);
     tsTone_.reset(0.5, fs, 40.0);
     tsLevel_.reset(0.5, fs, 40.0);
@@ -58,6 +59,7 @@ void Chain::setSettings(const ChainSettings& s) {
         powerKnobs_[i].setTarget(std::clamp(s.powerKnobs[i], 0.0, 1.0));
     presence_.setTarget(std::clamp(s.presence, 0.0, 1.0));
     bias_.setTarget(std::clamp(s.bias, 0.5, 1.5));
+    sag_.setTarget(std::clamp(s.sag, 0.2, 5.0));
     tsDrive_.setTarget(std::clamp(s.tsDrive, 0.0, 1.0));
     tsTone_.setTarget(std::clamp(s.tsTone, 0.0, 1.0));
     tsLevel_.setTarget(std::clamp(s.tsLevel, 0.0, 1.0));
@@ -109,6 +111,7 @@ void Chain::snap(const ChainSettings& s) {
         powerKnobs_[i].reset(std::clamp(s.powerKnobs[i], 0.0, 1.0), fs_, 40.0);
     presence_.reset(std::clamp(s.presence, 0.0, 1.0), fs_, 40.0);
     bias_.reset(std::clamp(s.bias, 0.5, 1.5), fs_, 40.0);
+    sag_.reset(std::clamp(s.sag, 0.2, 5.0), fs_, 40.0);
     tsDrive_.reset(std::clamp(s.tsDrive, 0.0, 1.0), fs_, 40.0);
     tsTone_.reset(std::clamp(s.tsTone, 0.0, 1.0), fs_, 40.0);
     tsLevel_.reset(std::clamp(s.tsLevel, 0.0, 1.0), fs_, 40.0);
@@ -172,12 +175,14 @@ void Chain::processAmp(const float* mono, float* out, std::size_t n) {
             for (std::size_t k = 0; k < powerKnobs_.size(); ++k) powerScratch_[k] = std::clamp(powerKnobs_[k].nextStep(steps), 0.0, 1.0);
             const double presence = std::clamp(presence_.nextStep(steps), 0.0, 1.0);
             const double bias = bias_.nextStep(steps);
+            const double sag = sag_.nextStep(steps);
             const TsControls ts{std::clamp(tsDrive_.nextStep(steps), 0.0, 1.0), std::clamp(tsTone_.nextStep(steps), 0.0, 1.0),
                                 std::clamp(tsLevel_.nextStep(steps), 0.0, 1.0)};
             switch (quality) {
                 case Quality::Normal:
                     amp2_->setKnobs(knobScratch_, presence, powerScratch_);
                     amp2_->power().setBias(bias);
+                    amp2_->power().setSag(sag);
                     amp2_->setJack(target_.jack);
                     for (std::size_t i = 0; i < target_.selectors.size(); ++i) amp2_->setSelector(i, target_.selectors[i]);
                     amp2_->setVibrato(target_.vibratoOn, target_.vibratoSpeed);
@@ -188,6 +193,7 @@ void Chain::processAmp(const float* mono, float* out, std::size_t n) {
                 case Quality::High:
                     amp4_->setKnobs(knobScratch_, presence, powerScratch_);
                     amp4_->power().setBias(bias);
+                    amp4_->power().setSag(sag);
                     amp4_->setJack(target_.jack);
                     for (std::size_t i = 0; i < target_.selectors.size(); ++i) amp4_->setSelector(i, target_.selectors[i]);
                     amp4_->setVibrato(target_.vibratoOn, target_.vibratoSpeed);
@@ -198,6 +204,7 @@ void Chain::processAmp(const float* mono, float* out, std::size_t n) {
                 case Quality::Efficient:
                     split_->setKnobs(knobScratch_, presence, powerScratch_);
                     split_->power().setBias(bias);
+                    split_->power().setSag(sag);
                     split_->setJack(target_.jack);
                     for (std::size_t i = 0; i < target_.selectors.size(); ++i) split_->setSelector(i, target_.selectors[i]);
                     split_->setVibrato(target_.vibratoOn, target_.vibratoSpeed);
@@ -207,6 +214,7 @@ void Chain::processAmp(const float* mono, float* out, std::size_t n) {
                     break;
                 case Quality::Lite:
                     lite_->setKnobs(knobScratch_, presence, powerScratch_);
+                    lite_->power().setSag(sag);
                     lite_->setJack(target_.jack);
                     for (std::size_t i = 0; i < target_.selectors.size(); ++i) lite_->setSelector(i, target_.selectors[i]);
                     lite_->setVibrato(target_.vibratoOn, target_.vibratoSpeed);
@@ -216,6 +224,7 @@ void Chain::processAmp(const float* mono, float* out, std::size_t n) {
                     break;
                 case Quality::Eco:
                     eco_->setKnobs(knobScratch_, presence, powerScratch_);
+                    eco_->power().setSag(sag);
                     eco_->setJack(target_.jack);
                     for (std::size_t i = 0; i < target_.selectors.size(); ++i) eco_->setSelector(i, target_.selectors[i]);
                     eco_->setVibrato(target_.vibratoOn, target_.vibratoSpeed);

@@ -202,3 +202,20 @@ TEST_CASE("the user's choice of the phase inverter's tube reaches the power amp'
     CHECK(out.preamp.netlistText.find("12AT7") == std::string::npos);  // "PI" means the power amp's triodes only
     Chain chain(out, 48000.0);
 }
+
+TEST_CASE("the sag control softens the supply: the B+ gives way more under a loud signal") {
+    const auto def = loadEmbeddedAmp("german_trio_ii");
+    auto htUnderLoad = [&](double sag) {
+        PowerAmp pa(def, kFs);
+        pa.setSag(sag);
+        double low = 1e9;
+        for (std::size_t i = 0, n = std::size_t(1.0 * kFs); i < n; ++i) {
+            pa.process(i > std::size_t(0.3 * kFs) ? 18.0 * std::sin(2.0 * 3.14159265358979 * 110.0 * double(i) / kFs) : 0.0);
+            if (i > std::size_t(0.6 * kFs)) low = std::min(low, pa.ht());
+        }
+        return low;
+    };
+    const double stiff = htUnderLoad(0.33), asDrawn = htUnderLoad(1.0), soft = htUnderLoad(3.0);
+    CHECK(stiff > asDrawn);
+    CHECK(asDrawn > soft + 3.0);
+}

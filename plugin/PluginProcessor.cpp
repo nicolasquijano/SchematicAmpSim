@@ -114,6 +114,7 @@ Layout SasProcessor::createLayout(const std::vector<sas::AmpDef>& defs) {
     l.add(knob(ids::speaker, "Speaker dynamics", 0.0f));
     l.add(std::make_unique<juce::AudioParameterBool>(juce::ParameterID{ids::speakerIntense, kVersion}, "Speaker dynamics intense", false));
     l.add(knob(ids::bias, "Bias", 5.0f));
+    l.add(knob(ids::sag, "Sag", 5.0f));
     l.add(std::make_unique<juce::AudioParameterChoice>(juce::ParameterID{ids::tube, kVersion}, "Power tubes", juce::StringArray{ids::tubeTypes[0], ids::tubeTypes[1], ids::tubeTypes[2], ids::tubeTypes[3]}, 0));
     l.add(std::make_unique<juce::AudioParameterChoice>(juce::ParameterID{ids::noise, kVersion}, "Noise and hum", juce::StringArray{"Off", "Low", "Real"}, 0));
     l.add(std::make_unique<juce::AudioParameterInt>(juce::ParameterID{ids::wear, kVersion}, "Wear", 0, 10, 0,
@@ -228,6 +229,19 @@ void SasProcessor::setPartFactor(int amp, const std::string& name, double factor
                 it->second = factor;
             }
         }
+    }
+    partsRev_[std::size_t(amp)].fetch_add(1);
+}
+
+void SasProcessor::setPartFactors(int amp, const std::map<std::string, double>& factors) {
+    if (amp < 0 || amp >= int(defs_.size())) return;
+    std::map<std::string, double> clean;
+    for (const auto& [name, f] : factors)
+        if (f >= 0.1 && f <= 10.0 && std::abs(f - 1.0) > 1e-6) clean[name] = f;
+    {
+        const juce::ScopedLock lock(partsLock_);
+        if (parts_[std::size_t(amp)] == clean) return;
+        parts_[std::size_t(amp)] = std::move(clean);
     }
     partsRev_[std::size_t(amp)].fetch_add(1);
 }
@@ -502,6 +516,7 @@ sas::ChainSettings SasProcessor::readSettings(bool irAvailable, int instance) {
     s.pickup = int(raw(ids::pickup) + 0.5);
     s.cableMeters = int(raw(ids::cable) + 0.5);
     s.bias = 0.75 + 0.05 * raw(ids::bias);
+    s.sag = std::pow(3.0, (raw(ids::sag) - 5.0) / 5.0);  // 0 = a third of the rectifier's resistance, 5 = as drawn, 10 = three times
     s.speaker = raw(ids::speaker) / 10.0;
     s.speakerIntense = raw(ids::speakerIntense) > 0.5;
     if (def.nam) {

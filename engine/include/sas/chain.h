@@ -55,6 +55,7 @@ struct ChainSettings {
     bool speakerIntense = false;
     double noise = 0.0;    // hiss and hum level: 0 off, 1 a typical amp
     double bias = 1.0;     // output-tube bias supply, 1 = as drawn (amps with a bias control; full circuits only)
+    double sag = 1.0;      // the supply's softness: 1 = as drawn, 3 = three times the rectifier's resistance (in the Lite modes, three times the sag)
     // The NAM loader amp (AmpDef::nam): the model to run (owned by the plugin, which keeps it alive until a block after it is replaced; null =
     // the amp passes the signal through), the drive into it and the level out of it in dB, and whether it is brought to a common loudness.
     NamModel* nam = nullptr;
@@ -149,7 +150,7 @@ private:
     std::vector<Smoother> knobs_, powerKnobs_;
     // The gain at the amp's input that the jack (when the level match is on) and the selected selector positions ask for, in dB.
     double inputCompDb(std::size_t jack, bool levelMatch, const std::vector<std::size_t>& selectors) const;
-    Smoother bias_, presence_, tsDrive_, tsTone_, tsLevel_, inputDb_, outputDb_, jackCompDb_;
+    Smoother bias_, sag_, presence_, tsDrive_, tsTone_, tsLevel_, inputDb_, outputDb_, jackCompDb_;
     std::vector<double> knobScratch_, powerScratch_;
 };
 

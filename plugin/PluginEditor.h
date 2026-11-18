@@ -265,7 +265,7 @@ private:
     std::vector<std::unique_ptr<KnobWithLabel>> ampKnobs_;  // first row of the amp unit, from the amp's "ui" block
     KnobWithLabel input_, output_;
     KnobWithLabel cable_;
-    KnobWithLabel bias_, wear_, speaker_, blend_;
+    KnobWithLabel bias_, sag_, wear_, speaker_, blend_;
     KnobWithLabel tunerRef_, stereoWidth_, doubleAmount_, doubleTime_;
     juce::TextButton presets_{"Presets"};
     void showPresetMenu();
@@ -322,7 +322,7 @@ private:
     std::unique_ptr<juce::FileChooser> chooser_;
     std::unique_ptr<AmpPanelB> ampPanelB_;          // the second amp and cabinet of a parallel (their units host them)
     std::unique_ptr<CabinetPanelB> cabPanelB_;
-    juce::Rectangle<int> cpuBounds_;
+    juce::Rectangle<int> cpuBounds_, titleBounds_;  // the amp's name: what is left of the header to the left of the level meters
     std::unique_ptr<CircuitPage> circuitPage_;
     std::unique_ptr<RackPage> rackPage_;  // declared last: it goes first, and lets go of the panels
 

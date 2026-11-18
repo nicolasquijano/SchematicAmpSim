@@ -2254,7 +2254,7 @@ TEST_CASE("the editor has the Rack and Tuner pages, and the amp's condition live
     REQUIRE(ed != nullptr);
     base->setSize(1100, 700);
     CHECK(ed->pageNames() == juce::StringArray{"Rack", "Tuner", "Circuit"});
-    for (const char* id : {"cond_tube", "cond_bias", "cond_wear", "cond_unit", "cond_noise"}) {
+    for (const char* id : {"cond_tube", "cond_bias", "cond_sag", "cond_wear", "cond_unit", "cond_noise"}) {
         auto* c = findById(*base, id);
         REQUIRE(c != nullptr);
         CHECK(c->findParentComponentOfClass<RackPage>() != nullptr);  // inside the rack page, not beside it
@@ -2542,7 +2542,7 @@ TEST_CASE("the second amp and cabinet have parameters of their own, like the fir
     JuceInit init;
     SasProcessor p;
     for (const char* id : {"amp", "volume", "volume2", "bass", "middle", "treble", "presence", "master", "power", "resonance", "vib_speed", "vib_intensity", "vib_on", "input", "quality",
-                           "jack", "sel1", "sel4", "pickup", "cable", "tube", "wear", "unit", "noise", "bias", "speaker", "speaker_intense", "cab", "cab_on", "ir_blend", "ir_width",
+                           "jack", "sel1", "sel4", "pickup", "cable", "tube", "wear", "unit", "noise", "bias", "sag", "speaker", "speaker_intense", "cab", "cab_on", "ir_blend", "ir_width",
                            "double_amount", "double_time"}) {
         INFO(id);
         auto* a = p.apvts.getParameter(id);
@@ -4185,4 +4185,38 @@ TEST_CASE("the power amp drawing: the phase inverter's tube can be swapped and t
             juce::PNGImageFormat().writeImageToStream(img, out);
         }
     }
+}
+
+TEST_CASE("an amp's own presets keep the knobs, the condition and the edits of its circuit") {
+    JuceInit init;
+    SasProcessor p;
+    for (std::size_t i = 0; i < p.amps().size(); ++i)
+        if (p.amps()[i].id == "german_trio_ii") setParam(p, "amp", float(i));
+    p.prepareToPlay(48000.0, 512);
+    const int amp = p.selectedAmpIndex();
+    const juce::String name = "sas test preset";
+    p.deleteUserAmpPreset(name);
+    setParam(p, ids::treble, 7.0f);
+    setParam(p, ids::sag, 8.0f);
+    p.setPartFactor(amp, "R221", 1.5);  // a component's value
+    p.setPartFactor(amp, "T:V1A", 3.0);  // a tube's model
+    REQUIRE(p.saveUserAmpPreset(name));
+    CHECK(p.userAmpPresets().contains(name));
+    setParam(p, ids::treble, 2.0f);
+    setParam(p, ids::sag, 5.0f);
+    p.clearPartFactors(amp);
+    REQUIRE(p.applyUserAmpPreset(name));
+    CHECK(p.apvts.getRawParameterValue(ids::treble)->load() == Catch::Approx(7.0f));
+    CHECK(p.apvts.getRawParameterValue(ids::sag)->load() == Catch::Approx(8.0f));
+    CHECK(p.partFactor(amp, "R221") == Catch::Approx(1.5));
+    CHECK(p.partFactor(amp, "T:V1A") == Catch::Approx(3.0));
+    p.setPartFactor(amp, "R221", 2.0);  // a preset without edits clears the ones that were there
+    REQUIRE(p.saveUserAmpPreset(name + " clean"));
+    p.clearPartFactors(amp);
+    p.setPartFactor(amp, "R7", 3.0);
+    REQUIRE(p.applyUserAmpPreset(name + " clean"));
+    CHECK(p.partFactor(amp, "R7") == Catch::Approx(1.0));
+    CHECK(p.deleteUserAmpPreset(name));
+    CHECK(p.deleteUserAmpPreset(name + " clean"));
+    CHECK(!p.userAmpPresets().contains(name));
 }

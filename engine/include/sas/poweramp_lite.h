@@ -52,7 +52,7 @@ public:
 
         // Level follower -> sag.
         env_ += (ax - env_) * (ax > env_ ? attack_ : release_);
-        sag_ = sagFor(env_);
+        sag_ = sagFor(env_) * sagScale_;
 
         // The ceiling falls as drive rises: fitted to the circuit's output rms, which is what is
         // heard (its peaks carry ringing the body of the waveform does not have).
@@ -64,6 +64,8 @@ public:
     // Preamp rail voltage, lowered by the sag.
     double railX() const { return p_.railXIdle - p_.railSagFraction * sag_; }
     double sagVolts() const { return sag_; }
+    // Sag control (1 = as fitted): scales how far the preamp rail gives way.
+    void setSag(double scale) { sagScale_ = scale; }
 
 private:
     static constexpr double kPi = 3.14159265358979323846;
@@ -89,7 +91,7 @@ private:
     FirstOrder highPass_, shelfA_, shelfB_;
     double gain_;
     double presence_ = -1.0;
-    double env_ = 0.0, attack_, release_, sag_ = 0.0;
+    double env_ = 0.0, attack_, release_, sag_ = 0.0, sagScale_ = 1.0;
 };
 
 }  // namespace sas

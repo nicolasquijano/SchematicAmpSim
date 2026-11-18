@@ -27,6 +27,9 @@ public:
     // in a few tens of milliseconds, like turning the trim pot of a real amp.
     bool hasBias() const { return hasBias_; }
     void setBias(double scale) { if (hasBias_) solver_.setSource(srcBias_, biasNominal_ * scale); }
+    // Sag control: multiplies the rectifier's source resistance (1 = as drawn): a larger value is a softer supply that gives way under a loud
+    // signal, a smaller one a stiffer supply.
+    void setSag(double scale) { sagScale_ = scale; }
     // Average plate current of one output tube, in mA (smoothed over about a third of a second).
     double idleMilliamps() const { return idleMa_; }
 
@@ -68,6 +71,7 @@ private:
     std::vector<double> knobValues_;
     Node nodeX_, nodeHt_, nodeOut_;
     double vHt_;  // reservoir voltage
+    double sagScale_ = 1.0;
     double dt_;
     double phase_ = 0.0, dphase_;
     bool hasBias_ = false;

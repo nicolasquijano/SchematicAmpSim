@@ -428,11 +428,40 @@ ModuleUnit::ModuleUnit(SasProcessor& processor, sas::SlotRef slot, const HostedB
             extraB_.onClick = [this] {
                 const auto& amps = processor_.amps();
                 const auto& presets = amps[std::size_t(processor_.selectedAmpIndex(slot_.instance))].presets;
+                const auto mine = processor_.userAmpPresets(slot_.instance);
                 juce::PopupMenu menu;
-                if (presets.empty()) menu.addItem(1, tr("This amp has no presets"), false);
+                if (presets.empty() && mine.isEmpty()) menu.addItem(1, tr("This amp has no presets"), false);
                 for (std::size_t i = 0; i < presets.size(); ++i) menu.addItem(int(i) + 1, tr(presets[i].name.c_str()));
-                menu.showMenuAsync(juce::PopupMenu::Options().withTargetComponent(&extraB_), [this](int choice) {
-                    if (choice > 0) processor_.applyAmpPreset(choice - 1, slot_.instance);
+                if (!mine.isEmpty()) {  // the user's own: the knobs, the condition and the edits of the circuit
+                    menu.addSeparator();
+                    for (int i = 0; i < mine.size(); ++i) menu.addItem(1000 + i, mine[i]);
+                }
+                menu.addSeparator();
+                menu.addItem(900, tr("Save the current settings as a preset..."));
+                if (!mine.isEmpty()) {
+                    juce::PopupMenu del;
+                    for (int i = 0; i < mine.size(); ++i) del.addItem(2000 + i, mine[i]);
+                    menu.addSubMenu(tr("Delete a preset"), del);
+                }
+                menu.showMenuAsync(juce::PopupMenu::Options().withTargetComponent(&extraB_), [this, mine](int choice) {
+                    if (choice >= 2000) {
+                        processor_.deleteUserAmpPreset(mine[choice - 2000], slot_.instance);
+                    } else if (choice >= 1000) {
+                        processor_.applyUserAmpPreset(mine[choice - 1000], slot_.instance);
+                    } else if (choice == 900) {  // asks for a name
+                        auto* w = new juce::AlertWindow(tr("Save the current settings as a preset..."),
+                                                        tr("The knobs, the condition and the edits of the circuit (component values and tubes) are kept with the amp."), juce::MessageBoxIconType::NoIcon);
+                        w->addTextEditor("name", "My preset", tr("Name"));
+                        w->addButton(tr("Save"), 1, juce::KeyPress(juce::KeyPress::returnKey));
+                        w->addButton(tr("Cancel"), 0, juce::KeyPress(juce::KeyPress::escapeKey));
+                        w->enterModalState(true, juce::ModalCallbackFunction::create([this, w](int result) {
+                                               if (result == 1 && !processor_.saveUserAmpPreset(w->getTextEditorContents("name"), slot_.instance))
+                                                   juce::AlertWindow::showMessageBoxAsync(juce::MessageBoxIconType::WarningIcon, "Schematic Amp Sim", tr("Could not write that file."));
+                                           }),
+                                           true);
+                    } else if (choice > 0) {
+                        processor_.applyAmpPreset(choice - 1, slot_.instance);
+                    }
                 });
             };
             break;

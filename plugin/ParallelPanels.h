@@ -31,7 +31,7 @@ private:
     SwitchBox selBox_[6];
     juce::Label ampCaption_, qualityCaption_, jackCaption_, pickupCaption_, tubeCaption_, noiseCaption_, unitCaption_, selCaption_[6], note_;
     std::vector<std::unique_ptr<KnobWithLabel>> knobs_;
-    KnobWithLabel input_, cable_, bias_, wear_;
+    KnobWithLabel input_, cable_, bias_, sag_, wear_;
     std::unique_ptr<juce::AudioProcessorValueTreeState::ComboBoxAttachment> ampAtt_, qualityAtt_, pickupAtt_, noiseAtt_, unitAtt_;
 };
 

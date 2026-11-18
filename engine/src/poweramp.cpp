@@ -154,7 +154,7 @@ double PowerAmp::process(double vin) {
         // Rs u^3 + a u^2 = headroom, which Newton solves monotonically from any point right of the root.
         const double headroom = supply_.vacPeak * std::abs(s) - vHt_;
         if (headroom > 0.0) {
-            const double a = supply_.tubeVolts / std::pow(supply_.tubeAmps, 2.0 / 3.0), rs = supply_.rectSourceOhms;
+            const double a = supply_.tubeVolts / std::pow(supply_.tubeAmps, 2.0 / 3.0), rs = supply_.rectSourceOhms * sagScale_;
             double u = std::min(std::sqrt(headroom / a), std::cbrt(headroom / rs));
             for (int k = 0; k < 4; ++k) {
                 const double f = (rs * u + a) * u * u - headroom;
@@ -163,7 +163,7 @@ double PowerAmp::process(double vin) {
             iRect = u * u * u;
         }
     } else {
-        iRect = std::max((supply_.vacPeak * std::abs(s) - supply_.rectDrop - vHt_) / supply_.rectSourceOhms, 0.0);
+        iRect = std::max((supply_.vacPeak * std::abs(s) - supply_.rectDrop - vHt_) / (supply_.rectSourceOhms * sagScale_), 0.0);
     }
     const double iLoad = (vHt_ - solver_.voltage(nodeHt_)) / supply_.tieOhms;
     vHt_ += dt_ / supply_.reservoirFarads * (iRect - iLoad);

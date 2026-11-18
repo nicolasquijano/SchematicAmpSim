@@ -265,6 +265,78 @@ void SasProcessor::applyAmpPreset(int index, int instance) {
             if (def.preamp.selectors[i].name == name) set(ids::sel[i], double(position));
 }
 
+namespace {
+// The parameters a user preset of an amp keeps: the amp's own knobs, the jack and the selectors, and the condition.
+std::vector<juce::String> userPresetParams(const sas::AmpDef& def) {
+    std::vector<juce::String> v;
+    for (const auto& u : def.ui) v.push_back(juce::String(u.param));
+    v.push_back(ids::jack);
+    for (const char* s : ids::sel) v.push_back(s);
+    for (const char* s : {ids::bias, ids::sag, ids::tube, ids::wear, ids::unit}) v.push_back(s);
+    return v;
+}
+}  // namespace
+
+juce::File SasProcessor::ampPresetFolder(const std::string& ampId) {
+    return presetFolder().getChildFile("Amps").getChildFile(juce::File::createLegalFileName(juce::String(ampId)));
+}
+
+juce::StringArray SasProcessor::userAmpPresets(int instance) const {
+    juce::StringArray names;
+    for (const auto& f : ampPresetFolder(defs_[std::size_t(selectedAmpIndex(instance))].id).findChildFiles(juce::File::findFiles, false, "*.sasamp"))
+        names.add(f.getFileNameWithoutExtension());
+    names.sort(true);
+    return names;
+}
+
+bool SasProcessor::saveUserAmpPreset(const juce::String& name, int instance) {
+    const int amp = selectedAmpIndex(instance);
+    const auto& def = defs_[std::size_t(amp)];
+    const auto legal = juce::File::createLegalFileName(name.trim());
+    if (legal.isEmpty()) return false;
+    juce::XmlElement xml("AmpPreset");
+    xml.setAttribute("amp", juce::String(def.id));
+    for (const auto& base : userPresetParams(def))
+        if (auto* q = apvts.getParameter(RackState::paramId(base.toRawUTF8(), instance))) {
+            auto* e = xml.createNewChildElement("P");
+            e->setAttribute("id", base);
+            e->setAttribute("v", double(q->convertFrom0to1(q->getValue())));
+        }
+    for (const auto& [part, f] : partFactors(amp)) {
+        auto* e = xml.createNewChildElement("PART");
+        e->setAttribute("n", juce::String(part));
+        e->setAttribute("f", f);
+    }
+    const auto file = ampPresetFolder(def.id).getChildFile(legal + ".sasamp");
+    file.getParentDirectory().createDirectory();
+    return file.replaceWithText(xml.toString());
+}
+
+bool SasProcessor::applyUserAmpPreset(const juce::String& name, int instance) {
+    const int amp = selectedAmpIndex(instance);
+    const auto& def = defs_[std::size_t(amp)];
+    const std::unique_ptr<juce::XmlElement> xml(juce::XmlDocument::parse(ampPresetFolder(def.id).getChildFile(juce::File::createLegalFileName(name) + ".sasamp")));
+    if (!xml || !xml->hasTagName("AmpPreset") || xml->getStringAttribute("amp") != juce::String(def.id)) return false;
+    std::map<std::string, double> parts;
+    for (const auto* e : xml->getChildIterator()) {
+        if (e->hasTagName("P")) {
+            if (auto* q = apvts.getParameter(RackState::paramId(e->getStringAttribute("id").toRawUTF8(), instance))) {
+                q->beginChangeGesture();
+                q->setValueNotifyingHost(q->convertTo0to1(float(e->getDoubleAttribute("v"))));
+                q->endChangeGesture();
+            }
+        } else if (e->hasTagName("PART")) {
+            parts[e->getStringAttribute("n").toStdString()] = e->getDoubleAttribute("f", 1.0);
+        }
+    }
+    setPartFactors(amp, parts);  // a preset without edits clears the ones that were there
+    return true;
+}
+
+bool SasProcessor::deleteUserAmpPreset(const juce::String& name, int instance) {
+    return ampPresetFolder(defs_[std::size_t(selectedAmpIndex(instance))].id).getChildFile(juce::File::createLegalFileName(name) + ".sasamp").deleteFile();
+}
+
 void SasProcessor::applyDefaultAmpPreset(int instance) {
     const auto& def = defs_[std::size_t(selectedAmpIndex(instance))];
     const char* wanted = def.category == "clean" ? "Clean" : def.category == "crunch" ? "Crunch" : def.category == "highgain" ? "Lead" : nullptr;

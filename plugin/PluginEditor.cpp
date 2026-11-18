@@ -20,7 +20,7 @@
 SasEditor::SasEditor(SasProcessor& p)
     : AudioProcessorEditor(&p), processor_(p),
       input_(p.apvts, ids::input, "INPUT dB"), output_(p.apvts, ids::output, "OUTPUT dB"), cable_(p.apvts, ids::cable, "CABLE m"),
-      bias_(p.apvts, ids::bias, "BIAS"), wear_(p.apvts, ids::wear, "WEAR"), speaker_(p.apvts, ids::speaker, "DYNAMICS"), blend_(p.apvts, ids::irBlend, "BLEND"),
+      bias_(p.apvts, ids::bias, "BIAS"), sag_(p.apvts, ids::sag, "SAG"), wear_(p.apvts, ids::wear, "WEAR"), speaker_(p.apvts, ids::speaker, "DYNAMICS"), blend_(p.apvts, ids::irBlend, "BLEND"),
       tunerRef_(p.apvts, ids::tunerRef, "REF Hz"), stereoWidth_(p.apvts, ids::irWidth, "WIDTH"), doubleAmount_(p.apvts, ids::doubleAmount, "DOUBLE"),
       doubleTime_(p.apvts, ids::doubleTime, "TIME") {
     setLookAndFeel(&look_);
@@ -194,7 +194,7 @@ SasEditor::SasEditor(SasProcessor& p)
 
     // Who lives where: the left column and the tuner stay with the editor; the amp's controls and the cabinet's go to their panels, which the
     // amp unit and the cabinet unit of the rack page host.
-    for (auto* c : std::initializer_list<juce::Component*>{&input_, &output_, &cable_, &bias_, &wear_, &inBar_, &outBar_, &tubes_, &pickup_, &pickupCaption_,
+    for (auto* c : std::initializer_list<juce::Component*>{&input_, &output_, &cable_, &bias_, &sag_, &wear_, &inBar_, &outBar_, &tubes_, &pickup_, &pickupCaption_,
                                                            &tube_, &tubeCaption_, &noise_, &noiseCaption_, &unit_, &unitCaption_, &idleLabel_, &conditionNote_, &namLoad_, &namClear_,
                                                            &namName_, &namNote_, &selBox_[0], &selBox_[1], &selBox_[2], &selBox_[3], &selBox_[4], &selBox_[5], &selCaption_[0], &selCaption_[1], &selCaption_[2], &selCaption_[3], &selCaption_[4], &selCaption_[5]})
         ampPanel_.addChildComponent(*c);
@@ -202,13 +202,14 @@ SasEditor::SasEditor(SasProcessor& p)
                                                            &stereoWidth_, &doubleAmount_, &doubleTime_, &namCabLoad_, &namCabClear_, &namCabName_, &speaker_, &speakerIntense_})
         cabPanel_.addAndMakeVisible(*c);
     for (auto* c : std::initializer_list<juce::Component*>{multiPanel_.get(), multiSpread_.get(), &multiAlign_, &multiAlignNote_}) cabPanel_.addChildComponent(*c);
-    for (auto* c : std::initializer_list<juce::Component*>{&cable_, &bias_, &wear_, &tubes_, &pickup_, &pickupCaption_,
+    for (auto* c : std::initializer_list<juce::Component*>{&cable_, &bias_, &sag_, &wear_, &tubes_, &pickup_, &pickupCaption_,
                                                            &tube_, &tubeCaption_, &noise_, &noiseCaption_, &unit_, &unitCaption_, &idleLabel_, &conditionNote_})
         c->setVisible(true);
     for (auto* c : std::initializer_list<juce::Component*>{&input_, &output_, &inBar_, &outBar_}) c->setVisible(false);  // their place is the header now
     speaker_.setComponentID("speaker_dynamics");
     tube_.setComponentID("cond_tube");
     bias_.setComponentID("cond_bias");
+    sag_.setComponentID("cond_sag");
     wear_.setComponentID("cond_wear");
     unit_.setComponentID("cond_unit");
     noise_.setComponentID("cond_noise");
@@ -493,6 +494,7 @@ void SasEditor::showAmp(int index) {
     ampPanel_.resized();
     updateKnobActivity();
     if (rackPage_) rackPage_->relayout();
+    if (getWidth() > 0) resized();  // the new name may need another split of the header
     repaint();
 }
 
@@ -831,7 +833,7 @@ void SasEditor::paint(juce::Graphics& g) {
     const int left = 12 + 176;
     g.setColour(look_.accent());
     g.setFont(AmpLookAndFeel::font(26.0f, true, 0.02f));
-    g.drawText(title_, left, 12, getWidth() - left - 12 - 160, 34, juce::Justification::centredLeft);
+    g.drawFittedText(title_, titleBounds_.isEmpty() ? juce::Rectangle<int>(left, 12, getWidth() - left - 12 - 160, 34) : titleBounds_, juce::Justification::centredLeft, 1, 0.5f);
     g.setGradientFill(juce::ColourGradient(look_.accent().withAlpha(0.7f), float(left), 0.0f, look_.accent().withAlpha(0.0f), float(getWidth() - 12), 0.0f, false));
     g.fillRect(float(left), 49.0f, float(getWidth() - 12 - left), 1.0f);
 }
@@ -897,7 +899,16 @@ void SasEditor::resized() {
         head.removeFromRight(14);
         // The meters and the level knobs: always there, whatever the page. From the right: the cost, then out (bar, knob, label), then in.
         const int row = head.getCentreY();
-        constexpr int kKnob = 66, kBar = 104;
+        constexpr int kKnob = 66;
+        // The amp's name has the left of the header. In a narrow window the level bars give up width (down to a stub) until the name fits; if it still
+        // does not, the name is squeezed (see paint).
+        auto groupWidth = [](int bar) { return 74 + 2 * (bar + 4 + kKnob + 4 + 32) + 14; };
+        juce::GlyphArrangement titleGlyphs;
+        titleGlyphs.addLineOfText(juce::Font(AmpLookAndFeel::font(26.0f, true, 0.02f)), title_, 0.0f, 0.0f);
+        const int need = int(titleGlyphs.getBoundingBox(0, -1, true).getWidth()) + 24;
+        int kBar = 104;
+        while (kBar > 24 && head.getWidth() - groupWidth(kBar) < need) kBar -= 8;
+        titleBounds_ = {head.getX(), 12, std::max(40, head.getWidth() - groupWidth(kBar) - 6), 34};
         int x = head.getRight();
         x -= 74;
         cpuBounds_ = {x, row - 8, 70, 16};
@@ -1097,6 +1108,7 @@ void SasEditor::layoutAmpPanel() {
             idleLabel_.setBounds(col1.removeFromTop(20));
             bias_.setBounds(cin.removeFromLeft(condKnobW));
         }
+        sag_.setBounds(cin.removeFromLeft(condKnobW));
         auto col2 = cin.removeFromLeft(120);
         col2.removeFromLeft(10);
         noiseCaption_.setBounds(col2.removeFromTop(16));

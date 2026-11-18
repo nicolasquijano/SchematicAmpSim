@@ -74,7 +74,7 @@ const std::vector<const char*>& paramIds(ModuleType type) {
     static const std::vector<const char*> cabinet{ids::cabOn, ids::cab, ids::irBlend, ids::irWidth, ids::doubleAmount, ids::doubleTime, ids::irAlign};
     static const std::vector<const char*> amp{ids::amp, ids::volume, ids::volume2, ids::bass, ids::middle, ids::treble, ids::presence, ids::master, ids::power, ids::resonance,
                                               ids::vibSpeed, ids::vibIntensity, ids::vibOn, ids::aeq[0], ids::aeq[1], ids::aeq[2], ids::aeq[3], ids::aeq[4], ids::input, ids::quality, ids::jack, ids::sel[0], ids::sel[1], ids::sel[2], ids::sel[3], ids::sel[4], ids::sel[5],
-                                              ids::pickup, ids::cable, ids::tube, ids::wear, ids::unit, ids::noise, ids::bias, ids::speaker, ids::speakerIntense, ids::ampOn};
+                                              ids::pickup, ids::cable, ids::tube, ids::wear, ids::unit, ids::noise, ids::bias, ids::sag, ids::speaker, ids::speakerIntense, ids::ampOn};
     static const std::vector<const char*> mixer{ids::mixLevelA, ids::mixLevelB, ids::mixPanA, ids::mixPanB, ids::mixInvertB};
     static const std::vector<const char*> gate{ids::gateOn, ids::gateThreshold, ids::gateRelease};
     static const std::vector<const char*> comp{ids::compOn, ids::compSustain, ids::compBlend, ids::compTone, ids::compLevel, ids::compFast, ids::compModel};
@@ -564,6 +564,7 @@ static void addAmpInstance(Layout& l, int k, const juce::StringArray& ampNames) 
     l.add(knob(I(ids::speaker), N("Speaker dynamics"), 0.0f));
     l.add(toggle(I(ids::speakerIntense), N("Speaker dynamics intense"), false));
     l.add(knob(I(ids::bias), N("Bias"), 5.0f));
+    l.add(knob(I(ids::sag), N("Sag"), 5.0f));
     l.add(std::make_unique<juce::AudioParameterChoice>(id(I(ids::tube)), N("Power tubes"), juce::StringArray{ids::tubeTypes[0], ids::tubeTypes[1], ids::tubeTypes[2], ids::tubeTypes[3]}, 0));
     l.add(std::make_unique<juce::AudioParameterChoice>(id(I(ids::noise)), N("Noise and hum"), juce::StringArray{"Off", "Low", "Real"}, 0));
     l.add(std::make_unique<juce::AudioParameterInt>(id(I(ids::wear)), N("Wear"), 0, 10, 0,
