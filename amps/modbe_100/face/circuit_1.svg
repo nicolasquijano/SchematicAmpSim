@@ -94,6 +94,7 @@
 <rect id="base_V2" x="294" y="203" width="32" height="14" rx="3" fill="url(#g14)" stroke="#5a4d3a" stroke-width="1"/>
 <ellipse id="valL_6_100k" cx="320" cy="91" rx="1" ry="1" fill="none" stroke="none"/>
 <ellipse id="valL_7_0.68u" cx="320" cy="257" rx="1" ry="1" fill="none" stroke="none"/>
+<ellipse id="valC_8_33k" cx="258" cy="163" rx="1" ry="1" fill="none" stroke="none"/>
 <rect id="res_plate2" x="453" y="73" width="14" height="36" rx="3" fill="url(#g15)" stroke="#5a4630" stroke-width="1"/>
 <path id="res_plate2_bands" d="M453,81 H467 M453,87 H467 M453,93 H467" fill="none" stroke="#7a3b1f" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
 <rect id="res_cath2" x="453" y="225" width="14" height="36" rx="3" fill="url(#g16)" stroke="#5a4630" stroke-width="1"/>
@@ -105,7 +106,8 @@
 <path id="filament_V3" d="M452,191 H468" fill="none" stroke="#ffae42" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>
 <path id="shine_V3" d="M438,163 A26,26 0 0 1 454,149" fill="none" stroke="#ffffff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" opacity="0.35"/>
 <rect id="base_V3" x="444" y="203" width="32" height="14" rx="3" fill="url(#g19)" stroke="#5a4d3a" stroke-width="1"/>
-<ellipse id="valL_8_100k" cx="470" cy="243" rx="1" ry="1" fill="none" stroke="none"/>
+<ellipse id="valL_9_100k" cx="470" cy="243" rx="1" ry="1" fill="none" stroke="none"/>
+<ellipse id="valC_10_100k" cx="408" cy="163" rx="1" ry="1" fill="none" stroke="none"/>
 <ellipse id="pot_volume" cx="60" cy="335" rx="18" ry="18" fill="url(#g20)" stroke="#9a8760" stroke-width="1.5"/>
 <ellipse id="dial_volume" cx="60" cy="335" rx="11" ry="11" fill="#26211c" stroke="#3b3329" stroke-width="1"/>
 <path id="ptr_volume" d="M60,335 L60,324" fill="none" stroke="#f0b53a" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>

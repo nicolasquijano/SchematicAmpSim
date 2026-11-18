@@ -103,6 +103,7 @@
 <path id="shine_V5" d="M438,163 A26,26 0 0 1 454,149" fill="none" stroke="#ffffff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" opacity="0.35"/>
 <rect id="base_V5" x="444" y="203" width="32" height="14" rx="3" fill="url(#g19)" stroke="#5a4d3a" stroke-width="1"/>
 <ellipse id="valL_8_1.8k" cx="470" cy="243" rx="1" ry="1" fill="none" stroke="none"/>
+<ellipse id="valC_9_180k/51k" cx="408" cy="163" rx="1" ry="1" fill="none" stroke="none"/>
 <ellipse id="pot_clean_gain" cx="60" cy="335" rx="18" ry="18" fill="url(#g20)" stroke="#9a8760" stroke-width="1.5"/>
 <ellipse id="dial_clean_gain" cx="60" cy="335" rx="11" ry="11" fill="#26211c" stroke="#3b3329" stroke-width="1"/>
 <path id="ptr_clean_gain" d="M60,335 L60,324" fill="none" stroke="#f0b53a" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>

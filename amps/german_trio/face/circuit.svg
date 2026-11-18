@@ -82,6 +82,7 @@
 <rect id="base_V4" x="294" y="203" width="32" height="14" rx="3" fill="url(#g13)" stroke="#5a4d3a" stroke-width="1"/>
 <ellipse id="valL_4_100k" cx="320" cy="91" rx="1" ry="1" fill="none" stroke="none"/>
 <ellipse id="valL_5_100n" cx="320" cy="257" rx="1" ry="1" fill="none" stroke="none"/>
+<ellipse id="valC_6_100k" cx="258" cy="163" rx="1" ry="1" fill="none" stroke="none"/>
 <ellipse id="pot_clean_gain" cx="60" cy="335" rx="18" ry="18" fill="url(#g14)" stroke="#9a8760" stroke-width="1.5"/>
 <ellipse id="dial_clean_gain" cx="60" cy="335" rx="11" ry="11" fill="#26211c" stroke="#3b3329" stroke-width="1"/>
 <path id="ptr_clean_gain" d="M60,335 L60,324" fill="none" stroke="#f0b53a" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>

@@ -315,6 +315,10 @@ def tube_values(amp_id, d, label, comps, rail):
             out['couple'] = v
         if kind == 'C' and cath in ends and ends & {'0', 'gnd'} and 'bypass' not in out:
             out['bypass'] = v
+        if kind == 'R' and grid in ends and ends & {'0', 'gnd'} and 'leak' not in out:
+            out['leak'] = v
+        if kind == 'R' and grid in ends and not ends & {'0', 'gnd', cath, rail} and 'stopper' not in out:
+            out['stopper'] = v
     return out
 
 
@@ -388,6 +392,8 @@ def draw_preamp(amp_id, d, tubes, pots=None):
             s.val('L', cx + 10, base_bottom + 40, v['bypass'])
         if 'couple' in v and i + 1 < n:
             s.val('C', cx + W / 2, yj - 24, v['couple'])
+        if i > 0 and ('stopper' in v or 'leak' in v):  # what sits in front of the grid: the stopper in series, the leak to ground
+            s.val('C', cx - r - 20, cy - 12, '/'.join(x for x in (v.get('stopper'), v.get('leak')) if x))
     for i, u in enumerate(pre_pots):
         pot(s, px[i], pcy, u['param'], pk)
     # the way on to the power amp
