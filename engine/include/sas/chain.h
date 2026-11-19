@@ -61,7 +61,10 @@ struct ChainSettings {
     // the amp passes the signal through), the drive into it and the level out of it in dB, and whether it is brought to a common loudness.
     NamModel* nam = nullptr;
     double namDriveDb = 0.0, namLevelDb = 0.0;
-    double namBass = 0.5, namMid = 0.5, namTreble = 0.5;  // tone after the model, 0..1 with 0.5 flat (+-12 dB)
+    double namBass = 0.5, namMid = 0.5, namTreble = 0.5;  // tone after the model (or before it, see namPost), 0..1 with 0.5 flat (+-12 dB)
+    double namBassHz = NamTone::kBassHz, namMidHz = NamTone::kMidHz, namMidQ = NamTone::kMidQ, namTrebleHz = NamTone::kTrebleHz;  // where the three bands act
+    double namPresence = 0.5, namDepth = 0.5;  // high shelf and low bell after the model, 0..1 with 0.5 flat (+-12 dB)
+    bool namPost = true;                       // the three tone bands after the model (false: in front of it, after the drive)
     bool namNormalize = true;
 };
 
@@ -143,8 +146,9 @@ private:
     SpeakerDynamics speaker_;   // between the amp and the cabinet
     AmpNoise noise2_, noise4_;  // at the 2x and 4x rates
     float ampTrim_ = 1.0f;  // the amp's output_db as a gain
-    Smoother namDriveDb_, namLevelDb_, namBass_, namMid_, namTreble_;
-    NamTone namTone_;
+    Smoother namDriveDb_, namLevelDb_, namBass_, namMid_, namTreble_, namBassHz_, namMidHz_, namMidQ_, namTrebleHz_, namPresence_, namDepth_;
+    NamTone namTone_, namFinish_;  // the three bands (before or after the model) and presence and depth (after it)
+    bool namPost_ = true;
     Quality active_ = Quality::Normal;
     Preamp* activePre();
     double inPeak_ = 0.0, outPeak_ = 0.0;  // the largest guitar and speaker volts since takeMeters

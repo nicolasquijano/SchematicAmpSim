@@ -94,6 +94,12 @@ inline constexpr const char* gateOn = "gate_on";
 inline constexpr const char* gateThreshold = "gate_threshold";
 inline constexpr const char* gateRelease = "gate_release";
 inline constexpr const char* sag = "sag";      // the supply's softness, 5 = as drawn: lower is stiffer, higher gives way more under a loud signal
+// The NAM loader amp's advanced tone: where each of the three bands acts, and whether the bands go after the model (on) or in front of it.
+inline constexpr const char* namBassHz = "nam_bass_hz";
+inline constexpr const char* namMidHz = "nam_mid_hz";
+inline constexpr const char* namMidQ = "nam_mid_q";
+inline constexpr const char* namTrebleHz = "nam_treble_hz";
+inline constexpr const char* namPost = "nam_eq_post";
 inline constexpr const char* bias = "bias";    // output-tube bias, 5 = as drawn (amps with a bias supply)
 inline constexpr const char* tube = "tube";    // output tube type: 0 = the amp's own, else one of tubeTypes (the amp's list may differ in order)
 inline constexpr const char* tubeTypes[] = {"Stock", "EL34", "6L6GC", "6550"};

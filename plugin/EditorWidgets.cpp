@@ -225,8 +225,15 @@ void SwitchBox::mouseUp(const juce::MouseEvent& e) {
 
 // ------------------------------------------------------------------ knob
 
-KnobWithLabel::KnobWithLabel(juce::AudioProcessorValueTreeState& apvts, const char* paramId, const juce::String& caption)
-    : attachment_(apvts, paramId, slider_) {
+KnobWithLabel::KnobWithLabel(juce::AudioProcessorValueTreeState& apvts, const char* paramId, const juce::String& caption) {
+    if (dynamic_cast<juce::AudioParameterBool*>(apvts.getParameter(paramId)) != nullptr) {
+        // An on / off parameter is a switch under its caption.
+        buttonAttachment_ = std::make_unique<juce::AudioProcessorValueTreeState::ButtonAttachment>(apvts, paramId, toggle_);
+        toggle_.setButtonText(tr(caption));
+        addAndMakeVisible(toggle_);
+        return;
+    }
+    attachment_ = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment>(apvts, paramId, slider_);
     slider_.setRotaryParameters(juce::degreesToRadians(225.0f), juce::degreesToRadians(495.0f), true);
     slider_.setTextBoxStyle(juce::Slider::TextBoxBelow, false, 56, 14);
     slider_.setDoubleClickReturnValue(true, apvts.getParameter(paramId)->convertFrom0to1(apvts.getParameter(paramId)->getDefaultValue()));
@@ -246,6 +253,10 @@ void KnobWithLabel::lookAndFeelChanged() {
 
 void KnobWithLabel::resized() {
     auto r = getLocalBounds();
+    if (buttonAttachment_) {
+        toggle_.setBounds(r.withSizeKeepingCentre(std::min(r.getWidth(), 90), 24));
+        return;
+    }
     caption_.setBounds(r.removeFromTop(16));
     slider_.setBounds(r);
 }

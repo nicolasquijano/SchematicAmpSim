@@ -115,6 +115,7 @@ Layout SasProcessor::createLayout(const std::vector<sas::AmpDef>& defs) {
     l.add(std::make_unique<juce::AudioParameterBool>(juce::ParameterID{ids::speakerIntense, kVersion}, "Speaker dynamics intense", false));
     l.add(knob(ids::bias, "Bias", 5.0f));
     l.add(knob(ids::sag, "Sag", 5.0f));
+    RackState::addNamToneParams(l, 0);
     l.add(std::make_unique<juce::AudioParameterChoice>(juce::ParameterID{ids::tube, kVersion}, "Power tubes", juce::StringArray{ids::tubeTypes[0], ids::tubeTypes[1], ids::tubeTypes[2], ids::tubeTypes[3]}, 0));
     l.add(std::make_unique<juce::AudioParameterChoice>(juce::ParameterID{ids::noise, kVersion}, "Noise and hum", juce::StringArray{"Off", "Low", "Real"}, 0));
     l.add(std::make_unique<juce::AudioParameterInt>(juce::ParameterID{ids::wear, kVersion}, "Wear", 0, 10, 0,
@@ -527,6 +528,13 @@ sas::ChainSettings SasProcessor::readSettings(bool irAvailable, int instance) {
         s.namBass = raw(ids::bass) / 10.0;
         s.namMid = raw(ids::middle) / 10.0;
         s.namTreble = raw(ids::treble) / 10.0;
+        s.namBassHz = raw(ids::namBassHz);
+        s.namMidHz = raw(ids::namMidHz);
+        s.namMidQ = raw(ids::namMidQ);
+        s.namTrebleHz = raw(ids::namTrebleHz);
+        s.namPresence = raw(ids::presence) / 10.0;
+        s.namDepth = raw(ids::resonance) / 10.0;
+        s.namPost = raw(ids::namPost) > 0.5;
     }
     s.noise = std::array<double, 3>{0.0, 0.5, 1.0}[std::size_t(juce::jlimit(0, 2, int(raw(ids::noise) + 0.5)))];
     return s;

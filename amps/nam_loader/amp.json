@@ -6,11 +6,18 @@
   "nam": true,
 
   "ui": [
-  { "param": "volume", "label": "DRIVE", "group": "INPUT" },
-  { "param": "bass", "label": "BASS", "group": "TONE" },
-  { "param": "middle", "label": "MIDDLE", "group": "TONE" },
-  { "param": "treble", "label": "TREBLE", "group": "TONE" },
-  { "param": "master", "label": "LEVEL", "group": "OUTPUT" }
+  { "param": "volume", "label": "GAIN", "group": "INPUT" },
+  { "param": "nam_eq_post", "label": "POST EQ", "group": "EQ" },
+  { "param": "bass", "label": "BASS", "group": "EQ" },
+  { "param": "nam_bass_hz", "label": "HZ", "group": "EQ" },
+  { "param": "middle", "label": "MIDDLE", "group": "EQ" },
+  { "param": "nam_mid_hz", "label": "HZ", "group": "EQ" },
+  { "param": "nam_mid_q", "label": "Q", "group": "EQ" },
+  { "param": "treble", "label": "TREBLE", "group": "EQ" },
+  { "param": "nam_treble_hz", "label": "HZ", "group": "EQ" },
+  { "param": "presence", "label": "PRESENCE", "group": "OUTPUT" },
+  { "param": "resonance", "label": "DEPTH", "group": "OUTPUT" },
+  { "param": "master", "label": "VOLUME", "group": "OUTPUT" }
  ],
 
   "theme": {

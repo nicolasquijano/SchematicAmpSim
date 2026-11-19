@@ -47,8 +47,13 @@ Chain::Chain(const AmpDef& def, double fs)
     jackCompDb_.reset(inputCompDb(0, true, {}), fs, 20.0);
     namDriveDb_.reset(0.0, fs, 20.0);
     namLevelDb_.reset(0.0, fs, 20.0);
-    for (auto* s : {&namBass_, &namMid_, &namTreble_}) s->reset(0.5, fs, 40.0);
+    for (auto* s : {&namBass_, &namMid_, &namTreble_, &namPresence_, &namDepth_}) s->reset(0.5, fs, 40.0);
+    namBassHz_.reset(NamTone::kBassHz, fs, 40.0);
+    namMidHz_.reset(NamTone::kMidHz, fs, 40.0);
+    namMidQ_.reset(NamTone::kMidQ, fs, 40.0);
+    namTrebleHz_.reset(NamTone::kTrebleHz, fs, 40.0);
     namTone_.prepare(fs);
+    namFinish_.prepare(fs);
     geq_.prepare(def.graphicEq, fs);
 }
 
@@ -75,6 +80,13 @@ void Chain::setSettings(const ChainSettings& s) {
     namBass_.setTarget(std::clamp(s.namBass, 0.0, 1.0));
     namMid_.setTarget(std::clamp(s.namMid, 0.0, 1.0));
     namTreble_.setTarget(std::clamp(s.namTreble, 0.0, 1.0));
+    namBassHz_.setTarget(std::clamp(s.namBassHz, 20.0, 2000.0));
+    namMidHz_.setTarget(std::clamp(s.namMidHz, 100.0, 8000.0));
+    namMidQ_.setTarget(std::clamp(s.namMidQ, 0.2, 6.0));
+    namTrebleHz_.setTarget(std::clamp(s.namTrebleHz, 500.0, 16000.0));
+    namPresence_.setTarget(std::clamp(s.namPresence, 0.0, 1.0));
+    namDepth_.setTarget(std::clamp(s.namDepth, 0.0, 1.0));
+    namPost_ = s.namPost;
     target_.selectors = s.selectors;
     target_.cabFilter = s.cabFilter;
     target_.cabFilterInChain = s.cabFilterInChain;
@@ -123,6 +135,12 @@ void Chain::snap(const ChainSettings& s) {
     namBass_.reset(std::clamp(s.namBass, 0.0, 1.0), fs_, 40.0);
     namMid_.reset(std::clamp(s.namMid, 0.0, 1.0), fs_, 40.0);
     namTreble_.reset(std::clamp(s.namTreble, 0.0, 1.0), fs_, 40.0);
+    namBassHz_.reset(std::clamp(s.namBassHz, 20.0, 2000.0), fs_, 40.0);
+    namMidHz_.reset(std::clamp(s.namMidHz, 100.0, 8000.0), fs_, 40.0);
+    namMidQ_.reset(std::clamp(s.namMidQ, 0.2, 6.0), fs_, 40.0);
+    namTrebleHz_.reset(std::clamp(s.namTrebleHz, 500.0, 16000.0), fs_, 40.0);
+    namPresence_.reset(std::clamp(s.namPresence, 0.0, 1.0), fs_, 40.0);
+    namDepth_.reset(std::clamp(s.namDepth, 0.0, 1.0), fs_, 40.0);
     setSettings(s);
 }
 
@@ -288,6 +306,13 @@ void Chain::processNam(const float* mono, float* out, std::size_t n) {
     NamModel* model = target_.nam;
     const float norm = model && target_.namNormalize ? model->normalizeGain() : 1.0f;
     float in[kBlock], y[kBlock];
+    // The three tone bands move once per control period, wherever they are (in front of the model or after it).
+    auto stepTone = [&] {
+        const double steps = double(kControlEvery);
+        namTone_.setTone((namBass_.nextStep(steps) - 0.5) * 24.0, (namMid_.nextStep(steps) - 0.5) * 24.0, (namTreble_.nextStep(steps) - 0.5) * 24.0, namBassHz_.nextStep(steps),
+                         namMidHz_.nextStep(steps), namMidQ_.nextStep(steps), namTrebleHz_.nextStep(steps));
+    };
+    const bool toneAfter = namPost_;
     for (std::size_t at = 0; at < n; at += kBlock) {
         const std::size_t m = std::min(kBlock, n - at);
         for (std::size_t i = 0; i < m; ++i) {
@@ -295,20 +320,24 @@ void Chain::processNam(const float* mono, float* out, std::size_t n) {
                 const double steps = double(kControlEvery);
                 ts1_.setControls({std::clamp(tsDrive_.nextStep(steps), 0.0, 1.0), std::clamp(tsTone_.nextStep(steps), 0.0, 1.0),
                                   std::clamp(tsLevel_.nextStep(steps), 0.0, 1.0)});
+                if (!toneAfter) stepTone();
             }
             float v = float(double(mono[at + i]) * dbToGain(inputDb_.next()));
             if (compOn) v = float(comp_.process(double(v)));
             if (tsOn) v = float(ts1_.process(double(v)));
-            in[i] = float(double(v) * dbToGain(namDriveDb_.next()));
+            v = float(double(v) * dbToGain(namDriveDb_.next()));
+            in[i] = !toneAfter && !namTone_.flat() ? namTone_.process(v) : v;
         }
         if (model) model->process(in, y, m);
         else std::copy(in, in + m, y);
         for (std::size_t i = 0; i < m; ++i) {
             if (i % kControlEvery == 0) {
                 const double steps = double(kControlEvery);
-                namTone_.setGains((namBass_.nextStep(steps) - 0.5) * 24.0, (namMid_.nextStep(steps) - 0.5) * 24.0, (namTreble_.nextStep(steps) - 0.5) * 24.0);
+                if (toneAfter) stepTone();
+                namFinish_.setFinish((namPresence_.nextStep(steps) - 0.5) * 24.0, (namDepth_.nextStep(steps) - 0.5) * 24.0);
             }
-            const float toned = namTone_.flat() ? y[i] : namTone_.process(y[i]);
+            float toned = toneAfter && !namTone_.flat() ? namTone_.process(y[i]) : y[i];
+            if (!namFinish_.flat()) toned = namFinish_.process(toned);
             const float volts = toned * norm * kVolts * float(dbToGain(namLevelDb_.next()));
             float s = speaker_.process(volts / float(kOutputFullScaleVolts)) * ampTrim_;
             if (cabOn) s = cab_.process(s);

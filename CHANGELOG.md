@@ -5,6 +5,9 @@ version numbers follow [Semantic Versioning](https://semver.org/) (see [docs/REL
 
 ## [Unreleased]
 
+### Added
+- **NAM loader: advanced parameters.** The loader amp now has GAIN, an EQ with BASS, MIDDLE and TREBLE, each with its own frequency (HZ knobs; the middle also has Q), a POST EQ switch that puts the three bands after the model (on, as before) or in front of it (after the gain), PRESENCE (a high shelf near 4.5 kHz), DEPTH (a bell near 80 Hz) and VOLUME. The new parameters (`nam_bass_hz`, `nam_mid_hz`, `nam_mid_q`, `nam_treble_hz`, `nam_eq_post`, and the second amp's) default to what the loader did before, so saved projects sound the same. The editor draws an on/off parameter of an amp's `ui` as a switch.
+
 ## [0.6.0-beta] - 2026-11-18
 
 ### Added
@@ -32,6 +35,7 @@ version numbers follow [Semantic Versioning](https://semver.org/) (see [docs/REL
 - **"In phase" for the cabinet's two impulses** (a switch in the A / B blend panel of each cabinet, parameter `ir_align`, off by default so old projects sound the same): two impulses recorded with different microphones arrive at different moments, and one of them may be upside down, so mixed they cancel part of each other. With the switch on, the cross-correlation of their direct sound gives the offset and the polarity that make them add up; the earlier one is delayed, B is flipped when needed, and the panel shows what it did (for example "B flipped, A +0.15 ms").
 
 ### Changed
+- **The NAM models run about twice as fast on Windows**: the NAM core (Eigen) is compiled with AVX2 and FMA (MSVC `/arch:AVX2`), which every x86 CPU since 2013-2015 has; a standard WaveNet model went from 386 % to 183 % of a core in the benchmark before the optimisation flags of the local build were fixed, and 33 % after.
 - **The cabinet's DYNAMICS no longer darkens the sound as it goes up**: the cone break-up cut the peaks of the treble and so its level, on top of the loss of level of the other two effects (at 10 the treble was about 0.9 dB further down than the rest). The level of that band is now given back slowly, so only its shape changes (rounder peaks, more edge) and the balance between bass and treble stays about where it was (0.5 dB at the most, on a pushed JCM800); the overall compression of the control is as before.
 - **The cabinet uses far less CPU** (a cabinet with impulses went from about 11 to under 1 point of a core per impulse): the convolution was told it could get blocks of 4096 samples whatever the host sends, so it worked in FFTs about nine times bigger than needed. It is now prepared for the host's own block size (a power of two) and cuts any bigger block into pieces of that size; the impulse length no longer matters much.
 - **American 5153 solves only the channel you hear**: the tubes of the other channels (the Red channel's input and V5 / V6 stages when Green or Blue is selected; the Green / Blue stages when Red is) are skipped, a new amp.json option (`jacks` on a preamp stage, `main_jacks` for the first netlist). The sound is the same sample for sample (a test checks it); Green and Blue go from about 42 % to 27 % of a core in Normal and from 30 % to 14 % in Lite.

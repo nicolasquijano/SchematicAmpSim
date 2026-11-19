@@ -74,7 +74,8 @@ const std::vector<const char*>& paramIds(ModuleType type) {
     static const std::vector<const char*> cabinet{ids::cabOn, ids::cab, ids::irBlend, ids::irWidth, ids::doubleAmount, ids::doubleTime, ids::irAlign};
     static const std::vector<const char*> amp{ids::amp, ids::volume, ids::volume2, ids::bass, ids::middle, ids::treble, ids::presence, ids::master, ids::power, ids::resonance,
                                               ids::vibSpeed, ids::vibIntensity, ids::vibOn, ids::aeq[0], ids::aeq[1], ids::aeq[2], ids::aeq[3], ids::aeq[4], ids::input, ids::quality, ids::jack, ids::sel[0], ids::sel[1], ids::sel[2], ids::sel[3], ids::sel[4], ids::sel[5],
-                                              ids::pickup, ids::cable, ids::tube, ids::wear, ids::unit, ids::noise, ids::bias, ids::sag, ids::speaker, ids::speakerIntense, ids::ampOn};
+                                              ids::pickup, ids::cable, ids::tube, ids::wear, ids::unit, ids::noise, ids::bias, ids::sag, ids::speaker, ids::speakerIntense, ids::ampOn,
+                                              ids::namBassHz, ids::namMidHz, ids::namMidQ, ids::namTrebleHz, ids::namPost};
     static const std::vector<const char*> mixer{ids::mixLevelA, ids::mixLevelB, ids::mixPanA, ids::mixPanB, ids::mixInvertB};
     static const std::vector<const char*> gate{ids::gateOn, ids::gateThreshold, ids::gateRelease};
     static const std::vector<const char*> comp{ids::compOn, ids::compSustain, ids::compBlend, ids::compTone, ids::compLevel, ids::compFast, ids::compModel};
@@ -529,6 +530,27 @@ void addParams(Layout& l, ModuleType type, int k) {
     }
 }
 
+void addNamToneParams(Layout& l, int k) {
+    auto I = [k](const char* base) { return paramId(base, k); };
+    auto N = [k](const juce::String& base) { return paramName(base.toRawUTF8(), k); };
+    auto freq = [&](const char* base, const char* name, float lo, float hi, float centre, float def) {
+        juce::NormalisableRange<float> r(lo, hi, 0.0f);
+        r.setSkewForCentre(centre);
+        l.add(std::make_unique<juce::AudioParameterFloat>(juce::ParameterID{I(base), kParamVersion}, N(name), r, def,
+                                                          juce::AudioParameterFloatAttributes().withLabel("Hz").withStringFromValueFunction([](float v, int) { return juce::String(int(v + 0.5f)); })));
+    };
+    freq(ids::namBassHz, "NAM bass frequency", 40.0f, 400.0f, 110.0f, 110.0f);
+    freq(ids::namMidHz, "NAM middle frequency", 200.0f, 3000.0f, 750.0f, 750.0f);
+    {
+        juce::NormalisableRange<float> r(0.3f, 3.0f, 0.0f);
+        r.setSkewForCentre(0.9f);
+        l.add(std::make_unique<juce::AudioParameterFloat>(juce::ParameterID{I(ids::namMidQ), kParamVersion}, N("NAM middle Q"), r, 0.8f,
+                                                          juce::AudioParameterFloatAttributes().withStringFromValueFunction([](float v, int) { return juce::String(v, 2); })));
+    }
+    freq(ids::namTrebleHz, "NAM treble frequency", 1500.0f, 8000.0f, 3500.0f, 3200.0f);
+    l.add(toggle(I(ids::namPost), N("NAM EQ after the model"), true));
+}
+
 // The parameters of the second amp: the same as the first one's, with the same ranges and defaults (the first ones are declared in
 // SasProcessor::createLayout, in the order the plug-in always had).
 static void addAmpInstance(Layout& l, int k, const juce::StringArray& ampNames) {
@@ -565,6 +587,7 @@ static void addAmpInstance(Layout& l, int k, const juce::StringArray& ampNames) 
     l.add(toggle(I(ids::speakerIntense), N("Speaker dynamics intense"), false));
     l.add(knob(I(ids::bias), N("Bias"), 5.0f));
     l.add(knob(I(ids::sag), N("Sag"), 5.0f));
+    addNamToneParams(l, k);
     l.add(std::make_unique<juce::AudioParameterChoice>(id(I(ids::tube)), N("Power tubes"), juce::StringArray{ids::tubeTypes[0], ids::tubeTypes[1], ids::tubeTypes[2], ids::tubeTypes[3]}, 0));
     l.add(std::make_unique<juce::AudioParameterChoice>(id(I(ids::noise)), N("Noise and hum"), juce::StringArray{"Off", "Low", "Real"}, 0));
     l.add(std::make_unique<juce::AudioParameterInt>(id(I(ids::wear)), N("Wear"), 0, 10, 0,

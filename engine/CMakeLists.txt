@@ -75,6 +75,10 @@ target_include_directories(sas_nam_core SYSTEM PUBLIC "${nam_SOURCE_DIR}" "${nam
 target_compile_definitions(sas_nam_core PUBLIC NAM_SAMPLE_FLOAT NAM_ENABLE_A2_FAST NOMINMAX WIN32_LEAN_AND_MEAN)
 target_compile_features(sas_nam_core PUBLIC cxx_std_20)
 set_target_properties(sas_nam_core PROPERTIES INTERPROCEDURAL_OPTIMIZATION ON)
+# The models are Eigen matrix products: with the compiler's default (SSE2) they run several times slower than with AVX2 and FMA, which every x86 CPU since 2013-2015 has.
+if(MSVC AND CMAKE_SYSTEM_PROCESSOR MATCHES "AMD64|x86_64|X86")
+  target_compile_options(sas_nam_core PRIVATE /arch:AVX2)
+endif()
 
 add_library(sas_engine STATIC
   src/version.cpp

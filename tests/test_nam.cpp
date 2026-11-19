@@ -140,3 +140,43 @@ TEST_CASE("nam: the tone control after the model is flat at the middle and moves
     CHECK(level(5000.0, 0.5, 0.5, 1.0) > flat5k + 3.0);
     CHECK(level(5000.0, 0.5, 0.5, 0.0) < flat5k - 3.0);
 }
+
+TEST_CASE("nam: presence and depth finish the sound, the bands follow their frequencies and the EQ can go in front of the model") {
+    const AmpDef def = loadEmbeddedAmp("nam_loader");
+    std::string err;
+    auto model = NamModel::load(kModels + "/wavenet.nam", 48000.0, 512, err);
+    REQUIRE(model);
+    auto level = [&](double hz, auto&& set) {
+        Chain chain(def, 48000.0);
+        ChainSettings s;
+        s.cabFilter = false;
+        s.nam = model.get();
+        set(s);
+        chain.snap(s);
+        const auto in = sine(hz, 0.1, 19200, 48000.0);
+        std::vector<float> out(in.size());
+        chain.processAmp(in.data(), out.data(), in.size());
+        double e = 0.0;
+        for (std::size_t i = 9600; i < out.size(); ++i) {
+            REQUIRE(std::isfinite(out[i]));
+            e += double(out[i]) * out[i];
+        }
+        return 10.0 * std::log10(e / double(out.size() - 9600) + 1e-30);
+    };
+    auto none = [](ChainSettings&) {};
+    const double flat6k = level(6000.0, none), flat80 = level(80.0, none);
+    // Presence is a high shelf and depth a bell in the lows; they leave the other end alone.
+    CHECK(level(6000.0, [](ChainSettings& s) { s.namPresence = 1.0; }) > flat6k + 3.0);
+    CHECK(std::fabs(level(80.0, [](ChainSettings& s) { s.namPresence = 1.0; }) - flat80) < 1.0);
+    CHECK(level(80.0, [](ChainSettings& s) { s.namDepth = 1.0; }) > flat80 + 3.0);
+    CHECK(std::fabs(level(6000.0, [](ChainSettings& s) { s.namDepth = 1.0; }) - flat6k) < 1.0);
+    // The bass band acts where its frequency says: at 60 Hz a shelf at 300 Hz lifts more than one at 40 Hz lifts 600 Hz.
+    const double flat60 = level(60.0, none), flat1k = level(1000.0, none);
+    CHECK(level(60.0, [](ChainSettings& s) { s.namBass = 1.0; s.namBassHz = 300.0; }) > flat60 + 3.0);
+    CHECK(level(1000.0, [](ChainSettings& s) { s.namBass = 1.0; s.namBassHz = 40.0; }) < flat1k + 1.0);
+    // The treble band too: a shelf at 8 kHz does nothing at 1 kHz, one at 1.5 kHz lifts it.
+    CHECK(level(1000.0, [](ChainSettings& s) { s.namTreble = 1.0; s.namTrebleHz = 8000.0; }) < flat1k + 1.0);
+    CHECK(level(3000.0, [](ChainSettings& s) { s.namTreble = 1.0; s.namTrebleHz = 1500.0; }) > level(3000.0, none) + 3.0);
+    // In front of the model the bands still shape the sound (the model sees a different signal), and the output stays finite.
+    CHECK(level(6000.0, [](ChainSettings& s) { s.namTreble = 1.0; s.namPost = false; }) != flat6k);
+}

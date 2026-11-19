@@ -68,8 +68,10 @@ public:
 
 private:
     juce::Slider slider_{juce::Slider::RotaryVerticalDrag, juce::Slider::TextBoxBelow};
+    juce::ToggleButton toggle_;  // for an on / off parameter (the NAM loader's EQ position): a switch instead of a knob
     juce::Label caption_;
-    juce::AudioProcessorValueTreeState::SliderAttachment attachment_;
+    std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> attachment_;
+    std::unique_ptr<juce::AudioProcessorValueTreeState::ButtonAttachment> buttonAttachment_;
 };
 
 // Vertical level bar (-60..0 dBFS) with a fast rise, a slower fall and a clip mark.

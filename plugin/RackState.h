@@ -27,6 +27,8 @@ const char* onId(sas::ModuleType type);
 
 // Adds the parameters of one instance to the layout.
 void addParams(juce::AudioProcessorValueTreeState::ParameterLayout& layout, sas::ModuleType type, int instance);
+// The NAM loader's advanced tone of one amp instance (band frequencies, the bell's Q and the PRE / POST switch).
+void addNamToneParams(juce::AudioProcessorValueTreeState::ParameterLayout& layout, int instance);
 // Adds every instance beyond the first (appended at the end of the layout); the second amp's selector lists the same amps as the first.
 void addExtraInstances(juce::AudioProcessorValueTreeState::ParameterLayout& layout, const juce::StringArray& ampNames);
 
