@@ -76,6 +76,7 @@ jobs:
       - uses: hendrikmuhs/ccache-action@v1.2
         with:
           key: ccache-linux
+          update-package-index: true
           max-size: 500M
       - uses: actions/cache@v4
         with:
