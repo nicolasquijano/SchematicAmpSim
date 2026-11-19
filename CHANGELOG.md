@@ -5,8 +5,13 @@ version numbers follow [Semantic Versioning](https://semver.org/) (see [docs/REL
 
 ## [Unreleased]
 
+## [0.7.0-beta] - 2026-11-19
+
 ### Added
 - **NAM loader: advanced parameters.** The loader amp now has GAIN, an EQ with BASS, MIDDLE and TREBLE, each with its own frequency (HZ knobs; the middle also has Q), a POST EQ switch that puts the three bands after the model (on, as before) or in front of it (after the gain), PRESENCE (a high shelf near 4.5 kHz), DEPTH (a bell near 80 Hz) and VOLUME. The new parameters (`nam_bass_hz`, `nam_mid_hz`, `nam_mid_q`, `nam_treble_hz`, `nam_eq_post`, and the second amp's) default to what the loader did before, so saved projects sound the same. The editor draws an on/off parameter of an amp's `ui` as a switch.
+
+### Changed
+- **The NAM models run about twice as fast on Windows**: the NAM core (Eigen) is compiled with AVX2 and FMA (MSVC `/arch:AVX2`), which every x86 CPU since 2013-2015 has. A standard WaveNet model went from 386 % to 183 % of a core in the benchmark with only this change.
 
 ## [0.6.0-beta] - 2026-11-18
 
@@ -259,6 +264,7 @@ The first public release: a Windows VST3 with seven circuit-level amplifiers.
 - While the compressor or the overdrive is on, the pickup and cable of the Guitar Input panel have no effect.
 - The saved-project format may still change between 0.x versions.
 
+[0.7.0-beta]: https://github.com/nicolasquijano/SchematicAmpSim/releases/tag/v0.7.0-beta
 [0.6.0-beta]: https://github.com/nicolasquijano/SchematicAmpSim/releases/tag/v0.6.0-beta
 [0.5.1-beta]: https://github.com/nicolasquijano/SchematicAmpSim/releases/tag/v0.5.1-beta
 [0.5.0-beta]: https://github.com/nicolasquijano/SchematicAmpSim/releases/tag/v0.5.0-beta
