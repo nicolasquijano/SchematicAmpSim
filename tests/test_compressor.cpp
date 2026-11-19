@@ -6,6 +6,7 @@
 #include "sas/chain.h"
 #include "sas/circuit.h"
 #include "sas/compressor.h"
+#include "sas/keeley_comp.h"
 #include "sas/devices.h"
 #include "sas/embedded_amps.h"
 #include "sas/netlist.h"
@@ -224,4 +225,82 @@ TEST_CASE("compressor in the chain: off changes nothing, on narrows the dynamics
     INFO("a 20 dB louder note comes out " << offRange << " dB louder without the compressor and " << onRange << " dB with it");
     CHECK(offRange > 10.0);
     CHECK(onRange < offRange - 5.0);
+}
+
+// The model of the Keeley compressor (sas/keeley_comp.h) against the circuit it was fitted to: the static curve of the wet path at several Sustain settings, how the gain
+// comes back after a loud burst (slow and fast release), the frequency response of both paths and Blend. (The sound is a model of the circuit's, not the circuit's.)
+TEST_CASE("compressor: the model follows the circuit it was fitted to") {
+    auto level = [](auto& c, double hz, double peak, double seconds) {
+        const std::size_t n = std::size_t(seconds * 48000.0), m = std::size_t(0.25 * 48000.0);
+        double acc = 0;
+        for (std::size_t i = 0; i < n; ++i) {
+            const double y = c.process(peak * std::sin(2.0 * kPi * hz * double(i) / 48000.0));
+            if (i >= n - m) acc += y * y;
+        }
+        return 10.0 * std::log10(2.0 * acc / double(m) + 1e-24);
+    };
+    SECTION("static curve of the wet path") {
+        for (double sustain : {0.0, 0.5, 1.0})
+            for (double peak : {0.005, 0.03, 0.1, 0.8}) {
+                Compressor ref(48000.0);
+                KeeleyComp mod(48000.0);
+                CompControls k;
+                k.blend = 1.0;
+                k.sustain = sustain;
+                ref.setControls(k);
+                mod.setControls(k);
+                INFO("sustain " << sustain << " input " << peak << " V");
+                CHECK(std::abs(level(ref, 400.0, peak, 4.0) - level(mod, 400.0, peak, 4.0)) < 0.6);
+            }
+    }
+    SECTION("the gain comes back after a loud burst, slowly or quickly") {
+        for (bool fast : {false, true}) {
+            Compressor ref(48000.0);
+            KeeleyComp mod(48000.0);
+            CompControls k;
+            k.blend = 1.0;
+            k.sustain = 0.5;
+            k.fastRelease = fast;
+            ref.setControls(k);
+            mod.setControls(k);
+            double pr = 0, pm = 0;
+            for (std::size_t i = 0, n = std::size_t(2.0 * 48000.0); i < n; ++i) {
+                const double sec = double(i) / 48000.0;
+                const double x = ((sec >= 1.0 && sec < 1.6) ? 0.3 : 0.01) * std::sin(2.0 * kPi * 400.0 * sec);
+                const double a = ref.process(x), b = mod.process(x);
+                if (sec >= 1.7 && sec < 1.72) { pr = std::max(pr, std::fabs(a)); pm = std::max(pm, std::fabs(b)); }
+            }
+            INFO("fast " << fast);
+            CHECK(std::abs(20.0 * std::log10(pr / pm)) < 1.0);
+        }
+    }
+    SECTION("frequency response of the wet path") {
+        for (double tone : {0.0, 0.5, 1.0})
+            for (double hz : {160.0, 1000.0, 2500.0, 6000.0, 12000.0}) {
+                Compressor ref(48000.0);
+                KeeleyComp mod(48000.0);
+                CompControls k;
+                k.blend = 1.0;
+                k.sustain = 0.0;
+                k.tone = tone;
+                ref.setControls(k);
+                mod.setControls(k);
+                INFO("tone " << tone << " " << hz << " Hz");
+                CHECK(std::abs(level(ref, hz, 0.002, 3.0) - level(mod, hz, 0.002, 1.0)) < 1.2);
+            }
+    }
+    SECTION("blend and the dry path") {
+        for (double blend : {0.0, 0.25, 0.5, 0.75}) {
+            Compressor ref(48000.0);
+            KeeleyComp mod(48000.0);
+            CompControls k;
+            k.blend = blend;
+            k.sustain = 0.5;
+            ref.setControls(k);
+            mod.setControls(k);
+            INFO("blend " << blend);
+            CHECK(std::abs(level(ref, 400.0, 0.01, 3.0) - level(mod, 400.0, 0.01, 1.0)) < 0.7);
+            CHECK(std::abs(level(ref, 400.0, 0.3, 3.0) - level(mod, 400.0, 0.3, 1.0)) < 0.8);
+        }
+    }
 }

@@ -66,8 +66,8 @@ TEST_CASE("gate module equals the gate it wraps", "[rack]") {
     CHECK_FALSE(m.active());
 }
 
-TEST_CASE("compressor module equals the circuit it wraps and is buffered", "[rack]") {
-    Compressor ref(kFs);
+TEST_CASE("compressor module equals the model it wraps and is buffered", "[rack]") {
+    KeeleyComp ref(kFs);
     CompControls c;
     c.sustain = 0.8;
     ref.setControls(c);

@@ -12,6 +12,7 @@
 
 #include "sas/chorus.h"
 #include "sas/compressor.h"
+#include "sas/keeley_comp.h"
 #include "sas/delay.h"
 #include "sas/eq.h"
 #include "sas/gate.h"
@@ -68,7 +69,11 @@ int main() {
         g->setParams(true, -50.0, 120.0);
         return [g](float* l, float*, std::size_t n) { g->process(l, n); };
     });
-    row("compressor", [](double fs) {
+    row("compressor (model)", [](double fs) {
+        auto c = std::make_shared<sas::KeeleyComp>(fs);
+        return [c](float* l, float*, std::size_t n) { for (std::size_t i = 0; i < n; ++i) l[i] = float(c->process(double(l[i]))); };
+    });
+    row("compressor (circuit)", [](double fs) {
         auto c = std::make_shared<sas::Compressor>(fs);
         return [c](float* l, float*, std::size_t n) { for (std::size_t i = 0; i < n; ++i) l[i] = float(c->process(double(l[i]))); };
     });

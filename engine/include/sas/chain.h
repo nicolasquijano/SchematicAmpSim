@@ -13,6 +13,7 @@
 #include "sas/amp.h"
 #include "sas/cab.h"
 #include "sas/compressor.h"
+#include "sas/keeley_comp.h"
 #include "sas/nam_model.h"
 #include "sas/nam_tone.h"
 #include "sas/noise.h"
@@ -138,7 +139,7 @@ private:
     Oversampler os2_{1}, os4_{2};
     CabFilter cab_;
     GraphicEq geq_;             // the amp's graphic equaliser (amp.json "graphic_eq"), at the output of the amp
-    Compressor comp_;           // the compressor pedal circuit, at the host rate
+    KeeleyComp comp_;           // the compressor pedal (the model of the Keeley circuit), at the host rate
     SpeakerDynamics speaker_;   // between the amp and the cabinet
     AmpNoise noise2_, noise4_;  // at the 2x and 4x rates
     float ampTrim_ = 1.0f;  // the amp's output_db as a gain

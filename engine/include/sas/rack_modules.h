@@ -29,6 +29,7 @@
 #include "sas/tremolo.h"
 #include "sas/wah.h"
 #include "sas/compressor.h"
+#include "sas/keeley_comp.h"
 #include "sas/comp_models.h"
 #include "sas/delay.h"
 #include "sas/drive_circuit.h"
@@ -160,11 +161,11 @@ private:
     bool on_ = false;
 };
 
-// The compressor pedal circuit at the host rate. The circuit is only touched while it is on.
+// The compressor pedal (the model of the Keeley circuit, sas/keeley_comp.h) at the host rate. It is only touched while it is on.
 class CompressorModule final : public Module {
 public:
     void prepare(double fs, int) override {
-        comp_ = std::make_unique<Compressor>(fs);
+        comp_ = std::make_unique<KeeleyComp>(fs);
         alt_.prepare(fs);
     }
     void process(float* l, float*, std::size_t n) override {
@@ -193,7 +194,7 @@ public:
     }
 
 private:
-    std::unique_ptr<Compressor> comp_;
+    std::unique_ptr<KeeleyComp> comp_;
     PedalCompressor alt_;
     CompControls controls_;
     bool on_ = false;
