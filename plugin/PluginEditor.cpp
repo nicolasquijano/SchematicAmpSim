@@ -957,7 +957,9 @@ int SasEditor::ampTopHeight() const {
     if (face_) return 300;
     const bool grouped = shownAmp_ >= 0 && shownAmp_ < int(processor_.amps().size()) && !processor_.amps()[std::size_t(shownAmp_)].ui.empty() &&
                          !processor_.amps()[std::size_t(shownAmp_)].ui.front().group.empty();
-    return grouped ? 215 : 170;
+    // The NAM loader's twelve knobs wrap into two rows of blocks.
+    const bool wraps = grouped && processor_.amps()[std::size_t(shownAmp_)].ui.size() > 8;
+    return wraps ? 215 + 120 : grouped ? 215 : 170;
 }
 
 int SasEditor::ampPanelHeight() const { return ampTopHeight() + 8 + 136; }
@@ -1052,13 +1054,28 @@ void SasEditor::layoutAmpPanel() {
         const bool grouped = !ui.empty() && !ui.front().group.empty();
         if (grouped) {
             // Neighbouring knobs with the same "group" share a block with its title; a block is as wide as its knobs.
-            const int n = std::max<int>(1, int(ampKnobs_.size()));
-            const int w = row.getWidth() / n;
-            for (std::size_t i = 0; i < ampKnobs_.size();) {
+            // With many knobs (the NAM loader has 12) the blocks wrap into two rows, split where the counts are most even.
+            const std::size_t total = std::min(ampKnobs_.size(), ui.size());
+            std::size_t split = total;  // the first knob of the second row
+            if (total > 8) {
+                std::size_t best = total;
+                for (std::size_t i = 1; i < total; ++i) {
+                    if (ui[i].group == ui[i - 1].group) continue;
+                    const std::size_t diff = i > total - i ? i - (total - i) : (total - i) - i;
+                    if (best == total || diff < (best > total - best ? best - (total - best) : (total - best) - best)) best = i;
+                }
+                split = best;
+            }
+            const bool twoRows = split < total;
+            const int widest = twoRows ? int(std::max(split, total - split)) : int(std::max<std::size_t>(1, ampKnobs_.size()));
+            const int w = row.getWidth() / widest;  // both rows use the same cell width so the knobs line up
+            auto rowArea = twoRows ? row.removeFromTop(row.getHeight() / 2) : row;
+            for (std::size_t i = 0; i < total;) {
+                if (i == split) rowArea = row;
                 std::size_t j = i;
-                while (j < ampKnobs_.size() && j < ui.size() && ui[j].group == ui[i].group) ++j;
-                auto block = row.removeFromLeft(w * int(j - i));
-                panels.push_back({block.expanded(-1, 2).withTrimmedBottom(0), ui[i].group});
+                while (j < total && ui[j].group == ui[i].group) ++j;
+                auto block = rowArea.removeFromLeft(w * int(j - i));
+                panels.push_back({block.expanded(-1, 2), ui[i].group});
                 auto inner = block.withTrimmedTop(20);
                 for (std::size_t k = i; k < j; ++k) ampKnobs_[k]->setBounds(inner.removeFromLeft(w));
                 i = j;

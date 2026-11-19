@@ -73,32 +73,24 @@ void AmpLookAndFeel::drawRotarySlider(juce::Graphics& g, int x, int y, int w, in
     const float a = startAngle + (endAngle - startAngle) * pos;
     const auto& t = theme_;
 
-    // Tick marks 0..10 around the knob (the ends and the middle longer).
-    constexpr int ticks = 11;
-    for (int i = 0; i < ticks; ++i) {
-        const float ta = startAngle + (endAngle - startAngle) * float(i) / float(ticks - 1);
-        const bool major = i == 0 || i == ticks - 1 || i == ticks / 2;
-        const juce::Point<float> d(std::sin(ta), -std::cos(ta));
-        const float r0 = radius - (major ? 5.0f : 3.0f);
-        g.setColour(t.label.withAlpha(major ? 0.9f : 0.55f));
-        g.drawLine({c + d * r0, c + d * radius}, major ? 1.6f : 1.0f);
-    }
-
-    // Value arc just inside the ticks, with a soft glow.
-    const float arcR = radius - 8.5f;
+    // Value ring on the outer edge, with a soft glow: a dark track and a bright arc up to the value (no tick marks).
+    const float lineW = std::clamp(radius * 0.12f, 2.5f, 4.5f);
+    const float arcR = radius - lineW * 0.5f - 1.0f;
     juce::Path track, value;
     track.addCentredArc(c.x, c.y, arcR, arcR, 0.0f, startAngle, endAngle, true);
-    value.addCentredArc(c.x, c.y, arcR, arcR, 0.0f, startAngle, a, true);
-    g.setColour(t.edge.withAlpha(0.8f));
-    g.strokePath(track, juce::PathStrokeType(2.5f, juce::PathStrokeType::curved, juce::PathStrokeType::rounded));
+    value.addCentredArc(c.x, c.y, arcR, arcR, 0.0f, startAngle, std::max(a, startAngle + 0.001f), true);
+    g.setColour(t.edge.withAlpha(0.75f));
+    g.strokePath(track, juce::PathStrokeType(lineW, juce::PathStrokeType::curved, juce::PathStrokeType::rounded));
+    g.setColour(t.accent.withAlpha(0.12f));
+    g.strokePath(value, juce::PathStrokeType(lineW * 3.0f, juce::PathStrokeType::curved, juce::PathStrokeType::rounded));
     g.setColour(t.accent.withAlpha(0.22f));
-    g.strokePath(value, juce::PathStrokeType(6.0f, juce::PathStrokeType::curved, juce::PathStrokeType::rounded));
+    g.strokePath(value, juce::PathStrokeType(lineW * 1.9f, juce::PathStrokeType::curved, juce::PathStrokeType::rounded));
     g.setColour(t.accent);
-    g.strokePath(value, juce::PathStrokeType(2.5f, juce::PathStrokeType::curved, juce::PathStrokeType::rounded));
+    g.strokePath(value, juce::PathStrokeType(lineW, juce::PathStrokeType::curved, juce::PathStrokeType::rounded));
 
-    // Body: a shadow, a dark skirt and a domed cap.
-    const float skirtR = (arcR - 3.5f);
-    const float capR = skirtR * 0.80f;
+    // Body: a shadow, a dark skirt and a cap.
+    const float skirtR = arcR - lineW * 0.5f - 3.0f;
+    const float capR = skirtR * 0.82f;
     juce::Path skirt;
     skirt.addEllipse(c.x - skirtR, c.y - skirtR, skirtR * 2, skirtR * 2);
     juce::DropShadow(juce::Colours::black.withAlpha(0.7f), 7, {0, 2}).drawForPath(g, skirt);
@@ -119,10 +111,14 @@ void AmpLookAndFeel::drawRotarySlider(juce::Graphics& g, int x, int y, int w, in
 
     // Pointer.
     const juce::Point<float> d(std::sin(a), -std::cos(a));
+    const juce::PathStrokeType pointerStroke(2.6f, juce::PathStrokeType::curved, juce::PathStrokeType::rounded);
+    juce::Path pointer;
+    pointer.startNewSubPath(c + d * (capR * 0.35f));
+    pointer.lineTo(c + d * (capR - 3.0f));
     g.setColour(juce::Colours::black.withAlpha(0.35f));
-    g.drawLine({c + d * (capR * 0.18f) + juce::Point<float>(0.0f, 1.0f), c + d * (capR - 2.5f) + juce::Point<float>(0.0f, 1.0f)}, 3.2f);
+    g.strokePath(pointer, pointerStroke, juce::AffineTransform::translation(0.0f, 1.0f));
     g.setColour(t.pointer);
-    g.drawLine({c + d * (capR * 0.18f), c + d * (capR - 2.5f)}, 2.4f);
+    g.strokePath(pointer, pointerStroke);
 }
 
 void AmpLookAndFeel::drawToggleButton(juce::Graphics& g, juce::ToggleButton& b, bool highlighted, bool) {
@@ -147,6 +143,45 @@ void AmpLookAndFeel::drawToggleButton(juce::Graphics& g, juce::ToggleButton& b, 
     g.setFont(font(12.0f));
     g.drawText(b.getButtonText(), juce::Rectangle<float>(track.getRight() + 6.0f, r.getY(), r.getRight() - track.getRight() - 6.0f, r.getHeight()),
                juce::Justification::centredLeft);
+}
+
+// A recessed field, like the panels: a dark surface with a shadow along the top edge and a fine border.
+static void paintInset(juce::Graphics& g, juce::Rectangle<float> b, juce::Colour surface, juce::Colour edge, float corner) {
+    g.setColour(surface);
+    g.fillRoundedRectangle(b, corner);
+    {
+        juce::Graphics::ScopedSaveState state(g);
+        juce::Path clip;
+        clip.addRoundedRectangle(b, corner);
+        g.reduceClipRegion(clip);
+        g.setGradientFill(juce::ColourGradient(juce::Colours::black.withAlpha(0.30f), 0.0f, b.getY(), juce::Colours::transparentBlack, 0.0f, b.getY() + 6.0f, false));
+        g.fillRect(b.withHeight(6.0f));
+    }
+    g.setColour(edge);
+    g.drawRoundedRectangle(b.reduced(0.5f), corner, 1.0f);
+}
+
+void AmpLookAndFeel::drawComboBox(juce::Graphics& g, int w, int h, bool, int, int, int, int, juce::ComboBox& box) {
+    const auto b = juce::Rectangle<float>(0.0f, 0.0f, float(w), float(h));
+    const auto& t = theme_;
+    paintInset(g, b, t.background.darker(0.25f), box.hasKeyboardFocus(true) ? t.accent : t.edge, 5.0f);
+    // A small chevron instead of the stock arrow box.
+    const float cx = float(w) - 12.0f, cy = float(h) * 0.5f;
+    juce::Path chevron;
+    chevron.startNewSubPath(cx - 3.5f, cy - 1.5f);
+    chevron.lineTo(cx, cy + 2.0f);
+    chevron.lineTo(cx + 3.5f, cy - 1.5f);
+    g.setColour(box.isEnabled() ? t.label : t.label.withAlpha(0.4f));
+    g.strokePath(chevron, juce::PathStrokeType(1.5f, juce::PathStrokeType::curved, juce::PathStrokeType::rounded));
+}
+
+void AmpLookAndFeel::drawButtonBackground(juce::Graphics& g, juce::Button& button, const juce::Colour&, bool highlighted, bool down) {
+    const auto b = button.getLocalBounds().toFloat();
+    const auto& t = theme_;
+    const bool on = button.getToggleState();
+    auto surface = on ? t.accent.withAlpha(0.22f) : t.background.darker(0.15f).brighter(highlighted ? 0.08f : 0.0f);
+    if (down) surface = surface.darker(0.25f);
+    paintInset(g, b, surface, on ? t.accent : t.edge.brighter(highlighted ? 0.25f : 0.0f), 5.0f);
 }
 
 // ------------------------------------------------------------------ switch
@@ -189,8 +224,7 @@ void SwitchBox::paint(juce::Graphics& g) {
     }
     const int n = getNumItems(), now = getSelectedItemIndex();
     const auto b = getLocalBounds().toFloat().reduced(0.5f);
-    g.setColour(look->background().darker(0.3f));
-    g.fillRoundedRectangle(b, 5.0f);
+    paintInset(g, b, look->background().darker(0.25f), look->panelEdge(), 5.0f);
     const float cell = b.getWidth() / float(n);
     for (int i = 0; i < n; ++i) {
         const auto r = juce::Rectangle<float>(b.getX() + cell * float(i), b.getY(), cell, b.getHeight());
@@ -204,8 +238,6 @@ void SwitchBox::paint(juce::Graphics& g) {
         g.setFont(AmpLookAndFeel::font(11.0f, true));
         g.drawText(getItemText(i), r.toNearestInt(), juce::Justification::centred);
     }
-    g.setColour(look->panelEdge());
-    g.drawRoundedRectangle(b, 5.0f, 1.0f);
 }
 
 void SwitchBox::mouseDown(const juce::MouseEvent& e) {
@@ -555,19 +587,26 @@ juce::String irAlignText(const SasProcessor::IrAlignInfo& info) {
 void paintPanelBoxes(juce::Graphics& g, const AmpLookAndFeel& look, const std::vector<PanelBox>& panels) {
     for (const auto& p : panels) {
         const auto b = p.bounds.toFloat();
-        const auto top = look.panel().brighter(0.10f);
-        g.setGradientFill(juce::ColourGradient(top, 0.0f, b.getY(), look.panel().darker(0.15f), 0.0f, b.getBottom(), false));
-        g.fillRoundedRectangle(b, 7.0f);
-        g.setColour(juce::Colours::white.withAlpha(0.05f));
-        g.drawHorizontalLine(int(b.getY()) + 1, b.getX() + 8.0f, b.getRight() - 8.0f);
-        g.setColour(look.panelEdge());
-        g.drawRoundedRectangle(b.reduced(0.5f), 7.0f, 1.0f);
+        constexpr float corner = 5.0f;
+        // A recessed surface: nearly flat, a soft shadow falling from the top edge, a faint light line along the bottom edge.
+        g.setGradientFill(juce::ColourGradient(look.panel().darker(0.04f), 0.0f, b.getY(), look.panel().darker(0.10f), 0.0f, b.getBottom(), false));
+        g.fillRoundedRectangle(b, corner);
+        {
+            juce::Graphics::ScopedSaveState state(g);
+            juce::Path clip;
+            clip.addRoundedRectangle(b, corner);
+            g.reduceClipRegion(clip);
+            g.setGradientFill(juce::ColourGradient(juce::Colours::black.withAlpha(0.32f), 0.0f, b.getY(), juce::Colours::transparentBlack, 0.0f, b.getY() + 9.0f, false));
+            g.fillRect(b.withHeight(9.0f));
+            g.setColour(juce::Colours::white.withAlpha(0.045f));
+            g.fillRect(b.getX() + 2.0f, b.getBottom() - 1.0f, b.getWidth() - 4.0f, 1.0f);
+        }
+        g.setColour(look.panelEdge().withAlpha(0.7f));
+        g.drawRoundedRectangle(b.reduced(0.5f), corner, 1.0f);
         if (p.caption.isNotEmpty()) {
-            g.setColour(look.accent());
-            g.fillRoundedRectangle(b.getX() + 10.0f, b.getY() + 9.0f, 3.0f, 9.0f, 1.5f);
-            g.setColour(look.label());
-            g.setFont(AmpLookAndFeel::font(10.0f, true, 0.07f));
-            g.drawText(tr(p.caption), p.bounds.getX() + 18, p.bounds.getY() + 4, p.bounds.getWidth() - 28, 18, juce::Justification::centredLeft);
+            g.setColour(look.label().withAlpha(0.85f));
+            g.setFont(AmpLookAndFeel::font(10.0f, true, 0.12f));
+            g.drawText(tr(p.caption), p.bounds.getX() + 12, p.bounds.getY() + 4, p.bounds.getWidth() - 22, 18, juce::Justification::centredLeft);
         }
     }
 }

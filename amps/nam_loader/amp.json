@@ -7,14 +7,14 @@
 
   "ui": [
   { "param": "volume", "label": "GAIN", "group": "INPUT" },
-  { "param": "nam_eq_post", "label": "POST EQ", "group": "EQ" },
-  { "param": "bass", "label": "BASS", "group": "EQ" },
-  { "param": "nam_bass_hz", "label": "HZ", "group": "EQ" },
-  { "param": "middle", "label": "MIDDLE", "group": "EQ" },
-  { "param": "nam_mid_hz", "label": "HZ", "group": "EQ" },
-  { "param": "nam_mid_q", "label": "Q", "group": "EQ" },
-  { "param": "treble", "label": "TREBLE", "group": "EQ" },
-  { "param": "nam_treble_hz", "label": "HZ", "group": "EQ" },
+  { "param": "nam_eq_post", "label": "POST EQ", "group": "INPUT" },
+  { "param": "bass", "label": "BASS", "group": "BASS" },
+  { "param": "nam_bass_hz", "label": "HZ", "group": "BASS" },
+  { "param": "middle", "label": "MIDDLE", "group": "MIDDLE" },
+  { "param": "nam_mid_hz", "label": "HZ", "group": "MIDDLE" },
+  { "param": "nam_mid_q", "label": "Q", "group": "MIDDLE" },
+  { "param": "treble", "label": "TREBLE", "group": "TREBLE" },
+  { "param": "nam_treble_hz", "label": "HZ", "group": "TREBLE" },
   { "param": "presence", "label": "PRESENCE", "group": "OUTPUT" },
   { "param": "resonance", "label": "DEPTH", "group": "OUTPUT" },
   { "param": "master", "label": "VOLUME", "group": "OUTPUT" }
