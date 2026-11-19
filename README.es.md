@@ -111,6 +111,7 @@ de los proyectos guardados puede cambiar entre versiones 0.x. Las versiones y lo
   | Lite | Preamp completo, etapa de potencia de comportamiento ajustada contra el circuito completo |
   | Eco | Lite más curvas de tubo tabuladas y un solver más liviano |
   | Efficient | Circuito completo con el preamp a 2x y la potencia a la frecuencia del host: más liviano que Normal, de tono parecido |
+- **Página Circuit:** el esquemático del ampli con medidores de nivel en cada etapa. Al pasar el mouse por un componente, un consejo explica qué hace en el sonido; se puede cambiar una resistencia o un capacitor con la rueda, cambiar los tubos del preamp y del inversor de fase (12AX7 / 12AT7 / 12AY7) y guardar los cambios como presets propios del ampli. El control **SAG** (junto a BIAS) fija qué tan blanda es la fuente.
 - **Condición del ampli** (página Effects): tipo de tubo de salida (EL34 / 6L6GC / 6550 en los amplis con bias fijo, re-polarizado a la misma fracción de su disipación), un
   control de bias con la corriente de placa en mA leída del circuito, ruido y zumbido, desgaste (pérdida de emisión de los tubos y de capacidad de los electrolíticos) y un número
   de **unidad** que sortea tolerancias de componentes (repetible: la misma unidad suena siempre igual). Tubos, desgaste y unidad reconstruyen los circuitos, así que actúan en los modos
@@ -182,7 +183,7 @@ build\tests\sas_plugin_tests.exe "readme screenshots"
 ## Estado
 
 El VST3 y la aplicación Standalone para Windows están publicados. Una versión para Linux (VST3 y Standalone, x86_64) la compila y prueba GitHub Actions en Ubuntu, pero todavía no se probó en un DAW de Linux. macOS (VST3 y Audio Unit, un solo binario para Apple Silicon e Intel) se compila y prueba en GitHub Actions en cada push, pero
-todavía no se probó en una Mac real y no está notarizado. Planeado: AAX. El modo Eco y la igualación de nivel se verificaron con tests, todavía no extensamente de oído.
+todavía no se probó en una Mac real y no está notarizado. AAX (Pro Tools): la compilación está lista (`-DSAS_AAX_SDK_DIR=<SDK de AAX de Avid>`, ver `docs/RELEASING.md`), pero todavía no hay AAX publicado, porque Pro Tools solo carga plug-ins firmados con las herramientas de Avid. El modo Eco y la igualación de nivel se verificaron con tests, todavía no extensamente de oído.
 
 ## Licencia y marcas
 

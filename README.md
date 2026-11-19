@@ -111,7 +111,9 @@ still change between 0.x versions. Versioning and the steps of a release are in 
   that draws component tolerances. Tubes, wear and unit rebuild the circuits, so they act in the Normal and
   High modes only; the Lite fit belongs to the stock amp. The hiss and hum levels, the wear laws and the
   tolerances are typical figures, not measurements of a particular amp (see `engine/include/sas/noise.h` and
-  `engine/src/condition.cpp`). `tools/sas_bias_cal` computes the `bias_scale` of each alternative tube.
+  `engine/src/condition.cpp`). `tools/sas_bias_cal` computes the `bias_scale` of each alternative tube. A **SAG** knob (next to BIAS) sets how soft the supply is.
+- **Circuit page:** the schematic of the amp with live level meters on every stage. Hover a component for a tip on what it does to the sound, change a resistor or
+  capacitor with the wheel, swap the preamp tubes and the phase inverter (12AX7 / 12AT7 / 12AY7), and save the edits as the amp's own presets.
 - **Cabinet page:** off, a simple filter, or two impulse responses (A and B, each with its response curve) mixed with an equal-power blend; both are stored inside the project. Speaker dynamics sit between the amp and the cabinet: cone excursion (the motor force falls and the suspension stiffens as the cone is pushed), voice-coil heating and cone break-up, with an Intense mode. The values are typical figures, tuned by ear. **Stereo** (the amp is mono inside): the Width knob puts impulse A in the left ear and B in the right one (two microphones, one on each side; 0 blends both into both ears), and Double adds automatic double tracking, a second take with a different, slowly modulated delay in each ear (8 to 30 ms), which also works with the cabinet filter or a single impulse. Both are off by default, which leaves the same signal in both ears. A mono track can feed the stereo output.
 - **Tube-screamer style pedal** in front of the amp (drive, tone, level).
 - **Compressor pedal** (Effects page, in front of everything else), solved as a circuit from a transcription of a classic compressor-pedal schematic (AionFX trace v1.0, `engine/data/compressor.net`): an LM13700 OTA gain cell, a transistor full-wave envelope detector and the feedback that closes the loop, with Sustain, Blend, Tone, Level and the Attack switch (which in the circuit selects fast or slow release). It needed two new devices in the engine: an Ebers-Moll NPN that saturates and the OTA. It costs about 9 % of a core while on. The transistor, OTA and diode values are typical figures; the drawing prints none.
@@ -184,7 +186,7 @@ build\tests\sas_plugin_tests.exe "readme screenshots"
 
 ## Status
 
-Windows VST3 and the standalone application are released. A Linux build (VST3 and standalone, x86_64) is built and tested by GitHub Actions on Ubuntu but has not been tried in a Linux DAW yet. macOS (VST3 and Audio Unit, one binary for Apple Silicon and Intel) is built and tested by GitHub Actions on every push, but has not been tried on a real Mac yet and is not notarized. Planned: AAX. The Eco mode and the level
+Windows VST3 and the standalone application are released. A Linux build (VST3 and standalone, x86_64) is built and tested by GitHub Actions on Ubuntu but has not been tried in a Linux DAW yet. macOS (VST3 and Audio Unit, one binary for Apple Silicon and Intel) is built and tested by GitHub Actions on every push, but has not been tried on a real Mac yet and is not notarized. AAX (Pro Tools): the build is ready (`-DSAS_AAX_SDK_DIR=<Avid's AAX SDK>`, see `docs/RELEASING.md`) but there is no released AAX yet, because Pro Tools only loads plug-ins signed with Avid's tools. The Eco mode and the level
 matching have been verified with tests, not yet extensively by ear.
 
 ## License and trademarks

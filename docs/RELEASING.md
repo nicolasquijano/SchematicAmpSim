@@ -61,6 +61,17 @@ is not code-signed, so Windows SmartScreen may warn when it is run for the first
 To test it without touching your plugin folder: `SchematicAmpSim-<version>-win64-setup.exe /VERYSILENT /CURRENTUSER /DIR="C:\temp\test.vst3"`, then run
 the `unins000.exe` it leaves there.
 
+## AAX (Pro Tools)
+
+The build is ready but off by default, because Avid's AAX SDK cannot be redistributed or fetched by CMake:
+
+1. Create a free developer account at Avid (developer.avid.com) and download the AAX SDK.
+2. Configure with its path: `cmake --preset release -DSAS_AAX_SDK_DIR=C:/path/to/AAX_SDK` (the build then also makes `Schematic Amp Sim.aaxplugin`).
+3. Pro Tools only loads **signed** plug-ins (a development build loads only in Pro Tools Developer). Signing needs Avid's PACE
+   account (iLok, wraptool) and the signing id they give you.
+4. Test in Pro Tools (Windows and macOS) before publishing: it has not been tried in Pro Tools yet. Sign and publish the AAX
+   build by hand; the CI does not build it (there is no SDK there).
+
 ## Continuous integration and the automatic draft
 
 Two workflows live in `.github/workflows/`:

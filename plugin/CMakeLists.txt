@@ -4,6 +4,18 @@ if(APPLE)
   list(APPEND SAS_PLUGIN_FORMATS AU)
 endif()
 
+# AAX (Pro Tools), only when you give the path to Avid's AAX SDK: cmake -DSAS_AAX_SDK_DIR=C:/path/to/AAX_SDK ...
+# The SDK is not redistributable, so it is never fetched or copied into the repository. A build for a real Pro Tools
+# also has to be signed with Avid's PACE tools (see docs/RELEASING.md).
+set(SAS_AAX_SDK_DIR "" CACHE PATH "Path to Avid's AAX SDK (empty: no AAX build)")
+if(SAS_AAX_SDK_DIR AND (WIN32 OR APPLE))
+  if(NOT EXISTS "${SAS_AAX_SDK_DIR}/Interfaces/AAX.h")
+    message(FATAL_ERROR "SAS_AAX_SDK_DIR=${SAS_AAX_SDK_DIR} does not look like the AAX SDK (Interfaces/AAX.h is missing)")
+  endif()
+  juce_set_aax_sdk_path("${SAS_AAX_SDK_DIR}")
+  list(APPEND SAS_PLUGIN_FORMATS AAX)
+endif()
+
 juce_add_plugin(SchematicAmpSim
   VERSION ${PROJECT_VERSION}
   COMPANY_NAME "Nico"
