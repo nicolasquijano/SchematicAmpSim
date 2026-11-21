@@ -418,6 +418,7 @@ AmpDef loadAmpDef(const std::string& jsonText, const FileReader& read) {
             if (u.contains("power_knob")) k.powerKnob = str(u, "power_knob", "ui." + k.param);
             if (u.contains("sub")) k.sub = str(u, "sub", "ui." + k.param);
             if (u.contains("group")) k.group = str(u, "group", "ui." + k.param);
+            if (u.contains("style")) k.style = str(u, "style", "ui." + k.param);
             k.activeWhen = parseWhenSelector(u, "active_when");
             d.ui.push_back(std::move(k));
         }

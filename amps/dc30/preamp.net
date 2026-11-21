@@ -3,6 +3,8 @@
 * 180p bright cap C40), V2b (1k5 / 22u, 100k) and the V2a cathode follower (56k), then the Top Boost network (R45 100k, C43 47p, C41 / C42 22n, R44 10k, TREBLE VR3 and
 * BASS VR2, each A1M) and R6 220k. Channel 2: an EF86 (330k plate, 2k2 / 22u cathode), the six-position TONE switch SW4 (the coupling capacitor C6 to C11) with C12
 * 180p always in, CH2 VOLUME VR4 (A1M, 180p bright cap C44, 470k load R46). The selected channel feeds the phase inverter (poweramp.net), where MASTER and CUT are.
+* The preamp is split in two netlists so a channel that is not heard is not solved: this one is channel 1 up to the V2a follower (solved for the jacks Channel 1
+* and Both); stage_out.net has its own copy of the guitar input, channel 2 (always solved: 2 ports), channel 1's Top Boost network driven from kf, and the outputs.
 *
 * Assumptions where the schematic is silent or ambiguous (change them here, not in code):
 *  - the EF86 is not among the engine's tube models: an ECC83 triode stands in for it (the 1M screen resistor R70 and C70 are not modelled);
@@ -13,9 +15,6 @@
 *    are in the power amp netlist (the MASTER mixes the two phases after the inverter);
 *  - the HT feeds: R30 22k / C30 22u (V1), R31 4k7 / C31 47u (V2) and R32 22k / C32 22u (EF86) from the rail x (HT2 after R34 2k2).
 
-.nodes x n1 n2 n4 in j1 j2 g1 p1 k1 vt wv p2 k2 kf ta tb tc tr wt ge pe ke vt2 w2 m mo gin pkb1 pkb2 pkk1 pkk2 pkk4
-
-* HT (node x): driven from the power amp at run time; 340 V is the standalone default.
 V VRAIL x 100 340
 I VIN gin 1
 R RSRC gin in 7k
@@ -37,25 +36,25 @@ C CCAB2 pkk2 0 400p
 R SWK4 in pkk4 1e12
 C CCAB4 pkk4 0 800p
 
+
 * HT feeds.
 R R30 x n1 22k
 C C30 n1 0 22u
 R R31 x n2 4k7
 C C31 n2 0 47u
-R R32 x n4 22k
-C C32 n4 0 22u
 
-* Jacks: SW_C1 / SW_C2 select the channel (closed 1 ohm / open 1e12), set by the jack modes.
+* Jacks: SW_C1 / SW_C2 select the channel (closed 1 ohm / open 1e12), set by the jack modes. Channel 2's input (R42 1M, R43 68k and the input capacitance of its
+* tube, about 170 pF) is repeated here as a load: the guitar sees both channels, as in one netlist.
 R SW_C1 in j1 1
 R R40 j1 0 1M
 R R41 j1 g1 68k
 R SW_C2 in j2 1e12
 R R42 j2 0 1M
-R R43 j2 ge 68k
+R R43 j2 ged 68k
+C CMIL2 ged 0 170p
 
-* Channel 1. V1a and V1b are two triodes in parallel (same nodes): 220k plate, 1k5 with 0.1u and 22u on the cathode.
-T V1A g1 p1 k1 12AX7
-T V1B g1 p1 k1 12AX7
+* Channel 1. V1a and V1b are two triodes in parallel (same nodes: one triode at scale 2): 220k plate, 1k5 with 0.1u and 22u on the cathode.
+T V1 g1 p1 k1 12AX7 2
 R R2 n1 p1 220k
 R R1 k1 0 1k5
 C C1 k1 0 0.1u
@@ -75,6 +74,8 @@ C C4 k2 0 22u
 T V2A p2 n2 kf 12AX7
 R R4 kf 0 56k
 
+* The load of the follower: channel 1's Top Boost network, R6 and the output switch repeated here (the stage after the cut at kf has the real ones; the knobs
+* set both copies).
 * Top Boost network: R45 100k and C43 47p from the follower, C41 / C42 22n, R44 10k to ground, BASS VR2 (top tb, wiper tc) and TREBLE VR3 (top tr, wiper wt, bottom tb).
 R R45 kf ta 100k
 C C43 kf tr 47p
@@ -85,43 +86,6 @@ R VR_KT tb tc 1
 R VR_KB tc 0 1
 R VR_TT tr wt 1
 R VR_TB wt tb 1
-
-* Channel 2: the EF86 (stood in for by an ECC83): 330k plate load, 2k2 / 22u cathode.
-T VE ge pe ke 12AX7
-R R26 n4 pe 330k
-R R7 ke 0 2k2
-C C5 ke 0 22u
-
-* The TONE switch: each capacitor from the plate to its own node, the switch (SWT*) joins the chosen node to the volume pot's top, 5M1 returns, and C12 always in.
-C C6 pe s1 360p
-C C7 pe s2 560p
-C C8 pe s3 1n
-C C9 pe s4 2n2
-C C10 pe s5 4n7
-C C11 pe s6 10n
-R R8A s1 0 5M1
-R R8 s2 0 5M1
-R R9 s3 0 5M1
-R R10 s4 0 5M1
-R R11 s5 0 5M1
-R R12 s6 0 5M1
-R SWT1 s1 vt2 1e12
-R SWT2 s2 vt2 1e12
-R SWT3 s3 vt2 1e12
-R SWT4 s4 vt2 1e12
-R SWT5 s5 vt2 1e12
-R SWT6 s6 vt2 1
-C C12 pe vt2 180p
-
-* CH2 VOLUME VR4 (A1M, wiper = output) with the 180p bright cap C44 and the 470k load R46.
-R VR4_T vt2 w2 1
-R VR4_B w2 0 1
-C C44 vt2 w2 180p
-R R46 w2 0 470k
-
-* The outputs: CH1 through R6 220k, CH2 straight from its volume (each reaches its own phase-inverter grid on the drawing, through its effects loop and 0.1u; here the jack
-* switches SW_O1 / SW_O2 pick the channel's output node, and the power amp's input stands in for both grids).
 R R6 wt o1 220k
-R SW_O1 o1 m 1
-R SW_O2 w2 m 1e12
-R RM m 0 10M
+R SW_O1 o1 md 1
+R RM md 0 10M

@@ -1799,6 +1799,46 @@ TEST_CASE("NAM loader: the amp is in the list, loads a model, plays it and keeps
     CHECK(!proc.namModelLoaded());
 }
 
+TEST_CASE("NAM loader: loading another model while it plays changes the sound", "[namswap]") {
+    JuceInit juceInit;
+    SasProcessor proc;
+    proc.prepareToPlay(48000.0, 512);
+    int namIndex = -1;
+    for (int i = 0; i < int(proc.amps().size()); ++i)
+        if (proc.amps()[std::size_t(i)].nam) namIndex = i;
+    REQUIRE(namIndex >= 0);
+    setParam(proc, ids::amp, float(namIndex));
+    juce::MidiBuffer midi;
+    int at = 0;
+    // Plays `blocks` blocks and returns the output of the last 50 (left channel).
+    auto play = [&](int blocks) {
+        std::vector<float> out;
+        for (int blk = 0; blk < blocks; ++blk, ++at) {
+            juce::AudioBuffer<float> b(2, 512);
+            fill(b, 220.0, 0.2, 48000.0, at * 512);
+            proc.processBlock(b, midi);
+            if (blk >= blocks - 50) out.insert(out.end(), b.getReadPointer(0), b.getReadPointer(0) + 512);
+            if (proc.runningAmpIndex() != namIndex) juce::Thread::sleep(5);
+        }
+        return out;
+    };
+    auto diffDb = [](const std::vector<float>& a, const std::vector<float>& b) {
+        double e = 0, r = 0;
+        for (std::size_t i = 0; i < a.size(); ++i) { e += double(a[i] - b[i]) * (a[i] - b[i]); r += double(b[i]) * b[i]; }
+        return 10.0 * std::log10(e / (r + 1e-30) + 1e-30);
+    };
+    const auto none = play(300);
+    REQUIRE(proc.runningAmpIndex() == namIndex);
+    REQUIRE(proc.loadNamModel(juce::File(SAS_NAM_EXAMPLES_DIR "/wavenet_a1_standard.nam")));
+    const auto a = play(100);
+    REQUIRE(proc.loadNamModel(juce::File(SAS_NAM_EXAMPLES_DIR "/A2.nam")));
+    const auto b = play(100);
+    const double noneA = diffDb(a, none), ab = diffDb(b, a);
+    UNSCOPED_INFO("model A vs no model " << noneA << " dB, model B vs model A " << ab << " dB");
+    CHECK(noneA > -20.0);
+    CHECK(ab > -20.0);
+}
+
 TEST_CASE("NAM cabinet: a model loaded as the cabinet plays after any amp, replaces the filter, and is kept in the project state") {
     JuceInit juceInit;
     SasProcessor proc;

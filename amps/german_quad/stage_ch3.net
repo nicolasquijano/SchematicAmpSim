@@ -1,8 +1,8 @@
 * "German Quad", channel 3: V1A, GAIN 3 and the common tube Tc, V2A and the V2B follower, the CH3 tone stack and VOLUME 3. See preamp.net for the drawing and the assumptions.
 
 V VRAIL x 100 400
-R R86 x dp 4k7
-C C87 dp 0 33u
+R R86 x dp 18.5k
+C C87 dp 0 8.4u
 I VIN gin 1
 R RSRC gin in 7k
 R RPU1 gin pkb1 1e12
@@ -39,39 +39,7 @@ R VRG_B w3 0 1
 R R220G w3 0 220k
 R RST3 w3 gt 1
 
-* Tc (channels 3 and 4): 1M at its grid, 120k plate, 680R with 1u, 4n7 into h with 1M to ground (the ST3 / ST4 contact to V2A).
-R R1MG gt 0 1M
-T Tc gt pt kt 12AX7
-R R120T dp pt 120k
-R R680T kt 0 680
-C C1UT kt 0 1u
-C C4N7T pt h 4.7n
-R R1MH h 0 1M
-
-* V2A (shared by the four channels: the relays ST1 and ST3 / ST4 bring the selected channel to h): 470k into the grid, 120k plate, 680R with 2u2; the V2B cathode follower
-* (120k, the 10n + 100k load) and 220n into the stacks' input t0 with its 1M.
-R R470H h gA 470k
-T V2A gA p2 k2 12AX7
-R R120B dp p2 120k
-R R680A k2 0 680
-C C2U2 k2 0 2.2u
-T V2B p2 dp kf 12AX7
-R R120C kf 0 120k
-C C10NF kf c10 10n
-R R100KF c10 0 100k
-C C220N kf t0 220n
-R R1MT t0 0 1M
-
-* CH3 tone stack: R 10k from t0, then 560p and 39k to the treble pot (220k-B) and the node u; two 22n; BASS (1M-A) and MIDDLE (22k-A) rheostats; R 180k into VOLUME 3.
-R R10K t0 t 10k
-C C560P t tt 560p
-R R39K t u 39k
-C C22A u bt 22n
-C C22B u mt 22n
-R VRT_T tt wt 1
-R VRT_B wt bt 1
-R VRBS bt mt 1
-R VRMD mt 0 1
-R R180K wt v1 180k
-R VRV_T v1 o3 1
-R VRV_B o3 0 1
+* The load of the next stage at gt (Tc's 1M grid resistor and its Miller input capacitance), repeated here so the cut keeps it; the rail resistor above is
+* scaled by (the channel's current / this stage's current) so the plates sit where they did in one netlist.
+R RDUM gt 0 1M
+C CMIL gt 0 88p

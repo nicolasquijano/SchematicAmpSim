@@ -330,6 +330,21 @@
   ],
   "stages": [
    {
+    "netlist": "stage_ch1b.net",
+    "when_selector": {
+     "channel": [
+      0
+     ]
+    },
+    "links": [
+     {
+      "stage": 0,
+      "from": "h",
+      "source": "VH1"
+     }
+    ]
+   },
+   {
     "netlist": "stage_ch2.net",
     "input": true,
     "when_selector": {
@@ -337,6 +352,21 @@
       1
      ]
     }
+   },
+   {
+    "netlist": "stage_ch2b.net",
+    "when_selector": {
+     "channel": [
+      1
+     ]
+    },
+    "links": [
+     {
+      "stage": 2,
+      "from": "h",
+      "source": "VH2"
+     }
+    ]
    },
    {
     "netlist": "stage_ch3.net",
@@ -348,6 +378,21 @@
     }
    },
    {
+    "netlist": "stage_ch3b.net",
+    "when_selector": {
+     "channel": [
+      2
+     ]
+    },
+    "links": [
+     {
+      "stage": 4,
+      "from": "gt",
+      "source": "VGT3"
+     }
+    ]
+   },
+   {
     "netlist": "stage_ch4.net",
     "input": true,
     "when_selector": {
@@ -357,25 +402,40 @@
     }
    },
    {
+    "netlist": "stage_ch4b.net",
+    "when_selector": {
+     "channel": [
+      3
+     ]
+    },
+    "links": [
+     {
+      "stage": 6,
+      "from": "gt",
+      "source": "VGT4"
+     }
+    ]
+   },
+   {
     "netlist": "stage_out.net",
     "links": [
      {
-      "stage": 0,
+      "stage": 1,
       "from": "o1",
       "source": "VO1"
      },
      {
-      "stage": 1,
+      "stage": 3,
       "from": "o2",
       "source": "VO2"
      },
      {
-      "stage": 2,
+      "stage": 5,
       "from": "o3",
       "source": "VO3"
      },
      {
-      "stage": 3,
+      "stage": 7,
       "from": "o4",
       "source": "VO4"
      }

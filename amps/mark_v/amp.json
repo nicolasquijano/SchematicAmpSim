@@ -43,27 +43,32 @@
   {
    "param": "aeq1",
    "label": "80 Hz",
-   "group": "GRAPHIC EQ"
+   "group": "GRAPHIC EQ",
+   "style": "slider"
   },
   {
    "param": "aeq2",
    "label": "240 Hz",
-   "group": "GRAPHIC EQ"
+   "group": "GRAPHIC EQ",
+   "style": "slider"
   },
   {
    "param": "aeq3",
    "label": "750 Hz",
-   "group": "GRAPHIC EQ"
+   "group": "GRAPHIC EQ",
+   "style": "slider"
   },
   {
    "param": "aeq4",
    "label": "2.2 kHz",
-   "group": "GRAPHIC EQ"
+   "group": "GRAPHIC EQ",
+   "style": "slider"
   },
   {
    "param": "aeq5",
    "label": "6.6 kHz",
-   "group": "GRAPHIC EQ"
+   "group": "GRAPHIC EQ",
+   "style": "slider"
   }
  ],
  "theme": {
@@ -205,7 +210,7 @@
   ],
  "preamp": {
   "netlist": "preamp.net",
-  "tolerance": 2e-06,
+  "tolerance": 2e-08,
   "rail_source": "VRAIL",
   "input_source": "VIN",
   "output_node": "y",
@@ -499,6 +504,21 @@
   ],
   "stages": [
    {
+    "netlist": "stage_ch3b.net",
+    "when_selector": {
+     "channel": [
+      2
+     ]
+    },
+    "links": [
+     {
+      "stage": 0,
+      "from": "go",
+      "source": "VGO"
+     }
+    ]
+   },
+   {
     "netlist": "stage_ch2.net",
     "input": true,
     "when_selector": {
@@ -506,6 +526,21 @@
       1
      ]
     }
+   },
+   {
+    "netlist": "stage_ch2b.net",
+    "when_selector": {
+     "channel": [
+      1
+     ]
+    },
+    "links": [
+     {
+      "stage": 2,
+      "from": "g1b",
+      "source": "VG1B"
+     }
+    ]
    },
    {
     "netlist": "stage_ch1.net",
@@ -517,20 +552,35 @@
     }
    },
    {
+    "netlist": "stage_ch1b.net",
+    "when_selector": {
+     "channel": [
+      0
+     ]
+    },
+    "links": [
+     {
+      "stage": 4,
+      "from": "z",
+      "source": "VZ"
+     }
+    ]
+   },
+   {
     "netlist": "stage_out.net",
     "links": [
      {
-      "stage": 0,
+      "stage": 1,
       "from": "o3",
       "source": "VO3"
      },
      {
-      "stage": 2,
+      "stage": 5,
       "from": "o1",
       "source": "VO1"
      },
      {
-      "stage": 1,
+      "stage": 3,
       "from": "o2",
       "source": "VO2"
      }

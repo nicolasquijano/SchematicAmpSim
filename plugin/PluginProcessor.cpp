@@ -146,10 +146,10 @@ public:
             if (threadShouldExit()) break;
             delete runner_.retired.exchange(nullptr);  // chains the audio thread has swapped out
             const int key = runner_.requestedKey.exchange(-1);
-            const int amp = key & 31;
+            const int amp = keyAmp(key);
             if (key < 0 || amp >= int(owner_.defs_.size()) || owner_.sampleRate_ <= 0.0) continue;
             try {
-                sas::Condition cond{(key >> 5) & 7, (key >> 8) & 15, (key >> 12) & 15};
+                sas::Condition cond = keyCondition(key);
                 cond.parts = owner_.partFactors(amp);
                 auto* built = new sas::Chain(sas::applyCondition(owner_.defs_[std::size_t(amp)], cond), owner_.sampleRate_);
                 runner_.readyKey.store(key);
@@ -195,7 +195,7 @@ sas::Condition SasProcessor::wantedCondition(int instance, bool withParts) const
 
 int SasProcessor::wantedKey(int instance) const {
     const int amp = selectedAmpIndex(instance);
-    return makeKey(amp, wantedCondition(instance, false), partsRev_[std::size_t(amp)].load() & 0x3fff);  // no lock on the audio thread: the edits are in the revision
+    return makeKey(amp, wantedCondition(instance, false), partsRev_[std::size_t(amp)].load());  // no lock on the audio thread: the edits are in the revision
 }
 
 std::map<std::string, double> SasProcessor::partFactors(int amp) const {
@@ -267,13 +267,13 @@ void SasProcessor::restoreParts(const juce::ValueTree& tree) {
                         const double f = double(part["f"]);
                         if (f >= 0.1 && f <= 10.0) fresh[i][part["n"].toString().toStdString()] = f;
                     }
-    bool changed[32] = {};
+    bool changed[kMaxAmps] = {};
     {
         const juce::ScopedLock lock(partsLock_);
-        for (std::size_t i = 0; i < defs_.size() && i < 32; ++i) changed[i] = parts_[i] != fresh[i];
+        for (std::size_t i = 0; i < defs_.size(); ++i) changed[i] = parts_[i] != fresh[i];
         parts_ = std::move(fresh);
     }
-    for (std::size_t i = 0; i < defs_.size() && i < 32; ++i)
+    for (std::size_t i = 0; i < defs_.size(); ++i)
         if (changed[i]) partsRev_[i].fetch_add(1);
 }
 
@@ -282,7 +282,7 @@ void SasProcessor::swapInBuiltChain(int instance) {
     sas::Chain* built = runner.ready.exchange(nullptr);
     if (!built) return;
     const int key = runner.readyKey.load();
-    const int amp = key & 31;
+    const int amp = keyAmp(key);
     // Start the new circuits at the current knob positions instead of ramping from their defaults.
     runner.activeAmp = amp;
     runner.activeKey = key;
@@ -313,6 +313,8 @@ SasProcessor::SasProcessor()
                 return defs;
             }())) {
     for (const auto& id : sas::embeddedAmpIds(true)) defs_.push_back(sas::loadEmbeddedAmp(id));
+    // The chain key (makeKey) and partsRev_ hold up to kMaxAmps amps: past that the key would name another amp.
+    if (defs_.size() > std::size_t(kMaxAmps)) throw std::runtime_error("more amps than the chain key can name: raise kAmpBits");
     parts_.resize(defs_.size());
 
     // Resolve, per instance of the amp and per amp, which parameter drives each of its knobs (via its "ui" block).
@@ -406,8 +408,8 @@ void SasProcessor::prepareToPlay(double sampleRate, int samplesPerBlock) {
     if (!amps_[0].chain || rateChanged || wanted != amps_[0].activeKey) {
         sampleRate_ = sampleRate;
         delete amps_[0].ready.exchange(nullptr);
-        amps_[0].chain = std::make_unique<sas::Chain>(sas::applyCondition(defs_[std::size_t(wanted & 31)], wantedCondition(0)), sampleRate);  // heavy: solves the DC points
-        amps_[0].activeAmp = wanted & 31;
+        amps_[0].chain = std::make_unique<sas::Chain>(sas::applyCondition(defs_[std::size_t(keyAmp(wanted))], wantedCondition(0)), sampleRate);  // heavy: solves the DC points
+        amps_[0].activeAmp = keyAmp(wanted);
         amps_[0].activeKey = wanted;
     } else {
         amps_[0].chain->reset();

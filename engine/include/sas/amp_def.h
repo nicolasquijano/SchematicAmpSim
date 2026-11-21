@@ -245,6 +245,7 @@ struct UiKnob {
     std::string param, knob, powerKnob, label;  // `knob` (preamp) or `powerKnob` (power amp), or neither (presence)
     std::string sub;                            // a second line under the label on a faceplate ("VOLUME")
     std::string group;                          // section title over this knob (neighbouring knobs with the same title share one block); empty = no section
+    std::string style;                          // "slider": a vertical fader (a graphic EQ band) instead of a knob; empty = knob
     std::vector<std::pair<std::string, std::vector<int>>> activeWhen;  // "active_when": selector name -> positions in which the knob does something; the editor dims it in the others
 };
 

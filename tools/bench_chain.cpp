@@ -4,11 +4,32 @@
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
+#include <string>
 #include <vector>
 
 #include "sas/amp.h"
 #include "sas/chain.h"
 #include "sas/embedded_amps.h"
+
+// SAS_SEL="name=pos,name=pos": the selector positions (channel, mode...) to measure with; the others stay at 0.
+static std::vector<std::size_t> selFromEnv(const sas::AmpDef& def) {
+    std::vector<std::size_t> v(def.preamp.selectors.size(), 0);
+    const char* e = std::getenv("SAS_SEL");
+    if (!e) return v;
+    std::string text(e);
+    std::size_t start = 0;
+    while (start < text.size()) {
+        const std::size_t comma = text.find(',', start);
+        const std::string item = text.substr(start, comma == std::string::npos ? std::string::npos : comma - start);
+        const std::size_t eq = item.find('=');
+        if (eq != std::string::npos)
+            for (std::size_t i = 0; i < def.preamp.selectors.size(); ++i)
+                if (def.preamp.selectors[i].name == item.substr(0, eq)) v[i] = std::size_t(std::atoi(item.c_str() + eq + 1));
+        if (comma == std::string::npos) break;
+        start = comma + 1;
+    }
+    return v;
+}
 
 int main() {
     constexpr double fs = 48000.0;
@@ -112,6 +133,7 @@ int main() {
                 for (auto q : {sas::Quality::Normal, sas::Quality::Efficient}) {
                     sas::Chain chain(def, rate);
                     sas::ChainSettings s;
+                    s.selectors = selFromEnv(def);
                     for (const auto& k : def.preamp.knobs) s.knobs.push_back(k.def);
                     s.quality = q;
                     chain.setSettings(s);
@@ -153,6 +175,7 @@ int main() {
             for (auto q : {sas::Quality::Normal, sas::Quality::Efficient}) {
                 sas::Chain chain(def, fs);
                 sas::ChainSettings s;
+                    s.selectors = selFromEnv(def);
                 for (const auto& k : def.preamp.knobs) s.knobs.push_back(k.def);
                 s.quality = q;
                 chain.setSettings(s);
@@ -197,6 +220,7 @@ int main() {
             for (auto q : qs) {
                 sas::Chain chain(def, fs);
                 sas::ChainSettings s;
+                    s.selectors = selFromEnv(def);
                 for (const auto& k : def.preamp.knobs) s.knobs.push_back(k.def);
                 s.quality = q;
                 chain.setSettings(s);
@@ -214,6 +238,7 @@ int main() {
             {
                 sas::Chain chain(def, fs);
                 sas::ChainSettings s;
+                    s.selectors = selFromEnv(def);
                 for (const auto& k : def.preamp.knobs) s.knobs.push_back(k.def);
                 chain.setSettings(s);
                 chain.snap(s);

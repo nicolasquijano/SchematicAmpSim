@@ -104,3 +104,9 @@ target_link_libraries(sas_thd_check PRIVATE sas_engine sas_amps)
 # Voltages of named nodes of an amp's first preamp stage for a 220 Hz sine: DC, AC peak and THD at each (find the stage that clips).
 add_executable(sas_node_trace node_trace.cpp)
 target_link_libraries(sas_node_trace PRIVATE sas_engine sas_amps)
+
+# A / B check of two amps' preamps (a split preamp against its unsplit copy): level, third-octave bands and waveform error per selector setting.
+add_executable(sas_ab_check ab_check.cpp)
+target_link_libraries(sas_ab_check PRIVATE sas_engine sas_amps)
+add_executable(sas_noise_check noise_check.cpp)
+target_link_libraries(sas_noise_check PRIVATE sas_engine sas_amps)

@@ -184,6 +184,58 @@ void AmpLookAndFeel::drawButtonBackground(juce::Graphics& g, juce::Button& butto
     paintInset(g, b, surface, on ? t.accent : t.edge.brighter(highlighted ? 0.25f : 0.0f), 5.0f);
 }
 
+// A graphic EQ fader, like the slide controls of a Mark-series front panel: a narrow dark slot with a scale beside it (the middle mark is flat), the part of the slot
+// between the middle and the cap lit, and a rectangular silver cap with a dark line across its middle.
+void AmpLookAndFeel::drawLinearSlider(juce::Graphics& g, int x, int y, int w, int h, float pos, float minPos, float maxPos, juce::Slider::SliderStyle style,
+                                      juce::Slider& s) {
+    if (style != juce::Slider::LinearVertical) {
+        LookAndFeel_V4::drawLinearSlider(g, x, y, w, h, pos, minPos, maxPos, style, s);
+        return;
+    }
+    const auto& t = theme_;
+    const float cx = float(x) + float(w) * 0.5f;
+    const float capH = std::clamp(float(w) * 0.32f, 9.0f, 14.0f), capW = std::clamp(float(w) * 0.62f, 16.0f, 30.0f);
+    const float top = float(y) + capH * 0.5f, bottom = float(y + h) - capH * 0.5f;
+    // Scale: eleven ticks on both sides of the slot, the middle (flat) and the ends longer.
+    for (int i = 0; i <= 10; ++i) {
+        const float ty = top + (bottom - top) * float(i) / 10.0f;
+        const bool major = i == 0 || i == 5 || i == 10;
+        const float len = major ? capW * 0.5f : capW * 0.32f;
+        g.setColour(t.label.withAlpha(major ? 0.75f : 0.35f));
+        g.drawLine(cx - capW * 0.5f - 3.0f - len, ty, cx - capW * 0.5f - 3.0f, ty, major ? 1.2f : 1.0f);
+        g.drawLine(cx + capW * 0.5f + 3.0f, ty, cx + capW * 0.5f + 3.0f + len, ty, major ? 1.2f : 1.0f);
+    }
+    // The slot: a recessed groove.
+    const auto slot = juce::Rectangle<float>(cx - 2.5f, top - 2.0f, 5.0f, bottom - top + 4.0f);
+    g.setColour(juce::Colours::black.withAlpha(0.75f));
+    g.fillRoundedRectangle(slot, 2.5f);
+    g.setColour(t.edge.withAlpha(0.9f));
+    g.drawRoundedRectangle(slot.reduced(0.5f), 2.5f, 1.0f);
+    // The lit part of the slot, from the middle (flat) to the cap.
+    const float mid = (top + bottom) * 0.5f;
+    const float py = std::clamp(pos, top, bottom);
+    if (std::abs(py - mid) > 1.0f) {
+        const auto lit = juce::Rectangle<float>(cx - 1.25f, std::min(py, mid), 2.5f, std::abs(py - mid));
+        g.setColour(t.accent.withAlpha(0.25f));
+        g.fillRoundedRectangle(lit.expanded(1.5f, 0.0f), 2.0f);
+        g.setColour(t.accent);
+        g.fillRoundedRectangle(lit, 1.25f);
+    }
+    // The cap: silver, with a shadow and a dark line across its middle.
+    const auto cap = juce::Rectangle<float>(cx - capW * 0.5f, py - capH * 0.5f, capW, capH);
+    juce::Path capPath;
+    capPath.addRoundedRectangle(cap, 2.0f);
+    juce::DropShadow(juce::Colours::black.withAlpha(0.7f), 5, {0, 2}).drawForPath(g, capPath);
+    g.setGradientFill(juce::ColourGradient(juce::Colour(0xffe9ecef), cx, cap.getY(), juce::Colour(0xff8d939a), cx, cap.getBottom(), false));
+    g.fillPath(capPath);
+    g.setColour(juce::Colours::white.withAlpha(0.55f));
+    g.drawHorizontalLine(int(cap.getY()) + 1, cap.getX() + 2.0f, cap.getRight() - 2.0f);
+    g.setColour(juce::Colours::black.withAlpha(0.55f));
+    g.drawRoundedRectangle(cap.reduced(0.5f), 2.0f, 1.0f);
+    g.setColour(juce::Colour(0xff1b1d20));
+    g.fillRect(cap.getX() + 2.0f, cap.getCentreY() - 1.0f, cap.getWidth() - 4.0f, 2.0f);
+}
+
 // ------------------------------------------------------------------ switch
 
 namespace {
@@ -257,7 +309,7 @@ void SwitchBox::mouseUp(const juce::MouseEvent& e) {
 
 // ------------------------------------------------------------------ knob
 
-KnobWithLabel::KnobWithLabel(juce::AudioProcessorValueTreeState& apvts, const char* paramId, const juce::String& caption) {
+KnobWithLabel::KnobWithLabel(juce::AudioProcessorValueTreeState& apvts, const char* paramId, const juce::String& caption, bool fader) {
     if (dynamic_cast<juce::AudioParameterBool*>(apvts.getParameter(paramId)) != nullptr) {
         // An on / off parameter is a switch under its caption.
         buttonAttachment_ = std::make_unique<juce::AudioProcessorValueTreeState::ButtonAttachment>(apvts, paramId, toggle_);
@@ -265,9 +317,14 @@ KnobWithLabel::KnobWithLabel(juce::AudioProcessorValueTreeState& apvts, const ch
         addAndMakeVisible(toggle_);
         return;
     }
+    if (fader) slider_.setSliderStyle(juce::Slider::LinearVertical);
     attachment_ = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment>(apvts, paramId, slider_);
     slider_.setRotaryParameters(juce::degreesToRadians(225.0f), juce::degreesToRadians(495.0f), true);
     slider_.setTextBoxStyle(juce::Slider::TextBoxBelow, false, 56, 14);
+    if (fader) {  // all the height for the travel: the value shows in a bubble while it moves
+        slider_.setTextBoxStyle(juce::Slider::NoTextBox, false, 0, 0);
+        slider_.setPopupDisplayEnabled(true, true, nullptr, 900);
+    }
     slider_.setDoubleClickReturnValue(true, apvts.getParameter(paramId)->convertFrom0to1(apvts.getParameter(paramId)->getDefaultValue()));
     slider_.setMouseDragSensitivity(160);
     slider_.setColour(juce::Slider::textBoxBackgroundColourId, juce::Colours::transparentBlack);

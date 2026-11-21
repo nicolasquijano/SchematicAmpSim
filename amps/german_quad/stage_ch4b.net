@@ -1,0 +1,44 @@
+* "German Quad", channel 4, stage 2 of 2: Tc, V2A, the V2B cathode follower, the CH4 tone stack and VOLUME 4. Driven by node gt (VGT4) of the
+* channel's first netlist. See preamp.net for the drawing and the assumptions.
+
+V VRAIL x 100 400
+R R86 x dp 5.95k
+C C87 dp 0 26u
+S VGT4 gt 1 0
+
+* Tc (channels 3 and 4): 1M at its grid, 120k plate, 680R with 1u, 4n7 into h with 1M to ground (the ST3 / ST4 contact to V2A).
+R R1MG gt 0 1M
+T Tc gt pt kt 12AX7
+R R120T dp pt 120k
+R R680T kt 0 680
+C C1UT kt 0 1u
+C C4N7T pt h 4.7n
+R R1MH h 0 1M
+
+* V2A (shared by the four channels: the relays ST1 and ST3 / ST4 bring the selected channel to h): 470k into the grid, 120k plate, 680R with 2u2; the V2B cathode follower
+* (120k, the 10n + 100k load) and 220n into the stacks' input t0 with its 1M.
+R R470H h gA 470k
+T V2A gA p2 k2 12AX7
+R R120B dp p2 120k
+R R680A k2 0 680
+C C2U2 k2 0 2.2u
+T V2B p2 dp kf 12AX7
+R R120C kf 0 120k
+C C10NF kf c10 10n
+R R100KF c10 0 100k
+C C220N kf t0 220n
+R R1MT t0 0 1M
+
+* CH4 tone stack: R 10k from t0, then 560p and 39k to the treble pot (220k-B) and the node u; two 22n; BASS (1M-A) and MIDDLE (22k-A) rheostats; R 180k into VOLUME 4.
+R R10K t0 t 10k
+C C560P t tt 560p
+R R39K t u 39k
+C C22A u bt 22n
+C C22B u mt 22n
+R VRT_T tt wt 1
+R VRT_B wt bt 1
+R VRBS bt mt 1
+R VRMD mt 0 1
+R R180K wt v1 180k
+R VRV_T v1 o4 1
+R VRV_B o4 0 1

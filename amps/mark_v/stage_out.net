@@ -5,8 +5,9 @@
 * Driven by channel 3's node o3 (VO3, the main netlist), channel 1's o1 (VO1, stage_v3a.net) and channel 2's o2 (VO2, stage_v3b.net).
 
 V VRAIL x 100 400
+* V6B hangs from node D: R191 47k from B with C114 10u (0.47 s); here 1k with 470u to keep the same corner and the DC point.
 R R86 x dp 1k
-C C87 dp 0 30u
+C C87 dp 0 470u
 S VO3 o3s 1 0
 R SW_O3 o3s eq 1e12
 S VO1 o1s 1 0

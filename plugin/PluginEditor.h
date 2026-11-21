@@ -37,6 +37,7 @@ public:
     void drawRotarySlider(juce::Graphics&, int x, int y, int w, int h, float pos, float startAngle, float endAngle,
                           juce::Slider&) override;
     void drawToggleButton(juce::Graphics&, juce::ToggleButton&, bool highlighted, bool down) override;
+    void drawLinearSlider(juce::Graphics&, int x, int y, int w, int h, float pos, float minPos, float maxPos, juce::Slider::SliderStyle, juce::Slider&) override;
     void drawComboBox(juce::Graphics&, int w, int h, bool isButtonDown, int bx, int by, int bw, int bh, juce::ComboBox&) override;
     void drawButtonBackground(juce::Graphics&, juce::Button&, const juce::Colour& backgroundColour, bool highlighted, bool down) override;
 
@@ -64,7 +65,8 @@ private:
 // A knob with its caption above and its value below.
 class KnobWithLabel final : public juce::Component {
 public:
-    KnobWithLabel(juce::AudioProcessorValueTreeState& apvts, const char* paramId, const juce::String& caption);
+    // fader: a vertical slider (the graphic EQ bands of the amps that have one) instead of a rotary knob.
+    KnobWithLabel(juce::AudioProcessorValueTreeState& apvts, const char* paramId, const juce::String& caption, bool fader = false);
     void resized() override;
     void lookAndFeelChanged() override;
 

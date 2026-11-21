@@ -6,10 +6,9 @@
 * a two-section BASS) -> the OUTPUT MASTER VR3 -> the power amp (poweramp.net).
 *
 * Assumptions where the drawing is silent or ambiguous (change them here, not in code):
-*  - The bus that R6 (V1b's grid leak), R7 (the leak of C20), R8 and the relay's second throw hang from is a signal node, not ground (its DC comes through R6 from
-*    V1b's grid): in Lead the clipping network and LEAD MASTER sit between it and the network's top, and it feeds back to V1b's grid through R6.
-*  - The relay: Rhythm joins the bottom of the clipping network to its top (so the diodes, C21 and VR2 are shorted and the signal goes straight through R11);
-*    Lead joins the bottom of the network to the bus.
+*  - The bus that R6 (V1b's grid leak), R7 (the leak of C20) and R8 hang from is the relay's moving contact. Lead (as drawn) puts it on ground: V1b at full
+*    gain, the clipping network (whose bottom line goes to the ground rail) clips and LEAD MASTER sets the level. Rhythm puts it on the network's top: R6 then
+*    feeds V1b's output back to its grid (less gain) and the signal also reaches V2a through R8 / R10.
 *  - The clipping network: LED3, D1 and D2 down one way (five diodes in series, one LED and two 1N4007) and LED2 and D3 the other way (four in series): modelled as one device
 *    per string with n times the thermal voltage of one SIGNAL diode (an LED is taken as three). "3x 1N4007" on the drawing is D1, D2 and D3.
 *  - The Rhythm clip is the selector RHYTHM CLIP (open, as drawn, by default). The effects loop is bypassed (send straight into return).
@@ -17,7 +16,7 @@
 *  - R12 (1M) goes from V2a's grid to the node after the coupling cap C24 (it hops over the plate wire on the drawing): an AC feedback around V2a.
 *  - Supply: A is the rail of the power amp's R50; R49 10k and two 50u caps (C34) filter the V1 stages from it.
 
-.nodes x h1 in ia g1 p1 k1 cc w1 gb p2 k2 q cl cb w2 ga p3 k3 rc m8 e1 sd g4 p4 k4 bt tn br mq mq2 x1 x2 x3 wf vt wm w4 mo gin pkb1 pkb2 pkk1 pkk2 pkk4
+.nodes x h1 in ia g1 p1 k1 cc w1 gb p2 k2 q cl w2 ga p3 k3 rc m8 e1 sd g4 p4 k4 bt tn br mq mq2 x1 x2 x3 wf vt wm w4 mo gin pkb1 pkb2 pkk1 pkk2 pkk4
 
 * A (node x) is driven from the power amp at run time; 480 V is the standalone default.
 V VRAIL x 100 480
@@ -75,15 +74,15 @@ C C20 p2 q 22n
 R R7 q bus 220k
 R R29 q cl 47k
 
-* The RHYTHM / LEAD relay (the selector CHANNEL): SWR joins the bottom of the network to its top (Rhythm), SWL to ground (Lead).
-R SWR cl cb 0.1
-R SWL cb bus 1e12
-* The network: 1n C21, the LEAD MASTER VR2 (220k linear) and the two diode strings (see the assumptions).
-C C21 cl cb 1n
+* The RHYTHM / LEAD relay (the selector CHANNEL) switches the bus: Lead (SWL) to ground, Rhythm (SWR) to the top of the clipping network.
+R SWR bus cl 0.1
+R SWL bus 0 1e12
+* The network, from its top cl to ground (its bottom line goes to the ground rail): 1n C21, the LEAD MASTER VR2 (220k linear) and the two diode strings.
+C C21 cl 0 1n
 R VR2_T cl w2 1
-R VR2_B w2 cb 1
-D CLIP_P cl cb SIGNAL5
-D CLIP_N cb cl SIGNAL4
+R VR2_B w2 0 1
+D CLIP_P cl 0 SIGNAL5
+D CLIP_N 0 cl SIGNAL4
 
 * V2a: R11 47k from the wiper, R10 100k / R8 10k to ground, R12 1M from the grid to the node after C24, R9 47k with C6 2n2 to ground, 1k5 cathode, 100k plate load.
 R R11 w2 ga 47k

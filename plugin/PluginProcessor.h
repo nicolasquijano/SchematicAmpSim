@@ -538,11 +538,17 @@ private:
     // The cabinet's work: filter, NAM cabinet or impulse responses, double tracking (called by CabinetModule on the audio thread).
     void processCabinet(class CabinetModule& cab, float* l, float* r, std::size_t n);
     int wantedKey(int instance) const;
-    // amp (5 bits), tube (3), wear (4), unit (4), then the revision of the amp's component edits.
-    static int makeKey(int amp, const sas::Condition& c, int partsRev = 0) { return amp + 32 * (c.tube + 8 * (c.wear + 16 * c.unit)) + (partsRev << 16); }
+    // The key of a chain: amp (7 bits, up to kMaxAmps), tube (3), wear (4), unit (4), then the revision of the amp's component edits (13 bits).
+    // (It was 5 bits for the amp: from the 33rd amp on, the key named amp 0 and the plugin built and played that one instead.)
+    static constexpr int kAmpBits = 7, kMaxAmps = 1 << kAmpBits, kRevBits = 13;
+    static int keyAmp(int key) { return key & (kMaxAmps - 1); }
+    static sas::Condition keyCondition(int key) { return {(key >> kAmpBits) & 7, (key >> (kAmpBits + 3)) & 15, (key >> (kAmpBits + 7)) & 15}; }
+    static int makeKey(int amp, const sas::Condition& c, int partsRev = 0) {
+        return amp + kMaxAmps * (c.tube + 8 * (c.wear + 16 * c.unit)) + ((partsRev & ((1 << kRevBits) - 1)) << (kAmpBits + 11));
+    }
     mutable juce::CriticalSection partsLock_;
     std::vector<std::map<std::string, double>> parts_;  // per amp of the list; guarded by partsLock_
-    std::array<std::atomic<int>, 32> partsRev_{};       // bumped with every edit, so the key of the amp changes
+    std::array<std::atomic<int>, kMaxAmps> partsRev_{};  // bumped with every edit, so the key of the amp changes
     void restoreParts(const juce::ValueTree& tree);
 
 

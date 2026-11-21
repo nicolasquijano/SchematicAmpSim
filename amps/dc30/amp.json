@@ -100,6 +100,10 @@
    "full_scale": 450
   }
  ],
+  "circuit_channels": [
+    { "label": "CHANNEL 1 / BOTH", "jacks": [0, 2] },
+    { "label": "CHANNEL 2", "jacks": [1] }
+  ],
  "preamp": {
   "netlist": "preamp.net",
   "tolerance": 2e-06,
@@ -257,6 +261,23 @@
        "SWT5": 1000000000000.0,
        "SWT6": 1000000000000.0
       }
+     }
+    ]
+   }
+  ],
+  "main_jacks": [
+   "ch1",
+   "both"
+  ],
+  "stages": [
+   {
+    "netlist": "stage_out.net",
+    "input": true,
+    "links": [
+     {
+      "stage": 0,
+      "from": "kf",
+      "source": "VKF"
      }
     ]
    }

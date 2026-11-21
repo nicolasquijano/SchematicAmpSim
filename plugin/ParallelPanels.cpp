@@ -95,7 +95,7 @@ void AmpPanelB::rebuildForAmp() {
     const auto& def = processor_.amps()[std::size_t(shownAmp_)];
     knobs_.clear();
     for (const auto& u : def.ui) {
-        auto k = std::make_unique<KnobWithLabel>(processor_.apvts, pid(u.param.c_str(), kInstance).toRawUTF8(), u.label);
+        auto k = std::make_unique<KnobWithLabel>(processor_.apvts, pid(u.param.c_str(), kInstance).toRawUTF8(), u.label, u.style == "slider");
         addAndMakeVisible(*k);
         knobs_.push_back(std::move(k));
     }

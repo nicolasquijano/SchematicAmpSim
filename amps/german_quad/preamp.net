@@ -7,8 +7,8 @@
 * loops (one gain stage stands in for the loop buffers in stage_out.net), the DEEP control.
 
 V VRAIL x 100 400
-R R86 x dp 4k7
-C C87 dp 0 33u
+R R86 x dp 15k
+C C87 dp 0 10u
 I VIN gin 1
 R RSRC gin in 7k
 R RPU1 gin pkb1 1e12
@@ -53,29 +53,7 @@ R VRG_B g 0 1
 R R220G g 0 220k
 R RST1 g h 1
 
-* V2A (shared by the four channels: the relays ST1 and ST3 / ST4 bring the selected channel to h): 470k into the grid, 120k plate, 680R with 2u2; the V2B cathode follower
-* (120k, the 10n + 100k load) and 220n into the stacks' input t0 with its 1M.
-R R470H h gA 470k
-T V2A gA p2 k2 12AX7
-R R120B dp p2 120k
-R R680A k2 0 680
-C C2U2 k2 0 2.2u
-T V2B p2 dp kf 12AX7
-R R120C kf 0 120k
-C C10NF kf c10 10n
-R R100KF c10 0 100k
-C C220N kf t0 220n
-R R1MT t0 0 1M
-
-* CH1 tone stack: C 330p and R 100k from t0 to the treble pot (220k-B) and the node u; two 22n; BASS (1M-A) and MIDDLE (22k-A) rheostats; R 180k from the wiper into VOLUME 1.
-C C330P t0 tt 330p
-R R100K t0 u 100k
-C C22A u bt 22n
-C C22B u mt 22n
-R VRT_T tt wt 1
-R VRT_B wt bt 1
-R VRBS bt mt 1
-R VRMD mt 0 1
-R R180K wt v1 180k
-R VRV_T v1 o1 1
-R VRV_B o1 0 1
+* The input of the next stage (R470H 470k into V2A's grid and its input capacitance, about 110 pF), repeated here so the cut at h keeps its load; the rail
+* resistor above is scaled by (the channel's current / this stage's current) so the plates sit where they did in one netlist.
+R RDUM h hd 470k
+C CDUM hd 0 110p

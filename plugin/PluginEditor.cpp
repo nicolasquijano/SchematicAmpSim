@@ -459,7 +459,7 @@ void SasEditor::showAmp(int index) {
         ampPanel_.addAndMakeVisible(*face_);
     }
     for (const auto& u : def.ui) {
-        auto k = std::make_unique<KnobWithLabel>(processor_.apvts, u.param.c_str(), u.label);
+        auto k = std::make_unique<KnobWithLabel>(processor_.apvts, u.param.c_str(), u.label, u.style == "slider");
         ampPanel_.addAndMakeVisible(*k);
         ampKnobs_.push_back(std::move(k));
     }
@@ -959,7 +959,11 @@ int SasEditor::ampTopHeight() const {
                          !processor_.amps()[std::size_t(shownAmp_)].ui.front().group.empty();
     // The NAM loader's twelve knobs wrap into two rows of blocks.
     const bool wraps = grouped && processor_.amps()[std::size_t(shownAmp_)].ui.size() > 8;
-    return wraps ? 215 + 120 : grouped ? 215 : 170;
+    // Graphic EQ faders need travel: their row gets taller.
+    bool faders = false;
+    if (shownAmp_ >= 0 && shownAmp_ < int(processor_.amps().size()))
+        for (const auto& u : processor_.amps()[std::size_t(shownAmp_)].ui) faders = faders || u.style == "slider";
+    return (wraps ? 215 + 120 : grouped ? 215 : 170) + (faders ? 110 : 0);
 }
 
 int SasEditor::ampPanelHeight() const { return ampTopHeight() + 8 + 136; }
@@ -1069,7 +1073,14 @@ void SasEditor::layoutAmpPanel() {
             const bool twoRows = split < total;
             const int widest = twoRows ? int(std::max(split, total - split)) : int(std::max<std::size_t>(1, ampKnobs_.size()));
             const int w = row.getWidth() / widest;  // both rows use the same cell width so the knobs line up
-            auto rowArea = twoRows ? row.removeFromTop(row.getHeight() / 2) : row;
+            // The row that holds graphic EQ faders gets 60 % of the height (they need travel), else the rows share it evenly.
+            auto rowHasFader = [&](std::size_t from, std::size_t to) {
+                for (std::size_t q = from; q < to; ++q) if (ui[q].style == "slider") return true;
+                return false;
+            };
+            const bool topFaders = twoRows && rowHasFader(0, split), bottomFaders = twoRows && rowHasFader(split, total);
+            const int topShare = topFaders == bottomFaders ? 50 : topFaders ? 60 : 40;
+            auto rowArea = twoRows ? row.removeFromTop(row.getHeight() * topShare / 100) : row;
             for (std::size_t i = 0; i < total;) {
                 if (i == split) rowArea = row;
                 std::size_t j = i;
