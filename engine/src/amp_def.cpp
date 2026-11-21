@@ -280,6 +280,8 @@ PowerDef parsePower(const json& j, const FileReader& read) {
             kd.scale = num(k, "scale", path);
             kd.minOhms = numOr(k, "min_ohms", 50);
             kd.def = num(k, "default", path);
+            if (k.contains("taper")) kd.taper = taper(k, path);
+            if (k.contains("complement")) kd.complement = str(k, "complement", path);
             p.knobs.push_back(std::move(kd));
         }
     if (j.contains("tubes"))

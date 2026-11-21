@@ -2,8 +2,7 @@
 * R147 10k and R138 4.7k as the tail and the feedback node, R150 100k on the first grid, C63 .047u to the second), plates R133 82k / R184 100k with C71 47p across them,
 * C52 / C47 (.047u) into four 6L6GC as two parallel pairs (1.5k grid stoppers, 220k grid returns to the bias supply, 100 ohm screen resistors, the cathodes through R186 (1 ohm:
 * 80 mV across it is the bias setting), the output transformer with its 16 / 8 / 4 ohm sections (the impedance switch at 16 ohm) and the HT supply.
-* The negative feedback and the presence / resonance network are on another sheet of the drawing (the presence board): here the feedback is taken from the 8 ohm tap through
-* R_FB 33k and a presence rheostat in series (more resistance, less feedback, more presence) into the feedback node (an assumption). The resonance control is the 5150's network (an assumption: the 5153 sheet was not available): VR8 from the 8 ohm tap and C12 6n8 to ground into the junction nb, which C30 22u joins to the feedback node.
+* The negative feedback and the presence / resonance network are not on the 5153 drawing: they are taken from the EVH 5150III service drawing (see below), which has the same phase inverter (R159 10k and R156 4.7k on the feedback node).
 
 S VAUDIO pin 50k 0
 S VHT a 1 485
@@ -22,13 +21,18 @@ R R133 c pa 82k
 R R184 c pb 100k
 C C71 pa pb 47p
 
-* Presence (a complementary pair: VRPS is the series rheostat, VRPD an unused dummy) and the feedback resistor into the node n1.
-R VRPD pdum 0 100k
-R VRPS t8 pp 1k
-R R_FB pp n1 33k
-C C30 n1 nb 22u
-C C12 nb 0 6n8
-R VR8 t8 nb 500k
+* Negative feedback, as in the EVH 5150III service drawing (PR4615A, sheet 2, the power amp breakaway PCB): from the 8 ohm tap (the ORG wire) through the
+* RESONANCE rheostat R208 (1M audio taper) in parallel with C120 6n8 to the node nb, then R162 39k and C126 220u into the feedback node n1 (the junction of
+* R159 10k and R156 4.7k). With the rheostat at 0 the feedback is flat; at 1M only the highs get through C120, so the feedback falls at low frequencies and the
+* bass comes up.
+R VR8 t8 nb 150k
+C C120 t8 nb 6n8
+R R162 nb nc 39k
+C C126 nc n1 220u
+* PRESENCE: R11 (10k rheostat, its wiper tied to the top end) in series with C3 + C11 (.068u each) from n1 to ground. At 0 ohm the caps shunt the highs of n1 to
+* ground, the feedback falls at high frequencies and the highs come up; at 10k the shunt is mostly the resistor and the effect is small.
+C C3_11 n1 pc 0.136u
+R VRPR pc 0 5k
 
 * Grid drive: C52 / C47 (.047u) from each plate, 220k returns to the bias supply (R111 / R110), 1.5k stoppers (R143 / R144 and R145 / R146).
 C C52 pa d1 47n

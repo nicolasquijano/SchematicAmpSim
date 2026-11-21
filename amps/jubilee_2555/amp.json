@@ -1,0 +1,417 @@
+{
+ "id": "jubilee_2555",
+ "order": 30,
+ "category": "crunch",
+ "output_db": 14.5,
+ "name": "British Silver",
+ "ui": [
+  {
+   "param": "volume",
+   "knob": "gain",
+   "label": "GAIN",
+   "group": "PREAMP"
+  },
+  {
+   "param": "volume2",
+   "knob": "lead",
+   "label": "LEAD MASTER",
+   "group": "PREAMP"
+  },
+  {
+   "param": "bass",
+   "knob": "bass",
+   "label": "BASS",
+   "group": "TONE"
+  },
+  {
+   "param": "middle",
+   "knob": "middle",
+   "label": "MIDDLE",
+   "group": "TONE"
+  },
+  {
+   "param": "treble",
+   "knob": "treble",
+   "label": "TREBLE",
+   "group": "TONE"
+  },
+  {
+   "param": "presence",
+   "label": "PRESENCE",
+   "group": "OUTPUT"
+  },
+  {
+   "param": "master",
+   "knob": "master",
+   "label": "MASTER",
+   "group": "OUTPUT"
+  }
+ ],
+ "theme": {
+  "background": "#0d0e10",
+  "panel": "#1a1c1f",
+  "edge": "#383c42",
+  "accent": "#c4cad2",
+  "label": "#8e949b",
+  "text": "#e8eaed",
+  "knob_top": "#34383d",
+  "knob_bottom": "#101113",
+  "pointer": "#eef1f4"
+ },
+ "presets": [
+  {
+   "name": "Clean",
+   "selectors": {
+    "channel": 0
+   },
+   "params": {
+    "volume": 3,
+    "volume2": 5,
+    "bass": 5,
+    "master": 6,
+    "middle": 5,
+    "presence": 5,
+    "treble": 6
+   }
+  },
+  {
+   "name": "Rhythm crunch",
+   "selectors": {
+    "channel": 0
+   },
+   "params": {
+    "volume": 6,
+    "volume2": 5,
+    "bass": 5,
+    "master": 5,
+    "middle": 6,
+    "presence": 5,
+    "treble": 5
+   }
+  },
+  {
+   "name": "Lead",
+   "selectors": {
+    "channel": 1
+   },
+   "params": {
+    "volume": 6,
+    "volume2": 6,
+    "bass": 5,
+    "master": 5,
+    "middle": 6,
+    "presence": 5,
+    "treble": 6
+   }
+  },
+  {
+   "name": "Saturated lead",
+   "selectors": {
+    "channel": 1
+   },
+   "params": {
+    "volume": 9,
+    "volume2": 8,
+    "bass": 5,
+    "master": 4,
+    "middle": 7,
+    "presence": 6,
+    "treble": 6
+   }
+  }
+ ],
+ "probes": [
+  {
+   "label": "V1",
+   "node": "p1",
+   "full_scale": 337
+  },
+  {
+   "label": "V2",
+   "node": "ga",
+   "full_scale": 1.76
+  },
+  {
+   "label": "OUT",
+   "node": "mo",
+   "full_scale": 7.23
+  }
+ ],
+ "power_probes": [
+  {
+   "label": "PHASE",
+   "node": "g45",
+   "full_scale": 64.9
+  },
+  {
+   "label": "POWER",
+   "node": "pt",
+   "full_scale": 450
+  }
+ ],
+ "preamp": {
+  "netlist": "preamp.net",
+  "tolerance": 2e-06,
+  "rail_source": "VRAIL",
+  "input_source": "VIN",
+  "output_node": "mo",
+  "pot_min_ohms": 100,
+  "knobs": [
+   {
+    "name": "gain",
+    "default": 0.5,
+    "pot": {
+     "type": "wiper",
+     "top": "VR1_T",
+     "bottom": "VR1_B",
+     "total": 1000000.0,
+     "taper": "log"
+    }
+   },
+   {
+    "name": "lead",
+    "default": 0.5,
+    "pot": {
+     "type": "wiper",
+     "top": "VR2_T",
+     "bottom": "VR2_B",
+     "total": 220000.0,
+     "taper": "linear"
+    }
+   },
+   {
+    "name": "bass",
+    "default": 0.5,
+    "pot": {
+     "type": "wiper",
+     "top": "VR6B_T",
+     "bottom": "VR6B_B",
+     "total": 1000000.0,
+     "taper": "log",
+     "also": [
+      {
+       "top": "VR6F_T",
+       "bottom": "VR6F_B"
+      }
+     ]
+    }
+   },
+   {
+    "name": "middle",
+    "default": 0.5,
+    "pot": {
+     "type": "wiper",
+     "top": "VR5_T",
+     "bottom": "VR5_B",
+     "total": 100000.0,
+     "taper": "log"
+    }
+   },
+   {
+    "name": "treble",
+    "default": 0.5,
+    "pot": {
+     "type": "wiper",
+     "top": "VR4_T",
+     "bottom": "VR4_B",
+     "total": 220000.0,
+     "taper": "linear"
+    }
+   },
+   {
+    "name": "master",
+    "default": 0.5,
+    "pot": {
+     "type": "wiper",
+     "top": "VR3_T",
+     "bottom": "VR3_B",
+     "total": 1000000.0,
+     "taper": "log"
+    }
+   }
+  ],
+  "source_ohms": {
+   "resistors": [
+    "RSRC"
+   ],
+   "default": 7000,
+   "min": 10
+  },
+  "jacks": [
+   {
+    "name": "input",
+    "label": "Input",
+    "drive": "VIN",
+    "resistors": {}
+   }
+  ],
+  "selectors": [
+   {
+    "name": "channel",
+    "label": "CHANNEL",
+    "positions": [
+     {
+      "label": "Rhythm",
+      "resistors": {
+       "SWR": 0.1,
+       "SWL": 1000000000000.0
+      }
+     },
+     {
+      "label": "Lead",
+      "resistors": {
+       "SWR": 1000000000000.0,
+       "SWL": 0.1
+      }
+     }
+    ]
+   },
+   {
+    "name": "rclip",
+    "label": "RHYTHM CLIP",
+    "positions": [
+     {
+      "label": "Off",
+      "resistors": {
+       "SW_RC": 1000000000000.0
+      }
+     },
+     {
+      "label": "On",
+      "resistors": {
+       "SW_RC": 1
+      }
+     }
+    ]
+   }
+  ]
+ },
+ "power": {
+  "transformer_parasitics": {
+   "primary_pf": 150,
+   "core_loss_ohms": 40000
+  },
+  "tubes": [
+   {
+    "name": "EL34",
+    "model": "EL34",
+    "pmax_w": 25.0,
+    "bias_scale": 1.0
+   },
+   {
+    "name": "6L6GC",
+    "model": "6L6GCDS",
+    "pmax_w": 30.0,
+    "bias_scale": 1.1748
+   },
+   {
+    "name": "6550",
+    "model": "6550DS",
+    "pmax_w": 35.0,
+    "bias_scale": 1.4124
+   }
+  ],
+  "bias": {
+   "source": "VBIAS",
+   "idle_resistors": [
+    "DCR_PT",
+    "DCR_PB"
+   ],
+   "tubes_per_half": 2
+  },
+  "netlist": "poweramp.net",
+  "tolerance": 0.0001,
+  "input_source": "VAUDIO",
+  "ht_source": "VHT",
+  "ht_node": "a",
+  "rail_node": "x",
+  "output_node": "t16",
+  "load_resistor": "RLOAD",
+  "presence": {
+   "resistor": "VR7",
+   "scale": 22000.0,
+   "min_ohms": 50,
+   "default": 0.5
+  },
+  "supply": {
+   "mains_hz": 50,
+   "vac_peak": 535,
+   "rect_source_ohms": 42,
+   "ht_dc_source": 485,
+   "rect_drop": 1.4,
+   "reservoir_farads": 0.0001,
+   "tie_ohms": 1.0,
+   "settle_seconds": 0.15
+  }
+ },
+ "lite": {
+  "base_gain_db": 27.5308,
+  "high_pass_hz": 31.0277,
+  "shelf_hz": 1093.14,
+  "presence_db": [
+   0,
+   0.368089,
+   1.03183,
+   2.58801,
+   9.5072
+  ],
+  "sag_table": [
+   [
+    0,
+    0
+   ],
+   [
+    2.54648,
+    0.339061
+   ],
+   [
+    5.09296,
+    1.3435
+   ],
+   [
+    9.5493,
+    4.59036
+   ],
+   [
+    15.9155,
+    11.8967
+   ],
+   [
+    22.2817,
+    21.1954
+   ],
+   [
+    28.6479,
+    31.3848
+   ],
+   [
+    35.0141,
+    41.7305
+   ],
+   [
+    44.5634,
+    56.3557
+   ],
+   [
+    57.2958,
+    62.4347
+   ],
+   [
+    82.7606,
+    64.183
+   ],
+   [
+    127.324,
+    70.9238
+   ]
+  ],
+  "rail_x_idle": 336.282,
+  "rail_sag_fraction": 0.55,
+  "ceiling_light": 146.841,
+  "ceiling_heavy": 55.8397,
+  "ceiling_decay": 52.266,
+  "knee": 2.51196,
+  "sag_attack_s": 0.01,
+  "sag_release_s": 0.06
+ }
+}

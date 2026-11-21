@@ -1,0 +1,705 @@
+{
+ "id": "mark_v",
+ "order": 32,
+ "category": "highgain",
+ "output_db": 2.0,
+ "name": "American Lead V",
+ "ui": [
+  {
+   "param": "volume",
+   "knob": "gain",
+   "label": "GAIN",
+   "group": "PREAMP"
+  },
+  {
+   "param": "treble",
+   "knob": "treble",
+   "label": "TREBLE",
+   "group": "TONE"
+  },
+  {
+   "param": "middle",
+   "knob": "middle",
+   "label": "MIDDLE",
+   "group": "TONE"
+  },
+  {
+   "param": "bass",
+   "knob": "bass",
+   "label": "BASS",
+   "group": "TONE"
+  },
+  {
+   "param": "presence",
+   "label": "PRESENCE",
+   "group": "OUTPUT"
+  },
+  {
+   "param": "master",
+   "knob": "master",
+   "label": "MASTER",
+   "group": "OUTPUT"
+  },
+  {
+   "param": "aeq1",
+   "label": "80 Hz",
+   "group": "GRAPHIC EQ"
+  },
+  {
+   "param": "aeq2",
+   "label": "240 Hz",
+   "group": "GRAPHIC EQ"
+  },
+  {
+   "param": "aeq3",
+   "label": "750 Hz",
+   "group": "GRAPHIC EQ"
+  },
+  {
+   "param": "aeq4",
+   "label": "2.2 kHz",
+   "group": "GRAPHIC EQ"
+  },
+  {
+   "param": "aeq5",
+   "label": "6.6 kHz",
+   "group": "GRAPHIC EQ"
+  }
+ ],
+ "theme": {
+  "background": "#0d0c0b",
+  "panel": "#1b1917",
+  "edge": "#3d3833",
+  "accent": "#e0a63c",
+  "label": "#a39a8a",
+  "text": "#efe9dc",
+  "knob_top": "#3b3732",
+  "knob_bottom": "#12100e",
+  "pointer": "#fff0c8"
+ },
+ "presets": [
+  {
+   "name": "CH1 Clean",
+   "selectors": {
+    "channel": 0,
+    "ch1_mode": 0
+   },
+   "params": {
+    "volume": 4,
+    "treble": 5,
+    "middle": 5,
+    "bass": 5,
+    "presence": 4,
+    "master": 6
+   }
+  },
+  {
+   "name": "CH2 Crunch",
+   "selectors": {
+    "channel": 1,
+    "ch2_mode": 1
+   },
+   "params": {
+    "volume": 5,
+    "treble": 5,
+    "middle": 6,
+    "bass": 5,
+    "presence": 5,
+    "master": 5
+   }
+  },
+  {
+   "name": "CH2 Mark I",
+   "selectors": {
+    "channel": 1,
+    "ch2_mode": 2
+   },
+   "params": {
+    "volume": 6,
+    "treble": 5,
+    "middle": 6,
+    "bass": 5,
+    "presence": 5,
+    "master": 5
+   }
+  },
+  {
+   "name": "CH3 IIC+",
+   "selectors": {
+    "channel": 2,
+    "ch3_mode": 0
+   },
+   "params": {
+    "volume": 6,
+    "treble": 5,
+    "middle": 6,
+    "bass": 5,
+    "presence": 6,
+    "master": 5
+   }
+  },
+  {
+   "name": "CH3 IV",
+   "selectors": {
+    "channel": 2,
+    "ch3_mode": 1
+   },
+   "params": {
+    "volume": 6,
+    "treble": 5,
+    "middle": 6,
+    "bass": 5,
+    "presence": 6,
+    "master": 5
+   }
+  },
+  {
+   "name": "CH3 Extreme",
+   "selectors": {
+    "channel": 2,
+    "ch3_mode": 2
+   },
+   "params": {
+    "volume": 7,
+    "treble": 5,
+    "middle": 4,
+    "bass": 6,
+    "presence": 6,
+    "master": 4
+   }
+  }
+ ],
+ "probes": [
+  {
+   "label": "V1",
+   "node": "p1",
+   "full_scale": 200
+  },
+  {
+   "label": "V5",
+   "node": "p5",
+   "full_scale": 200
+  },
+  {
+   "label": "OUT",
+   "node": "y",
+   "full_scale": 10
+  }
+ ],
+ "power_probes": [
+  {
+   "label": "PHASE",
+   "node": "g45",
+   "full_scale": 119
+  },
+  {
+   "label": "POWER",
+   "node": "pt",
+   "full_scale": 450
+  }
+ ],
+  "circuit_channels": [
+    { "label": "CH1", "selector": "channel", "positions": [0] },
+    { "label": "CH2", "selector": "channel", "positions": [1] },
+    { "label": "CH3", "selector": "channel", "positions": [2] }
+  ],
+ "preamp": {
+  "netlist": "preamp.net",
+  "tolerance": 2e-06,
+  "rail_source": "VRAIL",
+  "input_source": "VIN",
+  "output_node": "y",
+  "pot_min_ohms": 100,
+  "main_when_selector": {
+   "channel": [
+    2
+   ]
+  },
+  "knobs": [
+   {
+    "name": "gain",
+    "default": 0.5,
+    "pot": {
+     "type": "wiper",
+     "top": "VRG_T",
+     "bottom": "VRG_B",
+     "total": 1000000.0,
+     "taper": "log"
+    }
+   },
+   {
+    "name": "treble",
+    "default": 0.5,
+    "pot": {
+     "type": "wiper",
+     "top": "VRT_T",
+     "bottom": "VRT_B",
+     "total": 250000.0,
+     "taper": "log"
+    }
+   },
+   {
+    "name": "bass",
+    "default": 0.5,
+    "pot": {
+     "type": "variable",
+     "resistor": "VRBS",
+     "total": 250000.0,
+     "taper": "log"
+    }
+   },
+   {
+    "name": "middle",
+    "default": 0.5,
+    "pot": {
+     "type": "variable",
+     "resistor": "VRMD",
+     "total": 10000.0,
+     "taper": "log"
+    }
+   },
+   {
+    "name": "master",
+    "default": 0.5,
+    "pot": {
+     "type": "wiper",
+     "top": "VRMS_T",
+     "bottom": "VRMS_B",
+     "total": 100000.0,
+     "taper": "log"
+    }
+   }
+  ],
+  "source_ohms": {
+   "resistors": [
+    "RSRC"
+   ],
+   "default": 7000,
+   "min": 10
+  },
+  "jacks": [
+   {
+    "name": "input",
+    "label": "Input",
+    "drive": "VIN",
+    "resistors": {}
+   }
+  ],
+  "selectors": [
+   {
+    "name": "channel",
+    "label": "CHANNEL",
+    "positions": [
+     {
+      "label": "CH1",
+      "resistors": {
+       "SW_O1": 1,
+       "SW_O2": 1000000000000.0,
+       "SW_O3": 1000000000000.0
+      },
+      "pot_totals": {
+       "treble": 250000.0,
+       "master": 100000.0
+      }
+     },
+     {
+      "label": "CH2",
+      "resistors": {
+       "SW_O1": 1000000000000.0,
+       "SW_O2": 1,
+       "SW_O3": 1000000000000.0
+      },
+      "pot_totals": {
+       "treble": 250000.0,
+       "master": 1000000.0
+      }
+     },
+     {
+      "label": "CH3",
+      "resistors": {
+       "SW_O1": 1000000000000.0,
+       "SW_O2": 1000000000000.0,
+       "SW_O3": 1
+      },
+      "pot_totals": {
+       "treble": 200000.0,
+       "master": 100000.0
+      }
+     }
+    ]
+   },
+   {
+    "name": "ch1_mode",
+    "label": "CH1 MODE",
+    "positions": [
+     {
+      "label": "Clean",
+      "resistors": {
+       "SW_R31": 1,
+       "SW_R32": 1000000000000.0,
+       "SW_R33": 1000000000000.0,
+       "SW_NN": 1,
+       "SW_T2": 1000000000000.0,
+       "SW_R110": 1,
+       "SW_C31A": 1000000000000.0,
+       "SW_C32A": 1000000000000.0,
+       "SW_J3": 1000000000000.0,
+       "SW_R199": 1000000000000.0
+      }
+     },
+     {
+      "label": "Fat",
+      "resistors": {
+       "SW_R31": 1000000000000.0,
+       "SW_R32": 1,
+       "SW_R33": 1,
+       "SW_NN": 1,
+       "SW_T2": 1000000000000.0,
+       "SW_R110": 1,
+       "SW_C31A": 1,
+       "SW_C32A": 1000000000000.0,
+       "SW_J3": 1000000000000.0,
+       "SW_R199": 1000000000000.0
+      }
+     },
+     {
+      "label": "Tweed",
+      "resistors": {
+       "SW_R31": 1000000000000.0,
+       "SW_R32": 1,
+       "SW_R33": 1,
+       "SW_NN": 1000000000000.0,
+       "SW_T2": 1,
+       "SW_R110": 1000000000000.0,
+       "SW_C31A": 1,
+       "SW_C32A": 1,
+       "SW_J3": 1,
+       "SW_R199": 1
+      }
+     }
+    ]
+   },
+   {
+    "name": "ch2_mode",
+    "label": "CH2 MODE",
+    "positions": [
+     {
+      "label": "Edge",
+      "resistors": {
+       "SW_R4A": 1,
+       "SW_R3": 1000000000000.0,
+       "SW_C8A": 1,
+       "SW_R20": 1,
+       "SW_C12": 1000000000000.0,
+       "SW_C9A": 1000000000000.0,
+       "SW_C8": 1,
+       "SW_R212": 1,
+       "SW_C11": 1,
+       "SW_C10": 1000000000000.0,
+       "SW_R15": 1000000000000.0,
+       "SW_OB": 1,
+       "SW_OC": 1000000000000.0,
+       "SW_C19": 1,
+       "SW_R185": 1000000000000.0,
+       "SW_R186": 1
+      }
+     },
+     {
+      "label": "Crunch",
+      "resistors": {
+       "SW_R4A": 1000000000000.0,
+       "SW_R3": 1,
+       "SW_C8A": 1000000000000.0,
+       "SW_R20": 1000000000000.0,
+       "SW_C12": 1,
+       "SW_C9A": 1,
+       "SW_C8": 1,
+       "SW_R212": 1,
+       "SW_C11": 1000000000000.0,
+       "SW_C10": 1,
+       "SW_R15": 1000000000000.0,
+       "SW_OB": 1000000000000.0,
+       "SW_OC": 1,
+       "SW_C19": 1000000000000.0,
+       "SW_R185": 1000000000000.0,
+       "SW_R186": 1000000000000.0
+      }
+     },
+     {
+      "label": "Mark I",
+      "resistors": {
+       "SW_R4A": 1000000000000.0,
+       "SW_R3": 1000000000000.0,
+       "SW_C8A": 1000000000000.0,
+       "SW_R20": 1000000000000.0,
+       "SW_C12": 1,
+       "SW_C9A": 1,
+       "SW_C8": 1000000000000.0,
+       "SW_R212": 1000000000000.0,
+       "SW_C11": 1000000000000.0,
+       "SW_C10": 1000000000000.0,
+       "SW_R15": 1,
+       "SW_OB": 1,
+       "SW_OC": 1000000000000.0,
+       "SW_C19": 1000000000000.0,
+       "SW_R185": 1,
+       "SW_R186": 1
+      }
+     }
+    ]
+   },
+   {
+    "name": "ch3_mode",
+    "label": "CH3 MODE",
+    "positions": [
+     {
+      "label": "IIC+",
+      "resistors": {
+       "SW_M7A": 1,
+       "SW_M7B": 1000000000000.0,
+       "SW_R49": 1000000000000.0
+      }
+     },
+     {
+      "label": "IV",
+      "resistors": {
+       "SW_M7A": 1000000000000.0,
+       "SW_M7B": 1,
+       "SW_R49": 1
+      }
+     },
+     {
+      "label": "Extreme",
+      "resistors": {
+       "SW_M7A": 1000000000000.0,
+       "SW_M7B": 1,
+       "SW_R49": 1000000000000.0
+      }
+     }
+    ]
+   },
+   {
+    "name": "bright",
+    "label": "CH3 BRIGHT",
+    "positions": [
+     {
+      "label": "Off",
+      "resistors": {
+       "SW_BR": 1000000000000.0
+      }
+     },
+     {
+      "label": "On",
+      "resistors": {
+       "SW_BR": 1
+      }
+     }
+    ]
+   }
+  ],
+  "stages": [
+   {
+    "netlist": "stage_ch2.net",
+    "input": true,
+    "when_selector": {
+     "channel": [
+      1
+     ]
+    }
+   },
+   {
+    "netlist": "stage_ch1.net",
+    "input": true,
+    "when_selector": {
+     "channel": [
+      0
+     ]
+    }
+   },
+   {
+    "netlist": "stage_out.net",
+    "links": [
+     {
+      "stage": 0,
+      "from": "o3",
+      "source": "VO3"
+     },
+     {
+      "stage": 2,
+      "from": "o1",
+      "source": "VO1"
+     },
+     {
+      "stage": 1,
+      "from": "o2",
+      "source": "VO2"
+     }
+    ]
+   }
+  ]
+ },
+ "power": {
+  "transformer_parasitics": {
+   "primary_pf": 150,
+   "core_loss_ohms": 40000
+  },
+  "tubes": [
+   {
+    "name": "6L6GC",
+    "model": "6L6GCDS",
+    "pmax_w": 30.0,
+    "bias_scale": 1.0
+   },
+   {
+    "name": "EL34",
+    "model": "EL34",
+    "pmax_w": 25.0,
+    "bias_scale": 0.8425
+   },
+   {
+    "name": "KT88",
+    "model": "6550",
+    "pmax_w": 42.0,
+    "bias_scale": 1.1524
+   },
+   {
+    "name": "6550",
+    "model": "6550DS",
+    "pmax_w": 35.0,
+    "bias_scale": 1.1834
+   }
+  ],
+  "bias": {
+   "source": "VBIAS",
+   "idle_resistors": [
+    "DCR_PT",
+    "DCR_PB"
+   ],
+   "tubes_per_half": 2
+  },
+  "netlist": "poweramp.net",
+  "tolerance": 0.0001,
+  "input_source": "VAUDIO",
+  "ht_source": "VHT",
+  "ht_node": "a",
+  "rail_node": "x",
+  "output_node": "t8",
+  "load_resistor": "RLOAD",
+  "presence": {
+   "resistor": "VRPD",
+   "complement": "VRPS",
+   "scale": 250000.0,
+   "min_ohms": 3000,
+   "default": 0.5
+  },
+  "supply": {
+   "mains_hz": 50,
+   "vac_peak": 516,
+   "rect_source_ohms": 42,
+   "ht_dc_source": 470,
+   "rect_drop": 1.4,
+   "reservoir_farads": 0.00011,
+   "tie_ohms": 1.0,
+   "settle_seconds": 0.15
+  }
+ },
+ "lite": {
+  "base_gain_db": 18.9004,
+  "high_pass_hz": 16.9521,
+  "shelf_hz": 1093.14,
+  "presence_db": [
+   0,
+   9.31671,
+   10.5505,
+   11.0009,
+   11.2243
+  ],
+  "sag_table": [
+   [
+    0,
+    0
+   ],
+   [
+    2.54648,
+    1.46089
+   ],
+   [
+    5.09296,
+    5.68072
+   ],
+   [
+    9.5493,
+    18.2012
+   ],
+   [
+    15.9155,
+    39.4654
+   ],
+   [
+    22.2817,
+    50.2581
+   ],
+   [
+    28.6479,
+    52.9038
+   ],
+   [
+    35.0141,
+    55.2506
+   ],
+   [
+    44.5634,
+    58.6808
+   ],
+   [
+    57.2958,
+    62.0129
+   ],
+   [
+    82.7606,
+    65.9223
+   ],
+   [
+    127.324,
+    69.3083
+   ]
+  ],
+  "rail_x_idle": 390.65,
+  "rail_sag_fraction": 0.58,
+  "ceiling_light": 43.8704,
+  "ceiling_heavy": 34.7774,
+  "ceiling_decay": 120.916,
+  "knee": 23.0994,
+  "sag_attack_s": 0.01,
+  "sag_release_s": 0.06
+ },
+ "graphic_eq": {
+  "bands": [
+   {
+    "hz": 80,
+    "q": 1.0,
+    "range_db": 12.0
+   },
+   {
+    "hz": 240,
+    "q": 1.0,
+    "range_db": 12.0
+   },
+   {
+    "hz": 750,
+    "q": 1.0,
+    "range_db": 12.0
+   },
+   {
+    "hz": 2200,
+    "q": 1.0,
+    "range_db": 12.0
+   },
+   {
+    "hz": 6600,
+    "q": 1.0,
+    "range_db": 12.0
+   }
+  ]
+ }
+}

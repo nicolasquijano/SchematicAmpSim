@@ -183,7 +183,10 @@ AmpDef applyCondition(const AmpDef& def, const Condition& c) {
     if (!def.power.nfbResistor.empty()) r.protectedResistors.insert(def.power.nfbResistor);
     if (!def.power.presenceResistor.empty()) r.protectedResistors.insert(def.power.presenceResistor);
     if (!def.power.presenceComplement.empty()) r.protectedResistors.insert(def.power.presenceComplement);
-    for (const auto& k : def.power.knobs) r.protectedResistors.insert(k.resistor);
+    for (const auto& k : def.power.knobs) {
+        r.protectedResistors.insert(k.resistor);
+        if (!k.complement.empty()) r.protectedResistors.insert(k.complement);
+    }
     for (const auto& s : def.preamp.sourceResistors) r.protectedResistors.insert(s);
     for (const auto& k : def.preamp.knobs) {
         for (const auto* n : {&k.pot.top, &k.pot.bottom, &k.pot.resistor})

@@ -1,0 +1,139 @@
+* Marshall Silver Jubilee 2555 (100 W; the 2550, 2553, 2554, 2558 and 2555 share this preamp), transcribed from the factory drawing 2555 STD
+* (drtube.com/schematics/marshall/2555amp.gif and 2550amp.gif; PCB JM112D).
+*
+* Signal path: V1a (gain pot VR1 after it, with the bright cap C5) -> V1b -> the RHYTHM / LEAD relay: Lead adds the LED clipping network and the LEAD MASTER pot VR2,
+* Rhythm bypasses both -> V2a (R10 / R8 and the R9 / C6 treble shunt on its grid) -> the effects loop (bypassed) -> V2b cathode follower -> the tone stack (a Marshall one with
+* a two-section BASS) -> the OUTPUT MASTER VR3 -> the power amp (poweramp.net).
+*
+* Assumptions where the drawing is silent or ambiguous (change them here, not in code):
+*  - The bus that R6 (V1b's grid leak), R7 (the leak of C20), R8 and the relay's second throw hang from is a signal node, not ground (its DC comes through R6 from
+*    V1b's grid): in Lead the clipping network and LEAD MASTER sit between it and the network's top, and it feeds back to V1b's grid through R6.
+*  - The relay: Rhythm joins the bottom of the clipping network to its top (so the diodes, C21 and VR2 are shorted and the signal goes straight through R11);
+*    Lead joins the bottom of the network to the bus.
+*  - The clipping network: LED3, D1 and D2 down one way (five diodes in series, one LED and two 1N4007) and LED2 and D3 the other way (four in series): modelled as one device
+*    per string with n times the thermal voltage of one SIGNAL diode (an LED is taken as three). "3x 1N4007" on the drawing is D1, D2 and D3.
+*  - The Rhythm clip is the selector RHYTHM CLIP (open, as drawn, by default). The effects loop is bypassed (send straight into return).
+*  - C5 (1n) goes from the top of the gain pot to its wiper (a bright cap); C19 (470p) is across V1b's plate load; C33 (47p) is across V1a (plate to cathode).
+*  - R12 (1M) goes from V2a's grid to the node after the coupling cap C24 (it hops over the plate wire on the drawing): an AC feedback around V2a.
+*  - Supply: A is the rail of the power amp's R50; R49 10k and two 50u caps (C34) filter the V1 stages from it.
+
+.nodes x h1 in ia g1 p1 k1 cc w1 gb p2 k2 q cl cb w2 ga p3 k3 rc m8 e1 sd g4 p4 k4 bt tn br mq mq2 x1 x2 x3 wf vt wm w4 mo gin pkb1 pkb2 pkk1 pkk2 pkk4
+
+* A (node x) is driven from the power amp at run time; 480 V is the standalone default.
+V VRAIL x 100 480
+C C34A x 0 50u
+R R49 x h1 10k
+C C34B h1 0 50u
+
+* The guitar behind a variable source resistance (see the other amps): RSRC is the plain 7k source.
+I VIN gin 1
+R RSRC gin in 7k
+R RPU1 gin pkb1 1e12
+.xfmr LPU1 L=2.5
+  W pkb1 in 1 pu
+.end
+R RPU2 gin pkb2 1e12
+.xfmr LPU2 L=5
+  W pkb2 in 1 pu
+.end
+C CPU gin in 110p
+R RPL gin in 1e12
+R SWK1 in pkk1 1e12
+C CCAB1 pkk1 0 200p
+R SWK2 in pkk2 1e12
+C CCAB2 pkk2 0 400p
+R SWK4 in pkk4 1e12
+C CCAB4 pkk4 0 800p
+
+* V1a: input C2 .047, 1M leak, the 68k stopper R25; 2k7 with .68u on the cathode, 47p across the tube; 100k plate load.
+C C2 in ia 47n
+R R2 ia 0 1M
+R R25 ia g1 68k
+T V1A g1 p1 k1 12AX7
+R R1 k1 0 2k7
+C C1 k1 0 0.68u
+C C33 p1 k1 47p
+R R26 h1 p1 100k
+
+* V1a -> V1b: C3 .022 into the gain pot VR1 (1M log) with the bright cap C5 1n from its top to its wiper, then the 100k stopper R27.
+C C3 p1 cc 22n
+R VR1_T cc w1 1
+R VR1_B w1 0 1
+C C5 cc w1 1n
+R R27 w1 gb 100k
+
+* V1b: 220k grid leak, 1k5 with 10u on the cathode, 100k plate load with 470p across it.
+T V1B gb p2 k2 12AX7
+R R6 gb bus 220k
+R R3 k2 0 1k5
+C C4 k2 0 10u
+R R28 h1 p2 100k
+C C19 h1 p2 470p
+
+* V1b -> the clipping network: C20 .022, the 220k leak R7 and 47k R29 into the network.
+C C20 p2 q 22n
+R R7 q bus 220k
+R R29 q cl 47k
+
+* The RHYTHM / LEAD relay (the selector CHANNEL): SWR joins the bottom of the network to its top (Rhythm), SWL to ground (Lead).
+R SWR cl cb 0.1
+R SWL cb bus 1e12
+* The network: 1n C21, the LEAD MASTER VR2 (220k linear) and the two diode strings (see the assumptions).
+C C21 cl cb 1n
+R VR2_T cl w2 1
+R VR2_B w2 cb 1
+D CLIP_P cl cb SIGNAL5
+D CLIP_N cb cl SIGNAL4
+
+* V2a: R11 47k from the wiper, R10 100k / R8 10k to ground, R12 1M from the grid to the node after C24, R9 47k with C6 2n2 to ground, 1k5 cathode, 100k plate load.
+R R11 w2 ga 47k
+R R10 ga m8 100k
+R R8 m8 bus 10k
+T V2A ga p3 k3 12AX7
+R R12 ga e1 1M
+R R9 ga rc 47k
+C C6 rc 0 2n2
+* The Pull Rhythm Clip switch (on the gain pot, the selector RHYTHM CLIP) joins the bus to rc, where D4 / D5 (1N4007, back to back) clip to ground.
+R SW_RC bus rc 1e12
+D D4 rc 0 SIGNAL
+D D5 0 rc SIGNAL
+R R32 k3 0 1k5
+R R35 x p3 100k
+
+* V2a -> V2b: C24 .1, R34 100k and R33 10k to ground; the effects loop is bypassed; C25 .1 and the 1M leak R36 into V2b. V2b: 220k plate load, 470 cathode.
+C C24 p3 e1 0.1u
+R R34 e1 sd 100k
+R R33 sd 0 10k
+C C25 sd g4 0.1u
+R R36 g4 0 1M
+T V2B g4 p4 k4 12AX7
+R R38 x p4 220k
+R R37 k4 0 470
+
+* Tone stack. BASS is VR6, two sections on one shaft (1M log): the back one (wiper pot) takes C27 .1u from V2b's plate, its wiper feeds the node tn and its
+* bottom goes through R16 100k to ground; the front one (a rheostat, its wiper tied to its top end, modelled as a wiper pot with a 1 ohm link) is in series with R15 to ground.
+* C26 4n7 goes straight from the plate to tn, R13 100k to the node mq, C8 220p to the node x1 (the top of TREBLE VR4, 220k linear, whose bottom is x2).
+* MIDDLE VR5 (100k log): its top takes C11 470p from x1, its wiper goes through C10 .01u to mq; mq reaches x2 through C9 .1u and R14 10k; C7 2n2 from x2 to ground.
+* The wiper of VR4 feeds the OUTPUT MASTER VR3 (1M log), whose wiper is the output.
+C C27 p4 bt 0.1u
+R VR6B_T bt tn 1
+R VR6B_B tn br 1
+R R16 br 0 100k
+C C26 p4 tn 4n7
+R R13 tn mq 100k
+C C8 tn x1 220p
+C C9 mq mq2 0.1u
+R R14 mq2 x2 10k
+C C10 mq wm 10n
+C C11 x1 vt 470p
+R VR5_T vt wm 1
+R VR5_B wm 0 1
+R VR4_T x1 w4 1
+R VR4_B w4 x2 1
+C C7 x2 0 2n2
+R R15 x2 x3 100k
+R VR6F_T x3 wf 1
+R VR6F_B wf 0 1
+R W6 wf x3 1
+R VR3_T w4 mo 1
+R VR3_B mo 0 1

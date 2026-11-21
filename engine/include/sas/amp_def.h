@@ -167,6 +167,8 @@ struct SupplyDef {
 struct PowerKnobDef {
     std::string name, resistor;
     double scale = 100e3, minOhms = 50, def = 0.5;
+    Taper taper = Taper::Linear;  // the pot's law: the resistor is scale * taper(value)
+    std::string complement;       // optional: the other section of a wiper pot, set to scale minus the resistor
 };
 
 // A power-tube type the amp can be fitted with (amp.json "power.tubes"; the first entry is the stock one).

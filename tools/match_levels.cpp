@@ -7,6 +7,7 @@
 #include <cmath>
 #include <cstdio>
 #include <cstdlib>
+#include <string>
 #include <vector>
 
 #include "sas/chain.h"
@@ -31,13 +32,14 @@ std::vector<float> guitar(double peak, std::size_t n) {
 }
 
 // rms (digital full scale = 1) of the chain's output, second half of 1.5 s.
-double level(const sas::AmpDef& def, std::size_t jack, double peak) {
+double level(const sas::AmpDef& def, std::size_t jack, double peak, const std::vector<std::size_t>& selectors = {}) {
     sas::Chain chain(def, kFs);
     sas::ChainSettings s;
     for (const auto& k : def.preamp.knobs) s.knobs.push_back(k.def);
     for (const auto& k : def.power.knobs) s.powerKnobs.push_back(k.def);
     s.presence = def.power.presenceDefault;
     s.jack = jack;
+    s.selectors = selectors;
     s.cabFilter = true;
     chain.snap(s);
     const std::size_t n = std::size_t(1.5 * kFs);
@@ -53,8 +55,26 @@ double db(double x) { return 20.0 * std::log10(x); }
 
 }  // namespace
 
+// "name=pos,name=pos": the selector positions of an amp (the others stay at 0).
+std::vector<std::size_t> parseSelectors(const sas::AmpDef& def, const std::string& text) {
+    std::vector<std::size_t> v(def.preamp.selectors.size(), 0);
+    std::size_t start = 0;
+    while (start < text.size()) {
+        const std::size_t comma = text.find(',', start);
+        const std::string item = text.substr(start, comma == std::string::npos ? std::string::npos : comma - start);
+        const std::size_t eq = item.find('=');
+        if (eq != std::string::npos)
+            for (std::size_t i = 0; i < def.preamp.selectors.size(); ++i)
+                if (def.preamp.selectors[i].name == item.substr(0, eq)) v[i] = std::size_t(std::atoi(item.c_str() + eq + 1));
+        if (comma == std::string::npos) break;
+        start = comma + 1;
+    }
+    return v;
+}
+
 int main(int argc, char** argv) {
-    const double refPeak = argc > 1 ? std::atof(argv[1]) : 0.1;
+    const bool oneAmp = argc > 2 && std::string(argv[1]) == "--amp";
+    const double refPeak = (argc > 1 && !oneAmp) ? std::atof(argv[1]) : 0.1;
     const std::vector<double> peaks = {0.01, 0.03, 0.1, 0.3};
     const auto ids = sas::embeddedAmpIds();
     // The reference is always measured without the amp's own output trim.
@@ -65,6 +85,18 @@ int main(int argc, char** argv) {
     std::printf("%-26s", "level re reference (dB)");
     for (double p : peaks) std::printf("  %6.2f V", p);
     std::printf("   still missing\n");
+    if (oneAmp) {  // sas_match_levels --amp <id> "selector=pos,..." ...: that amp with each selector setting, every jack
+        const sas::AmpDef def = sas::loadEmbeddedAmp(argv[2]);
+        for (int a = 3; a < argc; ++a) {
+            const auto sel = parseSelectors(def, argv[a]);
+            for (std::size_t j = 0; j < def.preamp.jacks.size(); ++j) {
+                std::printf("%-28s", argv[a]);
+                for (double p : peaks) std::printf("  %+7.1f", db(level(def, j, p, sel) / ref));
+                std::printf("   %+6.1f dB\n", -db(level(def, j, refPeak, sel) / ref));
+            }
+        }
+        return 0;
+    }
     for (const auto& id : ids) {
         const sas::AmpDef def = sas::loadEmbeddedAmp(id);
         for (std::size_t j = 0; j < def.preamp.jacks.size(); ++j) {

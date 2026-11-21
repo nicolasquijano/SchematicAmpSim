@@ -1,0 +1,428 @@
+{
+ "id": "dc30",
+ "order": 31,
+ "category": "crunch",
+ "output_db": 7.2,
+ "name": "American Class A",
+ "theme": {
+  "background": "#0e0d0b",
+  "panel": "#1c1a16",
+  "edge": "#423a2c",
+  "accent": "#d4b062",
+  "label": "#a1957c",
+  "text": "#efe7d6",
+  "knob_top": "#3d372c",
+  "knob_bottom": "#13110d",
+  "pointer": "#fbefcf"
+ },
+ "presets": [
+  {
+   "name": "Clean",
+   "jack": "ch1",
+   "params": {
+    "volume": 4,
+    "volume2": 4,
+    "bass": 5,
+    "treble": 6,
+    "presence": 2,
+    "master": 6
+   }
+  },
+  {
+   "name": "Chime",
+   "jack": "ch2",
+   "params": {
+    "volume": 4,
+    "volume2": 5,
+    "bass": 5,
+    "treble": 6,
+    "presence": 1,
+    "master": 6
+   },
+   "selectors": {
+    "tone": 3
+   }
+  },
+  {
+   "name": "Crunch",
+   "jack": "ch1",
+   "params": {
+    "volume": 7,
+    "volume2": 4,
+    "bass": 5,
+    "treble": 6,
+    "presence": 3,
+    "master": 6
+   }
+  },
+  {
+   "name": "Lead",
+   "jack": "ch2",
+   "params": {
+    "volume": 4,
+    "volume2": 8,
+    "bass": 5,
+    "treble": 6,
+    "presence": 4,
+    "master": 6
+   },
+   "selectors": {
+    "tone": 1
+   }
+  }
+ ],
+ "probes": [
+  {
+   "label": "V1",
+   "node": "p1",
+   "full_scale": 120
+  },
+  {
+   "label": "V2",
+   "node": "kf",
+   "full_scale": 120
+  },
+  {
+   "label": "OUT",
+   "node": "m",
+   "full_scale": 20
+  }
+ ],
+ "power_probes": [
+  {
+   "label": "PHASE",
+   "node": "g1",
+   "full_scale": 80.9
+  },
+  {
+   "label": "POWER",
+   "node": "pt",
+   "full_scale": 450
+  }
+ ],
+ "preamp": {
+  "netlist": "preamp.net",
+  "tolerance": 2e-06,
+  "rail_source": "VRAIL",
+  "input_source": "VIN",
+  "output_node": "m",
+  "pot_min_ohms": 100,
+  "jack_label": "CHANNEL",
+  "knobs": [
+   {
+    "name": "ch1",
+    "default": 0.5,
+    "pot": {
+     "type": "wiper",
+     "top": "VR1_T",
+     "bottom": "VR1_B",
+     "total": 1000000.0,
+     "taper": "log"
+    }
+   },
+   {
+    "name": "ch2",
+    "default": 0.5,
+    "pot": {
+     "type": "wiper",
+     "top": "VR4_T",
+     "bottom": "VR4_B",
+     "total": 1000000.0,
+     "taper": "log"
+    }
+   },
+   {
+    "name": "bass",
+    "default": 0.5,
+    "pot": {
+     "type": "wiper",
+     "top": "VR_KB",
+     "bottom": "VR_KT",
+     "total": 1000000.0,
+     "taper": "log"
+    }
+   },
+   {
+    "name": "treble",
+    "default": 0.6,
+    "pot": {
+     "type": "wiper",
+     "top": "VR_TT",
+     "bottom": "VR_TB",
+     "total": 1000000.0,
+     "taper": "log"
+    }
+   }
+  ],
+  "source_ohms": {
+   "resistors": [
+    "RSRC"
+   ],
+   "default": 7000,
+   "min": 10
+  },
+  "jacks": [
+   {
+    "name": "ch1",
+    "label": "Channel 1",
+    "drive": "VIN",
+    "resistors": {
+     "SW_C1": 1,
+     "SW_C2": 1000000000000.0,
+     "SW_O1": 1,
+     "SW_O2": 1000000000000.0
+    }
+   },
+   {
+    "name": "ch2",
+    "label": "Channel 2",
+    "drive": "VIN",
+    "resistors": {
+     "SW_C1": 1000000000000.0,
+     "SW_C2": 1,
+     "SW_O1": 1000000000000.0,
+     "SW_O2": 1
+    },
+    "level_db": 10.0
+   },
+   {
+    "name": "both",
+    "label": "Both",
+    "drive": "VIN",
+    "resistors": {
+     "SW_C1": 1,
+     "SW_C2": 1,
+     "SW_O1": 1,
+     "SW_O2": 1
+    },
+    "level_db": 7.0
+   }
+  ],
+  "selectors": [
+   {
+    "name": "tone",
+    "label": "CH2 TONE",
+    "positions": [
+     {
+      "label": "1",
+      "resistors": {
+       "SWT1": 1000000000000.0,
+       "SWT2": 1000000000000.0,
+       "SWT3": 1000000000000.0,
+       "SWT4": 1000000000000.0,
+       "SWT5": 1000000000000.0,
+       "SWT6": 1
+      }
+     },
+     {
+      "label": "2",
+      "resistors": {
+       "SWT1": 1000000000000.0,
+       "SWT2": 1000000000000.0,
+       "SWT3": 1000000000000.0,
+       "SWT4": 1000000000000.0,
+       "SWT5": 1,
+       "SWT6": 1000000000000.0
+      }
+     },
+     {
+      "label": "3",
+      "resistors": {
+       "SWT1": 1000000000000.0,
+       "SWT2": 1000000000000.0,
+       "SWT3": 1000000000000.0,
+       "SWT4": 1,
+       "SWT5": 1000000000000.0,
+       "SWT6": 1000000000000.0
+      }
+     },
+     {
+      "label": "4",
+      "resistors": {
+       "SWT1": 1000000000000.0,
+       "SWT2": 1000000000000.0,
+       "SWT3": 1,
+       "SWT4": 1000000000000.0,
+       "SWT5": 1000000000000.0,
+       "SWT6": 1000000000000.0
+      }
+     },
+     {
+      "label": "5",
+      "resistors": {
+       "SWT1": 1,
+       "SWT2": 1000000000000.0,
+       "SWT3": 1000000000000.0,
+       "SWT4": 1000000000000.0,
+       "SWT5": 1000000000000.0,
+       "SWT6": 1000000000000.0
+      }
+     }
+    ]
+   }
+  ]
+ },
+ "ui": [
+  {
+   "param": "volume",
+   "knob": "ch1",
+   "label": "CH1 VOLUME",
+   "group": "CHANNELS"
+  },
+  {
+   "param": "volume2",
+   "knob": "ch2",
+   "label": "CH2 VOLUME",
+   "group": "CHANNELS"
+  },
+  {
+   "param": "treble",
+   "knob": "treble",
+   "label": "TREBLE",
+   "group": "TONE"
+  },
+  {
+   "param": "bass",
+   "knob": "bass",
+   "label": "BASS",
+   "group": "TONE"
+  },
+  {
+   "param": "presence",
+   "label": "CUT",
+   "group": "OUTPUT"
+  },
+  {
+   "param": "master",
+   "label": "MASTER",
+   "group": "OUTPUT",
+   "power_knob": "master"
+  }
+ ],
+ "power": {
+  "transformer_parasitics": {
+   "primary_pf": 150,
+   "core_loss_ohms": 84000
+  },
+  "tubes": [
+   {
+    "name": "EL84",
+    "model": "EL84",
+    "pmax_w": 12.0,
+    "bias_scale": 1.0
+   }
+  ],
+  "bias": {
+   "idle_resistors": [
+    "DCR_PT",
+    "DCR_PB"
+   ],
+   "tubes_per_half": 2
+  },
+  "netlist": "poweramp.net",
+  "tolerance": 0.0001,
+  "input_source": "VAUDIO",
+  "ht_source": "VHT",
+  "ht_node": "a",
+  "rail_node": "x",
+  "output_node": "t16",
+  "load_resistor": "RLOAD",
+  "presence": {
+   "resistor": "VR_CUT",
+   "scale": 250000.0,
+   "min_ohms": 100,
+   "default": 0.0
+  },
+  "supply": {
+   "mains_hz": 60,
+   "vac_peak": 392,
+   "rect_source_ohms": 60,
+   "ht_dc_source": 355,
+   "rect_drop": 1.4,
+   "reservoir_farads": 4.7e-05,
+   "tie_ohms": 15,
+   "settle_seconds": 0.15
+  },
+  "knobs": [
+   {
+    "name": "master",
+    "resistor": "VR5B",
+    "complement": "VR5T",
+    "scale": 1000000.0,
+    "taper": "log",
+    "min_ohms": 100,
+    "default": 0.6
+   }
+  ]
+ },
+ "lite": {
+  "base_gain_db": 30.2219,
+  "high_pass_hz": 34.6555,
+  "shelf_hz": 3482.17,
+  "presence_db": [
+   0,
+   -0.618206,
+   -1.7333,
+   -4.35464,
+   -14.0133
+  ],
+  "sag_table": [
+   [
+    0,
+    0
+   ],
+   [
+    2.54648,
+    0.407467
+   ],
+   [
+    5.09296,
+    1.65833
+   ],
+   [
+    9.5493,
+    5.80104
+   ],
+   [
+    15.9155,
+    14.26
+   ],
+   [
+    22.2817,
+    16.1382
+   ],
+   [
+    28.6479,
+    16.1382
+   ],
+   [
+    35.0141,
+    16.1382
+   ],
+   [
+    44.5634,
+    16.1382
+   ],
+   [
+    57.2958,
+    16.1382
+   ],
+   [
+    82.7606,
+    16.1382
+   ],
+   [
+    127.324,
+    16.2461
+   ]
+  ],
+  "rail_x_idle": 295.983,
+  "rail_sag_fraction": 0.58,
+  "ceiling_light": 74.6099,
+  "ceiling_heavy": 19.9221,
+  "ceiling_decay": 0.905844,
+  "knee": 1.87109,
+  "sag_attack_s": 0.01,
+  "sag_release_s": 0.06
+ }
+}

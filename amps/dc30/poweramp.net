@@ -1,0 +1,75 @@
+* "KLD DC30 Ver C" 30 W Class A power amp, transcribed from the supplied schematic: V3 12AX7 long-tailed phase inverter (R14 1k2 and R15 47k tail, 1M grid returns, 100k plate
+* loads), four EL84 as two parallel pairs on a shared cathode bias (R21 62 ohm and R22 68 ohm 10 W in parallel, C18 220u), no negative feedback, the CUT control between the two
+* grid lines, an output transformer with 4 / 8 / 16 ohm taps, and the supply: a 260 V winding into four 1N4007 and C35 47u (node a, which the engine integrates), then R34 2k2 5 W
+* to C34 47u (node b, HT2: the screens, through 100 ohm each, and the preamp rail).
+*
+* Assumptions where the schematic is silent or ambiguous (change them here, not in code):
+*  - the phase inverter's second grid (CH2's side) is returned to ground through C14 (0.1u): the two channels are mixed in front of the phase inverter (see preamp.net);
+*  - the MASTER and CUT are read from the drawing (zoomed): see below;
+*  - CUT: the 2n2 and the A250K pot as a rheostat between the two phases; the knob turns the resistance down;
+*  - the schematic prints no voltages: the supply is a Thevenin rectifier source chosen for an HT of about 345 V at idle;
+*  - output transformer: 4k plate-to-plate onto the 16 ohm tap (the 8 and 4 ohm taps and the half-power switch SW3 are not modelled), 6 H per primary half, 50 ohm per half;
+*  - the screens: 100 ohm / 3 W each (R50 to R53) from HT2.
+
+.nodes pin gl gr nt kv pa pb y ga gb g1 g2 cn a b x pt pbm npt npb s1 s2 kc t16
+
+S VAUDIO pin 150k 0
+S VHT a 15 355
+
+* Phase inverter V3: signal on the left grid through C13 (0.1u), the right grid returned through C14.
+C C13 pin gl 100n
+R R13 gl nt 1M
+C C14 gr 0 100n
+R R16 gr nt 1M
+R R14 kv nt 1k2
+R R15 nt 0 47k
+T V3A gl pa kv 12AX7
+T V3B gr pb kv 12AX7
+R R18 y pa 100k
+R R19 y pb 100k
+R R33 b y 22k
+C C33 y 0 22u
+
+* Coupling (C15 / C16 47n) to the two phases x1 / x2 and CUT (2n2 and the 250k rheostat between them). Phase x1 goes through R17 10k to the grids of the top pair (R48 220k
+* to ground); phase x2 through R20 10k to the top of MASTER (VR5, 1M log) whose other end is the top pair's grid line: its wiper feeds the bottom pair (R49 220k to ground).
+* Turning MASTER down mixes the two phases on the bottom pair's grids, and the push-pull cancels them (the drawing's phase-mixing master).
+C C15 pa x1 47n
+C C16 pb x2 47n
+C CCUT x1 cn 2n2
+R VR_CUT cn x2 250k
+R R17 x1 ga 10k
+R R48 ga 0 220k
+R R20 x2 mt 10k
+R VR5T mt gb 500k
+R VR5B gb ga 500k
+R R49 gb 0 220k
+R RS_A ga g1 1k5/2
+R RS_B gb g2 1k5/2
+
+* EL84: V6 + V5 (top pair) on one half of the primary, V7 + V8 (bottom pair) on the other; the common cathode on R22 68 ohm (SW3 at full power) with C18 220u.
+P V6_5 g1 pt s1 kc EL84 2
+P V7_8 g2 pbm s2 kc EL84 2
+* SW3 HALF POWER (not modelled) would put R21 62 ohm in series with R22: 130 ohm.
+R R22 kc 0 68
+C C18 kc 0 220u
+R R50_51 b s1 100/2
+R R52_53 b s2 100/2
+
+* Output transformer: primary halves around the HT1 centre tap, one 16 ohm secondary.
+R DCR_PT pt npt 50
+R DCR_PB pbm npb 50
+.param n16 = 2*1/sqrt(4000/16)
+.xfmr OT L=6 SAT=1.6
+  W npt a 1 pri
+  W a npb 1 pri
+  W t16 0 n16 sec
+  K pri pri 0.9998
+  K pri sec 0.9993
+.end
+R RLOAD t16 0 16
+
+* Supply: R34 2k2 from HT1 (a) to HT2 (b) with C34 47u; x is the rail for the preamp, RPREAMP its draw.
+R R34 a b 2k2
+C C34 b 0 47u
+R RX b x 1
+R RPREAMP x 0 75k

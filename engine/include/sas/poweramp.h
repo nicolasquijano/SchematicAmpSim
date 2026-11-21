@@ -66,7 +66,7 @@ private:
     ResId rPresBottom_;
     bool hasPresBottom_;
     bool hasPres_ = true;
-    struct Knob { ResId resistor; double scale, minOhms; };
+    struct Knob { ResId resistor; double scale, minOhms; Taper taper; bool hasComplement; ResId complement; };
     std::vector<Knob> knobs_;
     std::vector<double> knobValues_;
     Node nodeX_, nodeHt_, nodeOut_;

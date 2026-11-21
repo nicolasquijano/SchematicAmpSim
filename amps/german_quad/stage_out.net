@@ -1,0 +1,26 @@
+* "German Quad", the output stage of the preamp: the channel that is selected (SW_O1 .. SW_O4, set by the CHANNEL selector) reaches the node eq, then one gain stage that stands in
+* for the drawing's MIX pot and loop buffer tubes (not modelled: the channel inserts, the serial / parallel loops; 100k plate, 1k5 with 22u on the cathode) and the MASTER (a wiper
+* pot, taken as 500k log) into the node y, which feeds the power amp. Driven by the channels' outputs o1 (the main netlist), o2, o3 and o4 (stage_ch2.net .. stage_ch4.net).
+
+V VRAIL x 100 400
+R R86 x dp 4k7
+C C87 dp 0 33u
+S VO1 o1s 1 0
+R SW_O1 o1s eq 1
+S VO2 o2s 1 0
+R SW_O2 o2s eq 1e12
+S VO3 o3s 1 0
+R SW_O3 o3s eq 1e12
+S VO4 o4s 1 0
+R SW_O4 o4s eq 1e12
+R R_EQ eq gL 100k
+R R1ML gL 0 1M
+T VL gL pL kL 12AX7
+R R100L dp pL 100k
+R R1K5L kL 0 1.5k
+C C22UL kL 0 22u
+C C47NL pL mt0 47n
+R R470L mt0 0 470k
+R VRMS_T mt0 y 1
+R VRMS_B y 0 1
+R R_Y y 0 1M

@@ -1,0 +1,132 @@
+* "American Lead V" (a three-channel 90 W head of the Mesa/Boogie Mark V kind), preamp, channel 3 (the main netlist; channels 2 and 1 are stage_ch2.net and stage_ch1.net, then
+* stage_v3a.net / stage_v3b.net and stage_out.net), transcribed from the supplied schematic (MVPRE1/2/3.S01, MARK V, 10-Mar-2009). Channel 3: V1A (the shared input stage), the
+* CH3 tone stack (BASS, MIDDLE and TREBLE), V1B, the gain pot CH3 GAIN with V5A and V4B and the feedback resistor R36 3M3 around them, V6A with CH3 MASTER.
+*
+* Assumptions where the drawing is silent or ambiguous (change them here, not in code):
+*  - the relays are modelled as the selectors: CHANNEL picks the stage (a channel's tubes are only solved while it is selected), CH3 MODE and CH3 BRIGHT set the SW_* resistors
+*    (closed 1 ohm, open 1e12) as the drawing's relays read: IIC+ (RYM7) bypasses V6A's cathode with the two 2u2 (4u4), IV and Extreme with C42 15u, IV adds R49 4k7 at V6A's grid
+*    (RYM8RL); CH3 BRIGHT closes C40 0.22u on V4B's cathode (J175J). The other JFET switches are taken as closed (J175A, J175B), J175C (C31 100u on V3A) as open;
+*  - channel 3's path: V4B -> RYC3C C3 -> V3A -> C33 -> RYC3E C3 -> R45 -> V6A; CH3 MASTER is a 100KA rheostat to ground after C43 (the output o3);
+*  - the stack as read from the drawing: C14 250p and C15 750p from the plate to the treble pot's top, R27 100k from the plate, C16 0.1u to the bass rheostat, C17 0.047u to the
+*    middle rheostat, R22 330k and R23 56k from the treble wiper, C18 180p from the pot's top, R24 470k and R25 100k as the load;
+*  - the ferrite bead at V1A's grid, the reverb, the footswitch relays and the effects loop (V6B) are not modelled; the graphic EQ is the engine's own (graphic_eq).
+
+V VRAIL x 100 400
+R R86 x dp 1k
+C C87 dp 0 30u
+I VIN gin 1
+R RSRC gin in 7k
+R RPU1 gin pkb1 1e12
+.xfmr LPU1 L=2.5
+  W pkb1 in 1 pu
+.end
+R RPU2 gin pkb2 1e12
+.xfmr LPU2 L=5
+  W pkb2 in 1 pu
+.end
+C CPU gin in 110p
+R RPL gin in 1e12
+R SWK1 in pkk1 1e12
+C CCAB1 pkk1 0 200p
+R SWK2 in pkk2 1e12
+C CCAB2 pkk2 0 400p
+R SWK4 in pkk4 1e12
+C CCAB4 pkk4 0 800p
+
+* V1A: 1M leak, 1k5 + 1k5 and 0.47u on the cathode, 15u through the JFET J175A (taken as closed), and the plate load of the channel 3 path (RYC3A C3): R5 150k.
+R R1 in 0 1M
+T V1A in p1 k1 12AX7
+R R2 k1 n3 1.5k
+R R3 n3 0 1.5k
+C C1 k1 0 0.47u
+C C2 k1 c2 15u
+R SW_C2 c2 0 1
+R R5 dp p1 150k
+
+* CH3 tone stack.
+C C14 p1 tt 250p
+C C15 p1 tt 750p
+R R27S p1 bn 100k
+C C16 bn bt 0.1u
+C C17 bn mt 0.047u
+R VRT_T tt w3 1
+R VRT_B w3 bt 1
+R VRBS bt mt 1
+R VRMD mt 0 1
+R R22 w3 oo 330k
+R R23 oo go 56k
+C C18 tt go 180p
+R R24 go n24 470k
+R R25 n24 0 100k
+
+* V1B (100k plate, 1k5 with 0.47u), C20 0.047u and the 100k load R35.
+T V1B go p1b k1b 12AX7
+R R27P dp p1b 100k
+R R26 k1b 0 1.5k
+C C19A k1b 0 0.47u
+C C20 p1b v1o 0.047u
+R R35 v1o 0 100k
+
+* CH3 GAIN (1MA, wiper pot) behind R51 680k with R52 475k below it; R36 3M3 and C24 20p from V5A / V4B's output back to its input.
+R R51 v1o gp 680k
+R VRG_T gp wg 1
+R VRG_B wg gb 1
+R R52 gb 0 475k
+C C24 v1o o3a 20p
+R R36 v1o o3a 3.3M
+
+* V5A (82k plate, 1k5 with 2u2, 120p grid to cathode) into V4B (0.02u, R55 270k, 1000p and R56 68k at its grid).
+T V5A wg p5 k5 12AX7
+C C35 wg k5 120p
+R R54 dp p5 82k
+R R53 k5 0 1.5k
+C C36 k5 0 2.2u
+C C37 p5 a37 0.02u
+R R55 a37 g4 270k
+C C38 g4 0 1000p
+R R56 g4 0 68k
+T V4B g4 p4 k4 12AX7
+C C39 g4 k4 120p
+R R40 dp p4 270k
+R R57 k4 0 3.3k
+C C40 k4 c40 0.22u
+R SW_BR c40 0 1e12
+
+* V4B's output through C28 0.047u, R39 220k with C27 250p across it, the load R37 680k / R38 100k.
+C C28 p4 q 0.047u
+R R39 q o3a 220k
+C C27 q o3a 250p
+R R37 o3a 0 680k
+R R38 o3a 0 100k
+
+* V3A (shared by the three channels; RYC3C C3 brings channel 3 to its grid): 100k plate, R44 1k5 with C31 100u (J175C) and C32 2u2 (J175B) as cathode bypasses, C33 0.047u.
+T V3A o3a p3a k3a 12AX7
+R R43 dp p3a 100k
+R R44 k3a 0 1.5k
+C C31 k3a c31 100u
+R SW_C31 c31 0 1e12
+C C32 k3a c32 2.2u
+R SW_C32 c32 0 1
+C C33 p3a u3 0.047u
+
+* To V6A (RYC3E C3): R45 47k, R46 47k to ground, R47 150k and R210 3k3 into the grid; R48 47k to ground, 120p to the cathode, R49 4k7 (mode IV).
+R R45 u3 m6 47k
+R R46 m6 0 47k
+R R47 m6 n6 150k
+R R210 n6 g6 3.3k
+R R48 g6 0 47k
+R SW_R49 g6 r49 1e12
+R R49 r49 0 4.7k
+T V6A g6 p6 k6 12AX7
+C C44 g6 k6 120p
+R R62 k6 0 1k
+C C104 k6 cx1 4.4u
+R SW_M7A cx1 0 1
+C C42 k6 cx2 15u
+R SW_M7B cx2 0 1e12
+R R63 dp p6 120k
+C C43 p6 mm 0.047u
+R VRMS_T o3 wm 1
+R VRMS_B wm 0 1
+R WM wm o3 1
+R RC43 mm o3 1

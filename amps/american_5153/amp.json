@@ -329,12 +329,11 @@
   "output_node": "t16",
   "load_resistor": "RLOAD",
   "knobs": [
-   { "name": "resonance", "resistor": "VR8", "scale": 1000000.0, "min_ohms": 50000, "default": 0.5 }
+   { "name": "resonance", "resistor": "VR8", "scale": 1000000.0, "taper": "log", "min_ohms": 50, "default": 0.5 }
   ],
   "presence": {
-   "resistor": "VRPD",
-   "complement": "VRPS",
-   "scale": 100000.0,
+   "resistor": "VRPR",
+   "scale": 10000.0,
    "min_ohms": 50,
    "default": 0.5
   },
@@ -350,74 +349,19 @@
   }
  },
  "lite": {
-  "base_gain_db": 15.8289,
-  "high_pass_hz": 18.6399,
-  "shelf_hz": 785.075,
-  "presence_db": [
-   0,
-   3.2923,
-   5.16576,
-   6.38272,
-   7.23528
-  ],
-  "sag_table": [
-   [
-    0,
-    0
-   ],
-   [
-    2.54648,
-    1.04909
-   ],
-   [
-    5.09296,
-    4.04949
-   ],
-   [
-    9.5493,
-    12.8496
-   ],
-   [
-    15.9155,
-    29.3478
-   ],
-   [
-    22.2817,
-    44.4904
-   ],
-   [
-    28.6479,
-    53.8128
-   ],
-   [
-    35.0141,
-    58.2627
-   ],
-   [
-    44.5634,
-    62.4887
-   ],
-   [
-    57.2958,
-    65.8762
-   ],
-   [
-    82.7606,
-    69.548
-   ],
-   [
-    127.324,
-    72.642
-   ]
-  ],
-  "rail_x_idle": 344.926,
-  "rail_sag_fraction": 0.58,
-  "ceiling_light": 69.4146,
-  "ceiling_heavy": 26.0981,
-  "ceiling_decay": 435.49,
-  "knee": 23.0994,
-  "sag_attack_s": 0.01,
-  "sag_release_s": 0.06
+   "base_gain_db": 19.8098,
+   "high_pass_hz": 40.3093,
+   "shelf_hz": 1289.9,
+   "presence_db": [0, 0.590081, 1.57524, 3.54915, 8.65411],
+   "sag_table": [[0, 0], [2.54648, 0.654513], [5.09296, 2.57886], [9.5493, 8.63341], [15.9155, 21.4669], [22.2817, 35.6608], [28.6479, 46.4606], [35.0141, 53.0238], [44.5634, 58.1138], [57.2958, 62.2581], [82.7606, 66.7525], [127.324, 70.4215]],
+   "rail_x_idle": 344.879,
+   "rail_sag_fraction": 0.58,
+   "ceiling_light": 68.4262,
+   "ceiling_heavy": 24.422,
+   "ceiling_decay": 439.52,
+   "knee": 121.515,
+   "sag_attack_s": 0.01,
+   "sag_release_s": 0.06
  },
  "presets": [
   {

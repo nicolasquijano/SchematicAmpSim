@@ -1,0 +1,28 @@
+* "American Lead V", the output stage of the preamp: the channel that is selected (SW_O1 / SW_O2 / SW_O3, set by the CHANNEL selector) reaches the node eq, then V6B (the effects loop's
+* send buffer: R78 470 and R79 47k at its grid, R80 120k plate, R81 1k cathode, with its 100k / 0.68u / 220k output network) and the OUTPUT pot (1MA, taken as a fixed divider at
+* about 0.7 of its rotation) with R209 22k into the node y, which feeds the power amp. The graphic EQ is the engine's own block; the loop itself (send level, jacks), the reverb, the
+* solo / mute relays and V7A / V7B (the driver: the power amp netlist has its own phase inverter) are not modelled.
+* Driven by channel 3's node o3 (VO3, the main netlist), channel 1's o1 (VO1, stage_v3a.net) and channel 2's o2 (VO2, stage_v3b.net).
+
+V VRAIL x 100 400
+R R86 x dp 1k
+C C87 dp 0 30u
+S VO3 o3s 1 0
+R SW_O3 o3s eq 1e12
+S VO1 o1s 1 0
+R SW_O1 o1s eq 1
+S VO2 o2s 1 0
+R SW_O2 o2s eq 1e12
+R R_EQ eq sl 1k
+R R78 sl g6b 470
+R R79 g6b 0 47k
+T V6B g6b p6b k6b 12AX7
+R R80 dp p6b 120k
+R R81 k6b 0 1k
+R R82 p6b p82 100k
+C C50 p82 q50 0.68u
+R R83 q50 ot 220k
+R R_OT ot ow 650k
+R R_OB ow 0 350k
+R R209 ow y 22k
+R R_Y y 0 1M

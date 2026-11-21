@@ -1,0 +1,120 @@
+* "American Lead V", channel 1 (modes Clean / Fat / Tweed), read from the drawing (MVPRE1/2/3.S01): V1A (the guitar's own copy of the shared input stage, on the channel 1 / 2
+* plate load R4 100k + R4A 47k), the CH1 tone stack (fed straight from the plate through RYC1A; R6 82k with C3 .15u is a shunt to ground at its input), CH1 GAIN with C7 120p,
+* R216 100k and R110 475k, V1B, the mode network of the relays RYM1 / RYM3B into V3A, then R68 47k and R67 150k into V3B with CH1 MASTER (100KA rheostat to ground at its grid),
+* C108 and R140 22k into the output o1 (R189 8k2 with C112 250p to ground).
+* The mode selector CH1 MODE sets the SW_* as the relays read: Clean (M1) R31 3M3 with C23 20p into V3A; Fat (M2) R32 2M2 with C23 and R33 680k to ground; Tweed (M3) the
+* divider R30 475k / 500p over R34 3M3 / 180p (more level), J175M3 (47k at V3B's grid) and R199 10k at the output. R110 shunts the C7 / R216 path in Clean and Fat.
+* Assumed: the GAIN pot's wiper reaches the output in every mode (the drawing leaves RYM3A's Clean / Fat contact unconnected, which would leave the knob without effect); V3A's
+* JFET bypasses: Clean none, Fat C31 100u, Tweed C31 and C32; the CH1 BOLD switch (R98) is left open.
+
+V VRAIL x 100 400
+R R86 x dp 1k
+C C87 dp 0 30u
+I VIN gin 1
+R RSRC gin in 7k
+R RPU1 gin pkb1 1e12
+.xfmr LPU1 L=2.5
+  W pkb1 in 1 pu
+.end
+R RPU2 gin pkb2 1e12
+.xfmr LPU2 L=5
+  W pkb2 in 1 pu
+.end
+C CPU gin in 110p
+R RPL gin in 1e12
+R SWK1 in pkk1 1e12
+C CCAB1 pkk1 0 200p
+R SWK2 in pkk2 1e12
+C CCAB2 pkk2 0 400p
+R SWK4 in pkk4 1e12
+C CCAB4 pkk4 0 800p
+
+
+
+* V1A: 1M leak, 1k5 + 1k5 and 0.47u on the cathode, 15u (J175A), plate load R4 100k + R4A 47k.
+R R1 in 0 1M
+T V1A in p1 k1 12AX7
+R R2 k1 n3 1.5k
+R R3 n3 0 1.5k
+C C1 k1 0 0.47u
+C C2 k1 c2 15u
+R SW_C2 c2 0 1
+R R4 dp r4 100k
+R R4A r4 p1 47k
+
+* CH1 tone stack, straight from the plate: R6 82k with C3 .15u to ground, C4 250p to the treble pot, R7 100k to the node bn, C5 .1 and C6 .047 to the rheostats.
+R R6 p1 r6 82k
+C C3 r6 0 0.15u
+C C4 p1 tt 250p
+R R7 p1 bn 100k
+C C5 bn bt 0.1u
+C C6 bn mt 0.047u
+R VRT_T tt w1 1
+R VRT_B w1 bt 1
+R VRBS bt mt 1
+R VRMD mt 0 1
+
+* CH1 GAIN (1MA) from the treble wiper, its wiper to the node z; C7 120p and R216 100k from the pot's top to z, R110 475k from their junction to ground (Clean, Fat).
+R VRG_T w1 wg 1
+R VRG_B wg 0 1
+R RWG wg z 1
+C C7 w1 y7 120p
+R R216 y7 z 100k
+R R110 y7 r110 475k
+R SW_R110 r110 0 1
+
+* V1B (100k plate, 1k5 with 0.47u), C20, R35 100k.
+R RG1B z 0 10M
+T V1B z p1b k1b 12AX7
+R R27P dp p1b 100k
+R R26 k1b 0 1.5k
+C C19A k1b 0 0.47u
+C C20 p1b v1o 0.047u
+R R35 v1o 0 100k
+
+* The mode network (RYM1, RYM3B): R31 3M3 (Clean) or R32 2M2 (Fat, Tweed) with C23 20p to the node nn, R33 680k to ground (Fat, Tweed); the divider R30 / R34 with its tap t2;
+* V3A's grid takes nn (Clean, Fat) or t2 (Tweed); R42 475k (the reverb return) to ground.
+R R31 v1o n31 3.3M
+R SW_R31 n31 nn 1
+R R32 v1o n32 2.2M
+R SW_R32 n32 nn 1e12
+C C23 v1o nn 20p
+R R33 nn n33 680k
+R SW_R33 n33 0 1e12
+R R30 v1o t2 475k
+C C22 v1o t2 500p
+R R34 t2 0 3.3M
+C C118 t2 0 180p
+R SW_NN nn g3a 1
+R SW_T2 t2 g3a 1e12
+R R42 g3a 0 475k
+
+* V3A (100k plate, R44 1k5, C31 100u / C32 2u2 by mode), C33, R68 47k and R67 150k to V3B's grid g3b: R129 47k, J175M3's 47k (Tweed) and CH1 MASTER (100KA rheostat).
+T V3A g3a p3a k3a 12AX7
+R R43 dp p3a 100k
+R R44 k3a 0 1.5k
+C C31 k3a c31 100u
+R SW_C31A c31 0 1e12
+C C32 k3a c32 2.2u
+R SW_C32A c32 0 1e12
+C C33 p3a u3 0.047u
+R R68 u3 a3 47k
+R R67 a3 g3b 150k
+R R129 g3b 0 47k
+R RJ3 g3b rj3 47k
+R SW_J3 rj3 0 1e12
+R VRMS_T g3b wm 1
+R VRMS_B wm 0 1
+R WM wm g3b 1
+
+* V3B (120k plate, 1k with 15u), C108, R140 22k to o1 with R189 8k2 / C112 250p, and R199 10k (Tweed).
+T V3B g3b p3b k3b 12AX7
+R R138 dp p3b 120k
+R R137 k3b 0 1k
+C C89 k3b 0 15u
+C C108 p3b u1 0.047u
+R R140 u1 o1 22k
+R R189 o1 0 8.2k
+C C112 o1 0 250p
+R R199 o1 r199 10k
+R SW_R199 r199 0 1e12

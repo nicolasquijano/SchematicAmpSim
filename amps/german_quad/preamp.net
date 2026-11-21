@@ -1,0 +1,81 @@
+* "German Quad" (a four-channel 100 W German head of the Diezel VH4 kind), preamp, channel 1 (the main netlist; channels 2 to 4 are stage_ch2.net .. stage_ch4.net, then stage_out.net),
+* transcribed from the supplied drawing (VH4 classic, SCH000, 28.05.2005: red values are the drawing's, crossed-out parts are not fitted, parts with a red bar are bridged).
+* The four channels share V1A and the V2A gain stage with the V2B cathode follower; the relays pick what reaches V2A's input: ST1 channel 1 (GAIN 1), else ST3 / ST4 choose
+* between channel 2 (M1) and the common tube Tc, which takes channel 3 (GAIN 3, ST3) or channel 4 (GAIN 4 and Tb, ST4). Each channel has its own tone stack and VOLUME after
+* the follower, and ST1 .. ST4 put the selected VOLUME onto the bus (stage_out.net).
+* Here each channel is one netlist with its own copy of the shared tubes (only the selected channel is solved). Not modelled: the mute, the channel inserts, the MIX pot and the
+* loops (one gain stage stands in for the loop buffers in stage_out.net), the DEEP control.
+
+V VRAIL x 100 400
+R R86 x dp 4k7
+C C87 dp 0 33u
+I VIN gin 1
+R RSRC gin in 7k
+R RPU1 gin pkb1 1e12
+.xfmr LPU1 L=2.5
+  W pkb1 in 1 pu
+.end
+R RPU2 gin pkb2 1e12
+.xfmr LPU2 L=5
+  W pkb2 in 1 pu
+.end
+C CPU gin in 110p
+R RPL gin in 1e12
+R SWK1 in pkk1 1e12
+C CCAB1 pkk1 0 200p
+R SWK2 in pkk2 1e12
+C CCAB2 pkk2 0 400p
+R SWK4 in pkk4 1e12
+C CCAB4 pkk4 0 800p
+
+* V1A: 1M and 100p to ground, the 68k stopper (the input capacitor is bridged on the drawing), 1k2 with 10u on the cathode, 120k plate load.
+R R1M in 0 1M
+C C100P in 0 100p
+R R68K in g1 68k
+T V1A g1 p1 k1 12AX7
+R R1K2 k1 0 1.2k
+C C10U k1 0 10u
+R R120A dp p1 120k
+
+* CH1: 22n, the bright network (470k with 220p across, 470k to ground at b, a second 470k with 220p, 22p across both; the BRIGHT switch adds 68p), GAIN 1 (220k-A
+* wiper pot) with 220k at its wiper g, which ST1 brings to h.
+C C22N p1 a 22n
+R RB1 a b 470k
+C CB1 a b 220p
+R RSH1 b 0 470k
+R RB2 b e 470k
+C CB2 b e 220p
+C C22P a e 22p
+C C68P a br1 68p
+R SW_BR1 br1 e 1e12
+R VRG_T e g 1
+R VRG_B g 0 1
+R R220G g 0 220k
+R RST1 g h 1
+
+* V2A (shared by the four channels: the relays ST1 and ST3 / ST4 bring the selected channel to h): 470k into the grid, 120k plate, 680R with 2u2; the V2B cathode follower
+* (120k, the 10n + 100k load) and 220n into the stacks' input t0 with its 1M.
+R R470H h gA 470k
+T V2A gA p2 k2 12AX7
+R R120B dp p2 120k
+R R680A k2 0 680
+C C2U2 k2 0 2.2u
+T V2B p2 dp kf 12AX7
+R R120C kf 0 120k
+C C10NF kf c10 10n
+R R100KF c10 0 100k
+C C220N kf t0 220n
+R R1MT t0 0 1M
+
+* CH1 tone stack: C 330p and R 100k from t0 to the treble pot (220k-B) and the node u; two 22n; BASS (1M-A) and MIDDLE (22k-A) rheostats; R 180k from the wiper into VOLUME 1.
+C C330P t0 tt 330p
+R R100K t0 u 100k
+C C22A u bt 22n
+C C22B u mt 22n
+R VRT_T tt wt 1
+R VRT_B wt bt 1
+R VRBS bt mt 1
+R VRMD mt 0 1
+R R180K wt v1 180k
+R VRV_T v1 o1 1
+R VRV_B o1 0 1

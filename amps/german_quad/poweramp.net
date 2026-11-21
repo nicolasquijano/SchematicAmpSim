@@ -1,0 +1,77 @@
+* German Quad power amp (100 W, four EL34 at 33 mA each and +477 V on the plates as the VH4 drawing prints; its values are not printed, so this is the German Trio board of the same family, with the supply voltages of the VH4 drawing): the ECC83 long-tailed phase inverter, four EL34 as two parallel pairs, the 8 ohm output and the HT supply. The DEEP control and its inductor are not modelled. German Trio notes follow: the ECC83 long-tailed phase inverter, four EL34 as two parallel
+* pairs, the output transformer with its 4 / 8 / 16 ohm taps and the HV supply. B+ (node a) is the 550 V reservoir, integrated by the engine.
+*
+* Assumptions where the drawing is silent or ambiguous (change them here, not in code):
+*  - phase inverter: V5A takes the signal through 10n; V5B's grid is the feedback node (10n from nf, which has 3k32 to ground and 10k to the
+*    tail); both grids leak 1M to the tail node; the cathodes share a 475 ohm resistor into the tail; V5A's plate load is 82k and V5B's 100k +
+*    the 25k "output symmetry" trimmer at mid (12.5k);
+*  - feedback: the 8 ohm tap through 10k into the junction nn, which the presence pot (10kC, used as a variable resistor to ground, the
+*    plug-in's single PRESENCE knob for the three channels) shunts; from nn the HF-only path 2.2n + 27k4 into nf. Only the 8 ohm tap is used;
+*  - screens: a separate 415 V supply (the first 305 V rectifier) through 470 ohm each, stiff here; plates on the 550 V of the second one;
+*  - supply of the phase inverter: 385 V (+VV) taken from the screen supply through 2.2k; here from B+ through a resistor chosen for
+*    that voltage and the filter's 33u, with RPREAMP standing for the preamp's draw;
+*  - bias: -45 V behind 3k with 100u (the 50k trimmer is not drawn in detail), chosen for ~27 mA per tube (25-30 mV across the 1 ohm cathode
+*    resistors, as the drawing says); the BY509 grid clamps are left out;
+*  - output transformer: 2.4k plate-to-plate (about the 160 W maximum the data sheet gives), 3.5 H per primary half, 40 ohm per half.
+
+S VAUDIO pin 50k 0
+S VHT a 1 478
+S VBIAS bias 3k -39.5
+V VSG sg 100 440
+
+* +VV: from B+ through R59 with the 33u, and the preamp's draw (the V1..V4 tubes).
+R R59 a x 5k6
+C C33 x 0 33u
+R RPREAMP x 0 30k
+
+* Phase inverter.
+C CIN pin g5a 10n
+T V5A g5a pa kc 12AX7
+T V5B g5b pb kc 12AX7
+R R82 x pa 82k
+R R100 x s5b 100k
+R RSYM s5b pb 12.5k
+R RKT kc t 475
+R RG1 g5a t 1M
+R RG2 g5b t 1M
+R R10T nf t 10k
+R R3K32 nf 0 3k32
+C C10F nf g5b 10n
+
+* Negative feedback from the 8 ohm tap: 10k, the presence pot, and 2.2n + 27k4 into the PI.
+R RN1 t8 nn 10k
+R VRP nn 0 5k
+C C2N2 nn nm 2.2n
+R R27K4 nm nf 27k4
+
+* Output stage: 22n per pair from the PI plates, 221k grid leaks to the bias, 3k32 stoppers (two tubes per half).
+C C22A pa pga 22n
+C C22B pb pgb 22n
+R R221A pga bias 221k
+R R221B pgb bias 221k
+C CBIAS bias 0 100u
+R R3K32A pga g1 3k32/2
+R R3K32B pgb g2 3k32/2
+
+* EL34 pairs. Screens on VSG through 470 each; cathodes through 1 ohm each.
+P V6 g1 pt s1 kt EL34 2
+P V8 g2 pbm s2 kb EL34 2
+R R470A sg s1 470/2
+R R470B sg s2 470/2
+R RKT1 kt 0 0.5
+R RKB1 kb 0 0.5
+
+* Output transformer: primary halves around the B+ centre tap, one secondary for the 8 ohm tap.
+R DCR_PT pt npt 40
+R DCR_PB pbm npb 40
+.param n8 = 2*1/sqrt(2400/8)
+* Core saturation: SAT is the flux (volt-seconds) where the extra magnetising current equals the linear one; ~full-power
+* plate-to-plate swing / (2 pi f), with f about 28-30 Hz for the large Marshall / Soldano / Peavey / Fender cores, 50 to 65 Hz for the small AC30 / tweed cores.
+.xfmr OT L=3.5 SAT=4.9
+  W npt a 1 pri
+  W a npb 1 pri
+  W t8 0 n8 sec
+  K pri pri 0.9998
+  K pri sec 0.9993
+.end
+R RLOAD t8 0 8

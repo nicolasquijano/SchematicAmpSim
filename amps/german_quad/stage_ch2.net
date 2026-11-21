@@ -1,0 +1,79 @@
+* "German Quad", channel 2: V1A, GAIN 2 and the tube M1, V2A and the V2B follower, the CH2 tone stack and VOLUME 2. See preamp.net for the drawing and the assumptions.
+
+V VRAIL x 100 400
+R R86 x dp 4k7
+C C87 dp 0 33u
+I VIN gin 1
+R RSRC gin in 7k
+R RPU1 gin pkb1 1e12
+.xfmr LPU1 L=2.5
+  W pkb1 in 1 pu
+.end
+R RPU2 gin pkb2 1e12
+.xfmr LPU2 L=5
+  W pkb2 in 1 pu
+.end
+C CPU gin in 110p
+R RPL gin in 1e12
+R SWK1 in pkk1 1e12
+C CCAB1 pkk1 0 200p
+R SWK2 in pkk2 1e12
+C CCAB2 pkk2 0 400p
+R SWK4 in pkk4 1e12
+C CCAB4 pkk4 0 800p
+
+* V1A: 1M and 100p to ground, the 68k stopper (the input capacitor is bridged on the drawing), 1k2 with 10u on the cathode, 120k plate load.
+R R1M in 0 1M
+C C100P in 0 100p
+R R68K in g1 68k
+T V1A g1 p1 k1 12AX7
+R R1K2 k1 0 1.2k
+C C10U k1 0 10u
+R R120A dp p1 120k
+
+* CH2: 22n, 2M2 with 68p across into the node n1 (220k to ground), GAIN 2 (220k-A wiper pot) with 220k at its wiper, the gain tube M1 (120k plate, 680R with 1u), 4n7,
+* 470k (the BRIGHT switch puts 470p across it) to h with 470k to ground.
+C C22N p1 m 22n
+R R2M2 m n1 2.2M
+C C68P m n1 68p
+R R220N n1 0 220k
+R VRG_T n1 g2 1
+R VRG_B g2 0 1
+R R220G g2 0 220k
+T M1 g2 pm1 km1 12AX7
+R R120M dp pm1 120k
+R R680M km1 0 680
+C C1UM km1 0 1u
+C C4N7M pm1 q 4.7n
+R R470Q q h 470k
+C C470P q br2 470p
+R SW_BR2 br2 h 1e12
+R R470R h 0 470k
+
+* V2A (shared by the four channels: the relays ST1 and ST3 / ST4 bring the selected channel to h): 470k into the grid, 120k plate, 680R with 2u2; the V2B cathode follower
+* (120k, the 10n + 100k load) and 220n into the stacks' input t0 with its 1M.
+R R470H h gA 470k
+T V2A gA p2 k2 12AX7
+R R120B dp p2 120k
+R R680A k2 0 680
+C C2U2 k2 0 2.2u
+T V2B p2 dp kf 12AX7
+R R120C kf 0 120k
+C C10NF kf c10 10n
+R R100KF c10 0 100k
+C C220N kf t0 220n
+R R1MT t0 0 1M
+
+* CH2 tone stack: R 10k from t0, then 560p and 39k to the treble pot (220k-B) and the node u; two 22n; BASS (1M-A) and MIDDLE (22k-A) rheostats; R 180k into VOLUME 2.
+R R10K t0 t 10k
+C C560P t tt 560p
+R R39K t u 39k
+C C22A u bt 22n
+C C22B u mt 22n
+R VRT_T tt wt 1
+R VRT_B wt bt 1
+R VRBS bt mt 1
+R VRMD mt 0 1
+R R180K wt v1 180k
+R VRV_T v1 o2 1
+R VRV_B o2 0 1

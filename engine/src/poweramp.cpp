@@ -5,6 +5,7 @@
 #include <stdexcept>
 
 #include "sas/netlist.h"
+#include "sas/preamp.h"  // potTaper
 
 namespace sas {
 
@@ -18,6 +19,7 @@ struct PowerAmp::Built {
     ResId rPres{0}, rNfb{0}, rLoad{0}, rPresBottom{0};
     bool hasPresBottom = false, hasPres = false;
     std::vector<ResId> knobResistors;
+    std::vector<ResId> knobComplements;  // the other section of a wiper pot (index-aligned; unused when the knob has none)
     bool hasBias = false;
     SrcId srcBias{0};
     double biasNominal = 0.0;
@@ -42,7 +44,10 @@ PowerAmp::Built PowerAmp::build(const AmpDef& def) {
     for (const auto& k : pd.knobs) {
         b.knobResistors.push_back(b.net.resistor(k.resistor));
         // The solve for the DC point starts from the knob's default position.
-        b.net.circuit.setResistor(b.knobResistors.back(), std::max(k.scale * k.def, k.minOhms));
+        const double r = std::max(k.scale * potTaper(k.taper, k.def), k.minOhms);
+        b.net.circuit.setResistor(b.knobResistors.back(), r);
+        b.knobComplements.push_back(k.complement.empty() ? b.knobResistors.back() : b.net.resistor(k.complement));
+        if (!k.complement.empty()) b.net.circuit.setResistor(b.knobComplements.back(), std::max(k.scale - r, k.minOhms));
     }
     if (pd.bias.adjustable()) {
         b.hasBias = true;
@@ -93,7 +98,8 @@ PowerAmp::PowerAmp(Built&& b, const AmpDef& def, double fs, bool useTables)
       knobs_([&] {
           std::vector<Knob> k;
           for (std::size_t i = 0; i < def.power.knobs.size(); ++i)
-              k.push_back({b.knobResistors[i], def.power.knobs[i].scale, def.power.knobs[i].minOhms});
+              k.push_back({b.knobResistors[i], def.power.knobs[i].scale, def.power.knobs[i].minOhms, def.power.knobs[i].taper,
+                           !def.power.knobs[i].complement.empty(), b.knobComplements[i]});
           return k;
       }()),
       knobValues_([&] {
@@ -129,8 +135,11 @@ void PowerAmp::setKnobs(const std::vector<double>& values) {
     if (values.size() != knobs_.size()) throw std::invalid_argument("wrong number of power knob values");
     if (values == knobValues_) return;
     knobValues_ = values;
-    for (std::size_t i = 0; i < knobs_.size(); ++i)
-        solver_.setResistor(knobs_[i].resistor, std::max(knobs_[i].scale * std::clamp(values[i], 0.0, 1.0), knobs_[i].minOhms));
+    for (std::size_t i = 0; i < knobs_.size(); ++i) {
+        const double r = std::max(knobs_[i].scale * potTaper(knobs_[i].taper, std::clamp(values[i], 0.0, 1.0)), knobs_[i].minOhms);
+        solver_.setResistor(knobs_[i].resistor, r);
+        if (knobs_[i].hasComplement) solver_.setResistor(knobs_[i].complement, std::max(knobs_[i].scale - r, knobs_[i].minOhms));
+    }
     solver_.refresh();
 }
 

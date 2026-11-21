@@ -212,6 +212,8 @@ struct Parser {
         auto diodeModel = [](const std::string& n, DiodeModel& m) {
             if (n == "SIGNAL") { m = DiodeModel::signal(); return true; }
             if (n == "SIGNAL3") { m = DiodeModel::signal(); m.nvt *= 3.0; return true; }  // three SIGNAL diodes in series, as one
+            if (n == "SIGNAL4") { m = DiodeModel::signal(); m.nvt *= 4.0; return true; }  // four in series (a red LED and one 1N4007)
+            if (n == "SIGNAL5") { m = DiodeModel::signal(); m.nvt *= 5.0; return true; }  // five in series (a red LED and two 1N4007)
             if (n == "GERMANIUM") { m = DiodeModel{2e-7, 0.0336}; return true; }
             if (n == "RECTIFIER_BRIDGE") { m = DiodeModel::rectifierBridge(); return true; }
             return false;
