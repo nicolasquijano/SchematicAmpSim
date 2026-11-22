@@ -26,12 +26,12 @@ struct PitchResult {
 class PitchDetector {
 public:
     // `x`: `n` samples at `rate` Hz (n should cover at least three periods of the lowest note: 2048+ at 24 kHz).
-    static PitchResult detect(const float* x, std::size_t n, double rate, double minHz = 60.0, double maxHz = 1400.0) {
+    static PitchResult detect(const float* x, std::size_t n, double rate, double minHz = 60.0, double maxHz = 1400.0, double silenceRms = kSilence) {
         PitchResult r;
         if (n < 256 || rate <= 0.0) return r;
         double energy = 0.0;
         for (std::size_t i = 0; i < n; ++i) energy += double(x[i]) * x[i];
-        if (std::sqrt(energy / double(n)) < kSilence) return r;
+        if (std::sqrt(energy / double(n)) < silenceRms) return r;
 
         const std::size_t maxLag = std::min<std::size_t>(std::size_t(rate / minHz) + 2, n / 2);
         const std::size_t minLag = std::max<std::size_t>(2, std::size_t(rate / maxHz));
@@ -86,6 +86,13 @@ public:
         return r;
     }
 
+    // How many samples (at `rate`) to analyse for a lowest frequency `minHz`: the longest lag plus about two periods of the lowest note. A tuning
+    // without low strings gets a short window, so the reading follows the string quickly; a bass or a 7-string gets the longer one it needs.
+    static std::size_t analysisWindow(double rate, double minHz) {
+        const double maxLag = rate / std::max(1.0, minHz) + 2.0;
+        return std::size_t(std::clamp(maxLag + 2.0 * rate / std::max(1.0, minHz), 1024.0, 4096.0));
+    }
+
     static constexpr double kSilence = 0.002;       // rms below which there is no note (about -54 dBFS)
     static constexpr double kKeyThreshold = 0.9;
     static constexpr double kMinClarity = 0.75;
@@ -109,6 +116,54 @@ inline NoteInfo noteFor(double hz, double referenceA = 440.0) {
     n.octave = (n.midi - n.pitchClass) / 12 - 1;
     n.name = names[n.pitchClass];
     return n;
+}
+
+// A tuning: the strings' notes (MIDI numbers, lowest string first). `count` 0 is the plain chromatic tuner.
+struct Tuning {
+    const char* name;
+    int count;
+    std::array<int, 8> midi;
+};
+
+inline constexpr Tuning kTunings[] = {
+    {"Chromatic", 0, {}},
+    {"Standard (E A D G B E)", 6, {40, 45, 50, 55, 59, 64}},
+    {"Half step down (Eb)", 6, {39, 44, 49, 54, 58, 63}},
+    {"Whole step down (D)", 6, {38, 43, 48, 53, 57, 62}},
+    {"Drop D", 6, {38, 45, 50, 55, 59, 64}},
+    {"Drop C", 6, {36, 43, 48, 53, 57, 62}},
+    {"Double drop D", 6, {38, 45, 50, 55, 59, 62}},
+    {"DADGAD", 6, {38, 45, 50, 55, 57, 62}},
+    {"Open G", 6, {38, 43, 50, 55, 59, 62}},
+    {"Open D", 6, {38, 45, 50, 54, 57, 62}},
+    {"Open E", 6, {40, 47, 52, 56, 59, 64}},
+    {"7 strings (B E A D G B E)", 7, {35, 40, 45, 50, 55, 59, 64}},
+    {"7 strings drop A", 7, {33, 40, 45, 50, 55, 59, 64}},
+    {"Bass 4 strings (E A D G)", 4, {28, 33, 38, 43}},
+    {"Bass 5 strings (B E A D G)", 5, {23, 28, 33, 38, 43}},
+};
+inline constexpr int kTuningCount = int(sizeof(kTunings) / sizeof(kTunings[0]));
+
+inline double midiToHz(int midi, double referenceA = 440.0) { return referenceA * std::pow(2.0, double(midi - 69) / 12.0); }
+
+// The lowest frequency the detector has to look for with this tuning (a little under its lowest string, which may be a bit flat).
+inline double lowestHzFor(const Tuning& t, double referenceA = 440.0) {
+    return t.count > 0 ? 0.8 * midiToHz(t.midi[0], referenceA) : 27.0;
+}
+
+struct StringMatch {
+    int index = -1;       // the string the pitch is nearest to (in cents), -1 for a chromatic tuning
+    double cents = 0.0;   // how far from that string's note (not limited to +-50)
+};
+
+inline StringMatch nearestString(const Tuning& t, double hz, double referenceA = 440.0) {
+    StringMatch m;
+    double best = 1e9;
+    for (int i = 0; i < t.count; ++i) {
+        const double c = 1200.0 * std::log2(hz / midiToHz(t.midi[std::size_t(i)], referenceA));
+        if (std::abs(c) < best) { best = std::abs(c); m.index = i; m.cents = c; }
+    }
+    return m;
 }
 
 class TunerFeed {

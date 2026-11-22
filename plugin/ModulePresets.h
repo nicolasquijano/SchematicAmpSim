@@ -390,6 +390,18 @@ inline constexpr ModulePreset kTenBandEqPresets[] = {
     TEN_PRESET("Solo boost", -3, -2, 0, 3, 5, 6, 4, 2, 0, -3, 6, -3),
     // Presence and bite for a bass or a thick rhythm guitar.
     TEN_PRESET("Bass punch", 5, 6, 4, 1, -1, 2, 5, 3, 0, -3, 0, 0),
+    // Modern high gain: the low end tight, the boxy 250 to 500 Hz out, the pick attack up.
+    TEN_PRESET("Modern djent", -7, -4, 1, -3, -5, -1, 2, 5, 3, -2, 0, 0),
+    // Doom and stoner: lows and low mids fat, the fizz rolled off.
+    TEN_PRESET("Heavy low end", 6, 6, 4, 2, 0, -1, -3, -5, -7, -9, 0, 0),
+    // Funk and chops: clean lows, the snap of 2 to 4 kHz.
+    TEN_PRESET("Funk chops", -6, -4, -2, -2, 0, 2, 5, 5, 3, 1, 0, 0),
+    // Electro-acoustic and a bright pickup: body in the lows, the boxy mids out, the string detail up.
+    TEN_PRESET("Acoustic body", 3, 3, 1, -3, -4, 0, 3, 4, 5, 4, 0, 0),
+    // Small speaker: the lows cut, a hump at 1 kHz, the top rolled off.
+    TEN_PRESET("Vintage radio", -12, -12, -8, -2, 4, 6, 4, -2, -8, -12, 4, -3),
+    // Ambient: the mud out, the air up, the upper mids soft.
+    TEN_PRESET("Shimmer air", -5, -4, -3, -3, -2, -1, 0, 3, 5, 7, 0, 0),
 };
 #undef TEN_PRESET
 

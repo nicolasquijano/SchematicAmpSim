@@ -21,7 +21,7 @@ SasEditor::SasEditor(SasProcessor& p)
     : AudioProcessorEditor(&p), processor_(p),
       input_(p.apvts, ids::input, "INPUT dB"), output_(p.apvts, ids::output, "OUTPUT dB"), cable_(p.apvts, ids::cable, "CABLE m"),
       bias_(p.apvts, ids::bias, "BIAS"), sag_(p.apvts, ids::sag, "SAG"), wear_(p.apvts, ids::wear, "WEAR"), speaker_(p.apvts, ids::speaker, "DYNAMICS"), blend_(p.apvts, ids::irBlend, "BLEND"),
-      tunerRef_(p.apvts, ids::tunerRef, "REF Hz"), stereoWidth_(p.apvts, ids::irWidth, "WIDTH"), doubleAmount_(p.apvts, ids::doubleAmount, "DOUBLE"),
+      tunerRef_(p.apvts, ids::tunerRef, "REF Hz"), tunerSens_(p.apvts, ids::tunerSens, "SENS dB"), stereoWidth_(p.apvts, ids::irWidth, "WIDTH"), doubleAmount_(p.apvts, ids::doubleAmount, "DOUBLE"),
       doubleTime_(p.apvts, ids::doubleTime, "TIME") {
     setLookAndFeel(&look_);
     ampPanel_.onResized = [this] { layoutAmpPanel(); };
@@ -48,6 +48,9 @@ SasEditor::SasEditor(SasProcessor& p)
     styleCaption(pickupCaption_, tr("PICKUP"));
     styleCombo(noise_, ids::noise, noiseAtt_);
     styleCombo(unit_, ids::unit, unitAtt_);
+    styleCombo(tunerTuning_, ids::tunerTuning, tunerTuningAtt_);
+    styleCaption(tunerTuningCaption_, tr("TUNING"));
+    tunerTuning_.onChange = [this] { tunerDisplay_.setTuning(tunerTuning_.getSelectedItemIndex()); };
     styleCaption(noiseCaption_, tr("NOISE AND HUM"));
     styleCaption(unitCaption_, tr("UNIT"));
     styleCaption(tubeCaption_, tr("POWER TUBES"));
@@ -106,6 +109,8 @@ SasEditor::SasEditor(SasProcessor& p)
     addAndMakeVisible(tunerOn_);
     tunerOnAtt_ = std::make_unique<juce::AudioProcessorValueTreeState::ButtonAttachment>(p.apvts, ids::tunerOn, tunerOn_);
     addAndMakeVisible(tunerMute_);
+    addAndMakeVisible(tunerSens_);
+    addAndMakeVisible(tunerRef_);  // (it was never added: the reference pitch could not be changed from the editor)
     tunerMuteAtt_ = std::make_unique<juce::AudioProcessorValueTreeState::ButtonAttachment>(p.apvts, ids::tunerMute, tunerMute_);
     addAndMakeVisible(alignOn_);
     alignOn_.setTooltip(tr("Puts impulses A and B in phase: delays the earlier one and flips B if it is upside down, so the two do not cancel each other"));
@@ -588,7 +593,7 @@ void SasEditor::timerCallback() {
     pollMeters();
     if (levelSide_ != 0 && juce::Time::getMillisecondCounter() - levelStartMs_ >= 5000) finishLevelMeasure();
     if (tick_ % 4 == 0) updateLevelButtons();
-    if (++tunerTicks_ % 3 == 0) updateTuner();
+    if (++tunerTicks_ % 2 == 0) updateTuner();
     if (page_ == 2) circuitPage_->tick();
     if (tick_++ % 8 != 0) return;  // the rest at about 4 Hz
     // Follows the amp parameter when the host or a restored state changes it.
@@ -620,23 +625,48 @@ void SasEditor::timerCallback() {
 void SasEditor::updateTuner() {
     const bool active = processor_.apvts.getRawParameterValue(ids::tunerOn)->load() > 0.5f;
     const double ref = double(processor_.apvts.getRawParameterValue(ids::tunerRef)->load());
-    bool valid = false;
-    if (active && processor_.tunerFeed().copyLatest(tunerBuf_.data(), tunerBuf_.size())) {
-        const auto r = sas::PitchDetector::detect(tunerBuf_.data(), tunerBuf_.size(), processor_.tunerFeed().rate());
-        if (r.valid) {
-            // Take a jump of more than a semitone only after it repeats, so one bad reading does not flash a wrong note.
-            const bool jump = tunerHz_ > 0.0 && std::abs(12.0 * std::log2(r.hz / tunerHz_)) > 1.0;
-            if (!jump || ++tunerHold_ >= 2) {
-                tunerHz_ = r.hz;
+    const int tuning = juce::jlimit(0, sas::kTuningCount - 1, int(processor_.apvts.getRawParameterValue(ids::tunerTuning)->load() + 0.5f));
+    const double sensDb = double(processor_.apvts.getRawParameterValue(ids::tunerSens)->load());
+    tunerDisplay_.setTuning(tuning);
+    bool valid = false, held = false;
+    double levelDb = -120.0;
+    if (active) {
+        const double rate = processor_.tunerFeed().rate();
+        const double minHz = sas::lowestHzFor(sas::kTunings[tuning], ref);
+        // A short window for a tuning without low strings, so the reading follows the string quickly.
+        const std::size_t n = std::min(tunerBuf_.size(), sas::PitchDetector::analysisWindow(rate, minHz));
+        if (processor_.tunerFeed().copyLatest(tunerBuf_.data(), n)) {
+            const std::size_t m = std::min<std::size_t>(1024, n);
+            double e = 0.0;
+            for (std::size_t i = n - m; i < n; ++i) e += double(tunerBuf_[i]) * tunerBuf_[i];
+            levelDb = 10.0 * std::log10(e / double(m) + 1e-12);
+            const auto r = sas::PitchDetector::detect(tunerBuf_.data(), n, rate, minHz, 1400.0, std::pow(10.0, sensDb / 20.0));
+            if (r.valid) {
+                // Take a jump of more than a semitone only after it repeats, so one bad reading does not flash a wrong note.
+                const bool jump = tunerHz_ > 0.0 && std::abs(12.0 * std::log2(r.hz / tunerHz_)) > 1.0;
+                if (!jump || ++tunerHold_ >= 2) {
+                    tunerHz_ = r.hz;
+                    tunerHold_ = 0;
+                }
+                valid = true;
+                tunerHeld_ = 0;
+            } else {
                 tunerHold_ = 0;
             }
-            valid = true;
-        } else {
-            tunerHold_ = 0;
         }
+        // The string fades or the pick is between notes: the last reading stays on the screen for about 0.6 s, dimmed.
+        if (!valid && tunerHz_ > 0.0) {
+            if (++tunerHeld_ <= 9) held = true;
+            else tunerHz_ = 0.0;
+        }
+    } else {
+        tunerHz_ = 0.0;
+        tunerHeld_ = 0;
     }
-    if (!active) tunerHz_ = 0.0;
-    if (page_ == 1 || active) tunerDisplay_.setReading(valid && tunerHz_ > 0.0, active, tunerHz_, ref);
+    if (page_ == 1 || active) {
+        tunerDisplay_.setReading((valid || held) && tunerHz_ > 0.0, active, tunerHz_, ref, held);
+        tunerDisplay_.setLevel(float(levelDb), float(sensDb));
+    }
 }
 
 void SasEditor::showModule(sas::SlotRef slot) { rackPage_->select(slot); }
@@ -934,10 +964,10 @@ void SasEditor::resized() {
     if (page_ == 0) rackPage_->setBounds(area);
     circuitPage_->setVisible(page_ == 2);
     if (page_ == 2) circuitPage_->setBounds(area);
-    for (auto* c : std::initializer_list<juce::Component*>{&tunerDisplay_, &tunerOn_, &tunerMute_, &tunerRef_}) c->setVisible(page_ == 1);
+    for (auto* c : std::initializer_list<juce::Component*>{&tunerDisplay_, &tunerOn_, &tunerMute_, &tunerRef_, &tunerSens_, &tunerTuning_, &tunerTuningCaption_}) c->setVisible(page_ == 1);
     if (page_ == 1) {
         // Tuner page: the display fills the page, the switches and the reference pitch sit in a column on the right.
-        auto side = area.removeFromRight(150);
+        auto side = area.removeFromRight(200);
         area.removeFromRight(gap);
         panels_.push_back({area, tr("CHROMATIC TUNER")});
         tunerDisplay_.setBounds(area.reduced(10, 8).withTrimmedTop(14));
@@ -947,8 +977,13 @@ void SasEditor::resized() {
         tunerOn_.setBounds(in.removeFromTop(26));
         in.removeFromTop(4);
         tunerMute_.setBounds(in.removeFromTop(26));
+        in.removeFromTop(8);
+        tunerTuningCaption_.setBounds(in.removeFromTop(14));
+        tunerTuning_.setBounds(in.removeFromTop(26));
+        in.removeFromTop(6);
+        tunerRef_.setBounds(in.removeFromTop(104));
         in.removeFromTop(4);
-        tunerRef_.setBounds(in);
+        tunerSens_.setBounds(in.removeFromTop(104));
     }
     repaint();
 }

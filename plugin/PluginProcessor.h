@@ -119,6 +119,8 @@ inline constexpr const char* compFast = "comp_fast";        // the pedal's Attac
 inline constexpr const char* tunerOn = "tuner_on";        // the chromatic tuner listens to the input
 inline constexpr const char* tunerMute = "tuner_mute";    // and silences the output while it is on
 inline constexpr const char* tunerRef = "tuner_ref";      // reference pitch of A4, 430..450 Hz
+inline constexpr const char* tunerSens = "tuner_sens";      // the level (dBFS, rms) the input must reach for the tuner to read a note
+inline constexpr const char* tunerTuning = "tuner_tuning";  // 0 chromatic, then the tunings of sas::kTunings
 inline constexpr const char* irWidth = "ir_width";        // 0 = A and B blended in both ears, 10 = A on the left and B on the right
 inline constexpr const char* doubleAmount = "double_amount";  // automatic double tracking: how much of the second take
 inline constexpr const char* doubleTime = "double_time";      // its delay, 8..30 ms

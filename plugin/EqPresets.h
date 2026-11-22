@@ -35,5 +35,17 @@ inline constexpr EqPreset kEqPresets[] = {
     {"Classic rock crunch", 70.0, 8500.0, {{{150.0, 3.0, 0.7}, {500.0, 2.0, 1.0}, {1500.0, 2.0, 1.0}, {2800.0, 0.5, 1.2}, {6000.0, -2.5, 0.7}}}},
     // A guitar that has to fit in a dense mix: clear lows, no mud, a little presence.
     {"Mix-ready", 100.0, 10000.0, {{{120.0, -1.0, 0.7}, {300.0, -3.0, 1.1}, {1000.0, 0.5, 1.0}, {3000.0, 1.5, 1.0}, {8000.0, -1.5, 0.7}}}},
+    // Modern high gain: the low end tight and defined, the boxy mids out, the pick attack and a little air.
+    {"Modern metal", 85.0, 9000.0, {{{100.0, 1.5, 0.8}, {350.0, -4.0, 1.2}, {1000.0, -1.0, 0.9}, {3800.0, 3.0, 1.1}, {8000.0, 1.5, 0.7}}}},
+    // Fat and slow: the lows pushed, the harsh top rolled off early, a gentle mid hump.
+    {"Stoner doom", 40.0, 6500.0, {{{90.0, 3.5, 0.7}, {250.0, 1.0, 0.9}, {700.0, 1.5, 0.9}, {2500.0, -2.5, 1.0}, {5000.0, -4.0, 0.7}}}},
+    // Funk and chops: very clean lows, the scratch and snap at 2 to 4 kHz, a little sparkle.
+    {"Funk chops", 110.0, 20000.0, {{{130.0, -2.5, 0.7}, {300.0, -2.0, 1.0}, {1200.0, 1.0, 1.0}, {3000.0, 3.5, 1.2}, {9000.0, 2.0, 0.7}}}},
+    // Ambient and shimmer: the mud out, the highs open and soft, nothing harsh in the upper mids.
+    {"Ambient shimmer", 100.0, 20000.0, {{{150.0, -2.0, 0.7}, {450.0, -2.5, 0.9}, {2000.0, -1.0, 1.0}, {5500.0, 1.5, 0.9}, {10000.0, 4.0, 0.7}}}},
+    // For a dark amp or a muffled speaker: the mids opened, the top brought back.
+    {"Brighten dark amp", 70.0, 20000.0, {{{120.0, -1.0, 0.7}, {400.0, -2.0, 1.0}, {2000.0, 2.5, 1.0}, {4500.0, 3.0, 1.1}, {8000.0, 3.0, 0.7}}}},
+    // For low volume (a fixed-loudness curve): the lows and the highs lifted, the mids left alone.
+    {"Quiet loudness", 50.0, 20000.0, {{{110.0, 4.0, 0.7}, {300.0, 0.5, 1.0}, {1000.0, -1.0, 1.0}, {3500.0, 1.0, 1.0}, {7000.0, 3.5, 0.7}}}},
 };
 inline constexpr int kEqPresetCount = int(sizeof(kEqPresets) / sizeof(kEqPresets[0]));

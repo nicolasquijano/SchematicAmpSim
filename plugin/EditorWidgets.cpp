@@ -452,15 +452,56 @@ void IrCurve::paint(juce::Graphics& g) {
 
 // ------------------------------------------------------------------ tuner display
 
-void TunerDisplay::setReading(bool valid, bool active, double hz, double referenceA) {
+void TunerDisplay::setTuning(int index) {
+    index = juce::jlimit(0, sas::kTuningCount - 1, index);
+    if (index == tuning_) return;
+    tuning_ = index;
+    history_.fill(std::nanf(""));
+    string_ = -1;
+    steady_ = 0;
+    tuned_ = 0;
+    repaint();
+}
+
+void TunerDisplay::setLevel(float levelDb, float sensitivityDb) {
+    levelDb_ = levelDb > levelDb_ ? levelDb : std::max(levelDb, levelDb_ - 2.5f);  // rises at once, falls at a readable speed
+    sensDb_ = sensitivityDb;
+    repaint();
+}
+
+void TunerDisplay::setReading(bool valid, bool active, double hz, double referenceA, bool held) {
     valid_ = valid;
     active_ = active;
+    held_ = held && valid;
     hz_ = hz;
-    if (valid) {
-        note_ = sas::noteFor(hz, referenceA);
+    referenceA_ = referenceA;
+    if (!active) tuned_ = 0;
+    const auto& tuning = sas::kTunings[tuning_];
+    if (held_) {
+        // Nothing new is heard: the last reading stays as it was.
+    } else if (valid) {
+        if (tuning.count > 0) {
+            // With strings the note is the string's own, and the cents are from it (not from the nearest semitone).
+            const auto m = sas::nearestString(tuning, hz, referenceA);
+            string_ = m.index;
+            stringCents_ = m.cents;
+            note_ = sas::noteFor(sas::midiToHz(tuning.midi[std::size_t(m.index)], referenceA), referenceA);
+            note_.cents = m.cents;
+        } else {
+            string_ = -1;
+            note_ = sas::noteFor(hz, referenceA);
+            stringCents_ = note_.cents;
+        }
         // The needle glides, so a trembling string does not make it jitter.
-        needle_ += 0.45f * (float(note_.cents) - needle_);
+        needle_ += 0.35f * (juce::jlimit(-50.0f, 50.0f, float(note_.cents)) - needle_);
+        // A string that stays in tune for a moment is ticked off.
+        steady_ = std::abs(needle_) < 3.0f ? steady_ + 1 : 0;
+        if (steady_ >= 5 && string_ >= 0) tuned_ |= 1u << unsigned(string_);
+    } else {
+        steady_ = 0;
+        string_ = -1;
     }
+    pushHistory(valid && !held_ ? juce::jlimit(-50.0f, 50.0f, float(note_.cents)) : std::nanf(""));
     repaint();
 }
 
@@ -473,60 +514,158 @@ void TunerDisplay::paint(juce::Graphics& g) {
     g.setColour(juce::Colours::black.withAlpha(0.35f));
     g.fillRoundedRectangle(b, 6.0f);
 
-    if (!active_ || !valid_) {
+    const auto& tuning = sas::kTunings[tuning_];
+    const bool hasStrings = tuning.count > 0;
+    const float stringsH = hasStrings ? 64.0f : 0.0f;
+    const auto green = juce::Colour::fromRGB(90, 210, 110);
+    const auto flatBlue = juce::Colour::fromRGB(96, 150, 230);
+    const auto sharpRed = juce::Colour::fromRGB(226, 98, 88);
+    const auto body = b.withTrimmedTop(stringsH);
+    const bool show = active_ && valid_;
+    const float dim = held_ ? 0.5f : 1.0f;  // the last note is only held: everything about it is dimmed
+
+    const bool inTune = show && std::abs(needle_) < 3.0f;
+    const auto lit = (inTune ? green : accent).withAlpha(dim);
+
+    // ---- the bottom of the page, from the bottom up: the input level, the pitch of the last seconds, the reading in numbers.
+    const float barY = b.getBottom() - 24.0f;
+    if (active_) {
+        auto bar = juce::Rectangle<float>(b.getX() + 24.0f, barY, b.getWidth() - 48.0f, 8.0f);
+        auto frac = [](float db) { return juce::jlimit(0.0f, 1.0f, (db + 80.0f) / 80.0f); };
+        g.setColour(juce::Colours::black.withAlpha(0.5f));
+        g.fillRoundedRectangle(bar, 4.0f);
+        g.setColour(levelDb_ >= sensDb_ ? green.withAlpha(0.85f) : label.withAlpha(0.7f));
+        g.fillRoundedRectangle(bar.withWidth(std::max(2.0f, bar.getWidth() * frac(levelDb_))), 4.0f);
+        const float tx = bar.getX() + bar.getWidth() * frac(sensDb_);
+        g.setColour(text);
+        g.drawLine(tx, bar.getY() - 4.0f, tx, bar.getBottom() + 4.0f, 2.0f);
+        g.setFont(AmpLookAndFeel::font(10.0f, true, 0.1f));
         g.setColour(label);
-        g.setFont(AmpLookAndFeel::font(15.0f));
-        g.drawText(active_ ? tr("play a note") : tr("press  Tuner on  to start"), b.withTrimmedBottom(40.0f), juce::Justification::centred);
-        if (active_) {
-            g.setFont(AmpLookAndFeel::font(80.0f, true));
-            g.setColour(label.withAlpha(0.25f));
-            g.drawText("-", b.withTrimmedBottom(40.0f).translated(0.0f, -20.0f), juce::Justification::centred);
+        g.drawText(tr("INPUT LEVEL"), juce::Rectangle<float>(bar.getX(), bar.getY() - 15.0f, 120.0f, 12.0f), juce::Justification::centredLeft);
+    }
+    const float histBottom = barY - 18.0f;
+    const auto hist = juce::Rectangle<float>(b.getX() + 24.0f, histBottom - 30.0f, b.getWidth() - 48.0f, 30.0f);
+    if (active_) {
+        g.setColour(juce::Colours::black.withAlpha(0.35f));
+        g.fillRoundedRectangle(hist, 4.0f);
+        const float half = hist.getHeight() * 0.5f - 2.0f;
+        g.setColour(green.withAlpha(0.14f));  // the in-tune band, +-5 cents
+        g.fillRect(hist.getX(), hist.getCentreY() - half * 0.1f, hist.getWidth(), half * 0.2f);
+        g.setColour(label.withAlpha(0.35f));
+        g.drawLine(hist.getX(), hist.getCentreY(), hist.getRight(), hist.getCentreY(), 1.0f);
+        juce::Path line;
+        bool pen = false;
+        for (int i = 0; i < kHistory; ++i) {
+            const float v = history_[std::size_t((histPos_ + i) % kHistory)];
+            if (std::isnan(v)) { pen = false; continue; }
+            const float x = hist.getX() + hist.getWidth() * float(i) / float(kHistory - 1), y = hist.getCentreY() - v / 50.0f * half;
+            if (!pen) { line.startNewSubPath(x, y); pen = true; }
+            else line.lineTo(x, y);
+        }
+        g.setColour(accent.withAlpha(0.9f));
+        g.strokePath(line, juce::PathStrokeType(1.8f, juce::PathStrokeType::curved, juce::PathStrokeType::rounded));
+    }
+    const auto readout = juce::Rectangle<float>(b.getX(), hist.getY() - 24.0f, b.getWidth(), 20.0f);
+    const float noteH = juce::jlimit(70.0f, 100.0f, b.getHeight() * 0.22f);
+    const auto noteArea = juce::Rectangle<float>(b.getX(), readout.getY() - noteH - 2.0f, b.getWidth(), noteH);
+
+    // ---- the strings of the tuning, lowest on the left: the one being played lights up, the ones already in tune are ticked off in green.
+    if (hasStrings) {
+        const float step = std::min(88.0f, (b.getWidth() - 40.0f) / float(tuning.count));
+        const float x0 = b.getCentreX() - step * float(tuning.count) * 0.5f + step * 0.5f;
+        const float cy = b.getY() + 32.0f, r = 21.0f;
+        for (int i = 0; i < tuning.count; ++i) {
+            const float x = x0 + step * float(i);
+            const bool current = show && i == string_;
+            const bool done = (tuned_ >> unsigned(i)) & 1u;
+            const auto ring = done ? green : current ? lit : label.withAlpha(0.55f);
+            if (current) {
+                g.setColour(lit.withAlpha(0.22f));
+                g.fillEllipse(x - r - 5.0f, cy - r - 5.0f, 2.0f * (r + 5.0f), 2.0f * (r + 5.0f));
+            }
+            g.setColour(juce::Colours::black.withAlpha(0.45f));
+            g.fillEllipse(x - r, cy - r, 2.0f * r, 2.0f * r);
+            g.setColour(ring);
+            g.drawEllipse(x - r, cy - r, 2.0f * r, 2.0f * r, current || done ? 2.4f : 1.4f);
+            const auto n = sas::noteFor(sas::midiToHz(tuning.midi[std::size_t(i)], referenceA_), referenceA_);
+            g.setFont(AmpLookAndFeel::font(15.0f, true));
+            g.setColour(current ? lit : done ? green : text.withAlpha(0.8f));
+            g.drawText(juce::String(n.name) + juce::String(n.octave), juce::Rectangle<float>(x - r, cy - 10.0f, 2.0f * r, 20.0f), juce::Justification::centred);
+            g.setFont(AmpLookAndFeel::font(10.0f, true));
+            g.setColour(label.withAlpha(0.8f));
+            g.drawText(juce::String(tuning.count - i), juce::Rectangle<float>(x - r, cy + r + 1.0f, 2.0f * r, 12.0f), juce::Justification::centred);  // string number (1 = highest)
         }
     }
 
-    const bool inTune = valid_ && std::abs(needle_) < 3.0f;
-    const auto lit = inTune ? juce::Colour::fromRGB(90, 210, 110) : accent;
-
-    // The note, big, with its octave.
-    if (active_ && valid_) {
-        auto top = b.withTrimmedBottom(b.getHeight() * 0.42f);
-        g.setColour(lit);
-        g.setFont(AmpLookAndFeel::font(std::min(110.0f, top.getHeight() * 0.95f), true));
-        const juce::String name(note_.name);
-        g.drawText(name, top.translated(-18.0f, 0.0f), juce::Justification::centred);
-        g.setColour(text.withAlpha(0.7f));
-        g.setFont(AmpLookAndFeel::font(24.0f, true));
-        g.drawText(juce::String(note_.octave), top.translated(top.getWidth() * 0.18f + (name.length() > 1 ? 24.0f : 4.0f), top.getHeight() * 0.22f), juce::Justification::centred);
+    // ---- the dial: an arc of +-50 cents with the flat side in blue, the sharp side in red and the in-tune zone (+-5 cents) in green; the zone the needle is in lights up.
+    constexpr float kSweep = 1.42f;  // radians each side of the top (about 81 degrees: nearly a half circle)
+    const auto arcArea = juce::Rectangle<float>(b.getX() + 24.0f, body.getY() + 14.0f, b.getWidth() - 48.0f, noteArea.getY() - body.getY() - 14.0f);
+    const float radius = juce::jlimit(50.0f, std::max(50.0f, arcArea.getHeight() - 6.0f), arcArea.getWidth() * 0.5f);
+    const float cx = arcArea.getCentreX(), cy = arcArea.getBottom();
+    auto angle = [&](float cents) { return juce::jlimit(-50.0f, 50.0f, cents) / 50.0f * kSweep; };
+    const int zone = !show ? 1 : needle_ < -5.0f ? 0 : needle_ > 5.0f ? 2 : 1;
+    const struct { float from, to; juce::Colour colour; } zones[3] = {{-50.0f, -5.0f, flatBlue}, {-5.0f, 5.0f, green}, {5.0f, 50.0f, sharpRed}};
+    for (int z = 0; z < 3; ++z) {
+        juce::Path arc;
+        arc.addCentredArc(cx, cy, radius, radius, 0.0f, angle(zones[z].from), angle(zones[z].to), true);
+        const bool on = show && z == zone;
+        g.setColour(zones[z].colour.withAlpha((on ? 0.95f : 0.28f) * (on ? dim : 1.0f)));
+        g.strokePath(arc, juce::PathStrokeType(on ? 12.0f : 9.0f, juce::PathStrokeType::curved, juce::PathStrokeType::butt));
     }
-
-    // The needle meter: +-50 cents, ticks every 10, the centre mark taller.
-    auto meter = b.withTrimmedTop(b.getHeight() * 0.60f).reduced(24.0f, 0.0f).withHeight(34.0f).withY(b.getY() + b.getHeight() * 0.60f);
-    const float cx = meter.getCentreX(), half = meter.getWidth() * 0.5f;
-    for (int c = -50; c <= 50; c += 10) {
-        const float x = cx + half * float(c) / 50.0f;
+    for (int c = -50; c <= 50; c += 10) {  // ticks every 10 cents, the centre longer
+        const float a = angle(float(c)), s = std::sin(a), co = std::cos(a);
         const bool centre = c == 0;
-        g.setColour((centre ? lit : label).withAlpha(centre ? 0.95f : 0.6f));
-        g.drawLine(x, meter.getY() + (centre ? 0.0f : 8.0f), x, meter.getBottom(), centre ? 2.0f : 1.2f);
+        g.setColour((centre ? green : label).withAlpha(centre ? 0.95f : 0.65f));
+        g.drawLine(cx + s * (radius + 9.0f), cy - co * (radius + 9.0f), cx + s * (radius + (centre ? 22.0f : 15.0f)), cy - co * (radius + (centre ? 22.0f : 15.0f)), centre ? 2.2f : 1.3f);
     }
-    g.setColour(label.withAlpha(0.5f));
-    g.drawLine(meter.getX(), meter.getBottom(), meter.getRight(), meter.getBottom(), 1.0f);
     g.setFont(AmpLookAndFeel::font(11.0f, true, 0.1f));
-    g.setColour(label);
-    g.drawText(tr("FLAT"), juce::Rectangle<float>(meter.getX(), meter.getBottom() + 4.0f, 60.0f, 14.0f), juce::Justification::centredLeft);
-    g.drawText(tr("SHARP"), juce::Rectangle<float>(meter.getRight() - 60.0f, meter.getBottom() + 4.0f, 60.0f, 14.0f), juce::Justification::centredRight);
-    if (active_ && valid_) {
-        const float x = cx + half * juce::jlimit(-50.0f, 50.0f, needle_) / 50.0f;
-        juce::Path needle;
-        needle.addTriangle(x - 8.0f, meter.getY() - 10.0f, x + 8.0f, meter.getY() - 10.0f, x, meter.getY() + 8.0f);
-        g.setColour(lit.withAlpha(0.3f));
-        g.fillEllipse(x - 14.0f, meter.getY() - 12.0f, 28.0f, 28.0f);
+    g.setColour(flatBlue.withAlpha(0.9f));
+    g.drawText(tr("FLAT"), juce::Rectangle<float>(cx - std::sin(kSweep) * radius - 34.0f, cy - std::cos(kSweep) * radius + 14.0f, 68.0f, 14.0f), juce::Justification::centred);
+    g.setColour(sharpRed.withAlpha(0.9f));
+    g.drawText(tr("SHARP"), juce::Rectangle<float>(cx + std::sin(kSweep) * radius - 34.0f, cy - std::cos(kSweep) * radius + 14.0f, 68.0f, 14.0f), juce::Justification::centred);
+
+    if (show) {
+        const float a = angle(needle_), s = std::sin(a), co = std::cos(a);
+        const float tipX = cx + s * (radius - 5.0f), tipY = cy - co * (radius - 5.0f);
+        g.setColour(lit.withAlpha(0.28f * dim));
+        g.fillEllipse(tipX - 9.0f, tipY - 9.0f, 18.0f, 18.0f);
         g.setColour(lit);
-        g.fillPath(needle);
+        g.drawLine(cx, cy, tipX, tipY, 3.2f);
+        g.fillEllipse(cx - 7.0f, cy - 7.0f, 14.0f, 14.0f);
+    } else {
+        g.setColour(label);
+        g.setFont(AmpLookAndFeel::font(15.0f));
+        const bool tooQuiet = active_ && levelDb_ > -75.0f && levelDb_ < sensDb_;
+        g.drawText(!active_ ? tr("press  Tuner on  to start") : tooQuiet ? tr("signal below the sensitivity") : tr("play a note"), arcArea.withTrimmedBottom(radius * 0.2f), juce::Justification::centred);
+        if (active_) {
+            g.setFont(AmpLookAndFeel::font(noteH * 0.9f, true));
+            g.setColour(label.withAlpha(0.25f));
+            g.drawText("-", noteArea, juce::Justification::centred);
+        }
+    }
+
+    // ---- the note, big, with its octave, and the reading in numbers.
+    if (show) {
+        g.setColour(lit);
+        const auto noteFont = AmpLookAndFeel::font(std::min(110.0f, noteArea.getHeight() * 0.95f), true);
+        g.setFont(noteFont);
+        const juce::String name(note_.name);
+        g.drawText(name, noteArea.translated(-18.0f, 0.0f), juce::Justification::centred);
+        g.setColour(text.withAlpha(0.7f * dim));
+        g.setFont(AmpLookAndFeel::font(24.0f, true));
+        // The octave sits just after the note, whatever its width.
+        juce::GlyphArrangement glyphs;
+        glyphs.addLineOfText(juce::Font(noteFont), name, 0.0f, 0.0f);
+        const float nameWidth = glyphs.getBoundingBox(0, -1, true).getWidth();
+        g.drawText(juce::String(note_.octave), juce::Rectangle<float>(noteArea.getCentreX() - 18.0f + nameWidth * 0.5f + 6.0f, noteArea.getCentreY() + noteArea.getHeight() * 0.22f - 14.0f, 40.0f, 28.0f),
+                   juce::Justification::centredLeft);
+
         g.setFont(AmpLookAndFeel::font(15.0f, true));
-        g.setColour(text);
+        g.setColour(text.withAlpha(dim));
         const int cents = int(std::lround(note_.cents));
-        g.drawText(juce::String(cents > 0 ? "+" : "") + juce::String(cents) + " cents   -   " + juce::String(hz_, 1) + " Hz",
-                   juce::Rectangle<float>(b.getX(), meter.getBottom() + 22.0f, b.getWidth(), 20.0f), juce::Justification::centred);
+        // With strings the way to turn the peg is spelled out.
+        const juce::String advice = hasStrings && std::abs(note_.cents) >= 3.0 ? juce::String("   -   ") + (note_.cents < 0 ? tr("tune up") : tr("tune down")) : juce::String();
+        g.drawText(juce::String(cents > 0 ? "+" : "") + juce::String(cents) + " cents   -   " + juce::String(hz_, 1) + " Hz" + advice, readout, juce::Justification::centred);
     }
 }
 

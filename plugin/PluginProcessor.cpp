@@ -83,6 +83,13 @@ Layout SasProcessor::createLayout(const std::vector<sas::AmpDef>& defs) {
     l.add(std::make_unique<juce::AudioParameterBool>(juce::ParameterID{ids::tunerMute, kVersion}, "Tuner mutes the output", true));
     l.add(std::make_unique<juce::AudioParameterFloat>(juce::ParameterID{ids::tunerRef, kVersion}, "Tuner reference", juce::NormalisableRange<float>(430.0f, 450.0f, 1.0f), 440.0f,
                                                        juce::AudioParameterFloatAttributes().withLabel("Hz").withStringFromValueFunction([](float v, int) { return juce::String(v, 0); })));
+    l.add(std::make_unique<juce::AudioParameterFloat>(juce::ParameterID{ids::tunerSens, kVersion}, "Tuner sensitivity", juce::NormalisableRange<float>(-75.0f, -35.0f, 1.0f), -54.0f,
+                                                       juce::AudioParameterFloatAttributes().withLabel("dB").withStringFromValueFunction([](float v, int) { return juce::String(v, 0); })));
+    {
+        juce::StringArray tunings;
+        for (const auto& t : sas::kTunings) tunings.add(t.name);
+        l.add(std::make_unique<juce::AudioParameterChoice>(juce::ParameterID{ids::tunerTuning, kVersion}, "Tuner tuning", tunings, 0));
+    }
     l.add(knob(ids::irWidth, "IR stereo width", 0.0f));
     l.add(knob(ids::doubleAmount, "Double tracking", 0.0f));
     l.add(knob(ids::doubleTime, "Double tracking time", 5.0f));

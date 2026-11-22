@@ -244,6 +244,56 @@ TEST_CASE("the power tube choice is a type, so it means the same on every amp") 
     CHECK(p.wantedCondition().tube == 0);
 }
 
+TEST_CASE("tuner tunings: the strings, the nearest string with its cents, and the low strings of a 7-string guitar and a bass are heard") {
+    const auto& standard = sas::kTunings[1];
+    REQUIRE(std::string(sas::kTunings[0].name) == "Chromatic");
+    REQUIRE(sas::kTunings[0].count == 0);
+    REQUIRE(standard.count == 6);
+    CHECK(std::abs(sas::midiToHz(standard.midi[0]) - 82.407) < 0.01);  // E2
+    CHECK(std::abs(sas::midiToHz(standard.midi[5]) - 329.628) < 0.01);  // E4
+    for (int i = 0; i < sas::kTuningCount; ++i) {  // every tuning rises string by string
+        const auto& t = sas::kTunings[i];
+        for (int s = 1; s < t.count; ++s) CHECK(t.midi[std::size_t(s)] > t.midi[std::size_t(s - 1)]);
+    }
+    const auto a = sas::nearestString(standard, 110.0);  // the A string, in tune
+    CHECK(a.index == 1);
+    CHECK(std::abs(a.cents) < 0.01);
+    const auto d = sas::nearestString(standard, 144.0);  // about 25 cents flat of D3 (146.83 Hz is D3)
+    CHECK(d.index == 2);
+    CHECK(d.cents < -25.0);
+    CHECK(d.cents > -40.0);
+    const auto dropD = sas::nearestString(sas::kTunings[4], 73.42);  // low D of drop D
+    CHECK(dropD.index == 0);
+    CHECK(std::abs(dropD.cents) < 0.1);
+    // The detector hears the low B of a 7-string (30.87 Hz would be a B0: the lowest string here is B1 at 61.7 Hz) and the low B of a 5-string bass (30.87 Hz).
+    const double rate = 24000.0;
+    for (double hz : {30.868, 41.203, 61.735}) {
+        std::vector<float> x(3072);
+        for (std::size_t i = 0; i < x.size(); ++i) x[i] = float(0.2 * std::sin(2.0 * 3.14159265358979 * hz * double(i) / rate) + 0.08 * std::sin(2.0 * 3.14159265358979 * 2.0 * hz * double(i) / rate));
+        const auto r = sas::PitchDetector::detect(x.data(), x.size(), rate, sas::lowestHzFor(sas::kTunings[14]));
+        INFO(hz);
+        REQUIRE(r.valid);
+        CHECK(std::abs(1200.0 * std::log2(r.hz / hz)) < 2.0);
+    }
+    // The window follows the lowest note: short for a standard guitar, longer for a bass, never past the ring buffer.
+    const double lowStd = sas::lowestHzFor(standard), lowBass = sas::lowestHzFor(sas::kTunings[14]);
+    CHECK(sas::PitchDetector::analysisWindow(rate, lowStd) < 1300);
+    CHECK(sas::PitchDetector::analysisWindow(rate, lowBass) > 2400);
+    CHECK(sas::PitchDetector::analysisWindow(rate, lowBass) <= 4096);
+    CHECK(sas::PitchDetector::analysisWindow(rate, lowStd) < sas::PitchDetector::analysisWindow(rate, lowBass));
+    {  // a short window still reads a guitar string to a cent, and the sensitivity decides whether a quiet note counts
+        const double hz = 110.0;
+        std::vector<float> x(sas::PitchDetector::analysisWindow(rate, lowStd));
+        for (std::size_t i = 0; i < x.size(); ++i) x[i] = float(0.01 * std::sin(2.0 * 3.14159265358979 * hz * double(i) / rate));  // rms 0.007, -43 dBFS
+        const auto heard = sas::PitchDetector::detect(x.data(), x.size(), rate, lowStd, 1400.0, std::pow(10.0, -54.0 / 20.0));
+        REQUIRE(heard.valid);
+        CHECK(std::abs(1200.0 * std::log2(heard.hz / hz)) < 2.0);
+        CHECK_FALSE(sas::PitchDetector::detect(x.data(), x.size(), rate, lowStd, 1400.0, std::pow(10.0, -35.0 / 20.0)).valid);  // the sensitivity at -35 dB: too quiet
+    }
+    CHECK(sas::lowestHzFor(standard) < 82.0);
+    CHECK(sas::lowestHzFor(sas::kTunings[14]) < 25.0);
+}
+
 TEST_CASE("the tuner listens to the input, reads the note and silences the output while it is on") {
     JuceInit init;
     SasProcessor p;
@@ -927,6 +977,7 @@ TEST_CASE("readme screenshots", "[.screenshots]") {
     {
         SasProcessor p;
         setParam(p, ids::tunerOn, 1.0f);
+        setParam(p, ids::tunerTuning, 1.0f);  // guitar standard: the strings are drawn
         p.prepareToPlay(48000.0, 512);
         std::unique_ptr<juce::AudioProcessorEditor> ed(p.createEditor());
         ed->setSize(1000, 520);
@@ -1454,7 +1505,7 @@ TEST_CASE("eq presets: each factory preset sets the EQ parameters, stays within 
     JuceInit init;
     SasProcessor p;
     p.prepareToPlay(48000.0, 512);
-    REQUIRE(kEqPresetCount == 11);  // flat and ten guitar presets
+    REQUIRE(kEqPresetCount == 17);  // flat, ten guitar presets and six more
     auto response = [&](double hz) {
         sas::EqParams eq;
         eq.on = p.apvts.getRawParameterValue(ids::eqOn)->load() > 0.5f;
