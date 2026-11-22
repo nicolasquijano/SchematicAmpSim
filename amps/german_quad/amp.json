@@ -2,7 +2,7 @@
  "id": "german_quad",
  "order": 33,
  "category": "highgain",
- "output_db": 1.9,
+ "output_db": 2.1,
  "name": "German Quad",
  "ui": [
   {
@@ -60,7 +60,7 @@
  },
  "presets": [
   {
-   "name": "CH1 Clean",
+   "name": "Clean",
    "selectors": {
     "channel": 0
    },
@@ -75,7 +75,22 @@
    }
   },
   {
-   "name": "CH2 Crunch",
+   "name": "Edge of breakup",
+   "selectors": {
+    "channel": 1
+   },
+   "params": {
+    "volume": 3.5,
+    "treble": 5,
+    "middle": 5,
+    "bass": 5,
+    "volume2": 6,
+    "presence": 5,
+    "master": 5
+   }
+  },
+  {
+   "name": "Crunch",
    "selectors": {
     "channel": 1
    },
@@ -90,7 +105,7 @@
    }
   },
   {
-   "name": "CH3 Lead 1",
+   "name": "Lead",
    "selectors": {
     "channel": 2
    },
@@ -149,12 +164,36 @@
    "full_scale": 450
   }
  ],
-  "circuit_channels": [
-    { "label": "CH1 CLEAN", "selector": "channel", "positions": [0] },
-    { "label": "CH2 CRUNCH", "selector": "channel", "positions": [1] },
-    { "label": "CH3 LEAD 1", "selector": "channel", "positions": [2] },
-    { "label": "CH4 LEAD 2", "selector": "channel", "positions": [3] }
-  ],
+ "circuit_channels": [
+  {
+   "label": "CH1 CLEAN",
+   "selector": "channel",
+   "positions": [
+    0
+   ]
+  },
+  {
+   "label": "CH2 CRUNCH",
+   "selector": "channel",
+   "positions": [
+    1
+   ]
+  },
+  {
+   "label": "CH3 LEAD 1",
+   "selector": "channel",
+   "positions": [
+    2
+   ]
+  },
+  {
+   "label": "CH4 LEAD 2",
+   "selector": "channel",
+   "positions": [
+    3
+   ]
+  }
+ ],
  "preamp": {
   "netlist": "preamp.net",
   "tolerance": 2e-06,
@@ -260,7 +299,8 @@
        "SW_O2": 1000000000000.0,
        "SW_O3": 1000000000000.0,
        "SW_O4": 1000000000000.0
-      }
+      },
+      "level_db": 6.0
      },
      {
       "label": "CH2 Crunch",

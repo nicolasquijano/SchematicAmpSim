@@ -2,7 +2,7 @@
  "id": "jubilee_2555",
  "order": 30,
  "category": "crunch",
- "output_db": 17.2,
+ "output_db": 19.8,
  "name": "British Silver",
  "ui": [
   {
@@ -75,7 +75,22 @@
    }
   },
   {
-   "name": "Rhythm crunch",
+   "name": "Edge of breakup",
+   "selectors": {
+    "channel": 0
+   },
+   "params": {
+    "volume": 4.5,
+    "volume2": 5,
+    "bass": 5,
+    "master": 6,
+    "middle": 5,
+    "presence": 5,
+    "treble": 6
+   }
+  },
+  {
+   "name": "Crunch",
    "selectors": {
     "channel": 0
    },
@@ -262,7 +277,8 @@
       "resistors": {
        "SWR": 1000000000000.0,
        "SWL": 0.1
-      }
+      },
+      "level_db": -10.0
      }
     ]
    },

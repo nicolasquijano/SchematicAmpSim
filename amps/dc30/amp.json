@@ -29,18 +29,15 @@
    }
   },
   {
-   "name": "Chime",
-   "jack": "ch2",
+   "name": "Edge of breakup",
+   "jack": "ch1",
    "params": {
-    "volume": 4,
-    "volume2": 5,
+    "volume": 5.5,
+    "volume2": 4,
     "bass": 5,
     "treble": 6,
-    "presence": 1,
+    "presence": 2.5,
     "master": 6
-   },
-   "selectors": {
-    "tone": 3
    }
   },
   {
@@ -68,6 +65,21 @@
    },
    "selectors": {
     "tone": 1
+   }
+  },
+  {
+   "name": "Chime",
+   "jack": "ch2",
+   "params": {
+    "volume": 4,
+    "volume2": 5,
+    "bass": 5,
+    "treble": 6,
+    "presence": 1,
+    "master": 6
+   },
+   "selectors": {
+    "tone": 3
    }
   }
  ],
@@ -100,10 +112,21 @@
    "full_scale": 450
   }
  ],
-  "circuit_channels": [
-    { "label": "CHANNEL 1 / BOTH", "jacks": [0, 2] },
-    { "label": "CHANNEL 2", "jacks": [1] }
-  ],
+ "circuit_channels": [
+  {
+   "label": "CHANNEL 1 / BOTH",
+   "jacks": [
+    0,
+    2
+   ]
+  },
+  {
+   "label": "CHANNEL 2",
+   "jacks": [
+    1
+   ]
+  }
+ ],
  "preamp": {
   "netlist": "preamp.net",
   "tolerance": 2e-06,
@@ -187,7 +210,7 @@
      "SW_O1": 1000000000000.0,
      "SW_O2": 1
     },
-    "level_db": 10.0
+    "level_db": 16.0
    },
    {
     "name": "both",
@@ -199,7 +222,7 @@
      "SW_O1": 1,
      "SW_O2": 1
     },
-    "level_db": 7.0
+    "level_db": 8.2
    }
   ],
   "selectors": [

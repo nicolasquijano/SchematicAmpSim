@@ -84,7 +84,7 @@
  },
  "presets": [
   {
-   "name": "CH1 Clean",
+   "name": "Clean",
    "selectors": {
     "channel": 0,
     "ch1_mode": 0
@@ -99,7 +99,22 @@
    }
   },
   {
-   "name": "CH2 Crunch",
+   "name": "Edge of breakup",
+   "selectors": {
+    "channel": 1,
+    "ch2_mode": 0
+   },
+   "params": {
+    "volume": 4,
+    "treble": 5,
+    "middle": 6,
+    "bass": 5,
+    "presence": 5,
+    "master": 5
+   }
+  },
+  {
+   "name": "Crunch",
    "selectors": {
     "channel": 1,
     "ch2_mode": 1
@@ -110,6 +125,21 @@
     "middle": 6,
     "bass": 5,
     "presence": 5,
+    "master": 5
+   }
+  },
+  {
+   "name": "Lead",
+   "selectors": {
+    "channel": 2,
+    "ch3_mode": 0
+   },
+   "params": {
+    "volume": 6,
+    "treble": 5,
+    "middle": 6,
+    "bass": 5,
+    "presence": 6,
     "master": 5
    }
   },
@@ -125,21 +155,6 @@
     "middle": 6,
     "bass": 5,
     "presence": 5,
-    "master": 5
-   }
-  },
-  {
-   "name": "CH3 IIC+",
-   "selectors": {
-    "channel": 2,
-    "ch3_mode": 0
-   },
-   "params": {
-    "volume": 6,
-    "treble": 5,
-    "middle": 6,
-    "bass": 5,
-    "presence": 6,
     "master": 5
    }
   },
@@ -203,11 +218,29 @@
    "full_scale": 450
   }
  ],
-  "circuit_channels": [
-    { "label": "CH1", "selector": "channel", "positions": [0] },
-    { "label": "CH2", "selector": "channel", "positions": [1] },
-    { "label": "CH3", "selector": "channel", "positions": [2] }
-  ],
+ "circuit_channels": [
+  {
+   "label": "CH1",
+   "selector": "channel",
+   "positions": [
+    0
+   ]
+  },
+  {
+   "label": "CH2",
+   "selector": "channel",
+   "positions": [
+    1
+   ]
+  },
+  {
+   "label": "CH3",
+   "selector": "channel",
+   "positions": [
+    2
+   ]
+  }
+ ],
  "preamp": {
   "netlist": "preamp.net",
   "tolerance": 2e-08,
