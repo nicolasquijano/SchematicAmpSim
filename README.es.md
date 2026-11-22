@@ -14,7 +14,7 @@ English version: [README.md](README.md).
 
 ## Capturas
 
-Cada ampli tiene sus propios colores, y la lista de amplis (a la izquierda) está agrupada por carácter: limpios, crunch, alta ganancia y bajo. Cuatro de los veintitrés amplis de circuito:
+Cada ampli tiene sus propios colores, y la lista de amplis (a la izquierda) está agrupada por carácter: limpios, crunch, alta ganancia y bajo. Cuatro de los treinta y dos amplis de circuito:
 
 <p align="center">
   <img src="docs/images/amps.png" alt="American Twin, British Plexi, British 800 KK y American Lead C+" width="800">
@@ -32,7 +32,19 @@ Los módulos, cada uno con sus presets: **compresor, overdrive, drive transparen
   <img src="docs/images/modules-drive.png" alt="Compresor, overdrive, drive transparente, fuzz y boost" width="800">
 </p>
 
-El ampli **NAM Loader** corre un modelo de Neural Amp Modeler en lugar de los circuitos; el **Tuner** es un afinador cromático.
+El ampli **NAM Loader** corre un modelo de Neural Amp Modeler en lugar de los circuitos; el **Tuner** es un afinador cromático con afinaciones y cuerdas.
+
+Los amplis más nuevos (versión 0.8): el American Lead V, el German Quad, el British Silver y el American Class A.
+
+<p align="center">
+  <img src="docs/images/amps-new.png" alt="American Lead V, German Quad, British Silver y American Class A" width="800">
+</p>
+
+La página **Tuner** tiene un dial en arco, las cuerdas de la afinación elegida, el tono de los últimos segundos y el nivel de entrada:
+
+<p align="center">
+  <img src="docs/images/tuner.png" alt="El afinador: las cuerdas de la afinación estándar, un dial en arco, el historial del tono y el nivel de entrada" width="800">
+</p>
 
 (Las imágenes las dibuja el propio editor: en "Estructura del repositorio" se explica cómo regenerarlas.)
 
@@ -56,7 +68,7 @@ de los proyectos guardados puede cambiar entre versiones 0.x. Las versiones y lo
   6V6, 6L6, 6550), diodos, BJT, amplificadores operacionales.
 - **Los amplis son datos, no código.** Cada ampli es una carpeta con una netlist y un `amp.json` que asigna perillas, jacks de entrada, presence,
   alimentación y nivel de salida a elementos del circuito. Agregar un ampli es agregar archivos; solo se recompila para incrustarlos.
-- **Veintitrés amplis incluidos** (más el NAM Loader). Los nombres que se muestran son genéricos a propósito:
+- **Treinta y dos amplis incluidos** (más el NAM Loader). Los nombres que se muestran son genéricos a propósito:
 
   | Nombre | Circuito |
   |---|---|
@@ -85,6 +97,13 @@ de los proyectos guardados puede cambiar entre versiones 0.x. Las versiones y lo
   | American Boutique | Cabezal de overdrive de 100 W al estilo de un famoso ampli artesanal: una entrada, stack tipo Fender con Rock / Jazz, Deep y Bright, cambio Clean / Overdrive (dos etapas de ganancia extra con Level y Ratio), Master, cuatro 6L6GC. No modela la entrada FET ni el selector 100 / 50 W |
   | American Lead 100 | Cabezal super-lead de 100 W con dos canales: Clean / Crunch (con interruptores Crunch / Clean y Bright) y Overdrive (lead), loop de efectos cableado directo, stack tipo Marshall, dos Master, cambio de canal con optoacopladores, cuatro 6L6GC. No modela el pedal de pie ni los jacks FX |
   | British Mod 100 | Cabezal británico modificado de 100 W con tres modos: Clean, BE y HBE, red de voz con Fat, clipper SAT y selector Voice, stack tipo Marshall con Middle y Master, inversor 12AX7 con Presence, cuatro EL34. No modela el loop de efectos ni el Line Out |
+  | British 45 | Cabezal de 40 W de principios de los años 60 (el dibujo del JTM45): el stack de tonos y el ampli de potencia del Fender 5F6-A con válvulas británicas, una primera etapa ECC83 con canales Bright y Normal (cada uno con entrada completa y de -6 dB), dos EL34 con rectificador GZ34. El trémolo del dibujo no está modelado |
+  | American 18/30 | Combo boutique de 18 W (un diagrama de servicio del Bassbreaker 18/30): un seguidor catódico V1-A / V1-B, después dos canales elegidos por relés (el stack TREBLE / MIDDLE / BASS con su VOLUME, o un canal con VOLUME y TONE), V2-A, un inversor de fase y cuatro EL84 |
+  | Modern Bass 800 | Cabezal de bajo de estado sólido de 800 W de los años 90: entrada, los interruptores LO CUT y HI BOOST, la muesca MID CONTOUR y un ecualizador activo de tres bandas hecho con operacionales, con la etapa de potencia como un operacional. Sin válvulas: la página Circuit dibuja operacionales |
+  | British Silver | Cabezal de 100 W de dos canales con EL34 y un relé Rhythm / Lead (selector CHANNEL): V1a y V1b, una red de recorte con LED y LEAD MASTER en Lead, un selector RHYTHM CLIP, V2a, un seguidor catódico V2b, un stack tipo Marshall con BASS de dos secciones, OUTPUT MASTER, un inversor de fase ECC83 de cola larga con realimentación negativa y PRESENCE, cuatro EL34. El lazo de efectos está en bypass |
+  | American Class A | Cabezal Clase A de 30 W con cuatro EL84: Channel 1 (dos ECC83 en paralelo, volumen con capacitor bright, la red Top Boost) y Channel 2 (un EF86 reemplazado por una ECC83, un selector TONE de seis posiciones), jacks Channel 1 / Channel 2 / Both; MASTER y CUT están entre las dos fases después del inversor. Armado desde una imagen, con algunos supuestos |
+  | American Lead V | Cabezal de 90 W de tres canales: CH1 (Clean, Fat, Tweed), CH2 (Edge, Crunch, Mark I) y CH3 (IIC+, IV, Extreme), cada uno con su stack, la realimentación del CH3 alrededor de sus etapas de ganancia, V3A y V6A, masters por canal, la V6B del lazo y un ecualizador gráfico de cinco bandas dibujado como faders; cuatro 6L6GC. No modela la reverb, el lazo ni los interruptores JFET |
+  | German Quad | Cabezal de 100 W de cuatro canales con EL34: Clean, Crunch, Lead 1 y Lead 2 por una V2A / V2B compartida y sus propios stacks de tono, interruptores BRIGHT en dos canales, cuatro EL34 con las tensiones del ampli real. No modela DEEP, los lazos, MIX ni los inserts |
 - **El parlante forma parte del circuito**: el transformador de salida maneja la resistencia e inductancia de la bobina móvil y la resonancia mecánica del
   cono (valores típicos de 12 pulgadas escalados a la carga de cada ampli), de modo que la tensión de salida tiene la joroba de graves, el valle de medios y
   la subida de agudos de un ampli a válvulas sobre un parlante real. El transformador también tiene capacidad de bobinado y pérdidas de núcleo.
@@ -99,7 +118,7 @@ de los proyectos guardados puede cambiar entre versiones 0.x. Las versiones y lo
 - **Pitch shift** (página Pitch): de -12 a +12 semitonos y ajuste fino en cents, para afinaciones graves, octavas o afinar la grabación. Un shifter granular de dos
   cabezales que funciona con acordes; agrega unos 12 ms de retardo solo mientras hay un corrimiento.
 - **Ecualizador posterior** (página EQ): cinco bandas (shelf grave, tres campanas, shelf agudo), pasa-altos y pasa-bajos, con una curva arrastrable, el espectro de lo
-  que suena y diez presets para guitarra; actúa sobre la señal estéreo final, después del gabinete.
+  que suena y dieciséis presets para guitarra (más un pedal de ecualizador gráfico de diez bandas con catorce); actúa sobre la señal estéreo final, después del gabinete.
 - **Aplicación Standalone y presets**: además del VST3, `Schematic Amp Sim.exe` funciona sin DAW (el botón del engranaje abre la configuración de audio: elegí el driver ASIO de
   tu interfaz y el canal de la guitarra; la entrada arranca silenciada para evitar acople). El botón Presets guarda y carga todo el estado como archivos `.sasp`.
 - **Modos de calidad**
@@ -120,7 +139,7 @@ de los proyectos guardados puede cambiar entre versiones 0.x. Las versiones y lo
   del proyecto. La dinámica del parlante (excursión del cono, calentamiento de la bobina, ruptura del cono) va entre el ampli y el gabinete. **Estéreo**: Width pone el impulso A en el oído
   izquierdo y B en el derecho, y Double agrega doble tracking automático. Una pista mono puede alimentar la salida estéreo.
 - **Pedal de overdrive** delante del ampli con cuatro modelos a elegir (verde, amarillo, blues y distorsión sucia; drive, tono, nivel) y **pedal compresor** resuelto como circuito (Sustain, Blend, Tone, Level y el interruptor Attack). También un **pedal de EQ gráfico de 10 bandas** (estilo MXR, ±12 dB por banda, con GAIN y VOLUME).
-- **Afinador cromático** (página Tuner): detección McLeod sobre la entrada cruda (60 Hz a 1,4 kHz, a un cent en notas limpias), aguja, referencia de 430 a 450 Hz y opción de silenciar la salida al afinar.
+- **Afinador** (página Tuner): detección McLeod sobre la entrada cruda (desde unos 25 Hz hasta 1,4 kHz, a un cent en notas limpias, sin errores de octava con una fundamental débil), cromático o con **14 afinaciones** (guitarra estándar y bajadas, afinaciones abiertas, 7 cuerdas, bajo de 4 o 5 cuerdas) que dibujan las cuerdas y dicen hacia dónde girar la clavija. Un dial en arco con zonas azul, verde y roja, el tono de los últimos 8 segundos, la última nota retenida un momento, una barra de nivel de entrada con control de **sensibilidad**, una referencia de 430 a 450 Hz y la opción de silenciar la salida al afinar.
 - **Igualación de nivel** entre amplis, jacks y modos, para que el cambio no salte de volumen.
 - Suavizado rápido de parámetros, sin reservas de memoria en el hilo de audio; al cambiar de ampli, los circuitos nuevos se construyen en un hilo aparte y se intercambian sin cortar el audio.
 

@@ -5,6 +5,33 @@ version numbers follow [Semantic Versioning](https://semver.org/) (see [docs/REL
 
 ## [Unreleased]
 
+## [0.8.0-beta] - 2026-11-22
+
+### Added
+- **Four new amps**, each transcribed from its schematic:
+  - **British Silver** (Silver Jubilee, 100 W, four EL34): V1a / V1b into a Rhythm / Lead relay (selector CHANNEL), the LED clipping network and LEAD MASTER in Lead, a RHYTHM CLIP selector (the diodes on the pull switch of the gain pot), the tone stack with a two-section BASS, the OUTPUT MASTER and the power amp with its presence network. The effects loop is bypassed.
+  - **American Class A** (a 30 W Class A head, four EL84): Channel 1 (two ECC83 in parallel, volume with bright cap, the Top Boost network) and Channel 2 (an EF86, stood in for by an ECC83, with the six-position TONE switch), jacks Channel 1 / Channel 2 / Both; MASTER is a pot between the two phases after the inverter (a power knob with a complement) and CUT is a cap and a pot between them. Built from an image of the schematic with some assumptions that are written in the netlist.
+  - **American Lead V** (a three-channel 90 W head): CH1 (Clean, Fat, Tweed), CH2 (Edge, Crunch, Mark I) and CH3 (IIC+, IV, Extreme), each with its own tone stack, the CH3 feedback around its gain stages, V3A / V6A, the per-channel masters and the loop's V6B; a five-band graphic EQ drawn as vertical faders. The power amp is the Lead C+'s.
+  - **German Quad** (a four-channel 100 W head): CH1 Clean, CH2 Crunch, CH3 Lead 1 and CH4 Lead 2 through the shared V2A / V2B and their own stacks, BRIGHT switches on two channels, four EL34 with the voltages of the real amp. DEEP, the loops, MIX and the inserts are not modelled.
+- **Tuner: tunings and strings.** A TUNING selector with 14 tunings besides the chromatic mode: guitar standard, half step down, whole step down, drop D, drop C, double drop D, DADGAD, open G, D and E, 7 strings (standard and drop A) and bass with 4 or 5 strings. The strings are drawn, the one being played lights up, the ones that were in tune are ticked off, the cents are measured from the string and the display says "tune up" or "tune down". The detector now goes down to the lowest string of the tuning (about 25 Hz for a 5-string bass, instead of 60 Hz).
+- **Tuner: faster and easier to read.** The analysis window follows the lowest note (about 45 ms for a standard guitar instead of 128 ms), the display is updated 15 times a second, and the last note stays on the screen, dimmed, for 0.6 s when the string fades. An arc dial (+-50 cents) with the flat side in blue, the sharp side in red and the in-tune zone (+-5 cents) in green, a strip with the pitch of the last 8 seconds, an input level bar with the sensitivity marked and a SENS dB knob (`tuner_sens`, -75 to -35 dB) for guitars or interfaces with a weak signal.
+- **More EQ presets:** six for the parametric EQ (Modern metal, Stoner doom, Funk chops, Ambient shimmer, Brighten dark amp, Quiet loudness: 17 in all) and six for the ten-band graphic EQ (Modern djent, Heavy low end, Funk chops, Acoustic body, Vintage radio, Shimmer air: 14 in all).
+- **Graphic EQ faders:** the five-band graphic EQ of the Lead C+ and the Lead V is drawn as five vertical faders with a scale, like the real amps (`"style": "slider"` on an entry of `ui`).
+- `sas_ab_check` (compares two amps' preamps: level, third-octave bands, waveform, silence and the swing of each node), `sas_noise_check` (the noise and the silence of the whole chain, per amp and per setting) and `SAS_SEL` in `sas_bench_chain`.
+
+### Changed
+- **New look:** the knobs have an outer ring that shows the value (with a glow) and no tick marks, the panels are recessed with softer corners, and the combo boxes, buttons and switches are recessed too. The NAM Loader's controls are in two rows by band, with a block for each group.
+- **American 5153:** the presence and resonance networks are the ones of the real EVH 5150 III power amp (the resonance pot is a 1M log from the 8 ohm tap into the feedback loop, the presence is a 10k rheostat with 0.136u to ground); the amp sounded shrill with the assumed values. The Lite fit was made again.
+- **Preamps split in stages** to use less CPU: American Lead V (each channel in two or three stages, only the one you hear is solved), German Quad (each channel before its shared V2A) and American Class A (channel 1 up to its cathode follower, channel 2 on its own). Checked against the unsplit circuits with `sas_ab_check`: the level within 0.1 dB and the bands within 2.5 dB; the gain in CPU is 4 to 14 % in Normal and up to 30 % in Lite. (The stages are cut where a grid does not conduct and the Miller capacitance is kept.)
+- `power.knobs` accept a `taper` and a `complement` (the other section of a pot that is in a divider), and there are two more diode models (`SIGNAL4`, `SIGNAL5`: four and five junctions in series).
+
+### Fixed
+- **The NAM Loader did not play the model you loaded** (the loader is the 33rd amp and the chain key only held 32): it played the first amp of the list whatever the model. The key now holds 128 amps and the plug-in checks it, and the component edits are tracked for every amp.
+- **American Lead V, channel 3: self-oscillation.** With no input the channel produced a 100 Hz motorboating (the HT of the six stages was one single filter and the power amp's sag came back through it). The supply now has the filters of the real amp (C: 2.55k x 33u, E: 1k x 33u, D: 47k x 10u) and the preamp's solver tolerance is 2e-8: the silence is -114 dBFS (Eco) and -88 dBFS (Normal). The two capacitors at V3A's grid (47p and 500p) were missing.
+- **British Silver: Lead had the gain of Rhythm.** The relay's common contact (R6, R7, R8) was not connected to ground in Lead and the clipping network's bottom was not on ground. Lead now has about 16 dB more gain than Rhythm and clips through its LEDs.
+- **The tuner's REF Hz knob** (the reference pitch, 430 to 450 Hz) was never added to the editor, so it could not be changed.
+- A selector's first position must match the values of the netlist (it is not applied again at start-up): the Jubilee's Rhythm and the Class A's tone had a different value.
+
 ## [0.7.0-beta] - 2026-11-19
 
 ### Added
@@ -264,6 +291,7 @@ The first public release: a Windows VST3 with seven circuit-level amplifiers.
 - While the compressor or the overdrive is on, the pickup and cable of the Guitar Input panel have no effect.
 - The saved-project format may still change between 0.x versions.
 
+[0.8.0-beta]: https://github.com/nicolasquijano/SchematicAmpSim/releases/tag/v0.8.0-beta
 [0.7.0-beta]: https://github.com/nicolasquijano/SchematicAmpSim/releases/tag/v0.7.0-beta
 [0.6.0-beta]: https://github.com/nicolasquijano/SchematicAmpSim/releases/tag/v0.6.0-beta
 [0.5.1-beta]: https://github.com/nicolasquijano/SchematicAmpSim/releases/tag/v0.5.1-beta

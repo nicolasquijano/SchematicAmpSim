@@ -13,7 +13,7 @@ VST3 plug-in and standalone application for Windows, built with C++20 and [JUCE]
 
 ## Screenshots
 
-Every amp has its own colours, and the amp list (on the left) is grouped by character: clean, crunch, high-gain and bass. Four of the twenty-three circuit amps:
+Every amp has its own colours, and the amp list (on the left) is grouped by character: clean, crunch, high-gain and bass. Four of the thirty-two circuit amps:
 
 <p align="center">
   <img src="docs/images/amps.png" alt="American Twin, British Plexi, British 800 KK and American Lead C+" width="800">
@@ -31,7 +31,19 @@ The modules, each with its own presets: **compressor, overdrive, transparent dri
   <img src="docs/images/modules-drive.png" alt="Compressor, overdrive, transparent drive, fuzz and boost" width="800">
 </p>
 
-The **NAM Loader** amp runs a Neural Amp Modeler model in place of the circuits; the **Tuner** is a chromatic tuner.
+The **NAM Loader** amp runs a Neural Amp Modeler model in place of the circuits; the **Tuner** is a chromatic tuner with tunings and strings.
+
+The newest amps (version 0.8): the American Lead V, the German Quad, the British Silver and the American Class A.
+
+<p align="center">
+  <img src="docs/images/amps-new.png" alt="American Lead V, German Quad, British Silver and American Class A" width="800">
+</p>
+
+The **Tuner** page has an arc dial, the strings of the chosen tuning, the pitch of the last seconds and the input level:
+
+<p align="center">
+  <img src="docs/images/tuner.png" alt="The tuner: the strings of the standard tuning, an arc dial, the pitch history and the input level" width="800">
+</p>
 
 (The pictures are rendered by the editor itself: see "Repository layout" for how to regenerate them.)
 
@@ -56,7 +68,7 @@ still change between 0.x versions. Versioning and the steps of a release are in 
 - **Amps are data, not code.** Each amp is a folder with a netlist and an `amp.json` that maps
   knobs, input jacks, presence, supply and output level onto circuit elements. Adding an amp means
   adding files; nothing is recompiled except to embed them.
-- **Twenty-three amps included** (plus the NAM Loader) (display names are deliberately generic):
+- **Thirty-two amps included** (plus the NAM Loader) (display names are deliberately generic):
   | Name | Circuit |
   |---|---|
   | British 800 | Cascading-gain preamp, 100 W-class EL34 power amp, High and Low input jacks |
@@ -84,6 +96,13 @@ still change between 0.x versions. Versioning and the steps of a release are in 
   | American Boutique | 100 W overdrive head in the style of a famous hand-built amp: a single input into a Fender-style stack with Treble, Middle, Bass, a Rock / Jazz switch, a Deep and a Bright switch, a Clean / Overdrive channel switch (two extra gain stages with Level and Ratio), Master, a long-tailed 12AX7 phase inverter with Presence and 4.7k negative feedback, four 6L6GC and the Twin's output transformer. The FET input and the 100 / 50 W switch are not modelled |
   | American Lead 100 | 100 W two-channel super-lead head: a Clean / Crunch channel (V1a, with Crunch / Clean and Bright switches) and an Overdrive lead channel (V2a, V2b), both into V3b + V3a, the FX loop wired through, V4b + V4a, a Marshall-type tone stack, two Master volumes and the optocoupler channel switching (Clean / Lead), a long-tailed 12AX7 phase inverter with Presence and negative feedback, four 6L6GC. The footswitch circuit and the FX jacks are not modelled |
   | British Mod 100 | 100 W modded-British three-mode head: Clean (V1A into a passive Bass / Treble stack and V1B), BE (the guitar into V2A) and HBE (V1A into V2A), a switched voicing network with Fat, V2B, Gain, V3A, a V3B cathode follower with the SAT clipper and the Voice switch, a Marshall-type stack with Middle and Master, a long-tailed 12AX7 phase inverter with Presence and 47k / 220k negative feedback, four EL34. The FX loop and the Line Out are not modelled |
+  | British 45 | Early-1960s 40 W head (the JTM45 drawing): the Fender 5F6-A's tone stack and power amp with British valves, an ECC83 first stage with bright and normal channels (each with a full and a -6 dB input), two EL34 with a GZ34 rectifier. The tremolo of the drawing is not modelled |
+  | American 18/30 | Boutique-style 18 W combo (a Bassbreaker 18/30 service diagram): a V1-A / V1-B cathode follower, then two channels picked by relays (the TREBLE / MIDDLE / BASS stack with its VOLUME, or a VOLUME and TONE channel), V2-A, a phase inverter and four EL84 |
+  | Modern Bass 800 | 1990s solid-state 800 W bass head: input, the LO CUT and HI BOOST switches, the MID CONTOUR notch and a three-band active equaliser built from op-amps, with the power stage as one op-amp. No tubes: the Circuit page draws op-amps |
+  | British Silver | 100 W two-channel EL34 head with a Rhythm / Lead relay (selector CHANNEL): V1a and V1b, a LED clipping network and LEAD MASTER in Lead, a RHYTHM CLIP selector, V2a, a V2b cathode follower, a Marshall-type stack with a two-section BASS, OUTPUT MASTER, a long-tailed ECC83 phase inverter with negative feedback and PRESENCE, four EL34. The effects loop is bypassed |
+  | American Class A | 30 W Class A head, four EL84: Channel 1 (two ECC83 in parallel, volume with a bright cap, the Top Boost network) and Channel 2 (an EF86 stood in for by an ECC83, a six-position TONE switch), jacks Channel 1 / Channel 2 / Both; MASTER and CUT sit between the two phases after the inverter. Built from an image with a few assumptions |
+  | American Lead V | Three-channel 90 W head: CH1 (Clean, Fat, Tweed), CH2 (Edge, Crunch, Mark I) and CH3 (IIC+, IV, Extreme), each with its own stack, the CH3 feedback around its gain stages, V3A and V6A, per-channel masters, the loop's V6B and a five-band graphic EQ drawn as faders; four 6L6GC. Reverb, the loop and the JFET switches are not modelled |
+  | German Quad | Four-channel 100 W EL34 head: Clean, Crunch, Lead 1 and Lead 2 through a shared V2A / V2B and their own tone stacks, BRIGHT switches on two channels, four EL34 with the voltages of the real amp. DEEP, the loops, MIX and the inserts are not modelled |
 - **The loudspeaker is part of the circuit**: the output transformer drives a voice-coil resistance and inductance and the cone's mechanical resonance (typical 12 inch values scaled to each amp's load), so the amp's output voltage has the bass bump, the mid dip and the rising top of a tube amp into a real speaker. It can be turned off per amp with `"speaker_load": {"enabled": false}` in its `amp.json`. The output transformer also has winding capacitance and core loss (`transformer_parasitics`). The Lite mode does not reproduce the bump, the dip or the treble resonance.
 - **Neural Amp Modeler** (the [NAM](https://www.neuralampmodeler.com) core, MIT, is fetched by CMake and never copied into the repository): the **NAM Loader** amp
   runs a `.nam` model in place of the circuits, with Drive, Level and a three-band tone; the **Cabinet** selector has a **NAM** mode for models of a speaker
@@ -94,7 +113,7 @@ still change between 0.x versions. Versioning and the steps of a release are in 
 - **Phaser, chorus and vibe** (Mod page), each in front of the amp or after the cabinet: a four-stage phaser, a chorus with a Classic mode and a Poly mode, and a
   lamp-and-photocell vibe with Chorus and Vibrato modes.
 - **Pitch shift** (Pitch tab): -12 to +12 semitones and fine tuning in cents, for dropped tunings, octaves or tuning the recording. A granular two-head shifter that works on chords; it adds about 12 ms of delay only while a shift is set.
-- **Post equaliser** (EQ tab): five bands (low shelf, three bells, high shelf), a high-pass and a low-pass, with a draggable response curve and ten guitar presets (clean, blues, tight rhythm, lead, de-fizz, metal, jazz, country, classic rock, mix-ready); it works on the final stereo signal, after the cabinet, so it shapes the result without changing how the amp distorts.
+- **Post equaliser** (EQ tab): five bands (low shelf, three bells, high shelf), a high-pass and a low-pass, with a draggable response curve and sixteen guitar presets (clean, blues, tight rhythm, lead, de-fizz, metal, jazz, country, classic rock, mix-ready, modern metal, stoner doom, funk, ambient, brighten a dark amp, quiet loudness) and a ten-band graphic EQ pedal with fourteen; it works on the final stereo signal, after the cabinet, so it shapes the result without changing how the amp distorts.
 - **Standalone application and presets**: besides the VST3, `Schematic Amp Sim.exe` runs without a DAW (the gear button opens the audio settings: pick the ASIO driver of your interface (or Windows Audio exclusive mode) and the input channel of the guitar; the input starts muted to avoid feedback, unmute it once the monitoring is safe). The Presets button saves and loads the whole state as `.sasp` files in `%APPDATA%\Schematic Amp Sim\Presets`.
 - **Quality modes**
   | Mode | What it does |
@@ -117,7 +136,7 @@ still change between 0.x versions. Versioning and the steps of a release are in 
 - **Cabinet page:** off, a simple filter, or two impulse responses (A and B, each with its response curve) mixed with an equal-power blend; both are stored inside the project. Speaker dynamics sit between the amp and the cabinet: cone excursion (the motor force falls and the suspension stiffens as the cone is pushed), voice-coil heating and cone break-up, with an Intense mode. The values are typical figures, tuned by ear. **Stereo** (the amp is mono inside): the Width knob puts impulse A in the left ear and B in the right one (two microphones, one on each side; 0 blends both into both ears), and Double adds automatic double tracking, a second take with a different, slowly modulated delay in each ear (8 to 30 ms), which also works with the cabinet filter or a single impulse. Both are off by default, which leaves the same signal in both ears. A mono track can feed the stereo output.
 - **Tube-screamer style pedal** in front of the amp (drive, tone, level).
 - **Compressor pedal** (Effects page, in front of everything else), solved as a circuit from a transcription of a classic compressor-pedal schematic (AionFX trace v1.0, `engine/data/compressor.net`): an LM13700 OTA gain cell, a transistor full-wave envelope detector and the feedback that closes the loop, with Sustain, Blend, Tone, Level and the Attack switch (which in the circuit selects fast or slow release). It needed two new devices in the engine: an Ebers-Moll NPN that saturates and the OTA. It costs about 9 % of a core while on. The transistor, OTA and diode values are typical figures; the drawing prints none.
-- **Chromatic tuner** (Tuner page): McLeod pitch detection on the raw input (60 Hz to 1.4 kHz, within a cent on clean notes, without octave errors on a weak fundamental), a needle meter, a reference pitch of 430 to 450 Hz and an option to mute the output while tuning.
+- **Tuner** (Tuner page): McLeod pitch detection on the raw input (from about 25 Hz up to 1.4 kHz, within a cent on clean notes, without octave errors on a weak fundamental), chromatic or with **14 tunings** (guitar standard and dropped, open tunings, 7 strings, bass with 4 or 5 strings) that draw the strings and tell you which way to turn the peg. An arc dial with blue, green and red zones, the pitch of the last 8 seconds, the last note held for a moment, an input level bar with a **sensitivity** control, a reference pitch of 430 to 450 Hz and an option to mute the output while tuning.
 - **Level matching** across amps, jacks and modes, so switching does not jump in volume.
 - **Unit and wear**: the Unit selector picks an individual amp (component tolerances, repeatable) and Wear ages the tubes and capacitors.
 - Fast parameter smoothing, no allocations on the audio thread; switching amps builds the new
