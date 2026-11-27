@@ -30,6 +30,11 @@
      {"label": "Stock"},
      {"label": "Tight", "factors": {"R56": 0.25}}]}
  ],
+ "preamp_voicings": [
+   {"name": "treble_cap", "label": "TREBLE CAP", "positions": [
+     {"label": "Stock"},
+     {"label": "Less", "factors": {"QC12": 0.3}}]}
+ ],
  "presets": [
   {
    "name": "Clean",

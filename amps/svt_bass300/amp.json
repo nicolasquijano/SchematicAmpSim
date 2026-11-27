@@ -20,6 +20,20 @@
      {"label": "Stock"},
      {"label": "Tight", "factors": {"C1": 0.1, "C3": 0.1, "C4": 0.1}}]}
  ],
+ "preamp_voicings": [
+   {"name": "gain_stages", "label": "GAIN STAGES", "positions": [
+     {"label": "Stock"},
+     {"label": "Cleaner", "factors": {"R24": 0.5}},
+     {"label": "Fuller", "factors": {"R24": 2}}]},
+   {"name": "treble_cap", "label": "TREBLE CAP", "positions": [
+     {"label": "Stock"},
+     {"label": "Less", "factors": {"C47PA": 0.3, "C47PB": 0.3}},
+     {"label": "More", "factors": {"C47PA": 3, "C47PB": 3}}]},
+   {"name": "coupling", "label": "COUPLING", "positions": [
+     {"label": "Stock"},
+     {"label": "Tight", "factors": {"C01A": 0.3, "C01B": 0.3}},
+     {"label": "Fat", "factors": {"C01A": 3, "C01B": 3}}]}
+ ],
  "presets": [
   {"name": "Clean", "jack": "ch1_normal", "params": {"bass": 5, "master": 4, "middle": 5, "treble": 5, "volume": 4.1, "volume2": 3}, "selectors": {"mid_freq": 0}},
   {"name": "Warm tube", "jack": "ch1_normal", "params": {"bass": 6, "master": 4.5, "middle": 5, "treble": 4, "volume": 4, "volume2": 3}, "selectors": {"mid_freq": 0}},

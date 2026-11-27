@@ -20,6 +20,16 @@
      {"label": "Stock"},
      {"label": "Tight", "factors": {"C15": 0.1, "C16": 0.1}}]}
  ],
+ "preamp_voicings": [
+   {"name": "treble_cap", "label": "TREBLE CAP", "positions": [
+     {"label": "Stock"},
+     {"label": "Less", "factors": {"C3": 0.3}},
+     {"label": "More", "factors": {"C3": 3}}]},
+   {"name": "coupling", "label": "COUPLING", "positions": [
+     {"label": "Stock"},
+     {"label": "Tight", "factors": {"C42": 0.3}},
+     {"label": "Fat", "factors": {"C42": 3}}]}
+ ],
  "presets": [
   {
    "name": "Clean",

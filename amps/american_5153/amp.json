@@ -368,6 +368,20 @@
      {"label": "Stock"},
      {"label": "Tight", "factors": {"C52": 0.1, "C47": 0.1}}]}
  ],
+ "preamp_voicings": [
+   {"name": "gain_stages", "label": "GAIN STAGES", "positions": [
+     {"label": "Stock"},
+     {"label": "Cleaner", "factors": {"R58": 0.5}},
+     {"label": "Fuller", "factors": {"R58": 2}}]},
+   {"name": "treble_cap", "label": "TREBLE CAP", "positions": [
+     {"label": "Stock"},
+     {"label": "Less", "factors": {"C13": 0.3}},
+     {"label": "More", "factors": {"C13": 3}}]},
+   {"name": "coupling", "label": "COUPLING", "positions": [
+     {"label": "Stock"},
+     {"label": "Tight", "factors": {"C2": 0.3}},
+     {"label": "Fat", "factors": {"C2": 3}}]}
+ ],
  "presets": [
   {
    "name": "Clean",

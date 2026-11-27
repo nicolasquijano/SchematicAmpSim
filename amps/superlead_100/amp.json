@@ -21,6 +21,20 @@
      {"label": "Tight", "factors": {"R35": 0.25}},
      {"label": "Loose", "factors": {"R35": 4}}]}
  ],
+ "preamp_voicings": [
+   {"name": "gain_stages", "label": "GAIN STAGES", "positions": [
+     {"label": "Stock"},
+     {"label": "Cleaner", "factors": {"R28": 0.5}},
+     {"label": "Fuller", "factors": {"R28": 2}}]},
+   {"name": "treble_cap", "label": "TREBLE CAP", "positions": [
+     {"label": "Stock"},
+     {"label": "Less", "factors": {"C14": 0.3}},
+     {"label": "More", "factors": {"C14": 3}}]},
+   {"name": "coupling", "label": "COUPLING", "positions": [
+     {"label": "Stock"},
+     {"label": "Tight", "factors": {"C16": 0.3}},
+     {"label": "Fat", "factors": {"C16": 3}}]}
+ ],
  "presets": [
   {"name": "Clean", "jack": "clean", "params": {"bass": 5, "master": 5, "middle": 5, "presence": 5, "resonance": 5, "treble": 5, "volume": 5, "volume2": 9}, "selectors": {"crunch": 1}},
   {"name": "Edge of breakup", "jack": "clean", "params": {"bass": 5, "master": 5, "middle": 5, "presence": 5, "resonance": 5, "treble": 5, "volume": 5, "volume2": 3.5}, "selectors": {"crunch": 0}},

@@ -21,6 +21,19 @@
      {"label": "Tight", "factors": {"R_NFB": 0.25}},
      {"label": "Loose", "factors": {"R_NFB": 4}}]}
  ],
+ "preamp_voicings": [
+   {"name": "gain_stages", "label": "GAIN STAGES", "positions": [
+     {"label": "Stock"},
+     {"label": "Cleaner", "factors": {"RPI": 0.5}},
+     {"label": "Fuller", "factors": {"RPI": 2}}]},
+   {"name": "treble_cap", "label": "TREBLE CAP", "positions": [
+     {"label": "Stock"},
+     {"label": "Less", "factors": {"C1N5": 0.3}},
+     {"label": "More", "factors": {"C1N5": 3}}]},
+   {"name": "coupling", "label": "COUPLING", "positions": [
+     {"label": "Stock"},
+     {"label": "Tight", "factors": {"C68B": 0.3, "C68A": 0.3}}]}
+ ],
  "presets": [
   {"name": "Clean", "jack": "fac6", "params": {"bass": 5, "presence": 5, "treble": 5.5, "volume": 2}},
   {"name": "Edge of breakup", "jack": "fac4", "params": {"bass": 5, "presence": 5, "treble": 5, "volume": 5.2}},

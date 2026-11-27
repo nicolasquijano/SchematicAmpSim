@@ -26,6 +26,11 @@
      {"label": "Stock"},
      {"label": "Tight", "factors": {"C14": 0.1, "C16": 0.1}}]}
   ],
+  "preamp_voicings": [
+   {"name": "treble_cap", "label": "TREBLE CAP", "positions": [
+     {"label": "Stock"},
+     {"label": "Less", "factors": {"C_B": 0.3}}]}
+  ],
   "presets": [
    {"name": "Clean", "jack": "normal", "params": {"bass": 4, "middle": 6, "presence": 5, "treble": 6, "volume": 5, "volume2": 2.4}},
    {"name": "Edge of breakup", "jack": "normal", "params": {"bass": 4, "middle": 6, "presence": 5, "treble": 6, "volume": 5, "volume2": 3}},
