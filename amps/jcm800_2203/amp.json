@@ -34,6 +34,19 @@
      {"label": "Stock"},
      {"label": "Tight", "factors": {"C14": 0.1, "C16": 0.1}}]}
   ],
+  "preamp_voicings": [
+   {"name": "cathode_bypass", "label": "CATHODE BYPASS", "positions": [
+     {"label": "Stock"},
+     {"label": "Tight", "factors": {"C1": 0.1}},
+     {"label": "Fat", "factors": {"C1": 10}}]},
+   {"name": "gain_stages", "label": "GAIN STAGES", "positions": [
+     {"label": "Stock"},
+     {"label": "Cleaner", "factors": {"R4": 0.5, "R12": 0.5}},
+     {"label": "Fuller", "factors": {"R4": 2, "R12": 2}}]},
+   {"name": "bright_cap", "label": "BRIGHT CAP", "positions": [
+     {"label": "Stock"},
+     {"label": "Less", "factors": {"C4": 0.3}}]}
+  ],
   "presets": [
    {"name": "Clean", "jack": "low", "params": {"bass": 5, "master": 6, "middle": 5, "presence": 5, "treble": 6, "volume": 2.7}},
    {"name": "Edge of breakup", "jack": "high", "params": {"bass": 5, "master": 5, "middle": 5, "presence": 5, "treble": 6, "volume": 3.9}},

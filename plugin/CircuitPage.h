@@ -61,7 +61,7 @@ public:
     void applyEdits();
     // The power amp's voicings: how many the amp has, the position chosen in one (0 = as drawn), and choosing one (the edits are given on tick()).
     int voicingCount() const { return int(voicings_.size()); }
-    int voicingChoice(int i) const { return voicingPosition(voicings_[std::size_t(i)].def); }
+    int voicingChoice(int i) const { return voicingPosition(voicings_[std::size_t(i)]); }
     void setVoicing(int i, int position) { chooseVoicing(std::size_t(i), position); }
     // The preamp tubes of the drawing shown that can be swapped: how many, the name of one, the model it has now, one step on to the next model
     // (1) or back (-1), and the mouse being over one (the tip appears).
@@ -199,11 +199,14 @@ private:
     juce::TextButton valuesButton_, resetButton_;
     // The power amp's voicings (amp.json "power_voicings"): a drop-down each on the power amp's drawing, saved as part edits named "P:<element>".
     struct Voicing {
-        sas::PowerVoicingDef def;
+        sas::VoicingDef def;
+        bool power = false;  // the power amp's (its edits are named "P:<element>"); otherwise the preamp's
         std::unique_ptr<juce::ComboBox> box;
     };
     std::vector<Voicing> voicings_;
-    int voicingPosition(const sas::PowerVoicingDef& v) const;  // the position the edits make (0 = as drawn, -1 = none of them)
+    int voicingPosition(const Voicing& v) const;  // the position the edits make (0 = as drawn, -1 = none of them)
+    static juce::String voicingPart(const Voicing& v, const std::string& part) { return (v.power ? "P:" : "") + juce::String(part); }
+    bool voicingShown(const Voicing& v) const;  // the power amp's on its drawing, the preamp's on the preamp's
     void chooseVoicing(std::size_t v, int position);
     void syncVoicings();
     int ampIndex_ = 0;

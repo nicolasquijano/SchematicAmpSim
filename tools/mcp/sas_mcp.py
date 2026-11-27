@@ -53,6 +53,8 @@ def render_args(a):
         args += ["--set", "%s=%s" % (k, v)]
     for k, v in (a.get("selectors") or {}).items():
         args += ["--sel", "%s=%s" % (k, v)]
+    for k, v in (a.get("voicings") or {}).items():
+        args += ["--voicing", "%s=%s" % (k, v)]
     for key, opt in (("input_db", "input-db"), ("output_db", "output-db"), ("quality", "quality"), ("cab", "cab"),
                      ("noise", "noise"), ("seconds", "seconds"), ("input_wav", "in"), ("reference_wav", "ref")):
         if a.get(key) is not None:
@@ -118,6 +120,8 @@ SETTINGS = {
                "additionalProperties": {"type": "number"}},
     "selectors": {"type": "object", "description": "Switch positions by selector name -> position index (see sas_amp_info 'selectors').",
                   "additionalProperties": {"type": "integer"}},
+    "voicings": {"type": "object", "description": "Voicings of the amp's preamp and power amp by name -> position index (see sas_amp_info 'preamp_voicings' and 'power_voicings'; 0 = as drawn). Power-amp voicings are heard in the Normal, High and Efficient qualities only.",
+                 "additionalProperties": {"type": "integer"}},
     "input_db": {"type": "number", "description": "Gain at the input in dB (guitar level)."},
     "output_db": {"type": "number", "description": "Output gain in dB."},
     "quality": {"type": "string", "enum": ["normal", "high", "lite", "eco", "efficient"], "description": "Solver quality; lite/eco are much faster and close."},

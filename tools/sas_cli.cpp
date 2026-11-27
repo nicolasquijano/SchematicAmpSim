@@ -375,13 +375,15 @@ json infoJson(const sas::AmpDef& def) {
         pre.push_back({{"name", p.name}, {"jack", p.jack}, {"params", pp}, {"selectors", ss}});
     }
     j["presets"] = pre;
-    json vo = json::array();
-    for (const auto& v : def.powerVoicings) {
-        json pos = json::array();
-        for (std::size_t i = 0; i < v.positions.size(); ++i) pos.push_back({{"index", i}, {"label", v.positions[i].label}});
-        vo.push_back({{"name", v.name}, {"label", v.label}, {"positions", pos}});
+    for (const char* section : {"preamp_voicings", "power_voicings"}) {
+        json vo = json::array();
+        for (const auto& v : std::string(section) == "power_voicings" ? def.powerVoicings : def.preampVoicings) {
+            json pos = json::array();
+            for (std::size_t i = 0; i < v.positions.size(); ++i) pos.push_back({{"index", i}, {"label", v.positions[i].label}});
+            vo.push_back({{"name", v.name}, {"label", v.label}, {"positions", pos}});
+        }
+        j[section] = vo;
     }
-    j["power_voicings"] = vo;
     return j;
 }
 
@@ -464,11 +466,13 @@ json doRender(const Args& a) {
             if (eq == std::string::npos) throw std::runtime_error("--voicing expects name=position, got '" + item + "'");
             const std::string vn = item.substr(0, eq);
             const std::size_t pos = std::size_t(std::atoi(item.c_str() + eq + 1));
-            const sas::PowerVoicingDef* found = nullptr;
-            for (const auto& v : def.powerVoicings) if (v.name == vn) found = &v;
-            if (!found) throw std::runtime_error("amp " + def.id + " has no power voicing '" + vn + "'");
+            const sas::VoicingDef* found = nullptr;
+            bool power = false;
+            for (const auto& v : def.preampVoicings) if (v.name == vn) found = &v;
+            for (const auto& v : def.powerVoicings) if (v.name == vn) { found = &v; power = true; }
+            if (!found) throw std::runtime_error("amp " + def.id + " has no voicing '" + vn + "'");
             if (pos >= found->positions.size()) throw std::runtime_error("voicing " + vn + " has no position " + std::to_string(pos));
-            for (const auto& [part, f] : found->positions[pos].factors) cond.parts["P:" + part] = f;
+            for (const auto& [part, f] : found->positions[pos].factors) cond.parts[(power ? "P:" : "") + part] = f;
         }
     for (const auto& [opt, prefix] : {std::pair<const char*, const char*>{"part", ""}, {"power-part", "P:"}})
         if (a.has(opt))

@@ -195,7 +195,13 @@ CircuitPage::CircuitPage(SasProcessor& processor, const AmpLookAndFeel& look) : 
     addChildComponent(resetButton_);
 }
 
-int CircuitPage::voicingPosition(const sas::PowerVoicingDef& v) const {
+bool CircuitPage::voicingShown(const Voicing& v) const {
+    if (!hasDrawing()) return false;
+    return v.power ? hasPowerDrawing() && view_ == powerIndex() : view_ != powerIndex();
+}
+
+int CircuitPage::voicingPosition(const Voicing& voicing) const {
+    const auto& v = voicing.def;
     for (std::size_t p = 0; p < v.positions.size(); ++p) {
         bool all = true;
         for (const auto& other : v.positions)  // every element any position touches: it must have the factor this one asks (1 when it does not mention it)
@@ -203,7 +209,7 @@ int CircuitPage::voicingPosition(const sas::PowerVoicingDef& v) const {
                 double want = 1.0;
                 for (const auto& [name, f] : v.positions[p].factors)
                     if (name == part) want = f;
-                if (std::abs(factorOf("P:" + juce::String(part)) - want) > 1e-6) all = false;
+                if (std::abs(factorOf(voicingPart(voicing, part)) - want) > 1e-6) all = false;
             }
         if (all) return int(p);
     }
@@ -219,16 +225,16 @@ void CircuitPage::chooseVoicing(std::size_t v, int position) {
             double f = 1.0;
             for (const auto& [name, value] : def.positions[std::size_t(position)].factors)
                 if (name == part) f = value;
-            setPending("P:" + juce::String(part), f);
+            setPending(voicingPart(voicings_[v], part), f);
         }
 }
 
 void CircuitPage::syncVoicings() {
-    const bool show = hasPowerDrawing() && view_ == powerIndex();
     for (auto& v : voicings_) {
+        const bool show = voicingShown(v);
         if (v.box->isVisible() != show) v.box->setVisible(show);
         if (show && !v.box->isPopupActive()) {
-            const int p = voicingPosition(v.def);
+            const int p = voicingPosition(v);
             v.box->setSelectedId(p >= 0 ? p + 1 : 0, juce::dontSendNotification);
         }
     }
@@ -397,17 +403,23 @@ void CircuitPage::setAmp(const sas::AmpDef& def) {
     tubeHover_ = tubeDown_ = -1;
     for (auto& v : voicings_) removeChildComponent(v.box.get());
     voicings_.clear();
-    for (const auto& vd : def.powerVoicings) {
+    auto addVoicings = [this](const std::vector<sas::VoicingDef>& list, bool power) {
+      for (const auto& vd : list) {
         Voicing v;
         v.def = vd;
+        v.power = power;
         v.box = std::make_unique<juce::ComboBox>();
         for (std::size_t p = 0; p < vd.positions.size(); ++p) v.box->addItem(tr(juce::String(vd.label)) + ": " + tr(juce::String(vd.positions[p].label)), int(p) + 1);
         const std::size_t index = voicings_.size();
         v.box->onChange = [this, index] { chooseVoicing(index, voicings_[index].box->getSelectedId() - 1); };
-        v.box->setTooltip(tr("A voicing of the power amp: it changes parts of its circuit. Heard in the Normal, High and Efficient qualities; Lite and Eco use a fitted power amp."));
+        v.box->setTooltip(power ? tr("A voicing of the power amp: it changes parts of its circuit. Heard in the Normal, High and Efficient qualities; Lite and Eco use a fitted power amp.")
+                                : tr("A voicing of the preamp: it changes parts of its circuit. Heard in every quality."));
         addChildComponent(*v.box);
         voicings_.push_back(std::move(v));
-    }
+      }
+    };
+    addVoicings(def.preampVoicings, false);
+    addVoicings(def.powerVoicings, true);
     ampIndex_ = 0;
     for (std::size_t i = 0; i < processor_.amps().size(); ++i)
         if (processor_.amps()[i].id == def.id) ampIndex_ = int(i);
@@ -521,9 +533,11 @@ void CircuitPage::resized() {
         bar.removeFromRight(4);
         resetButton_.setBounds(bar.removeFromRight(std::max(64, resetButton_.getBestWidthForHeight(22) + 10)));
         bar.removeFromLeft(130);  // the page's title
-        const int n = int(voicings_.size());
+        int n = 0;
+        for (const auto& v : voicings_) n += voicingShown(v) ? 1 : 0;  // only those of the drawing shown take room
         const int each = n > 0 ? std::min(210, (bar.getWidth() - 4 * (n - 1)) / n) : 0;
         for (auto& v : voicings_) {
+            if (!voicingShown(v)) continue;
             v.box->setBounds(bar.removeFromLeft(each));
             bar.removeFromLeft(4);
         }

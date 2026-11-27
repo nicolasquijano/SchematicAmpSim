@@ -489,25 +489,43 @@ AmpDef loadAmpDef(const std::string& jsonText, const FileReader& read) {
             gb.rangeDb = numOr(b, "range_db", 12.0);
             d.graphicEq.bands.push_back(gb);
         }
-    if (j.contains("power_voicings")) {
-        for (const auto& vj : j.at("power_voicings")) {
-            PowerVoicingDef v;
-            v.name = str(vj, "name", "power_voicings");
-            v.label = vj.contains("label") ? str(vj, "label", "power_voicings." + v.name) : v.name;
-            for (const auto& pj : need(vj, "positions", "power_voicings." + v.name)) {
-                PowerVoicingPositionDef p;
-                p.label = str(pj, "label", "power_voicings." + v.name);
+    // Voicings: each part must be an element of the netlist it changes (a typo would silently do nothing).
+    auto hasElement = [](const std::string& text, const std::string& name) {
+        return text.find("R " + name + " ") != std::string::npos || text.find("C " + name + " ") != std::string::npos;
+    };
+    auto readVoicings = [&](const char* key, std::vector<VoicingDef>& out, const std::vector<std::string>& texts) {
+        if (!j.contains(key)) return;
+        for (const auto& vj : j.at(key)) {
+            VoicingDef v;
+            const std::string where = key;
+            v.name = str(vj, "name", where);
+            v.label = vj.contains("label") ? str(vj, "label", where + "." + v.name) : v.name;
+            for (const auto* list : {&d.powerVoicings, &d.preampVoicings})
+                for (const auto& other : *list)
+                    if (other.name == v.name) bad(where + "." + v.name, "voicing names are unique in an amp");
+            for (const auto& pj : need(vj, "positions", where + "." + v.name)) {
+                VoicingPositionDef p;
+                p.label = str(pj, "label", where + "." + v.name);
                 if (pj.contains("factors"))
                     for (const auto& [part, f] : pj.at("factors").items()) {
-                        if (!f.is_number() || !(f.get<double>() >= 0.1 && f.get<double>() <= 10.0)) bad("power_voicings." + v.name + "." + part, "expected a factor between 0.1 and 10");
+                        if (!f.is_number() || !(f.get<double>() >= 0.1 && f.get<double>() <= 10.0)) bad(where + "." + v.name + "." + part, "expected a factor between 0.1 and 10");
+                        bool found = false;
+                        for (const auto& text : texts) found = found || hasElement(text, part);
+                        if (!found) bad(where + "." + v.name + "." + part, "no resistor or capacitor of that name in the netlist");
                         p.factors.push_back({part, f.get<double>()});
                     }
                 v.positions.push_back(std::move(p));
             }
-            if (v.positions.size() < 2 || v.positions.size() > 5) bad("power_voicings." + v.name, "a voicing has 2 to 5 positions");
-            if (!v.positions[0].factors.empty()) bad("power_voicings." + v.name, "position 0 is the amp as drawn: no factors");
-            d.powerVoicings.push_back(std::move(v));
+            if (v.positions.size() < 2 || v.positions.size() > 5) bad(where + "." + v.name, "a voicing has 2 to 5 positions");
+            if (!v.positions[0].factors.empty()) bad(where + "." + v.name, "position 0 is the amp as drawn: no factors");
+            out.push_back(std::move(v));
         }
+    };
+    readVoicings("power_voicings", d.powerVoicings, {d.power.netlistText});
+    {
+        std::vector<std::string> pre{d.preamp.netlistText};
+        for (const auto& st : d.preamp.stages) pre.push_back(st.netlistText);
+        readVoicings("preamp_voicings", d.preampVoicings, pre);
     }
     if (j.contains("presets")) {
         for (const auto& pj : j.at("presets")) {
