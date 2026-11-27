@@ -21,6 +21,11 @@
      {"label": "Tight", "factors": {"R_NFB": 0.25}},
      {"label": "Loose", "factors": {"R_NFB": 4}}]}
   ],
+  "preamp_voicings": [
+   {"name": "gain_stages", "label": "GAIN STAGES", "positions": [
+     {"label": "Stock"},
+     {"label": "Cleaner", "factors": {"R10K": 0.5}}]}
+  ],
   "presets": [
    {"name": "Clean", "jack": "normal1", "params": {"bass": 4, "middle": 6, "presence": 5, "treble": 6, "volume": 4, "volume2": 3.5}},
    {"name": "Edge of breakup", "jack": "normal1", "params": {"bass": 4, "middle": 6, "presence": 5, "treble": 6, "volume": 5, "volume2": 5.5}},

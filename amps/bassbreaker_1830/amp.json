@@ -28,6 +28,14 @@
      {"label": "Stock"},
      {"label": "Tight", "factors": {"C13": 0.1, "C14": 0.1}}]}
   ],
+  "preamp_voicings": [
+   {"name": "cathode_bypass", "label": "CATHODE BYPASS", "positions": [
+     {"label": "Stock"},
+     {"label": "Tight", "factors": {"C9": 0.1}}]},
+   {"name": "gain_stages", "label": "GAIN STAGES", "positions": [
+     {"label": "Stock"},
+     {"label": "Cleaner", "factors": {"R3": 0.5, "R16": 0.5}}]}
+  ],
   "presets": [
     {
       "name": "Clean",

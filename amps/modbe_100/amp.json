@@ -24,6 +24,11 @@
      {"label": "Stock"},
      {"label": "Tight", "factors": {"C18": 0.1, "C34": 0.1}}]}
  ],
+ "preamp_voicings": [
+   {"name": "gain_stages", "label": "GAIN STAGES", "positions": [
+     {"label": "Stock"},
+     {"label": "Cleaner", "factors": {"R12": 0.5, "R21": 0.5}}]}
+ ],
  "presets": [
   {"name": "Clean", "jack": "clean", "params": {"bass": 5, "master": 5, "middle": 5, "presence": 5, "resonance": 5, "reverb": 5, "treble": 5, "volume": 5, "volume2": 5.2}},
   {"name": "Edge of breakup", "jack": "be", "params": {"bass": 5, "master": 5, "middle": 5, "presence": 5, "resonance": 5, "reverb": 5, "treble": 5, "volume": 2.2, "volume2": 5}, "selectors": {"sat": 0}},

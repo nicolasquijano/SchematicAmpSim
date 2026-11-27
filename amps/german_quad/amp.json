@@ -63,6 +63,11 @@
      {"label": "Stock"},
      {"label": "Tight", "factors": {"C22A": 0.1, "C22B": 0.1}}]}
  ],
+ "preamp_voicings": [
+   {"name": "cathode_bypass", "label": "CATHODE BYPASS", "positions": [
+     {"label": "Stock"},
+     {"label": "Tight", "factors": {"C10U": 0.1}}]}
+ ],
  "presets": [
   {
    "name": "Clean",

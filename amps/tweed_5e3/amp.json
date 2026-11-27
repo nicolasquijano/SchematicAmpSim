@@ -22,6 +22,14 @@
      {"label": "Stock"},
      {"label": "Tight", "factors": {"C3": 0.1, "C4": 0.1}}]}
   ],
+  "preamp_voicings": [
+   {"name": "cathode_bypass", "label": "CATHODE BYPASS", "positions": [
+     {"label": "Stock"},
+     {"label": "Tight", "factors": {"CK1": 0.1}}]},
+   {"name": "gain_stages", "label": "GAIN STAGES", "positions": [
+     {"label": "Stock"},
+     {"label": "Cleaner", "factors": {"R_PN": 0.5, "R_P2A": 0.5}}]}
+  ],
   "presets": [
    {"name": "Clean", "jack": "normal_lo", "params": {"treble": 6, "volume": 5, "volume2": 1.4}},
    {"name": "Edge of breakup", "jack": "normal_hi", "params": {"treble": 6, "volume": 5, "volume2": 2.5}},

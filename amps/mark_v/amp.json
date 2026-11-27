@@ -87,6 +87,12 @@
      {"label": "Stock"},
      {"label": "Tight", "factors": {"R62": 4, "R63": 4}}]}
  ],
+ "preamp_voicings": [
+   {"name": "cathode_bypass", "label": "CATHODE BYPASS", "positions": [
+     {"label": "Stock"},
+     {"label": "Tight", "factors": {"C19A": 0.1}},
+     {"label": "Fat", "factors": {"C19A": 10}}]}
+ ],
  "presets": [
   {
    "name": "Clean",

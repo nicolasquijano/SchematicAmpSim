@@ -21,6 +21,14 @@
      {"label": "Tight", "factors": {"R_NFB": 0.25}},
      {"label": "Loose", "factors": {"R_NFB": 4}}]}
  ],
+ "preamp_voicings": [
+   {"name": "cathode_bypass", "label": "CATHODE BYPASS", "positions": [
+     {"label": "Stock"},
+     {"label": "Tight", "factors": {"CK2": 0.1}}]},
+   {"name": "gain_stages", "label": "GAIN STAGES", "positions": [
+     {"label": "Stock"},
+     {"label": "Cleaner", "factors": {"R100B": 0.5, "R100E": 0.5}}]}
+ ],
  "presets": [
   {"name": "Clean", "jack": "clean", "params": {"bass": 5, "master": 5, "middle": 5, "presence": 5, "reverb": 5, "treble": 5, "vib_intensity": 5, "volume": 7.1, "volume2": 5}},
   {"name": "Edge of breakup", "jack": "od", "params": {"bass": 5, "master": 5, "middle": 5, "presence": 5, "reverb": 1, "treble": 5, "vib_intensity": 2, "volume": 5, "volume2": 4}},

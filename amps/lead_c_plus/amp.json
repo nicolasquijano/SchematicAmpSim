@@ -510,6 +510,14 @@
      {"label": "Stock"},
      {"label": "Tight", "factors": {"R62": 4, "R63": 4}}]}
  ],
+ "preamp_voicings": [
+   {"name": "cathode_bypass", "label": "CATHODE BYPASS", "positions": [
+     {"label": "Stock"},
+     {"label": "Tight", "factors": {"C13": 0.1}}]},
+   {"name": "gain_stages", "label": "GAIN STAGES", "positions": [
+     {"label": "Stock"},
+     {"label": "Cleaner", "factors": {"R19": 0.5}}]}
+ ],
  "presets": [
   {
    "name": "Clean",
