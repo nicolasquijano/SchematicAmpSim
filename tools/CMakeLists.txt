@@ -110,3 +110,7 @@ add_executable(sas_ab_check ab_check.cpp)
 target_link_libraries(sas_ab_check PRIVATE sas_engine sas_amps)
 add_executable(sas_noise_check noise_check.cpp)
 target_link_libraries(sas_noise_check PRIVATE sas_engine sas_amps)
+
+# Command line over the engine (list amps, render a recording through one setting, measure): used by the MCP server in tools/mcp.
+add_executable(sas_cli sas_cli.cpp)
+target_link_libraries(sas_cli PRIVATE sas_engine sas_amps)
