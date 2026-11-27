@@ -23,6 +23,11 @@
     "knob_bottom": "#121211",
     "pointer": "#fbeacb"
   },
+  "power_voicings": [
+   {"name": "low_end", "label": "LOW END", "positions": [
+     {"label": "Stock"},
+     {"label": "Tight", "factors": {"C13": 0.1, "C14": 0.1}}]}
+  ],
   "presets": [
     {
       "name": "Clean",

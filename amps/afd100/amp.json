@@ -35,6 +35,15 @@
     "pointer": "#ffffff"
   },
 
+  "power_voicings": [
+   {"name": "feedback", "label": "FEEDBACK", "positions": [
+     {"label": "Stock"},
+     {"label": "Tight", "factors": {"R99": 0.25}},
+     {"label": "Loose", "factors": {"R99": 4}}]},
+   {"name": "low_end", "label": "LOW END", "positions": [
+     {"label": "Stock"},
+     {"label": "Tight", "factors": {"C31_32": 0.1, "C33_30": 0.1}}]}
+  ],
   "presets": [
    {"name": "Clean", "jack": "normal", "params": {"bass": 5, "master": 6, "middle": 5, "power": 5, "presence": 5, "treble": 6, "volume": 1}},
    {"name": "Edge of breakup", "jack": "afd", "params": {"bass": 5, "master": 5, "middle": 5, "power": 5, "presence": 5, "treble": 6, "volume": 4.5}},

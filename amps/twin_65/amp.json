@@ -17,6 +17,12 @@
     "pointer": "#16181b"
   },
 
+  "power_voicings": [
+   {"name": "feedback", "label": "FEEDBACK", "positions": [
+     {"label": "Stock"},
+     {"label": "Tight", "factors": {"R39": 0.25}},
+     {"label": "Loose", "factors": {"R39": 4}}]}
+  ],
   "presets": [
    {"name": "Clean", "jack": "normal1", "params": {"bass": 5, "middle": 5, "treble": 6, "volume": 5, "volume2": 6.7}},
    {"name": "Edge of breakup", "jack": "normal1", "params": {"bass": 5, "middle": 5, "treble": 6, "volume": 5, "volume2": 7.9}},

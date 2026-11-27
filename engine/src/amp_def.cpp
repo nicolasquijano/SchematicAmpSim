@@ -489,6 +489,26 @@ AmpDef loadAmpDef(const std::string& jsonText, const FileReader& read) {
             gb.rangeDb = numOr(b, "range_db", 12.0);
             d.graphicEq.bands.push_back(gb);
         }
+    if (j.contains("power_voicings")) {
+        for (const auto& vj : j.at("power_voicings")) {
+            PowerVoicingDef v;
+            v.name = str(vj, "name", "power_voicings");
+            v.label = vj.contains("label") ? str(vj, "label", "power_voicings." + v.name) : v.name;
+            for (const auto& pj : need(vj, "positions", "power_voicings." + v.name)) {
+                PowerVoicingPositionDef p;
+                p.label = str(pj, "label", "power_voicings." + v.name);
+                if (pj.contains("factors"))
+                    for (const auto& [part, f] : pj.at("factors").items()) {
+                        if (!f.is_number() || !(f.get<double>() >= 0.1 && f.get<double>() <= 10.0)) bad("power_voicings." + v.name + "." + part, "expected a factor between 0.1 and 10");
+                        p.factors.push_back({part, f.get<double>()});
+                    }
+                v.positions.push_back(std::move(p));
+            }
+            if (v.positions.size() < 2 || v.positions.size() > 5) bad("power_voicings." + v.name, "a voicing has 2 to 5 positions");
+            if (!v.positions[0].factors.empty()) bad("power_voicings." + v.name, "position 0 is the amp as drawn: no factors");
+            d.powerVoicings.push_back(std::move(v));
+        }
+    }
     if (j.contains("presets")) {
         for (const auto& pj : j.at("presets")) {
             AmpPresetDef p;

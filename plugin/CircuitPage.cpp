@@ -195,6 +195,45 @@ CircuitPage::CircuitPage(SasProcessor& processor, const AmpLookAndFeel& look) : 
     addChildComponent(resetButton_);
 }
 
+int CircuitPage::voicingPosition(const sas::PowerVoicingDef& v) const {
+    for (std::size_t p = 0; p < v.positions.size(); ++p) {
+        bool all = true;
+        for (const auto& other : v.positions)  // every element any position touches: it must have the factor this one asks (1 when it does not mention it)
+            for (const auto& [part, unused] : other.factors) {
+                double want = 1.0;
+                for (const auto& [name, f] : v.positions[p].factors)
+                    if (name == part) want = f;
+                if (std::abs(factorOf("P:" + juce::String(part)) - want) > 1e-6) all = false;
+            }
+        if (all) return int(p);
+    }
+    return -1;
+}
+
+void CircuitPage::chooseVoicing(std::size_t v, int position) {
+    if (v >= voicings_.size()) return;
+    const auto& def = voicings_[v].def;
+    if (position < 0 || std::size_t(position) >= def.positions.size()) return;
+    for (const auto& other : def.positions)
+        for (const auto& [part, unused] : other.factors) {
+            double f = 1.0;
+            for (const auto& [name, value] : def.positions[std::size_t(position)].factors)
+                if (name == part) f = value;
+            setPending("P:" + juce::String(part), f);
+        }
+}
+
+void CircuitPage::syncVoicings() {
+    const bool show = hasPowerDrawing() && view_ == powerIndex();
+    for (auto& v : voicings_) {
+        if (v.box->isVisible() != show) v.box->setVisible(show);
+        if (show && !v.box->isPopupActive()) {
+            const int p = voicingPosition(v.def);
+            v.box->setSelectedId(p >= 0 ? p + 1 : 0, juce::dontSendNotification);
+        }
+    }
+}
+
 CircuitPage::~CircuitPage() = default;
 
 float CircuitPage::fractionOf(float ratio) {
@@ -356,6 +395,19 @@ void CircuitPage::setAmp(const sas::AmpDef& def) {
         for (const auto& [name, info] : foundPower) powerTubes_[name] = {info.first, info.second};
     }
     tubeHover_ = tubeDown_ = -1;
+    for (auto& v : voicings_) removeChildComponent(v.box.get());
+    voicings_.clear();
+    for (const auto& vd : def.powerVoicings) {
+        Voicing v;
+        v.def = vd;
+        v.box = std::make_unique<juce::ComboBox>();
+        for (std::size_t p = 0; p < vd.positions.size(); ++p) v.box->addItem(tr(juce::String(vd.label)) + ": " + tr(juce::String(vd.positions[p].label)), int(p) + 1);
+        const std::size_t index = voicings_.size();
+        v.box->onChange = [this, index] { chooseVoicing(index, voicings_[index].box->getSelectedId() - 1); };
+        v.box->setTooltip(tr("A voicing of the power amp: it changes parts of its circuit. Heard in the Normal, High and Efficient qualities; Lite and Eco use a fitted power amp."));
+        addChildComponent(*v.box);
+        voicings_.push_back(std::move(v));
+    }
     ampIndex_ = 0;
     for (std::size_t i = 0; i < processor_.amps().size(); ++i)
         if (processor_.amps()[i].id == def.id) ampIndex_ = int(i);
@@ -445,6 +497,7 @@ void CircuitPage::setView(int v) {
     for (std::size_t i = 0; i < drawings_.size(); ++i)
         if (drawings_[i].art) drawings_[i].art->setVisible(int(i) == view_);
     for (auto& b : viewButtons_) b->setToggleState(int(b->getProperties()["view"]) == view_, juce::dontSendNotification);
+    syncVoicings();
     hover_ = {};
     zoom_ = 1.0f;
     pan_ = {};
@@ -467,6 +520,13 @@ void CircuitPage::resized() {
         valuesButton_.setBounds(bar.removeFromRight(std::max(72, valuesButton_.getBestWidthForHeight(22) + 10)));
         bar.removeFromRight(4);
         resetButton_.setBounds(bar.removeFromRight(std::max(64, resetButton_.getBestWidthForHeight(22) + 10)));
+        bar.removeFromLeft(130);  // the page's title
+        const int n = int(voicings_.size());
+        const int each = n > 0 ? std::min(210, (bar.getWidth() - 4 * (n - 1)) / n) : 0;
+        for (auto& v : voicings_) {
+            v.box->setBounds(bar.removeFromLeft(each));
+            bar.removeFromLeft(4);
+        }
     }
     // The drawings live in a host that clips them to the schematic's area; a wide one starts at a readable size (not squeezed to fit) and the player
     // drags it along, wheels to zoom and double-clicks to see all of it.
@@ -599,6 +659,7 @@ void CircuitPage::tick() {
     if (!pending_.empty() && static_cast<juce::int32>(now - applyAtMs_) >= 0) applyEdits();
     const bool edited = !pending_.empty() || processor_.partEditCount(ampIndex_) > 0;
     if (edited != resetButton_.isVisible()) resetButton_.setVisible(edited);
+    syncVoicings();
     for (int i = 0; i < int(stages_.size()); ++i) {
         auto& s = stages_[std::size_t(i)];
         const float ratio = i < n ? processor_.takeMeter(i) : 0.0f;

@@ -17,6 +17,15 @@
     "pointer": "#ffe9b8"
   },
 
+  "power_voicings": [
+   {"name": "feedback", "label": "FEEDBACK", "positions": [
+     {"label": "Stock"},
+     {"label": "Tight", "factors": {"R_NFB": 0.25}},
+     {"label": "Loose", "factors": {"R_NFB": 4}}]},
+   {"name": "low_end", "label": "LOW END", "positions": [
+     {"label": "Stock"},
+     {"label": "Tight", "factors": {"C14": 0.1, "C16": 0.1}}]}
+  ],
   "presets": [
    {"name": "Clean", "jack": "normal", "params": {"bass": 4, "middle": 6, "presence": 5, "treble": 6, "volume": 5, "volume2": 2.4}},
    {"name": "Edge of breakup", "jack": "normal", "params": {"bass": 4, "middle": 6, "presence": 5, "treble": 6, "volume": 5, "volume2": 3}},

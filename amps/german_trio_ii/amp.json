@@ -32,6 +32,11 @@
   "knob_bottom": "#120e0e",
   "pointer": "#ffd9cf"
  },
+ "power_voicings": [
+   {"name": "low_end", "label": "LOW END", "positions": [
+     {"label": "Stock"},
+     {"label": "Tight", "factors": {"C22A": 0.1, "C22B": 0.1}}]}
+ ],
  "presets": [
   { "name": "Clean", "jack": "input",
     "params": { "clean_gain": 6, "clean_treble": 5, "clean_middle": 5, "clean_bass": 5, "clean_volume": 7, "master": 3, "power": 3, "presence": 5, "resonance": 5 },

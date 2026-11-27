@@ -42,6 +42,7 @@ std::vector<std::string> tokens(const std::string& s) {
 struct Rules {
     Condition cond;
     const std::map<std::string, double>* parts = nullptr;  // the user's edits (preamp only; in the power amp only the choice of tube)
+    const std::map<std::string, double>* powerEdits = nullptr;  // the power amp's voicings: element -> factor (the "P:" edits)
     bool tubesOnly = false;  // `parts` is read for the triode models alone
     bool power = false;      // the power amp's netlist: the key "T:PI" is every triode of it (the phase inverter)
     double wear = 0.0;
@@ -52,6 +53,13 @@ struct Rules {
 };
 
 std::string factor(const std::string& v, double f) { return "(" + v + ")*" + num(f); }
+
+// What a voicing of the power amp does to an element (1 = nothing). It may reach the feedback and presence parts the other rules protect.
+double voicingFactor(const Rules& r, const std::string& name) {
+    if (!r.power || !r.powerEdits) return 1.0;
+    const auto it = r.powerEdits->find(name);
+    return it == r.powerEdits->end() || !(it->second > 0.0) ? 1.0 : it->second;
+}
 
 double editFactor(const Rules& r, const std::string& name) {
     if (!r.parts || r.tubesOnly) return 1.0;
@@ -86,12 +94,16 @@ std::string rewriteLine(const std::string& line, const Rules& r) {
         case 'R': {
             if (t.size() != 5) return line;
             const std::string& name = t[1];
+            const double vf = voicingFactor(r, name);
             if (startsWith(name, "VR_") || startsWith(name, "SW") || startsWith(name, "RPU") || startsWith(name, "RPL") ||
-                startsWith(name, "RSRC") || startsWith(name, "DCR_") || r.protectedResistors.count(name))
-                return line;
+                startsWith(name, "RSRC") || startsWith(name, "DCR_") || r.protectedResistors.count(name)) {
+                if (vf == 1.0) return line;
+                t[4] = factor(t[4], vf);  // a voicing reaches a protected part (the feedback resistor) and nothing else is done to it
+                break;
+            }
             double ohms = 0.0;
             try { ohms = evalExpression(t[4]); } catch (const std::exception&) { return line; }
-            double f = 1.0;
+            double f = vf;
             if (ohms >= 10.0 && ohms <= 1e8 && r.cond.unit > 0) f *= 1.0 + 0.05 * unitNoise(r.cond.unit, 'R', name);
             f *= editFactor(r, name);
             if (f == 1.0) return line;
@@ -105,7 +117,7 @@ std::string rewriteLine(const std::string& line, const Rules& r) {
             double farads = 0.0;
             try { farads = evalExpression(t[4]); } catch (const std::exception&) { return line; }
             const bool electrolytic = farads >= 4.7e-6;
-            double f = 1.0;
+            double f = voicingFactor(r, name);
             if (r.cond.unit > 0) f *= 1.0 + (electrolytic ? 0.20 : 0.10) * unitNoise(r.cond.unit, 'C', name);
             if (electrolytic) f *= 1.0 - 0.45 * r.wear;
             f *= editFactor(r, name);
@@ -218,9 +230,13 @@ AmpDef applyCondition(const AmpDef& def, const Condition& c) {
     preamp(out.preamp);
     if (out.hasEcoPreamp) preamp(out.ecoPreamp);
     Rules pw = r;
-    pw.parts = &c.parts;  // the phase inverter's tube can be swapped (nothing else of the power amp is edited)
+    pw.parts = &c.parts;  // the phase inverter's tube can be swapped (nothing else of the power amp is edited by hand)
     pw.tubesOnly = true;
     pw.power = true;
+    std::map<std::string, double> voicing;  // the "P:" edits are the power amp's voicings
+    for (const auto& [name, f] : c.parts)
+        if (name.rfind("P:", 0) == 0) voicing[name.substr(2)] = f;
+    pw.powerEdits = &voicing;
     out.power.netlistText = rewriteNetlist(def.power.netlistText, pw);
     out.power.supply.reservoirFarads = def.power.supply.reservoirFarads * (1.0 - 0.45 * r.wear);
     return out;

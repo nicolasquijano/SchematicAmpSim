@@ -17,6 +17,12 @@
     "pointer": "#e7ffe6"
   },
 
+  "power_voicings": [
+   {"name": "feedback", "label": "FEEDBACK", "positions": [
+     {"label": "Stock"},
+     {"label": "Tight", "factors": {"R56": 0.25}},
+     {"label": "Loose", "factors": {"R56": 4}}]}
+  ],
   "presets": [
    {"name": "Clean", "jack": "rhythm", "params": {"bass": 5, "master": 5, "middle": 5, "power": 5, "presence": 5, "resonance": 5, "treble": 5, "volume": 5, "volume2": 1}},
    {"name": "Edge of breakup", "jack": "rhythm", "params": {"bass": 5, "master": 5, "middle": 5, "power": 5, "presence": 5, "resonance": 5, "treble": 5, "volume": 5, "volume2": 1.5}},

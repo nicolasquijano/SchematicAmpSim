@@ -59,6 +59,10 @@ public:
     juce::String editableText(int i) const { return shownText(drawings_[std::size_t(view_)].values[std::size_t(editableIndex(i))]); }
     void editValue(int i, int dir) { stepValue(drawings_[std::size_t(view_)].values[std::size_t(editableIndex(i))], dir); }
     void applyEdits();
+    // The power amp's voicings: how many the amp has, the position chosen in one (0 = as drawn), and choosing one (the edits are given on tick()).
+    int voicingCount() const { return int(voicings_.size()); }
+    int voicingChoice(int i) const { return voicingPosition(voicings_[std::size_t(i)].def); }
+    void setVoicing(int i, int position) { chooseVoicing(std::size_t(i), position); }
     // The preamp tubes of the drawing shown that can be swapped: how many, the name of one, the model it has now, one step on to the next model
     // (1) or back (-1), and the mouse being over one (the tip appears).
     int tubeCount() const { return hasDrawing() ? int(drawings_[std::size_t(view_)].tubes.size()) : 0; }
@@ -193,6 +197,15 @@ private:
     std::vector<juce::String> uiParams_;  // the plugin parameters the amp has on its panel: a pot is live when one has its name
     std::vector<std::unique_ptr<juce::TextButton>> viewButtons_;
     juce::TextButton valuesButton_, resetButton_;
+    // The power amp's voicings (amp.json "power_voicings"): a drop-down each on the power amp's drawing, saved as part edits named "P:<element>".
+    struct Voicing {
+        sas::PowerVoicingDef def;
+        std::unique_ptr<juce::ComboBox> box;
+    };
+    std::vector<Voicing> voicings_;
+    int voicingPosition(const sas::PowerVoicingDef& v) const;  // the position the edits make (0 = as drawn, -1 = none of them)
+    void chooseVoicing(std::size_t v, int position);
+    void syncVoicings();
     int ampIndex_ = 0;
     std::map<juce::String, double> pending_;  // the factors asked for and not yet given to the processor
     juce::uint32 applyAtMs_ = 0;

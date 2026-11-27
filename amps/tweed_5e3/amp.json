@@ -17,6 +17,11 @@
     "pointer": "#3a2a14"
   },
 
+  "power_voicings": [
+   {"name": "low_end", "label": "LOW END", "positions": [
+     {"label": "Stock"},
+     {"label": "Tight", "factors": {"C3": 0.1, "C4": 0.1}}]}
+  ],
   "presets": [
    {"name": "Clean", "jack": "normal_lo", "params": {"treble": 6, "volume": 5, "volume2": 1.4}},
    {"name": "Edge of breakup", "jack": "normal_hi", "params": {"treble": 6, "volume": 5, "volume2": 2.5}},

@@ -15,6 +15,12 @@
   "knob_bottom": "#101316",
   "pointer": "#c8efff"
  },
+ "power_voicings": [
+   {"name": "feedback", "label": "FEEDBACK", "positions": [
+     {"label": "Stock"},
+     {"label": "Tight", "factors": {"R35": 0.25}},
+     {"label": "Loose", "factors": {"R35": 4}}]}
+ ],
  "presets": [
   {"name": "Clean", "jack": "clean", "params": {"bass": 5, "master": 5, "middle": 5, "presence": 5, "resonance": 5, "treble": 5, "volume": 5, "volume2": 9}, "selectors": {"crunch": 1}},
   {"name": "Edge of breakup", "jack": "clean", "params": {"bass": 5, "master": 5, "middle": 5, "presence": 5, "resonance": 5, "treble": 5, "volume": 5, "volume2": 3.5}, "selectors": {"crunch": 0}},

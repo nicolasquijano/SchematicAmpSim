@@ -277,6 +277,18 @@ struct AmpPresetDef {
     std::vector<std::pair<std::string, int>> selectors;
 };
 
+// A voicing of the power amp (amp.json "power_voicings"): a named choice that changes some parts of the power amp's netlist. Each position gives the
+// factors those parts are multiplied by; position 0 changes nothing (the amp as drawn). The editor shows one drop-down per voicing on the power amp's
+// drawing; a choice is saved as part edits named "P:<element>" (see Condition::parts), so it is part of the project and of the user's amp presets.
+struct PowerVoicingPositionDef {
+    std::string label;
+    std::vector<std::pair<std::string, double>> factors;  // netlist element of the power amp -> factor on its value
+};
+struct PowerVoicingDef {
+    std::string name, label;
+    std::vector<PowerVoicingPositionDef> positions;
+};
+
 // A graphic equaliser inside the amp (amp.json "graphic_eq"): fixed bands, each +-rangeDb with a Q; the sliders are plugin parameters (aeq1..) listed in "ui".
 struct GraphicEqBand {
     double hz = 1000.0, q = 1.0, rangeDb = 12.0;
@@ -313,6 +325,7 @@ struct AmpDef {
     std::vector<UiKnob> ui;
     GraphicEqDef graphicEq;             // empty: the amp has none
     std::vector<AmpPresetDef> presets;  // factory settings, in the order of the menu (may be empty)
+    std::vector<PowerVoicingDef> powerVoicings;  // choices that change parts of the power amp (may be empty)
     std::vector<CircuitChannelDef> circuitChannels;  // empty: one drawing for the whole preamp
     std::vector<ProbeDef> powerProbes;  // the same for the full power amp's netlist ("power_probes"): after the preamp's in the circuit page; Lite and Eco have no such nodes
     std::vector<ProbeDef> probes;       // the stages of the circuit page, in signal order (may be empty: the page then shows input, preamp and output only)
