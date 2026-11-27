@@ -25,6 +25,11 @@
   "knob_bottom": "#140e0d",
   "pointer": "#f6cdbd"
  },
+ "power_voicings": [
+   {"name": "feedback", "label": "FEEDBACK", "positions": [
+     {"label": "Stock"},
+     {"label": "Tight", "factors": {"R56": 0.25}}]}
+ ],
  "presets": [
   {
    "name": "Clean",

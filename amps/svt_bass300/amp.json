@@ -15,6 +15,11 @@
   "knob_bottom": "#131316",
   "pointer": "#ffd6cc"
  },
+ "power_voicings": [
+   {"name": "low_end", "label": "LOW END", "positions": [
+     {"label": "Stock"},
+     {"label": "Tight", "factors": {"C1": 0.1, "C3": 0.1, "C4": 0.1}}]}
+ ],
  "presets": [
   {"name": "Clean", "jack": "ch1_normal", "params": {"bass": 5, "master": 4, "middle": 5, "treble": 5, "volume": 4.1, "volume2": 3}, "selectors": {"mid_freq": 0}},
   {"name": "Warm tube", "jack": "ch1_normal", "params": {"bass": 6, "master": 4.5, "middle": 5, "treble": 4, "volume": 4, "volume2": 3}, "selectors": {"mid_freq": 0}},
