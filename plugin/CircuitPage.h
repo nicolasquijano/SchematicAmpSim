@@ -229,7 +229,8 @@ private:
     void stepTube(const Drawing::Tube& t, int dir);
     void paintTipBox(juce::Graphics&, juce::Rectangle<float> anchor, const juce::String& title, const juce::String& body, const juce::String& hint, bool edited);
     std::map<juce::String, juce::String> roles_, powerRoles_;
-    double valueFactor(const Drawing::Value& v) const { return v.fixed ? 1.0 : factorOf(v.name); }  // component name -> what it does ("plate", "cathode", ...), read from the preamp's netlists
+    // What the edits do to a drawn part: the user's own edit, or (a part of the power amp, which is not edited by hand) what a power voicing does to it.
+    double valueFactor(const Drawing::Value& v) const { return v.name.isEmpty() ? 1.0 : factorOf((v.fixed ? "P:" : "") + v.name); }  // component name -> what it does ("plate", "cathode", ...), read from the preamp's netlists
     void paintTip(juce::Graphics&, const Drawing&, const Drawing::Value&);
     float valueDragY_ = 0.0f;
     static inline bool showValues_ = true;  // the values of the components: shown or hidden, kept for the session
