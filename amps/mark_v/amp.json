@@ -82,6 +82,11 @@
   "knob_bottom": "#12100e",
   "pointer": "#fff0c8"
  },
+ "power_voicings": [
+   {"name": "low_end", "label": "LOW END", "positions": [
+     {"label": "Stock"},
+     {"label": "Tight", "factors": {"R62": 4, "R63": 4}}]}
+ ],
  "presets": [
   {
    "name": "Clean",

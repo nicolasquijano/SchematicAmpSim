@@ -505,6 +505,11 @@
   "sag_attack_s": 0.01,
   "sag_release_s": 0.06
  },
+ "power_voicings": [
+   {"name": "low_end", "label": "LOW END", "positions": [
+     {"label": "Stock"},
+     {"label": "Tight", "factors": {"R62": 4, "R63": 4}}]}
+ ],
  "presets": [
   {
    "name": "Clean",
