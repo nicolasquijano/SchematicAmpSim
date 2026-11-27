@@ -7,6 +7,7 @@
 #include <sstream>
 
 #include "I18n.h"
+#include "sas/netlist.h"
 
 #ifdef SAS_HAS_FACES
 #include "BinaryData.h"
@@ -403,11 +404,33 @@ void CircuitPage::setAmp(const sas::AmpDef& def) {
     tubeHover_ = tubeDown_ = -1;
     for (auto& v : voicings_) removeChildComponent(v.box.get());
     voicings_.clear();
-    auto addVoicings = [this](const std::vector<sas::VoicingDef>& list, bool power) {
+    auto addVoicings = [this, &def](const std::vector<sas::VoicingDef>& list, bool power) {
       for (const auto& vd : list) {
         Voicing v;
         v.def = vd;
         v.power = power;
+        {  // the value each part has in the netlist, to show what a voicing makes of it
+            std::vector<std::string> texts;
+            if (power) texts.push_back(def.power.netlistText);
+            else {
+                texts.push_back(def.preamp.netlistText);
+                for (const auto& st : def.preamp.stages) texts.push_back(st.netlistText);
+            }
+            for (const auto& position : vd.positions)
+                for (const auto& [part, unused] : position.factors) {
+                    if (v.base.count(part) != 0) continue;
+                    for (const auto& text : texts) {
+                        std::istringstream is(text);
+                        for (std::string line; std::getline(is, line);) {
+                            std::istringstream ls(line.substr(0, line.find(';')));
+                            std::vector<std::string> w;
+                            for (std::string x; ls >> x;) w.push_back(x);
+                            if (w.size() != 5 || w[1] != part || (w[0] != "R" && w[0] != "C")) continue;
+                            try { v.base[part] = {sas::evalExpression(w[4]), w[0] == "C"}; } catch (const std::exception&) {}
+                        }
+                    }
+                }
+        }
         v.box = std::make_unique<juce::ComboBox>();
         for (std::size_t p = 0; p < vd.positions.size(); ++p) v.box->addItem(tr(juce::String(vd.label)) + ": " + tr(juce::String(vd.positions[p].label)), int(p) + 1);
         const std::size_t index = voicings_.size();
@@ -1038,6 +1061,24 @@ void CircuitPage::paintOverChildren(juce::Graphics& g) {
         g.setColour(edited ? look_.accent() : int(i) == valueHover_ ? look_.text() : look_.label().withAlpha(0.9f));
         const auto box = valueBox(dr, v).expanded(6.0f, 0.0f);
         g.drawText(shownText(v), box.toNearestInt(), v.align == 'R' ? juce::Justification::centredRight : v.align == 'C' ? juce::Justification::centred : juce::Justification::centredLeft);
+    }
+    if (showValues_) {  // the parts a voicing changes that the drawing shows no value for: listed in the corner, with the value they have now
+        juce::StringArray lines;
+        for (const auto& vc : voicings_) {
+            if (!voicingShown(vc)) continue;
+            for (const auto& [part, info] : vc.base) {
+                const double f = factorOf(voicingPart(vc, part));
+                if (std::abs(f - 1.0) < 1e-6) continue;
+                bool drawn = false;
+                for (const auto& v : dr.values) drawn = drawn || v.name == juce::String(part);
+                if (!drawn) lines.add(juce::String(part) + "   " + formatValue(info.value, info.cap) + " -> " + formatValue(info.value * f, info.cap));
+            }
+        }
+        g.setFont(AmpLookAndFeel::font(10.0f));
+        g.setColour(look_.accent());
+        auto corner = host_.getBounds().reduced(8, 6);
+        for (int i = lines.size() - 1; i >= 0; --i)
+            g.drawText(lines[i], corner.removeFromBottom(14), juce::Justification::centredRight);
     }
     if (view_ != powerIndex() && hasPowerDrawing() && dr.next) {  // the way on to the power amp
         const auto b = dr.next->getDrawableBounds().transformedBy(dr.fit);

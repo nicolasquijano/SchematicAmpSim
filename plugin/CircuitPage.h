@@ -201,6 +201,11 @@ private:
     struct Voicing {
         sas::VoicingDef def;
         bool power = false;  // the power amp's (its edits are named "P:<element>"); otherwise the preamp's
+        struct PartBase {
+            double value = 0.0;  // as the netlist has it
+            bool cap = false;
+        };
+        std::map<std::string, PartBase> base;  // every part any position touches (for the parts the drawing shows no value for)
         std::unique_ptr<juce::ComboBox> box;
     };
     std::vector<Voicing> voicings_;
