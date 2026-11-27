@@ -23,6 +23,11 @@
      {"label": "Tight", "factors": {"R56": 0.25}},
      {"label": "Loose", "factors": {"R56": 4}}]}
   ],
+  "preamp_voicings": [
+   {"name": "cathode_bypass", "label": "CATHODE BYPASS", "positions": [
+     {"label": "Stock"},
+     {"label": "Tight", "factors": {"C4": 0.1}}]}
+  ],
   "presets": [
    {"name": "Clean", "jack": "rhythm", "params": {"bass": 5, "master": 5, "middle": 5, "power": 5, "presence": 5, "resonance": 5, "treble": 5, "volume": 5, "volume2": 1}},
    {"name": "Edge of breakup", "jack": "rhythm", "params": {"bass": 5, "master": 5, "middle": 5, "power": 5, "presence": 5, "resonance": 5, "treble": 5, "volume": 5, "volume2": 1.5}},

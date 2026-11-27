@@ -22,6 +22,11 @@
      {"label": "Stock"},
      {"label": "Tight", "factors": {"C25": 0.1, "C24": 0.1}}]}
   ],
+  "preamp_voicings": [
+   {"name": "cathode_bypass", "label": "CATHODE BYPASS", "positions": [
+     {"label": "Stock"},
+     {"label": "Tight", "factors": {"C10": 0.1}}]}
+  ],
   "presets": [
    {"name": "Clean", "jack": "normal", "params": {"bass": 5, "presence": 0, "treble": 6, "volume": 5, "volume2": 2.6}},
    {"name": "Edge of breakup", "jack": "normal", "params": {"bass": 5, "presence": 0, "treble": 6, "volume": 5, "volume2": 4.1}},
