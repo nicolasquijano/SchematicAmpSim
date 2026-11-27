@@ -74,11 +74,12 @@ def tweed_5e3_preamp():
     anchor(s, 'volume2', 438, 330)
     anchor(s, 'treble', 578, 70)
     # the values of the netlist, in small type
-    for kind, x, y, text in (('C', 84, 136, '34k'), ('C', 84, 276, '34k'), ('L', 150, 128, '1M'), ('L', 150, 320, '1M'), ('L', 212, 80, '100k'), ('L', 212, 365, '100k'),
-                             ('L', 652, 80, '100k'), ('C', 240, 106, '0.1u'), ('C', 240, 306, '0.1u'), ('C', 340, 56, '500p'), ('C', 712, 126, '1u'),
-                             ('R', 252, 263, '820R'), ('L', 302, 262, '25u'), ('R', 613, 293, '1k5'), ('L', 668, 289, '25u'), ('L', 772, 208, '1M'),
-                             ('L', 538, 116, '5n')):
-        s.val(kind, x, y, text)
+    for kind, x, y, text, comp in (('C', 84, 136, '34k', 'R:RH_B'), ('C', 84, 276, '34k', 'R:RH_N'), ('L', 150, 128, '1M', 'R:RG_B'), ('L', 150, 320, '1M', 'R:RG_N'),
+                                   ('L', 212, 80, '100k', 'R:R_PB'), ('L', 212, 365, '100k', 'R:R_PN'), ('L', 652, 80, '100k', 'R:R_P2A'), ('C', 240, 106, '0.1u', 'C:C1B'),
+                                   ('C', 240, 306, '0.1u', 'C:C1N'), ('C', 340, 56, '500p', 'C:C500'), ('C', 712, 126, '1u', 'C:C_OUT'), ('R', 252, 263, '820R', 'R:RK1'),
+                                   ('L', 302, 262, '25u', 'C:CK1'), ('R', 613, 293, '1k5', 'R:RK2A'), ('L', 668, 289, '25u', 'C:CK2A'), ('L', 772, 208, '1M', 'R:R_O'),
+                                   ('L', 538, 116, '5n', 'C:C5N')):
+        s.val(kind, x, y, text, comp)
     s.path('next_power', 'M800,142 V158 L822,150 Z', '#8c7a55', 1.5, s.lin(0, 142, 0, 158, [(0, '#d9b866'), (1, '#8a6d2c')]))
     return s
 
@@ -535,9 +536,9 @@ AMPS = {'bassbreaker_1830': (bassbreaker_preamp, None),
 
 # The British 800's drawings were made in VectorCraft: its values are added to the exported files (the anchors replace the ones already there).
 INJECT = {
-    'circuit.svg': (('C', 100, 176, '68k'), ('L', 202, 92, '100k'), ('L', 362, 92, '100k'), ('L', 202, 262, '2.7k'), ('L', 362, 262, '820R'), ('C', 438, 110, '33k'),
-                    ('C', 240, 100, '0.022u')),
-    'circuit_power.svg': (('C', 56, 164, '0.022u'),),
+    'circuit.svg': (('C', 100, 176, '68k', 'R:R3'), ('L', 202, 92, '100k', 'R:R4'), ('L', 362, 92, '100k', 'R:R12'), ('L', 202, 262, '2.7k', 'R:R1'),
+                    ('L', 362, 262, '820R', 'R:R9'), ('C', 438, 110, '33k', 'R:R15'), ('C', 240, 100, '0.022u', 'C:C3')),
+    'circuit_power.svg': (('C', 56, 164, '0.022u', None),),
 }
 
 
@@ -548,7 +549,7 @@ def inject(amp_id, values):
         with open(path, encoding='utf-8', newline='') as f:
             text = f.read()
         text = re.sub(r'\s*<ellipse id="val[LRC]_\d+_[^"]*"[^>]*/>', '', text)
-        anchors = ''.join('\n  <ellipse id="val%s_%d_%s" cx="%g" cy="%g" rx="1" ry="1" fill="none" stroke="none"/>' % (k, i + 1, t, x, y) for i, (k, x, y, t) in enumerate(vals))
+        anchors = ''.join('\n  <ellipse id="val%s_%d_%s%s" cx="%g" cy="%g" rx="1" ry="1" fill="none" stroke="none"/>' % (k, i + 1, t, ('@' + c) if c else '', x, y) for i, (k, x, y, t, c) in enumerate(vals))
         text = text.replace('</svg>', anchors.lstrip('\n') + '\n</svg>') if '</svg>' in text else text
         with open(path, 'w', encoding='utf-8', newline='') as f:
             f.write(text)

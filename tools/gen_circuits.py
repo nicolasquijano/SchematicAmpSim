@@ -286,7 +286,7 @@ VALUE = re.compile(r'^[0-9.]+[kKMRunp]?$')
 
 
 def component_values(amp_id, d):
-    """Resistors and capacitors of the preamp's netlists: [(kind, node1, node2, value)], with the rail's node name."""
+    """Resistors and capacitors of the preamp's netlists: [(kind, node1, node2, value, name)], with the rail's node name."""
     pre = d['preamp']
     files = [pre['netlist']] + [st['netlist'] for st in pre.get('stages', [])]
     comps, rail = [], None
@@ -296,7 +296,7 @@ def component_values(amp_id, d):
             if t[0] == 'V' and len(t) > 2 and t[1] == pre.get('rail_source', 'VRAIL') and rail is None:
                 rail = t[2]
             if t[0] in ('R', 'C') and len(t) >= 5 and VALUE.match(t[4]) and t[4] != '1':  # 1 ohm is a switch contact
-                comps.append((t[0], t[2], t[3], t[4]))
+                comps.append((t[0], t[2], t[3], t[4], t[1]))
     return comps, rail
 
 
@@ -315,20 +315,20 @@ def tube_values(amp_id, d, label, comps, rail):
     out = {}
     if plate is None:
         return out
-    for kind, a, b, v in comps:
+    for kind, a, b, v, nm in comps:
         ends = {a, b}
         if kind == 'R' and plate in ends and rail in ends and 'plate' not in out:
-            out['plate'] = v
+            out['plate'] = v; out['@plate'] = '%s:%s' % (kind, nm)
         if kind == 'R' and cath in ends and ends & {'0', 'gnd'} and 'cath' not in out:
-            out['cath'] = v
+            out['cath'] = v; out['@cath'] = '%s:%s' % (kind, nm)
         if kind == 'C' and plate in ends and not ends & {'0', 'gnd', cath, rail} and 'couple' not in out:
-            out['couple'] = v
+            out['couple'] = v; out['@couple'] = '%s:%s' % (kind, nm)
         if kind == 'C' and cath in ends and ends & {'0', 'gnd'} and 'bypass' not in out:
-            out['bypass'] = v
+            out['bypass'] = v; out['@bypass'] = '%s:%s' % (kind, nm)
         if kind == 'R' and grid in ends and ends & {'0', 'gnd'} and 'leak' not in out:
-            out['leak'] = v
+            out['leak'] = v; out['@leak'] = '%s:%s' % (kind, nm)
         if kind == 'R' and grid in ends and not ends & {'0', 'gnd', cath, rail} and 'stopper' not in out:
-            out['stopper'] = v
+            out['stopper'] = v; out['@stopper'] = '%s:%s' % (kind, nm)
     return out
 
 
@@ -385,7 +385,7 @@ def draw_preamp(amp_id, d, tubes, pots=None):
     first = [ln.split() for fn in [d['preamp']['netlist']] for ln in netlist_lines(amp_id, fn) if ln.split()[0] == 'R' and ln.split()[2] == 'in'
              and len(ln.split()) >= 5 and VALUE.match(ln.split()[4]) and ln.split()[4] != '1']
     if first:
-        s.val('C', 84, cy - 14, first[0][4].replace('u', '\u00b5'))
+        s.val('C', 84, cy - 14, first[0][4].replace('u', '\u00b5'), 'R:' + first[0][1])
     for i, (label, _) in enumerate(tubes):
         cx = cxs[i]
         resistor_v(s, cx, yj - 42, 'res_plate%d' % i)
@@ -395,15 +395,16 @@ def draw_preamp(amp_id, d, tubes, pots=None):
         bulb(s, cx, cy, k, label, label)
         v = tube_values(amp_id, d, label, comps, rail)
         if 'plate' in v:
-            s.val('L', cx + 10, yj - 24, v['plate'])
+            s.val('L', cx + 10, yj - 24, v['plate'], v['@plate'])
         if 'cath' in v:
-            s.val('L', cx + 10, base_bottom + 26, v['cath'])
+            s.val('L', cx + 10, base_bottom + 26, v['cath'], v['@cath'])
         if 'bypass' in v:
-            s.val('L', cx + 10, base_bottom + 40, v['bypass'])
+            s.val('L', cx + 10, base_bottom + 40, v['bypass'], v['@bypass'])
         if 'couple' in v and i + 1 < n:
-            s.val('C', cx + W / 2, yj - 24, v['couple'])
+            s.val('C', cx + W / 2, yj - 24, v['couple'], v['@couple'])
         if i > 0 and ('stopper' in v or 'leak' in v):  # what sits in front of the grid: the stopper in series, the leak to ground
-            s.val('C', cx - r - 20, cy - 12, '/'.join(x for x in (v.get('stopper'), v.get('leak')) if x))
+            both = [k for k in ('stopper', 'leak') if k in v]  # two values in one label cannot be one component: only a lone value is editable
+            s.val('C', cx - r - 20, cy - 12, '/'.join(v[k] for k in both), v['@' + both[0]] if len(both) == 1 else None)
     for i, u in enumerate(pre_pots):
         pot(s, px[i], pcy, u['param'], pk)
     # the way on to the power amp

@@ -133,11 +133,11 @@
     <path id="wire_MASTER" d="M660 125 L790 125 L790 212 M730 125 L730 187" fill="none" stroke="#6b5c44" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
     <path id="next_power" d="M778 212 L802 212 L790 232 Z" fill="url(#linear-gradient-11)" stroke="#8c7a55" stroke-width="1.5" stroke-miterlimit="10"/>
   </g>
-  <ellipse id="valC_1_68k" cx="100" cy="176" rx="1" ry="1" fill="none" stroke="none"/>
-  <ellipse id="valL_2_100k" cx="202" cy="92" rx="1" ry="1" fill="none" stroke="none"/>
-  <ellipse id="valL_3_100k" cx="362" cy="92" rx="1" ry="1" fill="none" stroke="none"/>
-  <ellipse id="valL_4_2.7k" cx="202" cy="262" rx="1" ry="1" fill="none" stroke="none"/>
-  <ellipse id="valL_5_820R" cx="362" cy="262" rx="1" ry="1" fill="none" stroke="none"/>
-  <ellipse id="valC_6_33k" cx="438" cy="110" rx="1" ry="1" fill="none" stroke="none"/>
-  <ellipse id="valC_7_0.022u" cx="240" cy="100" rx="1" ry="1" fill="none" stroke="none"/>
+  <ellipse id="valC_1_68k@R:R3" cx="100" cy="176" rx="1" ry="1" fill="none" stroke="none"/>
+  <ellipse id="valL_2_100k@R:R4" cx="202" cy="92" rx="1" ry="1" fill="none" stroke="none"/>
+  <ellipse id="valL_3_100k@R:R12" cx="362" cy="92" rx="1" ry="1" fill="none" stroke="none"/>
+  <ellipse id="valL_4_2.7k@R:R1" cx="202" cy="262" rx="1" ry="1" fill="none" stroke="none"/>
+  <ellipse id="valL_5_820R@R:R9" cx="362" cy="262" rx="1" ry="1" fill="none" stroke="none"/>
+  <ellipse id="valC_6_33k@R:R15" cx="438" cy="110" rx="1" ry="1" fill="none" stroke="none"/>
+  <ellipse id="valC_7_0.022u@C:C3" cx="240" cy="100" rx="1" ry="1" fill="none" stroke="none"/>
 </svg>

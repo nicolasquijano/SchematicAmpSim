@@ -54,8 +54,8 @@
 <path id="filament_V1" d="M152,191 H168" fill="none" stroke="#ffae42" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>
 <path id="shine_V1" d="M138,163 A26,26 0 0 1 154,149" fill="none" stroke="#ffffff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" opacity="0.35"/>
 <rect id="base_V1" x="144" y="203" width="32" height="14" rx="3" fill="url(#g8)" stroke="#5a4d3a" stroke-width="1"/>
-<ellipse id="valL_1_0.1u" cx="170" cy="257" rx="1" ry="1" fill="none" stroke="none"/>
-<ellipse id="valC_2_470p" cx="235" cy="91" rx="1" ry="1" fill="none" stroke="none"/>
+<ellipse id="valL_1_0.1u@C:C1" cx="170" cy="257" rx="1" ry="1" fill="none" stroke="none"/>
+<ellipse id="valC_2_470p@C:C3" cx="235" cy="91" rx="1" ry="1" fill="none" stroke="none"/>
 <rect id="res_plate1" x="303" y="73" width="14" height="36" rx="3" fill="url(#g9)" stroke="#5a4630" stroke-width="1"/>
 <path id="res_plate1_bands" d="M303,81 H317 M303,87 H317 M303,93 H317" fill="none" stroke="#7a3b1f" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
 <rect id="res_cath1" x="303" y="225" width="14" height="36" rx="3" fill="url(#g10)" stroke="#5a4630" stroke-width="1"/>
@@ -67,8 +67,8 @@
 <path id="filament_V2" d="M302,191 H318" fill="none" stroke="#ffae42" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>
 <path id="shine_V2" d="M288,163 A26,26 0 0 1 304,149" fill="none" stroke="#ffffff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" opacity="0.35"/>
 <rect id="base_V2" x="294" y="203" width="32" height="14" rx="3" fill="url(#g13)" stroke="#5a4d3a" stroke-width="1"/>
-<ellipse id="valL_3_56k" cx="320" cy="243" rx="1" ry="1" fill="none" stroke="none"/>
-<ellipse id="valC_4_100k" cx="258" cy="163" rx="1" ry="1" fill="none" stroke="none"/>
+<ellipse id="valL_3_56k@R:R4" cx="320" cy="243" rx="1" ry="1" fill="none" stroke="none"/>
+<ellipse id="valC_4_100k@R:R47" cx="258" cy="163" rx="1" ry="1" fill="none" stroke="none"/>
 <ellipse id="pot_volume" cx="60" cy="335" rx="18" ry="18" fill="url(#g14)" stroke="#9a8760" stroke-width="1.5"/>
 <ellipse id="dial_volume" cx="60" cy="335" rx="11" ry="11" fill="#26211c" stroke="#3b3329" stroke-width="1"/>
 <path id="ptr_volume" d="M60,335 L60,324" fill="none" stroke="#f0b53a" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>
