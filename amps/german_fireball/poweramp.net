@@ -1,0 +1,71 @@
+* German Fireball power amp (schematic E635-1): C31 into the long-tailed ECC83 phase inverter V8A / V8B (R49 100k on the first grid, R52 150k on the second, R50 470 on the joined
+* cathodes, R51 22k from the tail to the feedback node G, which R53 / R54 (2.2k + 2.2k, C37 across R54) take to ground; C36 .1u from the second grid to G), plates R55 91k / R56 100k,
+* C32..C35 (47n) into four 6L6GC as two parallel pairs (2.2k grid stoppers, 330k grid returns to the bias supply, 470 ohm screen resistors, 5 ohm cathode resistors: R70 / R71 10 ohm in
+* parallel), the output transformer with its 16 / 8 / 4 ohm sections (the impedance switch at 16 ohm) and the HT supply.
+* The negative feedback runs from the 4 ohm tap through R81 (4k7), the PRESENCE pot P8 (250KA, used as a variable resistor) and C38 (22n) into G.
+* Assumptions: 2k plate-to-plate, 3.5 H per primary half, 40 ohm per half; the bias supply is -53.8 V (the drawing prints 46 .. 51 V; this gives the 33 mA per tube of its bias note); the screens take the B+ node through 470.
+
+S VAUDIO pin 50k 0
+S VHT a 1 470
+S VBIAS bias 100 -53.8
+
+C C31 pin ga 100n
+R R49 ga f1 100k
+R R52 f1 gb 150k
+R R50 kc f1 470
+T V8A ga pa kc 12AX7
+T V8B gb pb kc 12AX7
+R R51 f1 g 22k
+R R53 g h 2.2k
+R R54 h 0 2.2k
+C C37 h 0 100n
+C C36 gb g 100n
+
+R R55 xp pa 91k
+R R56 xp pb 100k
+R RPI a xp 4.7k
+C CPI xp 0 47u
+
+* Negative feedback and PRESENCE: 4 ohm tap, R81 4k7, the pot P8 (VR8B, the series part: the more it is turned up the higher it is, the less feedback the highs get; VR8T is the track left over, which hangs free) and C38 (22n) into G.
+R R81 bk nf1 4.7k
+R VR8B nf1 nf2 1
+R VR8T dm 0 1
+C C38 nf2 g 22n
+
+* Grid drive: C32 / C33 from V8A's plate, C34 / C35 from V8B's (47n each, one pair of tubes per plate), 330k to the bias supply, 2.2k stoppers.
+C C32_33 pa d1 94n
+C C34_35 pb d2 94n
+R R57_58 d1 bias 330k/2
+R R59_60 d2 bias 330k/2
+C CBIAS bias 0 47u
+R R61_62 d1 g12 2.2k/2
+R R63_64 d2 g34 2.2k/2
+
+* 6L6GC pairs: V1 + V2 on one phase, V3 + V4 on the other; screens through 470 (R65..R68) from the B+ node, cathodes through 5 ohm each (R70 || R71).
+P V1 g12 pt s12 k12 6L6GCDS 2
+P V3 g34 pbm s34 k34 6L6GCDS 2
+R R65_66 a s12 470/2
+R R67_68 a s34 470/2
+R R70_71 k12 0 5/2
+R R76_77 k34 0 5/2
+
+* Output transformer: plate-to-plate 2k, 3.5 H per primary half; windings are primary halves, then the 16, 8 and 4 ohm sections of the secondary.
+R DCR_PT pt npt 40
+R DCR_PBM pbm npb 40
+.param n16 = 2*1/sqrt(2000/16)
+.xfmr OT L=3.5 SAT=4.7
+  W npt a 1 pri
+  W a npb 1 pri
+  W t16 t8 0.2929*n16 sec
+  W t8 bk 0.2071*n16 sec
+  W bk 0 0.5*n16 sec
+  K pri pri 0.9998
+  K pri sec 0.9993
+  K sec sec 0.9998
+.end
+R RLOAD t16 0 16
+
+* HT supply: reservoir A, the rail X for the preamp (R84 and the 47u), RPREAMP standing for the preamp's draw.
+R RP a x 2.7k
+C C7 x 0 47u
+R RPREAMP x 0 45k

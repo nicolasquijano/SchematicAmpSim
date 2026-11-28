@@ -619,6 +619,7 @@ const std::unordered_map<std::string, std::string>& italianTable() {
     {"Country twang", "Country twang"},
     {"Classic rock crunch", "Crunch rock classico"},
     {"Mix-ready", "Pronto per il mix"},
+    {"LEAD", "SOLO"},
     {"TREBLE CAP", "CONDENSATORE ACUTI"},
     {"COUPLING", "ACCOPPIAMENTO"},
     {"More", "Più"},

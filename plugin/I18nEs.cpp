@@ -625,6 +625,7 @@ const std::unordered_map<std::string, std::string>& spanishTable() {
     {"Country twang", "Country twang"},
     {"Classic rock crunch", "Crunch de rock clásico"},
     {"Mix-ready", "Listo para la mezcla"},
+    {"LEAD", "SOLO"},
     {"TREBLE CAP", "CAPACITOR DE AGUDOS"},
     {"COUPLING", "ACOPLE"},
     {"More", "Más"},

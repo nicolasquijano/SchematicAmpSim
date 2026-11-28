@@ -619,6 +619,7 @@ const std::unordered_map<std::string, std::string>& russianTable() {
     {"Country twang", "Кантри-твэнг"},
     {"Classic rock crunch", "Кранч классического рока"},
     {"Mix-ready", "Готов к сведению"},
+    {"LEAD", "СОЛО"},
     {"TREBLE CAP", "КОНДЕНСАТОР ВЧ"},
     {"COUPLING", "СВЯЗЬ"},
     {"More", "Больше"},

@@ -619,6 +619,7 @@ const std::unordered_map<std::string, std::string>& japaneseTable() {
     {"Country twang", "カントリー・ツァング"},
     {"Classic rock crunch", "クラシックロックのクランチ"},
     {"Mix-ready", "ミックス向け"},
+    {"LEAD", "リード"},
     {"TREBLE CAP", "高域キャップ"},
     {"COUPLING", "カップリング"},
     {"More", "多め"},

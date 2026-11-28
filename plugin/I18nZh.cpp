@@ -619,6 +619,7 @@ const std::unordered_map<std::string, std::string>& chineseTable() {
     {"Country twang", "乡村 Twang"},
     {"Classic rock crunch", "经典摇滚 Crunch"},
     {"Mix-ready", "可直接混音"},
+    {"LEAD", "独奏"},
     {"TREBLE CAP", "高频电容"},
     {"COUPLING", "耦合"},
     {"More", "更多"},

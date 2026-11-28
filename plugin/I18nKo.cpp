@@ -619,6 +619,7 @@ const std::unordered_map<std::string, std::string>& koreanTable() {
     {"Country twang", "컨트리 트왱"},
     {"Classic rock crunch", "클래식 록 크런치"},
     {"Mix-ready", "믹스 준비 완료"},
+    {"LEAD", "리드"},
     {"TREBLE CAP", "고음 캡"},
     {"COUPLING", "커플링"},
     {"More", "많이"},

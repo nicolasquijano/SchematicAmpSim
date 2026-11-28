@@ -5,6 +5,12 @@ version numbers follow [Semantic Versioning](https://semver.org/) (see [docs/REL
 
 ## [Unreleased]
 
+### Added
+- **German Fireball** (a two-channel 100 W head, four 6L6GC), transcribed from the E635 schematic: V5A shared, CLEAN GAIN / LEAD GAIN, the Clean / Lead relays, V6A (lead only), V6B, one TREBLE / BASS / MIDDLE stack, LEAD VOLUME, V7A (cathode follower), V7B, MASTER and a long-tailed phase inverter whose negative feedback goes through PRESENCE in series. The preamp is very hot (as the schematic is): the gain knobs and MASTER use a steep taper so their travel is usable, and the presets sit at low gain settings. The effects loop (bypassed), mid boost, bottom, bright, the noise gate and Master B are not modelled.
+
+### Removed
+- **American Lead V** (`mark_v`) is no longer one of the amps.
+
 ## [0.8.0-beta] - 2026-11-22
 
 ### Added

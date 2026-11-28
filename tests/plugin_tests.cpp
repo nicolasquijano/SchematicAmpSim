@@ -990,7 +990,7 @@ TEST_CASE("readme screenshots", "[.screenshots]") {
 
     // The newest amps in one picture.
     {
-        const char* ids4[4] = {"mark_v", "german_quad", "jubilee_2555", "dc30"};
+        const char* ids4[4] = {"german_fireball", "german_quad", "jubilee_2555", "dc30"};
         juce::Image montage(juce::Image::RGB, 1600, 820, true);
         {
             juce::Graphics g(montage);

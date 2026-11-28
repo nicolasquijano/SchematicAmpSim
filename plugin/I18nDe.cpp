@@ -619,6 +619,7 @@ const std::unordered_map<std::string, std::string>& germanTable() {
     {"Country twang", "Country-Twang"},
     {"Classic rock crunch", "Classic-Rock-Crunch"},
     {"Mix-ready", "Mix-bereit"},
+    {"LEAD", "LEAD"},
     {"TREBLE CAP", "HÖHEN-KONDENSATOR"},
     {"COUPLING", "KOPPLUNG"},
     {"More", "Mehr"},

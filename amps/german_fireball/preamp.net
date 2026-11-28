@@ -1,0 +1,145 @@
+* German Fireball preamp (ENGL-style two-channel 100 W head, schematic E635-1 sheet 1, supplied by the user): V5A (shared input stage), the CLEAN GAIN / LEAD GAIN networks
+* into V5B, the Clean / Lead relays (RE3A, RE3B), V6A (lead only), V6B, the shared TREBLE / BASS / MIDDLE stack, the Clean / Lead output relay (RE5A) with LEAD VOLUME,
+* V7A (a cathode follower, the effects send), V7B (the effects loop in bypass: R40 0R) and the MASTER (P17, Master A). Tube names follow the drawing.
+* Assumptions where the drawing is hard to read (change them here, not in code):
+*  - the relays are modelled as 1 ohm / 1e12 ohm resistors set by the CHANNEL selector; the bright (S1A), bottom (S2A / RE4), mid boost (RE6A / RE6B), Master B and
+*    mute switches are left in the position they have with every button released;
+*  - the tone stack: C12 (150p) to the treble pot P5, R25 (100k) with C13 (22n) and C14 (15n) to the bass pot P3, R24 (100k) with C15 (6n8) to the middle pot P4 (20k),
+*    R23 2M2 as the bleed; its output is the wiper of P5. Clean takes the divider R27 / R28, Lead takes R29 / R30 into LEAD VOLUME P6;
+*  - the supply: V5A..V6B hang from the HT through R85 (4.7k) and CE3 (10u); V7A and V7B from the rail itself.
+* The default state of the SW_ resistors is the first position of the CHANNEL selector (Clean).
+* Units: k M, m u n p. Node "0" is ground. See engine/include/sas/netlist.h for the format.
+
+V VRAIL x 100 450
+I VIN gin 1
+R RSRC gin in 7k
+R RPU1 gin pkb1 1e12
+.xfmr LPU1 L=2.5
+  W pkb1 in 1 pu
+.end
+R RPU2 gin pkb2 1e12
+.xfmr LPU2 L=5
+  W pkb2 in 1 pu
+.end
+C CPU gin in 110p
+R RPL gin in 1e12
+R SWK1 in pkk1 1e12
+C CCAB1 pkk1 0 200p
+R SWK2 in pkk2 1e12
+C CCAB2 pkk2 0 400p
+R SWK4 in pkk4 1e12
+C CCAB4 pkk4 0 800p
+
+R R85 x nL 4.7k
+C CE3 nL 0 10u
+
+* V5A: input stage, shared by both channels.
+R R1 in 0 1M
+T V5A in p1 k1 12AX7
+R R3 nL p1 100k
+R R2 k1 0 1k
+C CE1 k1 0 22u
+C C1 p1 d1 47n
+R R4 d1 0 2.2M
+
+* CLEAN GAIN: C5 into R5, the pot P1 (1MA) and the relay RE1.
+C C5 d1 q1 10n
+R R5 q1 w1t 100k
+R VR1T w1t w1 1
+R VR1B w1 0 1
+R SW_RE1 w1 g5 1
+
+* LEAD GAIN: C2, R6, the pot P2 (1MA) and the relay RE2.
+C C2 d1 q2 4.7n
+R R6 q2 w2t 100k
+R VR2T w2t w2 1
+R VR2B w2 0 1
+R SW_RE2 w2 g5 1e12
+
+R R7 g5 0 1M
+
+* V5B and its coupling C6 / R10.
+T V5B g5 p2 k2 12AX7
+R R9 nL p2 100k
+R R8 k2 0 1.5k
+C CE2 k2 0 22u
+C C6 p2 n6 47n
+R R10 n6 0 2.2M
+
+* Lead: RE3B into C7 / R13 and V6A (R14, C8 at its grid; R15 with CE4, R16, C9 and R18 around it).
+R SW_RE3B_L n6 a7 1e12
+C C7 a7 a8 2.2n
+R R13 a8 g6 330k
+R R14 g6 0 100k
+C C8 g6 0 470p
+T V6A g6 p3 k3 12AX7
+R R16 nL p3 330k
+R R15 k3 0 3.3k
+C CE4 k3 0 1u
+C C9 p3 u9 47n
+R R18 u9 0 470k
+R R17 u9 lc 220k
+
+* Clean: RE3B into R11 / R12, which skip V6A.
+R SW_RE3B_C n6 e11 1
+R R11 e11 cc 1M
+R R12 cc 0 470k
+
+* RE3A picks Lead (through R17) or Clean (through R11 / R12) for R20 and V6B.
+R SW_RE3A_L lc r20 1e12
+R SW_RE3A_C cc r20 1
+R R20 r20 g7 100k
+R R19 g7 0 1M
+T V6B g7 p4 k4 12AX7
+R R22 nL p4 100k
+R R21 k4 0 1.5k
+C CE5 k4 0 22u
+
+* Tone stack (shared).
+C C10 p4 sin 100n
+C C12 sin tt 150p
+R VR5T tt w5 1
+R VR5B w5 b2 1
+R R25 sin b1 100k
+C C13 b1 b2 22n
+C C14 b1 c1 15n
+R VR3 b2 c1 1
+R R24 sin e1 100k
+R R23 e1 0 2.2M
+C C15 e1 c1 6.8n
+R VR4 c1 0 1
+
+* Clean takes R27 / R28; Lead takes R29 / R30 into LEAD VOLUME (P6).
+R R27 w5 m1 220k
+R R28 m1 0 220k
+R R29 w5 lm 220k
+R R30 lm lt 220k
+R VR6T lt w6 1
+R VR6B w6 0 1
+R SW_RE5A_C m1 ro 1
+R SW_RE5A_L w6 ro 1e12
+R R33 ro g8 220k
+
+* V7A is a cathode follower (the effects send): its plate takes the HT through R38 with C16 across it, R37 is its cathode load and CE6 (4u7) takes the send from the
+* cathode. RE7A / R40 (0R) bypass the loop: R39 47k on the send line, then V7B (a gain stage) with R43 at its grid.
+R R36 g8 0 470k
+T V7A g8 p5 k5 12AX7
+R R38 x p5 100k
+C C16 x p5 100n
+R R37 k5 0 1.5k
+C CE6 k5 f1 4.7u
+R R39 f1 0 47k
+R R40 f1 g9 0.1
+R R43 g9 0 100k
+T V7B g9 p6 k6 12AX7
+R R45 x p6 100k
+R R44 k6 0 1.5k
+C CE7 k6 0 22u
+C C30 p6 o1 100n
+
+* MASTER: R46 into P17 (1MB), its wiper is the preamp's output.
+R R46 o1 mt 100k
+R VR17T mt y 1
+R VR17B y 0 1
+* The phase inverter's grid network (C31, then R49 100k into the tail) loads the wiper of the MASTER; the engine hands y to the power amp as an ideal voltage, so that load is put here.
+R R_PIL y 0 100k

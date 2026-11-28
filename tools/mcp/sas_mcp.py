@@ -113,7 +113,7 @@ def tool_list_tones(a):
 
 
 SETTINGS = {
-    "amp": {"type": "string", "description": "Amp id from sas_list_amps (e.g. jtm45, plexi_1959, mark_v)."},
+    "amp": {"type": "string", "description": "Amp id from sas_list_amps (e.g. jtm45, plexi_1959, lead_c_plus)."},
     "preset": {"type": "string", "description": "Factory preset name of the amp (see sas_amp_info), applied first."},
     "jack": {"type": "string", "description": "Input jack / channel name (see sas_amp_info 'jacks')."},
     "params": {"type": "object", "description": "Controls on the 0..10 scale by param name, e.g. {\"bass\": 4, \"treble\": 7, \"presence\": 6}. Overrides the preset.",
