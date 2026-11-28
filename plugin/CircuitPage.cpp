@@ -1058,9 +1058,27 @@ void CircuitPage::paintOverChildren(juce::Graphics& g) {
     for (std::size_t i = 0; i < dr.values.size() && showValues_; ++i) {
         const auto& v = dr.values[i];
         const bool edited = v.name.isNotEmpty() && std::abs(valueFactor(v) - 1.0) > 1e-6;
-        g.setColour(edited ? look_.accent() : int(i) == valueHover_ ? look_.text() : look_.label().withAlpha(0.9f));
         const auto box = valueBox(dr, v).expanded(6.0f, 0.0f);
-        g.drawText(shownText(v), box.toNearestInt(), v.align == 'R' ? juce::Justification::centredRight : v.align == 'C' ? juce::Justification::centred : juce::Justification::centredLeft);
+        const auto justification = v.align == 'R' ? juce::Justification::centredRight : v.align == 'C' ? juce::Justification::centred : juce::Justification::centredLeft;
+        const juce::String text = shownText(v);
+        if (edited) {  // a changed component (a preset's voicing, or the user's edit) stands out: a lit label with a frame round the new value
+            const auto bold = AmpLookAndFeel::font(10.5f).withStyle("Bold");
+            g.setFont(bold);
+            juce::GlyphArrangement ga;
+            ga.addLineOfText(juce::Font(bold), text, 0.0f, 0.0f);
+            const float w = ga.getBoundingBox(0, -1, true).getWidth() + 10.0f;
+            const float x = v.align == 'R' ? box.getRight() - w : v.align == 'C' ? box.getCentreX() - w * 0.5f : box.getX();
+            const auto pill = juce::Rectangle<float>(x, box.getCentreY() - 8.5f, w, 17.0f);
+            g.setColour(look_.accent().withAlpha(0.28f));
+            g.fillRoundedRectangle(pill, 5.0f);
+            g.setColour(look_.accent());
+            g.drawRoundedRectangle(pill, 5.0f, 1.4f);
+            g.drawText(text, pill.toNearestInt(), juce::Justification::centred);
+            g.setFont(AmpLookAndFeel::font(9.5f));
+            continue;
+        }
+        g.setColour(int(i) == valueHover_ ? look_.text() : look_.label().withAlpha(0.9f));
+        g.drawText(text, box.toNearestInt(), justification);
     }
     if (showValues_) {  // the parts a voicing changes that the drawing shows no value for: listed in the corner, with the value they have now
         juce::StringArray lines;
@@ -1074,11 +1092,21 @@ void CircuitPage::paintOverChildren(juce::Graphics& g) {
                 if (!drawn) lines.add(juce::String(part) + "   " + formatValue(info.value, info.cap) + " -> " + formatValue(info.value * f, info.cap));
             }
         }
-        g.setFont(AmpLookAndFeel::font(10.0f));
-        g.setColour(look_.accent());
+        const auto bold = AmpLookAndFeel::font(10.5f).withStyle("Bold");
+        g.setFont(bold);
         auto corner = host_.getBounds().reduced(8, 6);
-        for (int i = lines.size() - 1; i >= 0; --i)
-            g.drawText(lines[i], corner.removeFromBottom(14), juce::Justification::centredRight);
+        for (int i = lines.size() - 1; i >= 0; --i) {
+            const auto row = corner.removeFromBottom(19).toFloat();
+            juce::GlyphArrangement ga;
+            ga.addLineOfText(juce::Font(bold), lines[i], 0.0f, 0.0f);
+            const float w = ga.getBoundingBox(0, -1, true).getWidth() + 12.0f;
+            const auto pill = juce::Rectangle<float>(row.getRight() - w, row.getY() + 1.0f, w, 17.0f);
+            g.setColour(look_.accent().withAlpha(0.28f));
+            g.fillRoundedRectangle(pill, 5.0f);
+            g.setColour(look_.accent());
+            g.drawRoundedRectangle(pill, 5.0f, 1.4f);
+            g.drawText(lines[i], pill.toNearestInt(), juce::Justification::centred);
+        }
     }
     if (view_ != powerIndex() && hasPowerDrawing() && dr.next) {  // the way on to the power amp
         const auto b = dr.next->getDrawableBounds().transformedBy(dr.fit);

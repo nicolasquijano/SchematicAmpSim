@@ -84,7 +84,30 @@ def tweed_5e3_preamp():
     return s
 
 
-def tweed_5e3_power():
+# the names a cathodyne power amp's netlist gives to the parts tweed_5e3_power draws: the input capacitor, the phase inverter's plate and cathode resistors, the two
+# coupling capacitors, the grid leaks, the stoppers, the output tubes' cathode resistor and its capacitor, and the tube
+CATHODYNE = {
+    'tweed_5e3': dict(cin='C2', rpp='R_PP', rk1='RK2B', rk2='RK2C', c3='C3', c4='C4', leaks=('R220A', 'R220B'), stops=('R1500A', 'R1500B'), rkc='R250', ckc='C25', tube='6V6GT'),
+    'bassbreaker_1830': dict(cin='C11', rpp='R21', rk1='R20', rk2='R22', c3='C13', c4='C14', leaks=('R23', 'R24'), stops=('RS_A', 'RS_B'), rkc='RK', ckc='C15', tube='EL84'),
+}
+
+
+def tweed_5e3_power(amp_id='tweed_5e3'):
+    nm = CATHODYNE[amp_id]
+    vals = {}
+    with open(os.path.join(ROOT, amp_id, 'poweramp.net'), encoding='utf-8') as f:
+        for ln in f:
+            w = ln.split()
+            if len(w) >= 5 and w[0] in ('R', 'C') and not ln.lstrip().startswith('*'):
+                vals[w[1]] = w[4]
+                _TYPES[(amp_id + ':power', w[1])] = w[0]
+
+    def txt(name):
+        v = vals.get(name, '')
+        return v.split('/')[0]
+
+    def comp(name):
+        return ('%s:%s' % (_TYPES[(amp_id + ':power', name)], name)) if name in vals and '/' not in vals[name] else None
     s = Svg(840, 430)
     p = s.path
     p('wire_static_rail', 'M150,36 V60', '#7a6a4c', 3)
@@ -113,11 +136,12 @@ def tweed_5e3_power():
     resistor_v(s, 462, 236, 'res_250')
     cap_h(s, 490, 250, 'cap_ck')
     bulb(s, 150, 215, 1.0, 'PI', 'PHASE', label='12AX7')
-    bulb(s, 420, 110, 1.0, 'PA', 'POWER_A', label='6V6GT')
-    bulb(s, 420, 320, 1.0, 'PB', 'POWER_B', flip=True, label='6V6GT')
-    for kind, x, y, text in (('C', 56, 191, '0.1u'), ('L', 162, 80, '56k'), ('C', 208, 126, '0.1u'), ('C', 208, 256, '0.1u'), ('L', 162, 306, '1k5'), ('L', 162, 354, '56k'),
-                             ('C', 338, 98, '1k5'), ('C', 338, 308, '1k5'), ('L', 312, 84, '220k'), ('L', 312, 346, '220k'), ('R', 453, 254, '250R'), ('L', 502, 250, '25u')):
-        s.val(kind, x, y, text)
+    bulb(s, 420, 110, 1.0, 'PA', 'POWER_A', label=nm['tube'])
+    bulb(s, 420, 320, 1.0, 'PB', 'POWER_B', flip=True, label=nm['tube'])
+    for kind, x, y, name in (('C', 56, 191, nm['cin']), ('L', 162, 80, nm['rpp']), ('C', 208, 126, nm['c3']), ('C', 208, 256, nm['c4']), ('L', 162, 306, nm['rk1']),
+                             ('L', 162, 354, nm['rk2']), ('C', 338, 98, nm['stops'][0]), ('C', 338, 308, nm['stops'][1]), ('L', 312, 84, nm['leaks'][0]),
+                             ('L', 312, 346, nm['leaks'][1]), ('R', 453, 254, nm['rkc']), ('L', 502, 250, nm['ckc'])):
+        s.val(kind, x, y, txt(name), comp(name))
     speaker(s, 800, 190, 'p')
     return s
 
@@ -523,16 +547,351 @@ def bassbreaker_preamp(amp_id='bassbreaker_1830'):
     return s
 
 
-AMPS = {'bassbreaker_1830': (bassbreaker_preamp, None),
+def jcm800_2203_preamp(amp_id='jcm800_2203'):
+    """The JCM800 2203 preamp drawn part by part: V1A with its cathode bypass, the volume network with the bright cap, V1B, V2A with its coupling network, the V2B
+    cathode follower and the bass / middle / treble stack with the master. (Left out: the pickup and cable network, the Low jack's contact, the supply filter and
+    the mods' switches.) Every part carries its netlist value, so the page can edit it and show what a preset changes."""
+    vals = netlist_values(amp_id)
+    s = Svg(1200, 720)
+    p = s.path
+
+    def lab(name, kind, x, y):
+        if name in vals:
+            s.val(kind, x, y, vals[name], '%s:%s' % (_TYPES[(amp_id, name)], name))
+
+    def res_v(name, cx, y0):
+        resistor_v(s, cx, y0, 'res_' + name)
+        lab(name, 'L', cx + 12, y0 + 22)
+
+    def res_h(name, x0, cy):
+        resistor_h(s, x0, cy, 'res_' + name)
+        lab(name, 'C', x0 + 18, cy - 14)
+
+    def cap_v(name, cx, cy):  # a capacitor in a horizontal wire
+        cap(s, cx, cy, 'cap_' + name)
+        lab(name, 'C', cx, cy - 26)
+
+    def cap_d(name, cx, cy, side='L'):  # a capacitor in a vertical wire
+        cap_h(s, cx, cy, 'cap_' + name)
+        lab(name, side, cx + 16 if side == 'L' else cx - 16, cy + 4)
+
+    # rail and its drops
+    p('rail', 'M120,40 H1130', '#7a6a4c', 2, extra=' stroke-dasharray="6 5"')
+    p('wire_static_rail', 'M250,40 V80 M610,40 V80 M930,40 V80 M1090,40 V214', '#7a6a4c', 3)
+    # signal: the guitar into V1A, V1A's plate to the volume network, V1B, V1B's plate to V2A, V2A's plate to the cathode follower
+    p('wire_INPUT', 'M43,250 H100 M136,250 H218 M62,250 V270')
+    p('wire_INPUT-2', 'M250,116 V214 M250,150 H314 M326,150 H370 M370,150 H400 M436,150 H480 M385,150 V112 H408 M428,112 H451 V150 M480,150 H514 M526,150 H570 V250 H578 M480,150 V197')
+    p('wire_V1', 'M610,116 V214 M610,150 H684 M696,150 H760 M760,150 H790 M826,150 H860 M775,150 V112 H798 M818,112 H841 V150 M860,150 V250 H898')
+    p('wire_V2', 'M930,116 V214 M930,150 H990 V250 H1058')
+    p('wire_TONE', 'M1090,292 V310 M1090,310 V395 H80 V500 M80,430 H134 M158,430 H300 M300,430 V447 M80,500 H108 M144,500 H200 M200,500 H244 M256,500 H300 M300,483 V522 M300,558 V580 M300,580 V612 M200,500 V612 M200,624 V630 H282 M318,465 H540 M540,465 V522')
+    p('wire_MASTER', 'M558,540 H640')
+    p('wire_static', 'M62,306 V318 M610,292 V304 M610,340 V352 M930,292 V304 M930,340 V352 M860,270 V280 M860,306 V322 M1090,310 H1130 V330 M1130,366 V378 '
+      'M250,292 V304 M234,304 H266 M234,304 V316 M266,304 V319 M266,331 V352 M234,352 H266 M250,352 V356 M480,233 V260 M300,648 V665 M540,558 V580 M860,250 V270 M234,340 V352', '#5a4d3a', 3)
+    for gx, gy in ((62, 318), (610, 352), (930, 352), (860, 322), (1130, 378), (250, 356), (480, 260), (300, 665), (540, 580)):
+        ground(s, gx, gy)
+    s.ellipse('jack_in', 30, 250, 13, 13, s.rad(30, 250, 13, [(0, '#d9d0b8'), (1, '#5f5846')]), '#9a8760', 1.5)
+    s.ellipse('jack_hole', 30, 250, 5, 5, '#14110d', '#3b3329', 1)
+    # V1A
+    res_v('R2', 62, 270)
+    res_h('R3', 100, 250)
+    res_v('R4', 250, 80)
+    res_v('R1', 234, 304)
+    cap_d('C1', 266, 325, 'L')
+    cap_v('C3', 320, 150)
+    res_h('R5', 400, 150)
+    cap_v('C4', 418, 112)
+    cap_v('C5', 520, 150)
+    # V1B
+    res_v('R7', 610, 80)
+    res_v('R6', 610, 304)
+    cap_v('C7', 690, 150)
+    res_h('R10', 790, 150)
+    cap_v('C8', 808, 112)
+    res_v('R11', 860, 270)
+    # V2A, V2B
+    res_v('R12', 930, 80)
+    res_v('R9', 930, 304)
+    res_v('R13', 1130, 330)
+    bulb(s, 250, 250, 1.0, 'V1A', 'V1A', label=tube_model(amp_id, 'V1A') or '12AX7')
+    bulb(s, 610, 250, 1.0, 'V1B', 'V1', label=tube_model(amp_id, 'V1B') or '12AX7')
+    bulb(s, 930, 250, 1.0, 'V2', 'V2', label=tube_model(amp_id, 'V2A') or '12AX7')
+    bulb(s, 1090, 250, 1.0, 'V2B', 'V2B', label='CF')
+    # the tone stack
+    res_h('R15', 108, 500)
+    cap_v('C10', 146, 430)
+    cap_v('C11', 250, 500)
+    cap_d('C12', 200, 618, 'R')
+    pot(s, 480, 215, 'volume', 1.0, 0.5)
+    pot(s, 300, 465, 'treble', 1.0, 0.6)
+    pot(s, 300, 540, 'bass', 1.0, 0.5)
+    pot(s, 300, 630, 'middle', 1.0, 0.5)
+    pot(s, 540, 540, 'master', 1.0, 0.5)
+    for param, x, y in (('volume', 540, 261), ('treble', 360, 511), ('bass', 360, 586), ('middle', 360, 676), ('master', 600, 586)):
+        anchor(s, param, x, y)
+    s.path('next_power', 'M640,532 V548 L662,540 Z', '#8c7a55', 1.5, s.lin(0, 532, 0, 548, [(0, '#d9b866'), (1, '#8a6d2c')]))
+    return s
+
+
+
+POWER_SPECS = {
+    # the names each amp's poweramp.net gives the parts of the classic power amp: a long-tailed ECC83 phase inverter (the tube with the first grid, then the second),
+    # its plate loads, the coupling and the bias network into two EL34 / 6L6GC pairs, the output transformer and the feedback from the secondary into f2
+    'jcm800_2203': dict(pi=('V3A', 'V3B'), cin='C9', rga='R17', rgb='R19', rk='R16', rt='R20', cfb='C15', rgnd='R23', pres=('shunt', 'C17', 'VR6'),
+                        rpa='R18', rpb='R21', cpa='C14', cpb='C16', cx=('C18', 'grid'), rbias=('R24', 'R25'),
+                        bias=[[('C', 'C19')], [('R', 'R27'), ('C', 'C20')], [('R', 'R26'), ('R', 'RV1')]],
+                        stop=('R31_33', 'R32_34'), screen=('R35_37', 'R36_38'), nfb=([('R', 'R22')], 'tap')),
+    'jcm800_2203kk': dict(pi=('V3A', 'V3B'), cin='C9', rga='R17', rgb='R19', rk='R16', rt='R20', cfb='C15', rgnd='R23', pres=('shunt', 'C17', 'VR6'),
+                          rpa='R18', rpb='R21', cpa='C14', cpb='C16', cx=('C18', 'grid'), rbias=('R24', 'R25'),
+                          bias=[[('C', 'C19')], [('R', 'R27'), ('C', 'C20')], [('R', 'R26'), ('R', 'RV1')]],
+                          stop=('R31_33', 'R32_34'), screen=('R35_37', 'R36_38'), nfb=([('R', 'R22')], 'tap')),
+    'plexi_1959': dict(pi=('V3A', 'V3B'), cin='C9', rga='R17', rgb='R19', rk='R16', rt='R20', cfb='C15', pres=('series', 'VR_PT', 'C_PRES'),
+                       rpa='R18', rpb='R21', cpa='C14', cpb='C16', cx=('C47', 'plate'), rbias=('R220A', 'R220B'),
+                       bias=[[('C', 'C8B')], [('R', 'R47K'), ('R', 'RTRIM')], [('R', 'R15K'), ('C', 'C8A')]],
+                       stop=('R5K6_45', 'R5K6_67'), screen=('RS45', 'RS67'), nfb=([('R', 'R_NFB')], 'top')),
+    'jtm45': dict(pi=('V3A', 'V3B'), cin='C9', rga='R17', rgb='R19', rk='R16', rt='R20', cfb='C15', pres=('series', 'VR_PT', 'C_PRES'),
+                  rpa='R18', rpb='R21', cpa='C14', cpb='C16', cx=('C47P', 'plate'), rbias=('R220A', 'R220B'),
+                  bias=[[('C', 'C8B')], [('R', 'R56K')], [('R', 'R15K'), ('C', 'C8A')]],
+                  stop=('R1K5_A', 'R1K5_B'), screen=('RS1', 'RS2'), nfb=([('R', 'R_NFB')], 'top')),
+    'superlead_100': dict(pi=('V5B', 'V5A'), cin='C17', rga='R31', rgb='R34', rk='R33', rt='R32', cfb='C18', rgnd='R44', pres=('shunt', 'C19', 'VR_P8'),
+                          rpa='R36', rpb='R37', cpa='C21', cpb='C22', cx=('C20', 'plate'), rbias=('R38', 'R39'),
+                          bias=[[('C', 'C45')], [('R', 'RBIAS'), ('C', 'C46')]],
+                          stop=('R40', 'R41'), screen=('R42', 'R43'), nfb=([('R', 'R35')], 'tap')),
+    'modbe_100': dict(pi=('V4A', 'V4B'), cin='C31', rga='R37', rgb='R41', rk='R39', rt='R40', cfb='C35', rgnd='R_VR9', pres=('shunt', 'C33', 'VR_PRES'),
+                      rpa='R36', rpb='R35', cpa='C18', cpb='C34', cx=('C32', 'plate'), rbias=('R44', 'R45'),
+                      bias=[[('C', 'C41')], [('R', 'RBIAS'), ('C', 'C40')]],
+                      stop=('R66', 'R67'), screen=('R46', 'R47'), nfb=([('R', 'R50'), ('RC', ('R51', 'C36'))], 'tap')),
+    'jubilee_2555': dict(pi=('V3A', 'V3B'), cin='C28', rga='R39', rgb='R41', rk='R40', rt='R17', cfb='C29', rgnd='R20', pres=('shunt', 'C14', 'VR7'),
+                         rpa='R45', rpb='R46', cpa='C30', cpb='C31', cx=('C15', 'grid'), rbias=('R21', 'R22'),
+                         bias=[[('C', 'C16')], [('R', 'R47'), ('C', 'C17')], [('R', 'RV1'), ('R', 'R23')]],
+                         stop=('RG45', 'RG67'), screen=('R53_54', 'R55_56'), nfb=([('R', 'R44')], 'tap')),
+    'afd100': dict(pi=('V9A', 'V9B'), cin='C68', rga='R101', rgb='R103', rk='R102', rt='R100', cfb='C73', rgnd='R104', pres=('shunt', 'C81', 'VR6A'),
+                   rpa='R73', rpb='R63', cpa='C31_32', cpb='C33_30', cx=('C51', 'plate'), rbias=('R50_46', 'R48_44'), bias=[[('C', 'CBIAS')]],
+                   stop=('R45_47', 'R49_43'), screen=('R39_40', 'R41_42'), nfb=([('K', 'power'), ('R', 'R99'), ('C', 'C72')], 'tap')),
+    'american_5153': dict(pi=('V8A', 'V8B'), cin='C64P', rga='R150', rgb='R151', rk='R148', rt='R147', cfb='C63', rgnd='R138', pres=('shunt', 'C3_11', 'VRPR'),
+                          rpa='R133', rpb='R184', cpa='C52', cpb='C47', cx=('C71', 'plate'), rbias=('R111', 'R110'), bias=[[('C', 'CBIAS')]],
+                          stop=('R143_4', 'R145_6'), screen=('R134_5', 'R136_7'), nfb=([('K', 'resonance'), ('R', 'R162'), ('C', 'C126')], 'tap')),
+    'german_trio': dict(pi=('V5A', 'V5B'), cin='CIN', rga='RG1', rgb='RG2', rk='RKT', rt='R10T', cfb='C10F', rgnd='R3K32', pres=None,
+                        rpa='R82', rpb='R100', rpb2='RSYM', cpa='C22A', cpb='C22B', cx=None, rbias=('R221A', 'R221B'), bias=[[('C', 'CBIAS')]],
+                        stop=('R3K32A', 'R3K32B'), screen=('R470A', 'R470B'),
+                        nfb=([('R', 'RN1'), ('S', 'presence'), ('C', 'C2N2'), ('R', 'R27K4')], 'top')),
+}
+POWER_SPECS['german_trio_ii'] = POWER_SPECS['german_quad'] = POWER_SPECS['german_trio']
+POWER_SPECS['bassman_5f6a'] = dict(pi=('V3A', 'V3B'), cin='C9', rga='R17', rgb='R19', rk='R16', rt='R20', cfb='C15', pres=('series', 'VR_PT', 'C_PRES'),
+                                   rpa='R18', rpb='R21', cpa='C14', cpb='C16', cx=('C47P', 'plate'), rbias=('R220A', 'R220B'),
+                                   bias=[[('C', 'C8B')], [('R', 'R56K')], [('R', 'R15K'), ('C', 'C8A')]],
+                                   stop=('R1K5_A', 'R1K5_B'), screen=('RS1', 'RS2'), nfb=([('R', 'R_NFB')], 'top'))
+POWER_SPECS['deluxe_reverb'] = dict(pi=('V6A', 'V6B'), cin='C25', rga='R49', rgb='R52', rk='R51', rt='R50', cfb='C26', rgnd='R53', pres=None,
+                                    rpa='R54', rpb='R55', cpa='C27', cpb='C28', cx=None, rbias=('R56', 'R57'), bias=[[('C', 'C29')]],
+                                    stop=('R60', 'R61'), screen=('R62', 'R63'), nfb=([('R', 'R64')], 'top'))
+POWER_SPECS['twin_65'] = dict(pi=('V6A', 'V6B'), cin='C20', rga='R37', rgb='R38', rk='R41', rt='R36', cfb='C21', rgnd='R40', pres=None,
+                              rpa='R42', rpb='R43', cpa='C22', cpb='C23', cx=None, rbias=('R44', 'R45'), bias=[[('C', 'C36')]],
+                              stop=('R46', 'R48'), screen=('R50', 'R52'), nfb=([('RC', ('R39', 'C39'))], 'top'))
+
+
+def classic_power(amp_id):
+    """A classic Marshall-style power amp drawn part by part from its netlist (POWER_SPECS gives the names): the long-tailed phase inverter (V3A / V3B with their
+    common cathode, the tail resistors and the feedback node f2), the coupling and bias network into the EL34 / 6L6GC pairs, the output transformer and the
+    feedback from its secondary through the amp's NFB resistor. (Left out: the HT supply.)"""
+    sp = POWER_SPECS[amp_id]
+    vals, model = {}, {}
+    key = amp_id + ':power'
+    with open(os.path.join(ROOT, amp_id, 'poweramp.net'), encoding='utf-8') as f:
+        for ln in f:
+            t = ln.split()
+            if ln.lstrip().startswith('*') or len(t) < 5:
+                continue
+            if t[0] in ('R', 'C'):
+                vals[t[1]] = t[4]
+                _TYPES[(key, t[1])] = t[0]
+            elif t[0] in ('T', 'P') and len(t) >= 6:
+                model[t[1]] = t[5].replace('ECC83', '12AX7').replace('6L6GCDS', '6L6GC').replace('6550DS', '6550')
+                if t[0] == 'P':
+                    model['_power'] = model[t[1]]
+    s = Svg(1100, 820)
+    p = s.path
+
+    def lab(name, kind, x, y):
+        v = vals.get(name)
+        if v is None:
+            return
+        if '/' in v:  # a pair's half: shown, not editable
+            s.val(kind, x, y, v.split('/')[0])
+        else:
+            s.val(kind, x, y, v, '%s:%s' % (_TYPES[(key, name)], name))
+
+    def res_v(name, cx, y0):
+        resistor_v(s, cx, y0, 'res_' + name)
+        lab(name, 'L', cx + 12, y0 + 22)
+
+    def res_h(name, x0, cy):
+        resistor_h(s, x0, cy, 'res_' + name)
+        lab(name, 'C', x0 + 18, cy - 14)
+
+    def cap_v(name, cx, cy):  # in a horizontal wire
+        cap(s, cx, cy, 'cap_' + name)
+        lab(name, 'C', cx, cy - 26)
+
+    def cap_d(name, cx, cy, side='L'):  # in a vertical wire
+        cap_h(s, cx, cy, 'cap_' + name)
+        lab(name, side, cx + 16 if side == 'L' else cx - 16, cy + 4)
+
+    stat = []  # the dark wires
+    grounds = []
+    p('rail', 'M130,40 H700', '#7a6a4c', 2, extra=' stroke-dasharray="6 5"')
+    p('rail_bottom', 'M130,580 H700', '#7a6a4c', 2, extra=' stroke-dasharray="6 5"')
+    p('wire_static_rail', 'M200,40 V80 M640,40 V56 M200,510 V580 M640,562 V580', '#7a6a4c', 3)
+    p('wire_MASTER-2', 'M30,170 H84 M96,170 H168')
+    p('wire_PHASE', 'M200,116 V134 M200,125 H334 M346,125 H560 M596,125 H668 M200,456 V474 M200,465 H334 M346,465 H560 M596,465 H668')
+    p('wire_POWER', 'M700,89 V70 H860 V150 H880 M700,501 V540 H860 V360 H880 '
+      'M880,150 a15,15 0 0 1 0,30 a15,15 0 0 1 0,30 a15,15 0 0 1 0,30 a15,15 0 0 1 0,30 a15,15 0 0 1 0,30 a15,15 0 0 1 0,30 a15,15 0 0 1 0,30')
+    p('wire_SPEAKER', 'M940,200 H1020 V230 M940,200 a15,15 0 0 0 0,30 a15,15 0 0 0 0,30 a15,15 0 0 0 0,30 a15,15 0 0 0 0,30')
+    p('ot_core', 'M906,140 V370 M914,140 V370', '#8c7a55', 3)
+    s.ellipse('rail_tap', 820, 255, 4, 4, '#7a6a4c')
+    # the common cathode, the tail bus f1 (R16, R17, R19), the feedback node f2 along the bottom and what hangs from it
+    stat += ['M200,212 V378', 'M200,300 H156', 'M120,300 H70', 'M110,170 V190', 'M110,226 V240 H70', 'M70,240 V380', 'M130,400 V420', 'M130,364 V356 H70',
+             'M70,416 V650', 'M130,420 H168', 'M130,420 V474', 'M130,486 V650', 'M70,650 H330']
+    # the stoppers, the screens, the cathodes, the transformer's centre tap and the secondary's ground
+    stat += ['M640,56 V92', 'M640,92 V104 H670', 'M640,562 V526', 'M640,526 V490 H670', 'M700,167 V180', 'M700,423 V410', 'M880,255 H820', 'M940,320 V340']
+    grounds += [(700, 180), (700, 410), (940, 340)]
+    # the cross capacitor, between the plates (before the coupling caps) or between the grid lines (after them)
+    cxn, where = sp['cx'] or (None, None)
+    xc = 280 if where == 'plate' else 420
+    ya, yb = (125, 465)
+    if cxn:
+        stat += ['M%d,%d V284' % (xc, ya), 'M%d,296 V%d' % (xc, yb)]
+        if where == 'plate':
+            stat += ['M200,125 H%d' % xc]
+    # the grid-leak resistors to the bias bus
+    stat += ['M500,125 V180', 'M500,216 V394', 'M500,465 V430']
+    # the bias bus branches: each a chain from the bus, horizontal parts then a vertical one to ground
+    branches = sp['bias']
+    ys = [250, 315, 380][:len(branches)] if len(branches) > 1 else [300]
+    for (by, chain) in zip(ys, branches):
+        if len(chain) == 2:
+            kind, nm = chain[0]
+            if kind == 'R':
+                stat += ['M500,%d H560' % by, 'M596,%d H640' % by]
+                res_h(nm, 560, by)
+            else:
+                stat += ['M500,%d H534' % by, 'M546,%d H640' % by]
+                cap_v(nm, 540, by)
+            x, chain = 640, chain[1:]
+        else:
+            stat.append('M500,%d H540' % by)
+            x = 540
+        kind, nm = chain[0]
+        if kind == 'R':
+            stat += ['M%d,%d V%d' % (x, by, by + 8), 'M%d,%d V%d' % (x, by + 44, by + 54)]
+            res_v(nm, x, by + 8)
+            grounds.append((x, by + 54))
+        else:
+            stat += ['M%d,%d V%d' % (x, by, by + 14), 'M%d,%d V%d' % (x, by + 26, by + 36)]
+            cap_d(nm, x, by + 20, 'L')
+            grounds.append((x, by + 36))
+    # the presence network on f2
+    pk, pa_, pb_ = sp['pres'] or (None, None, None)
+    if pk:
+        stat += ['M230,650 V672']
+    if pk is None:
+        pass
+    elif pk == 'shunt':
+        cap_d(pa_, 230, 678, 'L')
+        stat += ['M230,684 V690']
+        pot(s, 230, 708, 'presence', 1.0, 0.5)
+        stat += ['M230,726 V736']
+        grounds.append((230, 736))
+        anchor(s, 'presence', 290, 700)
+    else:
+        pot(s, 230, 690, 'presence', 1.0, 0.5)
+        stat += ['M230,708 V730']
+        cap_d(pb_, 230, 736, 'L')
+        stat += ['M230,742 V756']
+        grounds.append((230, 756))
+        anchor(s, 'presence', 290, 690)
+    if sp.get('rgnd'):
+        stat += ['M150,650 V670', 'M150,706 V716']
+        grounds.append((150, 716))
+    # the feedback from the secondary
+    nfb_items = []
+    if sp['nfb']:  # the parts along y=650 from the secondary to the node f2: resistors, capacitors, a knob in the line (K) or one that shunts it (S)
+        chain, frm = sp['nfb']
+        stat.append('M%s H980 V650 H900' % ('940,260' if frm == 'tap' else '980,200'))
+        cur = 900
+        for k, item in enumerate(chain):
+            x = [840, 730, 620, 510][k]
+            hw = {'R': 18, 'C': 6, 'K': 18, 'S': 0, 'RC': 30}[item[0]]
+            stat.append('M%d,650 H%d' % (cur, x + hw))
+            cur = x - hw
+            nfb_items.append((item, x))
+        stat.append('M%d,650 H330' % cur)
+    p('wire_static_power', ' '.join(stat), '#5a4d3a', 3)
+    for gx, gy in grounds:
+        ground(s, gx, gy)
+    # the parts
+    bulb(s, 200, 170, 1.0, 'PI_A', 'PHASE', label=model.get(sp['pi'][0]) or '12AX7')
+    bulb(s, 200, 420, 1.0, 'PI_B', 'PHASE_B', flip=True, label=model.get(sp['pi'][1]) or '12AX7')
+    cap_v(sp['cin'], 90, 170)
+    res_v(sp['rpa'], 200, 80)
+    res_v(sp['rpb'], 200, 474)
+    res_v(sp['rga'], 110, 190)
+    res_v(sp['rgb'], 130, 364)
+    res_h(sp['rk'], 120, 300)
+    res_v(sp['rt'], 70, 380)
+    cap_d(sp['cfb'], 130, 480, 'R')
+    if sp.get('rgnd'):
+        res_v(sp['rgnd'], 150, 670)
+    cap_v(sp['cpa'], 340, 125)
+    cap_v(sp['cpb'], 340, 465)
+    if cxn:
+        cap_d(cxn, xc, 290, 'L')
+    if sp.get('rpb2'):
+        stat += ['M200,510 V516', 'M200,552 V580']
+        res_v(sp['rpb2'], 200, 516)
+    res_v(sp['rbias'][0], 500, 180)
+    res_v(sp['rbias'][1], 500, 394)
+    res_h(sp['stop'][0], 560, 125)
+    res_h(sp['stop'][1], 560, 465)
+    res_v(sp['screen'][0], 640, 56)
+    res_v(sp['screen'][1], 640, 526)
+    tube = model.get('_power', 'EL34')
+    bulb(s, 700, 125, 1.0, 'PA', 'POWER_A', label=tube)
+    bulb(s, 700, 465, 1.0, 'PB', 'POWER_B', flip=True, label=tube)
+    for (kind, nm), x in nfb_items:
+        if kind == 'R':
+            res_h(nm, x - 18, 650)
+        elif kind == 'C':
+            cap_v(nm, x, 650)
+        elif kind == 'RC':  # a resistor with a capacitor across it
+            res_h(nm[0], x - 18, 650)
+            p('wire_nfb_%d' % x, 'M%d,650 V622 H%d M%d,622 H%d V650' % (x - 30, x - 6, x + 6, x + 30), '#5a4d3a', 3)
+            cap_v(nm[1], x, 622)
+        elif kind == 'K':
+            pot(s, x, 650, nm, 1.0, 0.5)
+            anchor(s, nm, x + 50, 690)
+        else:
+            stat_s = 'M%d,650 V672 M%d,708 V724' % (x, x)
+            p('wire_nfb_%d' % x, stat_s, '#5a4d3a', 3)
+            ground(s, x, 724)
+            pot(s, x, 690, nm, 1.0, 0.5)
+            anchor(s, nm, x + 50, 700)
+    speaker(s, 1020, 230, 'p')
+    return s
+
+
+AMPS = {'bassbreaker_1830': (bassbreaker_preamp, lambda: tweed_5e3_power('bassbreaker_1830')),
         'deluxe_reverb': (lambda: fender_two_channel_preamp('deluxe_reverb'), None),
         'twin_65': (lambda: fender_two_channel_preamp('twin_65'), None),
         'ac30_normal': (ac30_preamp, None),
         'hiwatt_dr103': (hiwatt_preamp, None),
         'orange_or120': (orange_preamp, None),
-        'tweed_5e3': (tweed_5e3_preamp, tweed_5e3_power),
-        'plexi_1959': (lambda: two_channel_preamp('plexi_1959'), None),
-        'jtm45': (lambda: two_channel_preamp('jtm45'), None),
-        'bassman_5f6a': (lambda: two_channel_preamp('bassman_5f6a'), None)}
+        'tweed_5e3': (tweed_5e3_preamp, lambda: tweed_5e3_power('tweed_5e3')),
+        'plexi_1959': (lambda: two_channel_preamp('plexi_1959'), lambda: classic_power('plexi_1959')),
+        'jtm45': (lambda: two_channel_preamp('jtm45'), lambda: classic_power('jtm45')),
+        'bassman_5f6a': (lambda: two_channel_preamp('bassman_5f6a'), None),
+        'jcm800_2203': (jcm800_2203_preamp, lambda: classic_power('jcm800_2203')),
+        'jcm800_2203kk': (None, lambda: classic_power('jcm800_2203kk')),
+        'superlead_100': (None, lambda: classic_power('superlead_100')),
+        'modbe_100': (None, lambda: classic_power('modbe_100'))}
 
 # The British 800's drawings were made in VectorCraft: its values are added to the exported files (the anchors replace the ones already there).
 INJECT = {
@@ -565,8 +924,6 @@ def main():
             with open(os.path.join(face, name), 'w', encoding='utf-8', newline='\n') as f:
                 f.write(fn().text())
         print('wrote', amp_id)
-    inject('jcm800_2203', INJECT)
-    print('values added to jcm800_2203')
 
 
 if __name__ == '__main__':

@@ -22,11 +22,11 @@
 <linearGradient id="g19" x1="0" y1="515" x2="0" y2="529" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#e6c98c"/><stop offset="1" stop-color="#a88a52"/></linearGradient>
 <linearGradient id="g20" x1="0" y1="516" x2="0" y2="528" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#f0d27a"/><stop offset="1" stop-color="#a67c2e"/></linearGradient>
 <linearGradient id="g21" x1="0" y1="516" x2="0" y2="528" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#f0d27a"/><stop offset="1" stop-color="#a67c2e"/></linearGradient>
-<linearGradient id="g22" x1="0" y1="458" x2="0" y2="470" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#f0d27a"/><stop offset="1" stop-color="#a67c2e"/></linearGradient>
+<linearGradient id="g22" x1="0" y1="457" x2="0" y2="471" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#e6c98c"/><stop offset="1" stop-color="#a88a52"/></linearGradient>
 <linearGradient id="g23" x1="0" y1="458" x2="0" y2="470" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#f0d27a"/><stop offset="1" stop-color="#a67c2e"/></linearGradient>
 <linearGradient id="g24" x1="0" y1="458" x2="0" y2="470" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#f0d27a"/><stop offset="1" stop-color="#a67c2e"/></linearGradient>
 <linearGradient id="g25" x1="0" y1="458" x2="0" y2="470" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#f0d27a"/><stop offset="1" stop-color="#a67c2e"/></linearGradient>
-<linearGradient id="g26" x1="0" y1="515" x2="0" y2="529" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#e6c98c"/><stop offset="1" stop-color="#a88a52"/></linearGradient>
+<linearGradient id="g26" x1="0" y1="516" x2="0" y2="528" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#f0d27a"/><stop offset="1" stop-color="#a67c2e"/></linearGradient>
 <linearGradient id="g27" x1="0" y1="515" x2="0" y2="529" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#e6c98c"/><stop offset="1" stop-color="#a88a52"/></linearGradient>
 <linearGradient id="g28" x1="0" y1="515" x2="0" y2="529" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#e6c98c"/><stop offset="1" stop-color="#a88a52"/></linearGradient>
 <linearGradient id="g29" x1="0" y1="458" x2="0" y2="470" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#f0d27a"/><stop offset="1" stop-color="#a67c2e"/></linearGradient>
@@ -106,27 +106,27 @@
 <ellipse id="valC_8_47n@C:C28" cx="219.75" cy="542" rx="1" ry="1" fill="none" stroke="none"/>
 <rect id="pp_box1" x="291" y="412" width="257" height="150" rx="6" fill="none" stroke="#5a4d3a" stroke-width="1.2"/>
 <ellipse id="ttl_FEEDBACK" cx="419.5" cy="426" rx="1" ry="1" fill="none" stroke="none" stroke-width="0"/>
-<rect id="pp_C62a" x="313" y="458" width="24" height="4" rx="1" fill="url(#g22)" stroke="#5a4630" stroke-width="0.8"/>
-<rect id="pp_C62b" x="313" y="466" width="24" height="4" rx="1" fill="url(#g22)" stroke="#5a4630" stroke-width="0.8"/>
-<ellipse id="valC_9_33n@C:C62" cx="325" cy="484" rx="1" ry="1" fill="none" stroke="none"/>
-<rect id="pp_C30a" x="368.25" y="458" width="24" height="4" rx="1" fill="url(#g23)" stroke="#5a4630" stroke-width="0.8"/>
-<rect id="pp_C30b" x="368.25" y="466" width="24" height="4" rx="1" fill="url(#g23)" stroke="#5a4630" stroke-width="0.8"/>
-<ellipse id="valC_10_22u@C:C30" cx="380.25" cy="484" rx="1" ry="1" fill="none" stroke="none"/>
-<rect id="pp_C12a" x="423.5" y="458" width="24" height="4" rx="1" fill="url(#g24)" stroke="#5a4630" stroke-width="0.8"/>
-<rect id="pp_C12b" x="423.5" y="466" width="24" height="4" rx="1" fill="url(#g24)" stroke="#5a4630" stroke-width="0.8"/>
-<ellipse id="valC_11_6n8@C:C12" cx="435.5" cy="484" rx="1" ry="1" fill="none" stroke="none"/>
-<rect id="pp_C8a" x="478.75" y="458" width="24" height="4" rx="1" fill="url(#g25)" stroke="#5a4630" stroke-width="0.8"/>
-<rect id="pp_C8b" x="478.75" y="466" width="24" height="4" rx="1" fill="url(#g25)" stroke="#5a4630" stroke-width="0.8"/>
-<ellipse id="valC_12_0.1u@C:C8" cx="490.75" cy="484" rx="1" ry="1" fill="none" stroke="none"/>
-<rect id="pp_R51" x="307" y="515" width="36" height="14" rx="3" fill="url(#g26)" stroke="#5a4630" stroke-width="1"/>
-<path id="pp_R51_bands" d="M315,515 V529 M321,515 V529 M327,515 V529" fill="none" stroke="#7a3b1f" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
-<ellipse id="valC_13_10k@R:R51" cx="325" cy="542" rx="1" ry="1" fill="none" stroke="none"/>
-<rect id="pp_R57" x="362.25" y="515" width="36" height="14" rx="3" fill="url(#g27)" stroke="#5a4630" stroke-width="1"/>
-<path id="pp_R57_bands" d="M370.25,515 V529 M376.25,515 V529 M382.25,515 V529" fill="none" stroke="#7a3b1f" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
-<ellipse id="valC_14_4k7@R:R57" cx="380.25" cy="542" rx="1" ry="1" fill="none" stroke="none"/>
-<rect id="pp_R56" x="417.5" y="515" width="36" height="14" rx="3" fill="url(#g28)" stroke="#5a4630" stroke-width="1"/>
-<path id="pp_R56_bands" d="M425.5,515 V529 M431.5,515 V529 M437.5,515 V529" fill="none" stroke="#7a3b1f" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
-<ellipse id="valC_15_39k@R:R56" cx="435.5" cy="542" rx="1" ry="1" fill="none" stroke="none"/>
+<rect id="pp_R56" x="307" y="457" width="36" height="14" rx="3" fill="url(#g22)" stroke="#5a4630" stroke-width="1"/>
+<path id="pp_R56_bands" d="M315,457 V471 M321,457 V471 M327,457 V471" fill="none" stroke="#7a3b1f" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+<ellipse id="valC_9_39k@R:R56" cx="325" cy="484" rx="1" ry="1" fill="none" stroke="none"/>
+<rect id="pp_C62a" x="368.25" y="458" width="24" height="4" rx="1" fill="url(#g23)" stroke="#5a4630" stroke-width="0.8"/>
+<rect id="pp_C62b" x="368.25" y="466" width="24" height="4" rx="1" fill="url(#g23)" stroke="#5a4630" stroke-width="0.8"/>
+<ellipse id="valC_10_33n@C:C62" cx="380.25" cy="484" rx="1" ry="1" fill="none" stroke="none"/>
+<rect id="pp_C30a" x="423.5" y="458" width="24" height="4" rx="1" fill="url(#g24)" stroke="#5a4630" stroke-width="0.8"/>
+<rect id="pp_C30b" x="423.5" y="466" width="24" height="4" rx="1" fill="url(#g24)" stroke="#5a4630" stroke-width="0.8"/>
+<ellipse id="valC_11_22u@C:C30" cx="435.5" cy="484" rx="1" ry="1" fill="none" stroke="none"/>
+<rect id="pp_C12a" x="478.75" y="458" width="24" height="4" rx="1" fill="url(#g25)" stroke="#5a4630" stroke-width="0.8"/>
+<rect id="pp_C12b" x="478.75" y="466" width="24" height="4" rx="1" fill="url(#g25)" stroke="#5a4630" stroke-width="0.8"/>
+<ellipse id="valC_12_6n8@C:C12" cx="490.75" cy="484" rx="1" ry="1" fill="none" stroke="none"/>
+<rect id="pp_C8a" x="313" y="516" width="24" height="4" rx="1" fill="url(#g26)" stroke="#5a4630" stroke-width="0.8"/>
+<rect id="pp_C8b" x="313" y="524" width="24" height="4" rx="1" fill="url(#g26)" stroke="#5a4630" stroke-width="0.8"/>
+<ellipse id="valC_13_0.1u@C:C8" cx="325" cy="542" rx="1" ry="1" fill="none" stroke="none"/>
+<rect id="pp_R51" x="362.25" y="515" width="36" height="14" rx="3" fill="url(#g27)" stroke="#5a4630" stroke-width="1"/>
+<path id="pp_R51_bands" d="M370.25,515 V529 M376.25,515 V529 M382.25,515 V529" fill="none" stroke="#7a3b1f" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+<ellipse id="valC_14_10k@R:R51" cx="380.25" cy="542" rx="1" ry="1" fill="none" stroke="none"/>
+<rect id="pp_R57" x="417.5" y="515" width="36" height="14" rx="3" fill="url(#g28)" stroke="#5a4630" stroke-width="1"/>
+<path id="pp_R57_bands" d="M425.5,515 V529 M431.5,515 V529 M437.5,515 V529" fill="none" stroke="#7a3b1f" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+<ellipse id="valC_15_4k7@R:R57" cx="435.5" cy="542" rx="1" ry="1" fill="none" stroke="none"/>
 <rect id="pp_box2" x="562" y="412" width="257" height="150" rx="6" fill="none" stroke="#5a4d3a" stroke-width="1.2"/>
 <ellipse id="ttl_SUPPLY_AND_BIAS" cx="690.5" cy="426" rx="1" ry="1" fill="none" stroke="none" stroke-width="0"/>
 <rect id="pp_C41a" x="584" y="458" width="24" height="4" rx="1" fill="url(#g29)" stroke="#5a4630" stroke-width="0.8"/>

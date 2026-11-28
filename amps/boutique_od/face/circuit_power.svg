@@ -99,15 +99,15 @@
 <ellipse id="valC_8_0.1u@C:C22" cx="219.75" cy="542" rx="1" ry="1" fill="none" stroke="none"/>
 <rect id="pp_box1" x="291" y="412" width="257" height="150" rx="6" fill="none" stroke="#5a4d3a" stroke-width="1.2"/>
 <ellipse id="ttl_FEEDBACK" cx="419.5" cy="426" rx="1" ry="1" fill="none" stroke="none" stroke-width="0"/>
-<rect id="pp_R24K" x="307" y="457" width="36" height="14" rx="3" fill="url(#g21)" stroke="#5a4630" stroke-width="1"/>
-<path id="pp_R24K_bands" d="M315,457 V471 M321,457 V471 M327,457 V471" fill="none" stroke="#7a3b1f" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
-<ellipse id="valC_9_24k@R:R24K" cx="325" cy="484" rx="1" ry="1" fill="none" stroke="none"/>
-<rect id="pp_R390" x="362.25" y="457" width="36" height="14" rx="3" fill="url(#g22)" stroke="#5a4630" stroke-width="1"/>
-<path id="pp_R390_bands" d="M370.25,457 V471 M376.25,457 V471 M382.25,457 V471" fill="none" stroke="#7a3b1f" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
-<ellipse id="valC_10_390@R:R390" cx="380.25" cy="484" rx="1" ry="1" fill="none" stroke="none"/>
-<rect id="pp_R_NFB" x="417.5" y="457" width="36" height="14" rx="3" fill="url(#g23)" stroke="#5a4630" stroke-width="1"/>
-<path id="pp_R_NFB_bands" d="M425.5,457 V471 M431.5,457 V471 M437.5,457 V471" fill="none" stroke="#7a3b1f" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
-<ellipse id="valC_11_4k7@R:R_NFB" cx="435.5" cy="484" rx="1" ry="1" fill="none" stroke="none"/>
+<rect id="pp_R_NFB" x="307" y="457" width="36" height="14" rx="3" fill="url(#g21)" stroke="#5a4630" stroke-width="1"/>
+<path id="pp_R_NFB_bands" d="M315,457 V471 M321,457 V471 M327,457 V471" fill="none" stroke="#7a3b1f" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+<ellipse id="valC_9_4k7@R:R_NFB" cx="325" cy="484" rx="1" ry="1" fill="none" stroke="none"/>
+<rect id="pp_R24K" x="362.25" y="457" width="36" height="14" rx="3" fill="url(#g22)" stroke="#5a4630" stroke-width="1"/>
+<path id="pp_R24K_bands" d="M370.25,457 V471 M376.25,457 V471 M382.25,457 V471" fill="none" stroke="#7a3b1f" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+<ellipse id="valC_10_24k@R:R24K" cx="380.25" cy="484" rx="1" ry="1" fill="none" stroke="none"/>
+<rect id="pp_R390" x="417.5" y="457" width="36" height="14" rx="3" fill="url(#g23)" stroke="#5a4630" stroke-width="1"/>
+<path id="pp_R390_bands" d="M425.5,457 V471 M431.5,457 V471 M437.5,457 V471" fill="none" stroke="#7a3b1f" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+<ellipse id="valC_11_390@R:R390" cx="435.5" cy="484" rx="1" ry="1" fill="none" stroke="none"/>
 <rect id="pp_C_PRa" x="478.75" y="458" width="24" height="4" rx="1" fill="url(#g24)" stroke="#5a4630" stroke-width="0.8"/>
 <rect id="pp_C_PRb" x="478.75" y="466" width="24" height="4" rx="1" fill="url(#g24)" stroke="#5a4630" stroke-width="0.8"/>
 <ellipse id="valC_12_1u@C:C_PR" cx="490.75" cy="484" rx="1" ry="1" fill="none" stroke="none"/>

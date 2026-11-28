@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<svg xmlns="http://www.w3.org/2000/svg" width="1240" height="600" viewBox="0 0 1240 600">
+<svg xmlns="http://www.w3.org/2000/svg" width="1240" height="678" viewBox="0 0 1240 678">
 <defs>
 <radialGradient id="g1" cx="30" cy="215" r="13" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#d9d0b8"/><stop offset="1" stop-color="#5f5846"/></radialGradient>
 <linearGradient id="g2" x1="125" y1="0" x2="139" y2="0" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#e6c98c"/><stop offset="1" stop-color="#a88a52"/></linearGradient>
@@ -125,4 +125,5 @@
 <ellipse id="dial_bass" cx="310" cy="540" rx="8.8" ry="8.8" fill="#26211c" stroke="#3b3329" stroke-width="1"/>
 <path id="ptr_bass" d="M310,540 L310,531.2" fill="none" stroke="#f0b53a" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>
 <path id="next_power" d="M1160,255 V271 L1182,263 Z" fill="url(#g27)" stroke="#8c7a55" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+<g id="voicing_box" data-orig-h="600"><path d="M20,606 H1220" stroke="#5a4d3a" stroke-width="1" stroke-dasharray="4 4" fill="none"/><path d="M91,630 H119 M131,630 H159" stroke="#6b5c44" stroke-width="3" stroke-linecap="round" fill="none"/><rect id="vb_C42a" x="119" y="615" width="4" height="30" rx="1" fill="#d9b866" stroke="#5a4630" stroke-width="0.8"/><rect id="vb_C42b" x="127" y="615" width="4" height="30" rx="1" fill="#d9b866" stroke="#5a4630" stroke-width="0.8"/><ellipse id="valC_C42_22n@C:C42" cx="125" cy="656" rx="1" ry="1" fill="none" stroke="none"/></g>
 </svg>

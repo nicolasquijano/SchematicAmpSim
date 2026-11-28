@@ -499,8 +499,14 @@ def power_parts(amp_id, d):
         elif e[2] in supplies or e[3] in supplies or e[2] in screens or e[3] in screens or e[2] in pent_grids or e[3] in pent_grids:
             groups['SUPPLY AND BIAS'].append(e)
     out = []
+    changed = {n for v in d.get('power_voicings', []) for pos in v['positions'] for n in pos.get('factors', {})}  # the parts a voicing changes always show
+    listed = {e[1] for es in groups.values() for e in es}
+    for e in els:  # one that no network picked up (it only touches the tail and ground): with the phase inverter
+        if e[1] in changed and e[1] not in listed:
+            groups['PHASE INVERTER'].append(e)
     for title, es in groups.items():
         if es:
+            es = sorted(es, key=lambda e: e[1] not in changed)
             out.append((title, [(k, n, v) for k, n, a, b, v in es][:8]))
     return out
 

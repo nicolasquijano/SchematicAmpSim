@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<svg xmlns="http://www.w3.org/2000/svg" width="1376" height="1520" viewBox="0 0 1376 1520">
+<svg xmlns="http://www.w3.org/2000/svg" width="1376" height="1598" viewBox="0 0 1376 1598">
 <defs>
 <radialGradient id="g1" cx="30" cy="215" r="13" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#d9d0b8"/><stop offset="1" stop-color="#5f5846"/></radialGradient>
 <linearGradient id="g2" x1="125" y1="0" x2="139" y2="0" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#e6c98c"/><stop offset="1" stop-color="#a88a52"/></linearGradient>
@@ -310,4 +310,5 @@
 <ellipse id="dial_volume" cx="430" cy="1460" rx="8.8" ry="8.8" fill="#26211c" stroke="#3b3329" stroke-width="1"/>
 <path id="ptr_volume" d="M430,1460 L430,1451.2" fill="none" stroke="#f0b53a" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>
 <path id="next_power" d="M846,1175 V1191 L868,1183 Z" fill="url(#g73)" stroke="#8c7a55" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+<g id="voicing_box" data-orig-h="1520"><path d="M20,1526 H1356" stroke="#5a4d3a" stroke-width="1" stroke-dasharray="4 4" fill="none"/><path d="M91,1550 H119 M131,1550 H159" stroke="#6b5c44" stroke-width="3" stroke-linecap="round" fill="none"/><rect id="vb_C13a" x="119" y="1535" width="4" height="30" rx="1" fill="#d9b866" stroke="#5a4630" stroke-width="0.8"/><rect id="vb_C13b" x="127" y="1535" width="4" height="30" rx="1" fill="#d9b866" stroke="#5a4630" stroke-width="0.8"/><ellipse id="valC_C13_750p@C:C13" cx="125" cy="1576" rx="1" ry="1" fill="none" stroke="none"/><path d="M221,1550 H237 M273,1550 H289" stroke="#6b5c44" stroke-width="3" stroke-linecap="round" fill="none"/><rect id="vb_R58" x="237" y="1543" width="36" height="14" rx="3" fill="#cfae6e" stroke="#5a4630" stroke-width="1"/><path d="M245,1543 V1557 M251,1543 V1557 M257,1543 V1557" stroke="#7a3b1f" stroke-width="3" fill="none"/><ellipse id="valC_R58_150k@R:R58" cx="255" cy="1576" rx="1" ry="1" fill="none" stroke="none"/><path d="M351,1550 H379 M391,1550 H419" stroke="#6b5c44" stroke-width="3" stroke-linecap="round" fill="none"/><rect id="vb_C2a" x="379" y="1535" width="4" height="30" rx="1" fill="#d9b866" stroke="#5a4630" stroke-width="0.8"/><rect id="vb_C2b" x="387" y="1535" width="4" height="30" rx="1" fill="#d9b866" stroke="#5a4630" stroke-width="0.8"/><ellipse id="valC_C2_22n@C:C2" cx="385" cy="1576" rx="1" ry="1" fill="none" stroke="none"/></g>
 </svg>

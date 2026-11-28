@@ -84,18 +84,18 @@
 <path id="filament_PB" d="M412,304 H428" fill="none" stroke="#ffae42" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>
 <path id="shine_PB" d="M398,308 A26,26 0 0 1 414,294" fill="none" stroke="#ffffff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" opacity="0.35"/>
 <rect id="base_PB" x="404" y="278" width="32" height="14" rx="3" fill="url(#g21)" stroke="#5a4d3a" stroke-width="1"/>
-<ellipse id="valC_1_0.1u" cx="56" cy="191" rx="1" ry="1" fill="none" stroke="none"/>
-<ellipse id="valL_2_56k" cx="162" cy="80" rx="1" ry="1" fill="none" stroke="none"/>
-<ellipse id="valC_3_0.1u" cx="208" cy="126" rx="1" ry="1" fill="none" stroke="none"/>
-<ellipse id="valC_4_0.1u" cx="208" cy="256" rx="1" ry="1" fill="none" stroke="none"/>
-<ellipse id="valL_5_1k5" cx="162" cy="306" rx="1" ry="1" fill="none" stroke="none"/>
-<ellipse id="valL_6_56k" cx="162" cy="354" rx="1" ry="1" fill="none" stroke="none"/>
-<ellipse id="valC_7_1k5" cx="338" cy="98" rx="1" ry="1" fill="none" stroke="none"/>
-<ellipse id="valC_8_1k5" cx="338" cy="308" rx="1" ry="1" fill="none" stroke="none"/>
-<ellipse id="valL_9_220k" cx="312" cy="84" rx="1" ry="1" fill="none" stroke="none"/>
-<ellipse id="valL_10_220k" cx="312" cy="346" rx="1" ry="1" fill="none" stroke="none"/>
-<ellipse id="valR_11_250R" cx="453" cy="254" rx="1" ry="1" fill="none" stroke="none"/>
-<ellipse id="valL_12_25u" cx="502" cy="250" rx="1" ry="1" fill="none" stroke="none"/>
+<ellipse id="valC_1_0.1u@C:C2" cx="56" cy="191" rx="1" ry="1" fill="none" stroke="none"/>
+<ellipse id="valL_2_56k@R:R_PP" cx="162" cy="80" rx="1" ry="1" fill="none" stroke="none"/>
+<ellipse id="valC_3_0.1u@C:C3" cx="208" cy="126" rx="1" ry="1" fill="none" stroke="none"/>
+<ellipse id="valC_4_0.1u@C:C4" cx="208" cy="256" rx="1" ry="1" fill="none" stroke="none"/>
+<ellipse id="valL_5_1k5@R:RK2B" cx="162" cy="306" rx="1" ry="1" fill="none" stroke="none"/>
+<ellipse id="valL_6_56k@R:RK2C" cx="162" cy="354" rx="1" ry="1" fill="none" stroke="none"/>
+<ellipse id="valC_7_1500@R:R1500A" cx="338" cy="98" rx="1" ry="1" fill="none" stroke="none"/>
+<ellipse id="valC_8_1500@R:R1500B" cx="338" cy="308" rx="1" ry="1" fill="none" stroke="none"/>
+<ellipse id="valL_9_220k@R:R220A" cx="312" cy="84" rx="1" ry="1" fill="none" stroke="none"/>
+<ellipse id="valL_10_220k@R:R220B" cx="312" cy="346" rx="1" ry="1" fill="none" stroke="none"/>
+<ellipse id="valR_11_250@R:R250" cx="453" cy="254" rx="1" ry="1" fill="none" stroke="none"/>
+<ellipse id="valL_12_25u@C:C25" cx="502" cy="250" rx="1" ry="1" fill="none" stroke="none"/>
 <rect id="spk_magnet_p" x="790" y="190" width="20" height="10" rx="2" fill="url(#g22)" stroke="#9a8760" stroke-width="1.5"/>
 <path id="spk_cone_p" d="M790,200 H810 L824,242 H776 Z" fill="url(#g23)" stroke="#9a8760" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
 <ellipse id="spk_dust_p" cx="800" cy="235" rx="10" ry="3" fill="#0d0c0a" stroke="none" stroke-width="1"/>
